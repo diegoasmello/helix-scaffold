@@ -17,6 +17,7 @@ import { env } from './env'
 import { registerAuditRequest } from './hooks/audit-request'
 import { createRequireAuth } from './hooks/require-auth'
 import { createRequirePermission } from './hooks/require-permission'
+import { auditRoutes } from './modules/audit/audit-routes'
 import { createAuditService } from './modules/audit/audit-service'
 import { permissionsRoutes } from './modules/permissions/permissions-routes'
 
@@ -101,6 +102,7 @@ export function buildApp(database: Database) {
     const requirePermission = createRequirePermission(database)
 
     authenticated.register(permissionsRoutes, { database, requirePermission })
+    authenticated.register(auditRoutes, { database, requirePermission })
   })
 
   return app
