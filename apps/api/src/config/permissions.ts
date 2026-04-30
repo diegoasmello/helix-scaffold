@@ -28,6 +28,11 @@ export const RESOURCE_DEFINITIONS = [
     label: 'Permissions',
     actions: ['view', 'edit'],
   },
+  {
+    resource: 'audit',
+    label: 'Audit',
+    actions: ['view'],
+  },
 ] satisfies readonly ResourceDefinition[]
 
 export const ALL_PERMISSIONS = RESOURCE_DEFINITIONS.flatMap(
