@@ -20,6 +20,7 @@ import { createRequirePermission } from './hooks/require-permission'
 import { auditRoutes } from './modules/audit/audit-routes'
 import { createAuditService } from './modules/audit/audit-service'
 import { bootstrapRoutes } from './modules/bootstrap/bootstrap-routes'
+import { meRoutes } from './modules/me/me-routes'
 import { permissionsRoutes } from './modules/permissions/permissions-routes'
 
 export function buildApp(database: Database) {
@@ -106,6 +107,7 @@ export function buildApp(database: Database) {
 
     authenticated.register(permissionsRoutes, { database, requirePermission })
     authenticated.register(auditRoutes, { database, requirePermission })
+    authenticated.register(meRoutes, { database, auth })
   })
 
   return app
