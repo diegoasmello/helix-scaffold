@@ -1,0 +1,295 @@
+import { eq } from 'drizzle-orm'
+import { uuidv7 } from 'uuidv7'
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
+
+import { user } from '@/db/schema/authentication'
+import { roles } from '@/db/schema/roles'
+import {
+  cleanupAuth,
+  cleanupRoles,
+  cleanupUsers,
+  createRoleWithPermissions,
+  createTestApp,
+  createTestSession,
+  testDb,
+} from '@/test/helpers'
+
+const app = createTestApp()
+let authCookie = ''
+
+beforeAll(async () => {
+  await cleanupAuth()
+  authCookie = await createTestSession(app)
+})
+
+beforeEach(async () => {
+  // users must be cleaned before roles due to FK constraint
+  await cleanupUsers()
+  await cleanupRoles()
+})
+
+afterAll(async () => {
+  await cleanupAuth()
+  await app.close()
+})
+
+it('returns 401 on any route when not authenticated', async () => {
+  const res = await app.inject({ method: 'GET', url: '/roles' })
+  expect(res.statusCode).toBe(401)
+})
+
+// Filters out the internal test admin role that always exists in the test DB
+function filterTestRole(roles: { name: string }[]) {
+  return roles.filter((r) => r.name !== '__test_admin__')
+}
+
+describe('GET /roles', () => {
+  it('returns empty array when no application roles exist', async () => {
+    const res = await app.inject({
+      method: 'GET',
+      url: '/roles',
+      headers: { cookie: authCookie },
+    })
+    expect(res.statusCode).toBe(200)
+    expect(filterTestRole(res.json())).toEqual([])
+  })
+
+  it('returns all roles', async () => {
+    await testDb.insert(roles).values([
+      { name: 'admin', description: 'Administrator' },
+      { name: 'viewer', description: 'Read-only user' },
+    ])
+
+    const res = await app.inject({
+      method: 'GET',
+      url: '/roles',
+      headers: { cookie: authCookie },
+    })
+    expect(res.statusCode).toBe(200)
+    const body = filterTestRole(res.json())
+    expect(body).toHaveLength(2)
+    expect(body[0].name).toBe('admin')
+    expect(body[1].name).toBe('viewer')
+  })
+})
+
+describe('GET /roles/:id', () => {
+  it('returns 404 when role not found', async () => {
+    const res = await app.inject({
+      method: 'GET',
+      url: '/roles/nonexistent-id',
+      headers: { cookie: authCookie },
+    })
+    expect(res.statusCode).toBe(404)
+    expect(res.json()).toEqual({ message: 'Role not found' })
+  })
+
+  it('returns the role when found', async () => {
+    const [inserted] = await testDb
+      .insert(roles)
+      .values({ name: 'editor', description: 'Can edit content' })
+      .returning()
+
+    const res = await app.inject({
+      method: 'GET',
+      url: `/roles/${inserted.id}`,
+      headers: { cookie: authCookie },
+    })
+    expect(res.statusCode).toBe(200)
+    const body = res.json()
+    expect(body.id).toBe(inserted.id)
+    expect(body.name).toBe('editor')
+    expect(body.description).toBe('Can edit content')
+  })
+})
+
+describe('POST /roles', () => {
+  it('creates a role and returns 201', async () => {
+    const res = await app.inject({
+      method: 'POST',
+      url: '/roles',
+      payload: { name: 'moderator', description: 'Moderates content' },
+      headers: { cookie: authCookie },
+    })
+
+    expect(res.statusCode).toBe(201)
+    const body = res.json()
+    expect(body.id).toBeDefined()
+    expect(body.name).toBe('moderator')
+    expect(body.description).toBe('Moderates content')
+  })
+
+  it('returns 400 when body is invalid', async () => {
+    const res = await app.inject({
+      method: 'POST',
+      url: '/roles',
+      payload: { name: '' },
+      headers: { cookie: authCookie },
+    })
+    expect(res.statusCode).toBe(400)
+  })
+})
+
+describe('PATCH /roles/:id', () => {
+  it('returns 404 when role not found', async () => {
+    const res = await app.inject({
+      method: 'PATCH',
+      url: '/roles/nonexistent-id',
+      payload: { name: 'updated' },
+      headers: { cookie: authCookie },
+    })
+    expect(res.statusCode).toBe(404)
+    expect(res.json()).toEqual({ message: 'Role not found' })
+  })
+
+  it('updates and returns the role', async () => {
+    const [inserted] = await testDb
+      .insert(roles)
+      .values({ name: 'old-name', description: 'Old description' })
+      .returning()
+
+    const res = await app.inject({
+      method: 'PATCH',
+      url: `/roles/${inserted.id}`,
+      payload: { name: 'new-name' },
+      headers: { cookie: authCookie },
+    })
+
+    expect(res.statusCode).toBe(200)
+    const body = res.json()
+    expect(body.name).toBe('new-name')
+    expect(body.description).toBe('Old description')
+  })
+})
+
+describe('DELETE /roles/:id', () => {
+  it('returns 204 on successful delete', async () => {
+    const [inserted] = await testDb
+      .insert(roles)
+      .values({ name: 'to-delete' })
+      .returning()
+
+    const res = await app.inject({
+      method: 'DELETE',
+      url: `/roles/${inserted.id}`,
+      headers: { cookie: authCookie },
+    })
+    expect(res.statusCode).toBe(204)
+  })
+
+  it('returns 204 even when role does not exist', async () => {
+    const res = await app.inject({
+      method: 'DELETE',
+      url: '/roles/nonexistent-id',
+      headers: { cookie: authCookie },
+    })
+    expect(res.statusCode).toBe(204)
+  })
+
+  it('returns 409 when role has assigned users', async () => {
+    const [inserted] = await testDb
+      .insert(roles)
+      .values({ name: 'role-with-users' })
+      .returning()
+
+    await testDb.insert(user).values({
+      id: uuidv7(),
+      name: 'User With Role',
+      email: 'user-with-role@test.com',
+      emailVerified: false,
+      roleId: inserted.id,
+    })
+
+    const res = await app.inject({
+      method: 'DELETE',
+      url: `/roles/${inserted.id}`,
+      headers: { cookie: authCookie },
+    })
+    expect(res.statusCode).toBe(409)
+    expect(res.json()).toEqual({
+      message: 'Cannot delete a role that has assigned users',
+    })
+  })
+})
+
+describe('Permission enforcement', () => {
+  async function createRestrictedSession(
+    grants: { resource: string; action: string }[]
+  ) {
+    const role = await createRoleWithPermissions(grants)
+    const email = `restricted-roles-${Date.now()}@test.com`
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/auth/sign-up/email',
+      payload: JSON.stringify({
+        email,
+        name: 'Restricted',
+        password: 'Password123!',
+      }),
+      headers: { 'content-type': 'application/json' },
+    })
+    await testDb
+      .update(user)
+      .set({ roleId: role.id })
+      .where(eq(user.email, email))
+    const setCookie = res.headers['set-cookie']
+    const cookies = Array.isArray(setCookie) ? setCookie : [setCookie ?? '']
+    return cookies.map((c) => c.split(';')[0]).join('; ')
+  }
+
+  it('returns 403 on GET /roles without roles:view', async () => {
+    const cookie = await createRestrictedSession([])
+    const res = await app.inject({
+      method: 'GET',
+      url: '/roles',
+      headers: { cookie },
+    })
+    expect(res.statusCode).toBe(403)
+  })
+
+  it('returns 403 on POST /roles without roles:create', async () => {
+    const cookie = await createRestrictedSession([
+      { resource: 'roles', action: 'view' },
+    ])
+    const res = await app.inject({
+      method: 'POST',
+      url: '/roles',
+      payload: { name: 'new-role' },
+      headers: { cookie },
+    })
+    expect(res.statusCode).toBe(403)
+  })
+
+  it('returns 403 on PATCH /roles/:id without roles:edit', async () => {
+    const [role] = await testDb
+      .insert(roles)
+      .values({ name: 'edit-target' })
+      .returning()
+    const cookie = await createRestrictedSession([
+      { resource: 'roles', action: 'view' },
+    ])
+    const res = await app.inject({
+      method: 'PATCH',
+      url: `/roles/${role.id}`,
+      payload: { name: 'updated' },
+      headers: { cookie },
+    })
+    expect(res.statusCode).toBe(403)
+  })
+
+  it('returns 403 on DELETE /roles/:id without roles:delete', async () => {
+    const [role] = await testDb
+      .insert(roles)
+      .values({ name: 'delete-target' })
+      .returning()
+    const cookie = await createRestrictedSession([
+      { resource: 'roles', action: 'view' },
+    ])
+    const res = await app.inject({
+      method: 'DELETE',
+      url: `/roles/${role.id}`,
+      headers: { cookie },
+    })
+    expect(res.statusCode).toBe(403)
+  })
+})

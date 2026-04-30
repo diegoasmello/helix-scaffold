@@ -22,6 +22,7 @@ import { createAuditService } from './modules/audit/audit-service'
 import { bootstrapRoutes } from './modules/bootstrap/bootstrap-routes'
 import { meRoutes } from './modules/me/me-routes'
 import { permissionsRoutes } from './modules/permissions/permissions-routes'
+import { rolesRoutes } from './modules/roles/roles-routes'
 
 export function buildApp(database: Database) {
   const app = fastify({
@@ -108,6 +109,7 @@ export function buildApp(database: Database) {
     authenticated.register(permissionsRoutes, { database, requirePermission })
     authenticated.register(auditRoutes, { database, requirePermission })
     authenticated.register(meRoutes, { database, auth })
+    authenticated.register(rolesRoutes, { database, requirePermission })
   })
 
   return app

@@ -1,0 +1,117 @@
+import z from 'zod'
+
+import type { Database } from '../../db'
+import type { FastifyTypedInstance, RequirePermission } from '../../types'
+import { createRoleSchema, roleSchema, updateRoleSchema } from './roles-schema'
+import { createRolesService } from './roles-service'
+
+export async function rolesRoutes(
+  app: FastifyTypedInstance,
+  {
+    database,
+    requirePermission,
+  }: { database: Database; requirePermission: RequirePermission }
+) {
+  const service = createRolesService(database)
+
+  app.get(
+    '/roles',
+    {
+      schema: {
+        tags: ['roles'],
+        description: 'List roles',
+        response: { 200: z.array(roleSchema) },
+      },
+      preHandler: requirePermission('roles', 'view'),
+    },
+    async () => service.list()
+  )
+
+  app.get(
+    '/roles/:id',
+    {
+      schema: {
+        tags: ['roles'],
+        description: 'Get a role by id',
+        params: z.object({ id: z.string() }),
+        response: {
+          200: roleSchema,
+          404: z.object({ message: z.string() }),
+        },
+      },
+      preHandler: requirePermission('roles', 'view'),
+    },
+    async (request, reply) => {
+      const role = await service.getById(request.params.id)
+      if (!role) return reply.status(404).send({ message: 'Role not found' })
+      return role
+    }
+  )
+
+  app.post(
+    '/roles',
+    {
+      schema: {
+        tags: ['roles'],
+        description: 'Create a role',
+        body: createRoleSchema,
+        response: { 201: roleSchema },
+      },
+      preHandler: requirePermission('roles', 'create'),
+    },
+    async (request, reply) => {
+      const role = await service.create(request.body)
+      await request.audit('create', 'roles', role.id, request.body)
+      return reply.status(201).send(role)
+    }
+  )
+
+  app.patch(
+    '/roles/:id',
+    {
+      schema: {
+        tags: ['roles'],
+        description: 'Update a role',
+        params: z.object({ id: z.string() }),
+        body: updateRoleSchema,
+        response: {
+          200: roleSchema,
+          404: z.object({ message: z.string() }),
+        },
+      },
+      preHandler: requirePermission('roles', 'edit'),
+    },
+    async (request, reply) => {
+      const role = await service.update(request.params.id, request.body)
+      if (!role) return reply.status(404).send({ message: 'Role not found' })
+      await request.audit('edit', 'roles', request.params.id, request.body)
+      return role
+    }
+  )
+
+  app.delete(
+    '/roles/:id',
+    {
+      schema: {
+        tags: ['roles'],
+        description: 'Delete a role',
+        params: z.object({ id: z.string() }),
+        response: {
+          204: z.null().describe('Role deleted'),
+          409: z.object({ message: z.string() }),
+        },
+      },
+      preHandler: requirePermission('roles', 'delete'),
+    },
+    async (request, reply) => {
+      if (await service.hasUsers(request.params.id)) {
+        return reply
+          .status(409)
+          .send({ message: 'Cannot delete a role that has assigned users' })
+      }
+      await service.remove(request.params.id)
+      await request.audit('delete', 'roles', request.params.id)
+      return reply.status(204).send(null)
+    }
+  )
+}
