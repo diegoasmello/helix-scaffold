@@ -23,6 +23,7 @@ import { bootstrapRoutes } from './modules/bootstrap/bootstrap-routes'
 import { meRoutes } from './modules/me/me-routes'
 import { permissionsRoutes } from './modules/permissions/permissions-routes'
 import { rolesRoutes } from './modules/roles/roles-routes'
+import { todosRoutes } from './modules/todos/todos-routes'
 import { usersRoutes } from './modules/users/users-routes'
 
 export function buildApp(database: Database) {
@@ -112,6 +113,8 @@ export function buildApp(database: Database) {
     authenticated.register(meRoutes, { database, auth })
     authenticated.register(rolesRoutes, { database, requirePermission })
     authenticated.register(usersRoutes, { database, auth, requirePermission })
+
+    authenticated.register(todosRoutes, { database, requirePermission })
   })
 
   return app

@@ -1,9 +1,10 @@
 import { eq, sql } from 'drizzle-orm'
+import { seed } from 'drizzle-seed'
 
 import { createAuth } from '@/auth'
 import { ALL_PERMISSIONS } from '@/config/permissions'
 import { db } from '@/db'
-import { rolePermissions, roles, user } from '@/db/schema'
+import { rolePermissions, roles, todos, user } from '@/db/schema'
 
 const auth = createAuth(db)
 
@@ -123,7 +124,23 @@ async function main() {
     await db.update(user).set({ roleId }).where(eq(user.id, result.user.id))
   }
 
-  console.log(`Seed complete: 3 roles, ${1 + EXTRA_USERS.length} users.`)
+  console.log('Creating todos...')
+  await seed(db, { todos }, { count: 50, seed: 42 }).refine((f) => ({
+    todos: {
+      count: 50,
+      columns: {
+        title: f.loremIpsum({ sentencesCount: 1 }),
+        description: f.loremIpsum({ sentencesCount: 2 }),
+        content: f.loremIpsum({ sentencesCount: 5 }),
+        status: f.valuesFromArray({ values: ['pending', 'completed'] }),
+        date: f.date({ minDate: '2024-01-01', maxDate: '2025-12-31' }),
+      },
+    },
+  }))
+
+  console.log(
+    `Seed complete: 3 roles, ${1 + EXTRA_USERS.length} users, 50 todos.`
+  )
   process.exit(0)
 }
 

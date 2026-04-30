@@ -1,0 +1,121 @@
+import z from 'zod'
+
+import { buildPaginatedResponse } from '@/lib/pagination'
+
+import type { Database } from '../../db'
+import type { FastifyTypedInstance, RequirePermission } from '../../types'
+import {
+  createTodoSchema,
+  paginatedTodosSchema,
+  todoSchema,
+  todosListQuerySchema,
+  updateTodoSchema,
+} from './todos-schema'
+import { createTodosService } from './todos-service'
+
+export async function todosRoutes(
+  app: FastifyTypedInstance,
+  {
+    database,
+    requirePermission,
+  }: { database: Database; requirePermission: RequirePermission }
+) {
+  const service = createTodosService(database)
+
+  app.get(
+    '/todos',
+    {
+      schema: {
+        tags: ['todos'],
+        description: 'List todos',
+        querystring: todosListQuerySchema,
+        response: { 200: paginatedTodosSchema },
+      },
+      preHandler: requirePermission('todos', 'view'),
+    },
+    async (request) => {
+      const { data, total } = await service.list(request.query)
+      return buildPaginatedResponse(data, total, request.query)
+    }
+  )
+
+  app.get(
+    '/todos/:id',
+    {
+      schema: {
+        tags: ['todos'],
+        description: 'Get a todo by id',
+        params: z.object({ id: z.string() }),
+        response: {
+          200: todoSchema,
+          404: z.object({ message: z.string() }),
+        },
+      },
+      preHandler: requirePermission('todos', 'view'),
+    },
+    async (request, reply) => {
+      const todo = await service.getById(request.params.id)
+      if (!todo) return reply.status(404).send({ message: 'Todo not found' })
+      return todo
+    }
+  )
+
+  app.post(
+    '/todos',
+    {
+      schema: {
+        tags: ['todos'],
+        description: 'Create a todo',
+        body: createTodoSchema,
+        response: { 201: todoSchema },
+      },
+      preHandler: requirePermission('todos', 'create'),
+    },
+    async (request, reply) => {
+      const todo = await service.create(request.body)
+      await request.audit('create', 'todos', todo.id, request.body)
+      return reply.status(201).send(todo)
+    }
+  )
+
+  app.patch(
+    '/todos/:id',
+    {
+      schema: {
+        tags: ['todos'],
+        description: 'Update a todo',
+        params: z.object({ id: z.string() }),
+        body: updateTodoSchema,
+        response: {
+          200: todoSchema,
+          404: z.object({ message: z.string() }),
+        },
+      },
+      preHandler: requirePermission('todos', 'edit'),
+    },
+    async (request, reply) => {
+      const todo = await service.update(request.params.id, request.body)
+      if (!todo) return reply.status(404).send({ message: 'Todo not found' })
+      await request.audit('edit', 'todos', request.params.id, request.body)
+      return todo
+    }
+  )
+
+  app.delete(
+    '/todos/:id',
+    {
+      schema: {
+        tags: ['todos'],
+        description: 'Delete a todo',
+        params: z.object({ id: z.string() }),
+        response: { 204: z.null().describe('Todo deleted') },
+      },
+      preHandler: requirePermission('todos', 'delete'),
+    },
+    async (request, reply) => {
+      await service.remove(request.params.id)
+      await request.audit('delete', 'todos', request.params.id)
+      return reply.status(204).send(null)
+    }
+  )
+}

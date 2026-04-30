@@ -10,6 +10,7 @@ import {
   rolePermissions,
   roles,
   session,
+  todos,
   user,
   verification,
 } from '@/db/schema'
@@ -46,6 +47,10 @@ export async function cleanupAuth() {
   await testDb.delete(user)
   // roles deleted via FK cascade on rolePermissions; delete manually in right order
   await testDb.delete(roles)
+}
+
+export async function cleanupTodos() {
+  await testDb.delete(todos)
 }
 
 export async function createTestSession(
