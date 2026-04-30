@@ -15,9 +15,11 @@
     "db:studio": "drizzle-kit studio"
   },
   "dependencies": {
+    "@better-auth/drizzle-adapter": "1.6.9",
     "@fastify/cors": "11.2.0",
     "@fastify/swagger": "9.7.0",
     "@scalar/fastify-api-reference": "1.52.6",
+    "better-auth": "catalog:",
     "drizzle-orm": "0.45.2",
     "drizzle-seed": "0.3.1",
     "fastify": "5.8.5",
