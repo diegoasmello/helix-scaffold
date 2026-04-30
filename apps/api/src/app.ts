@@ -15,6 +15,8 @@ import { createAuth } from './auth'
 import type { Database } from './db'
 import { env } from './env'
 import { createRequireAuth } from './hooks/require-auth'
+import { createRequirePermission } from './hooks/require-permission'
+import { permissionsRoutes } from './modules/permissions/permissions-routes'
 
 export function buildApp(database: Database) {
   const app = fastify({
@@ -92,6 +94,9 @@ export function buildApp(database: Database) {
 
   app.register(async (authenticated) => {
     authenticated.addHook('preHandler', createRequireAuth(auth))
+    const requirePermission = createRequirePermission(database)
+
+    authenticated.register(permissionsRoutes, { database, requirePermission })
   })
 
   return app

@@ -1,6 +1,8 @@
 import type {
   FastifyBaseLogger,
   FastifyInstance,
+  FastifyReply,
+  FastifyRequest,
   RawReplyDefaultExpression,
   RawRequestDefaultExpression,
   RawServerDefault,
@@ -14,6 +16,13 @@ export type FastifyTypedInstance = FastifyInstance<
   FastifyBaseLogger,
   ZodTypeProvider
 >
+
+export type PreHandler = (
+  request: FastifyRequest,
+  reply: FastifyReply
+) => Promise<void>
+
+export type RequirePermission = (resource: string, action: string) => PreHandler
 
 declare module 'fastify' {
   interface FastifyRequest {
