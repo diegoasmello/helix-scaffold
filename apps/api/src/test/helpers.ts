@@ -6,12 +6,13 @@ import { ALL_PERMISSIONS } from '@/config/permissions'
 import * as schema from '@/db/schema'
 import {
   account,
+  auditLogs,
+  rolePermissions,
+  roles,
   session,
   user,
   verification,
-} from '@/db/schema/authentication'
-import { rolePermissions } from '@/db/schema/role-permissions'
-import { roles } from '@/db/schema/roles'
+} from '@/db/schema'
 import { env } from '@/env'
 
 const TEST_USER_EMAIL = 'test@test.com'
@@ -24,6 +25,10 @@ export const testDb = drizzle(env.DATABASE_URL, {
 
 export function createTestApp() {
   return buildApp(testDb)
+}
+
+export async function cleanupAuditLogs() {
+  await testDb.delete(auditLogs)
 }
 
 export async function cleanupRoles() {

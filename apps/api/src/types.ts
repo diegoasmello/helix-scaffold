@@ -32,5 +32,11 @@ declare module 'fastify' {
       email: string
       roleId: string | null
     }
+    audit: (
+      action: 'create' | 'edit' | 'delete',
+      resource: string,
+      resourceId?: string | null,
+      metadata?: unknown
+    ) => Promise<void>
   }
 }

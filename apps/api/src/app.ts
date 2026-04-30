@@ -14,8 +14,10 @@ import {
 import { createAuth } from './auth'
 import type { Database } from './db'
 import { env } from './env'
+import { registerAuditRequest } from './hooks/audit-request'
 import { createRequireAuth } from './hooks/require-auth'
 import { createRequirePermission } from './hooks/require-permission'
+import { createAuditService } from './modules/audit/audit-service'
 import { permissionsRoutes } from './modules/permissions/permissions-routes'
 
 export function buildApp(database: Database) {
@@ -94,6 +96,8 @@ export function buildApp(database: Database) {
 
   app.register(async (authenticated) => {
     authenticated.addHook('preHandler', createRequireAuth(auth))
+    registerAuditRequest(authenticated, createAuditService(database))
+
     const requirePermission = createRequirePermission(database)
 
     authenticated.register(permissionsRoutes, { database, requirePermission })
