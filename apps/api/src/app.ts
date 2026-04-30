@@ -19,6 +19,7 @@ import { createRequireAuth } from './hooks/require-auth'
 import { createRequirePermission } from './hooks/require-permission'
 import { auditRoutes } from './modules/audit/audit-routes'
 import { createAuditService } from './modules/audit/audit-service'
+import { bootstrapRoutes } from './modules/bootstrap/bootstrap-routes'
 import { permissionsRoutes } from './modules/permissions/permissions-routes'
 
 export function buildApp(database: Database) {
@@ -94,6 +95,8 @@ export function buildApp(database: Database) {
       return reply.send(await response.text())
     })
   })
+
+  app.register(bootstrapRoutes, { database, auth })
 
   app.register(async (authenticated) => {
     authenticated.addHook('preHandler', createRequireAuth(auth))
