@@ -14,3 +14,14 @@ export type FastifyTypedInstance = FastifyInstance<
   FastifyBaseLogger,
   ZodTypeProvider
 >
+
+declare module 'fastify' {
+  interface FastifyRequest {
+    sessionUser: {
+      id: string
+      name: string
+      email: string
+      roleId: string | null
+    }
+  }
+}

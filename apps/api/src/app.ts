@@ -14,6 +14,7 @@ import {
 import { createAuth } from './auth'
 import type { Database } from './db'
 import { env } from './env'
+import { createRequireAuth } from './hooks/require-auth'
 
 export function buildApp(database: Database) {
   const app = fastify({
@@ -87,6 +88,10 @@ export function buildApp(database: Database) {
 
       return reply.send(await response.text())
     })
+  })
+
+  app.register(async (authenticated) => {
+    authenticated.addHook('preHandler', createRequireAuth(auth))
   })
 
   return app
