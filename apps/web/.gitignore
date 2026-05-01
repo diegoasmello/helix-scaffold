@@ -1,0 +1,13 @@
+# Environment
+.env
+*.local
+
+# Build output
+dist
+dist-ssr
+
+# Playwright auth state
+e2e/.auth/*.json
+playwright-report
+test-results
+blob-report
