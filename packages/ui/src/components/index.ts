@@ -1,6 +1,7 @@
 export * from './data-table/data-table'
 export * from './form/form'
 export * from './labeled-value/labeled-value'
+export * from './language-picker/language-picker'
 export * from './layout/layout'
 export * from './modals/confirm'
 export * from './notifications/notify'
