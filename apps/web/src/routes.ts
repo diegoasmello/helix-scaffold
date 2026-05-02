@@ -18,6 +18,7 @@ import { Forbidden } from './modules/errors/forbidden'
 import { NotFound } from './modules/errors/not-found'
 import { meRoutes } from './modules/me/routes'
 import { permissionsRoutes } from './modules/permissions/routes'
+import { rolesRoutes } from './modules/roles/routes'
 
 export const rootRoute = createRootRoute({
   component: Outlet,
@@ -62,6 +63,7 @@ const routeTree = rootRoute.addChildren([
   layoutRoute.addChildren([
     forbiddenRoute,
     authenticatedRoute.addChildren([
+      ...rolesRoutes,
       ...auditRoutes,
       ...meRoutes,
       ...permissionsRoutes,
