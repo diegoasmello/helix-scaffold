@@ -10,6 +10,7 @@ import {
 import { App } from './app'
 import { authClient } from './lib/authentication'
 import { queryClient } from './lib/query-client'
+import { auditRoutes } from './modules/audit/routes'
 import { AuthGuard } from './modules/auth/components/auth-guard'
 import { authRoutes } from './modules/auth/routes'
 import { ErrorBoundary } from './modules/errors/error-boundary'
@@ -56,7 +57,10 @@ export const authenticatedRoute = createRoute({
 
 const routeTree = rootRoute.addChildren([
   ...authRoutes,
-  layoutRoute.addChildren([forbiddenRoute, authenticatedRoute.addChildren([])]),
+  layoutRoute.addChildren([
+    forbiddenRoute,
+    authenticatedRoute.addChildren([...auditRoutes]),
+  ]),
 ])
 
 export const router = createRouter({
