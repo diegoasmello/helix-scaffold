@@ -11,6 +11,17 @@
     },
     "lint": {},
     "type-check": {},
-    "format": {}
+    "format": {},
+    "test": {},
+    "test:coverage": {
+      "outputs": ["coverage/**"]
+    },
+    "test:e2e": {
+      "cache": false
+    },
+    "test:watch": {
+      "persistent": true,
+      "cache": false
+    }
   }
 }
