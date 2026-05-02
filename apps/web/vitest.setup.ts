@@ -14,7 +14,7 @@ afterAll(() => server.close())
 Object.defineProperty(window, 'matchMedia', {
   writable: true,
   value: vi.fn().mockImplementation((query: string) => ({
-    matches: false,
+    matches: true,
     media: query,
     onchange: null,
     addListener: vi.fn(),
