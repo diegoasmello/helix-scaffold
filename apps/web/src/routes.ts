@@ -1,12 +1,17 @@
+import { getMePermissionsQueryOptions } from '@helix/api-client/hooks'
 import {
   createRootRoute,
   createRoute,
   createRouter,
   Outlet,
+  redirect,
 } from '@tanstack/react-router'
 
 import { App } from './app'
+import { authClient } from './lib/authentication'
 import { queryClient } from './lib/query-client'
+import { AuthGuard } from './modules/auth/components/auth-guard'
+import { authRoutes } from './modules/auth/routes'
 import { ErrorBoundary } from './modules/errors/error-boundary'
 import { Forbidden } from './modules/errors/forbidden'
 import { NotFound } from './modules/errors/not-found'
@@ -29,8 +34,29 @@ const forbiddenRoute = createRoute({
   component: Forbidden,
 })
 
+export const authenticatedRoute = createRoute({
+  getParentRoute: () => layoutRoute,
+  id: 'authenticated',
+  component: AuthGuard,
+  beforeLoad: async ({ context }) => {
+    const session = await authClient.getSession()
+    if (!session.data?.user) throw redirect({ to: '/login' })
+
+    const perms = await (
+      context as { queryClient: typeof queryClient }
+    ).queryClient.ensureQueryData(getMePermissionsQueryOptions())
+    const grants = perms?.grants ?? {}
+
+    return {
+      hasPermission: (resource: string, action: string): boolean =>
+        (grants[resource] ?? []).includes(action),
+    }
+  },
+})
+
 const routeTree = rootRoute.addChildren([
-  layoutRoute.addChildren([forbiddenRoute]),
+  ...authRoutes,
+  layoutRoute.addChildren([forbiddenRoute, authenticatedRoute.addChildren([])]),
 ])
 
 export const router = createRouter({
