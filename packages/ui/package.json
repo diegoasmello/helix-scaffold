@@ -55,5 +55,8 @@
   "peerDependencies": {
     "@tanstack/react-router": "1.168.23",
     "react": "19.2.0"
+  },
+  "lint-staged": {
+    "**/*.{ts,js}": "eslint --fix"
   }
 }

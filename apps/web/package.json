@@ -55,5 +55,8 @@
     "typescript-eslint": "catalog:",
     "vite": "catalog:",
     "vitest": "catalog:"
+  },
+  "lint-staged": {
+    "**/*.{ts,js}": "eslint --fix"
   }
 }

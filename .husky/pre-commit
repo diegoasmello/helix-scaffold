@@ -1,0 +1,4 @@
+pnpm lint-staged
+pnpm lint-staged --cwd apps/web
+pnpm lint-staged --cwd apps/api
+pnpm lint-staged --cwd packages/ui
