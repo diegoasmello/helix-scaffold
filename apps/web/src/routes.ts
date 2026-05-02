@@ -16,6 +16,7 @@ import { authRoutes } from './modules/auth/routes'
 import { ErrorBoundary } from './modules/errors/error-boundary'
 import { Forbidden } from './modules/errors/forbidden'
 import { NotFound } from './modules/errors/not-found'
+import { meRoutes } from './modules/me/routes'
 
 export const rootRoute = createRootRoute({
   component: Outlet,
@@ -59,7 +60,7 @@ const routeTree = rootRoute.addChildren([
   ...authRoutes,
   layoutRoute.addChildren([
     forbiddenRoute,
-    authenticatedRoute.addChildren([...auditRoutes]),
+    authenticatedRoute.addChildren([...auditRoutes, ...meRoutes]),
   ]),
 ])
 
