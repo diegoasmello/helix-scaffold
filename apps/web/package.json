@@ -17,6 +17,7 @@
     "@helix/ui": "workspace:*",
     "@tanstack/react-query": "5.100.1",
     "@tanstack/react-router": "1.168.23",
+    "better-auth": "catalog:",
     "react": "19.2.0",
     "react-dom": "19.2.0",
     "zod": "catalog:"
