@@ -10,7 +10,12 @@
     "preview": "vite preview",
     "lint": "eslint .",
     "format": "prettier . --write",
-    "type-check": "tsc -b"
+    "type-check": "tsc -b",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui"
   },
   "dependencies": {
     "@helix/api-client": "workspace:*",
@@ -24,10 +29,15 @@
   },
   "devDependencies": {
     "@eslint/js": "catalog:",
+    "@playwright/test": "1.59.1",
+    "@testing-library/jest-dom": "6.9.1",
+    "@testing-library/react": "16.3.2",
+    "@testing-library/user-event": "14.6.1",
     "@types/node": "catalog:",
     "@types/react": "19.2.7",
     "@types/react-dom": "19.2.3",
     "@vitejs/plugin-react": "5.1.1",
+    "@vitest/coverage-v8": "4.1.5",
     "eslint": "catalog:",
     "eslint-plugin-import-x": "catalog:",
     "eslint-config-prettier": "catalog:",
@@ -35,12 +45,15 @@
     "eslint-plugin-react-refresh": "0.4.24",
     "eslint-plugin-simple-import-sort": "catalog:",
     "globals": "16.5.0",
+    "jsdom": "29.0.2",
+    "msw": "2.13.6",
     "postcss": "8.5.8",
     "postcss-preset-mantine": "1.18.0",
     "postcss-simple-vars": "7.0.1",
     "prettier": "catalog:",
     "typescript": "catalog:",
     "typescript-eslint": "catalog:",
-    "vite": "catalog:"
+    "vite": "catalog:",
+    "vitest": "catalog:"
   }
 }
