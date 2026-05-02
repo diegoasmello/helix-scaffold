@@ -1,0 +1,102 @@
+import {
+  getTodosIdSuspenseQueryOptions,
+  getTodosSuspenseQueryOptions,
+} from '@helix/api-client/hooks'
+import { createRoute, redirect } from '@tanstack/react-router'
+import { z } from 'zod'
+
+import { authenticatedRoute } from '@/routes'
+
+import { queryClient } from '../../../lib/query-client'
+import type { TodoItem } from '../types'
+import { TodoCreate } from './todos-create'
+import { TodoDetail } from './todos-detail'
+import { TodoEdit } from './todos-edit'
+import { TodoList } from './todos-list'
+import { TodoPending } from './todos-pending'
+
+export const todoListRoute = createRoute({
+  getParentRoute: () => authenticatedRoute,
+  path: '/todos',
+  component: TodoList,
+  pendingComponent: TodoPending,
+  staticData: {
+    breadcrumbs: [{ label: 'Todos' }],
+  },
+  beforeLoad: ({ context }) => {
+    if (!context.hasPermission('todos', 'view')) throw redirect({ to: '/403' })
+  },
+  validateSearch: z.object({
+    page: z.number().int().min(1).default(1),
+    pageSize: z.number().int().min(1).max(100).default(10),
+    sortBy: z.enum(['title', 'status', 'date', 'createdAt']).optional(),
+    sortOrder: z.enum(['asc', 'desc']).default('desc'),
+  }),
+  loaderDeps: ({ search: { page, pageSize, sortBy, sortOrder } }) => ({
+    page,
+    pageSize,
+    sortBy,
+    sortOrder,
+  }),
+  loader: ({ deps }) =>
+    queryClient.ensureQueryData(getTodosSuspenseQueryOptions(deps)),
+})
+
+export const todoCreateRoute = createRoute({
+  getParentRoute: () => authenticatedRoute,
+  path: '/todos/create',
+  component: TodoCreate,
+  pendingComponent: TodoPending,
+  staticData: {
+    breadcrumbs: [{ label: 'Todos', to: '/todos' }, { label: 'Create' }],
+  },
+  beforeLoad: ({ context }) => {
+    if (!context.hasPermission('todos', 'create'))
+      throw redirect({ to: '/403' })
+  },
+})
+
+export const todoDetailRoute = createRoute({
+  getParentRoute: () => authenticatedRoute,
+  path: '/todos/$id',
+  component: TodoDetail,
+  pendingComponent: TodoPending,
+  staticData: {
+    breadcrumbs: [
+      { label: 'Todos', to: '/todos' },
+      { label: 'View' },
+      (data) => ({ label: `#${(data as TodoItem).id}` }),
+    ],
+  },
+  beforeLoad: ({ context }) => {
+    if (!context.hasPermission('todos', 'view')) throw redirect({ to: '/403' })
+  },
+  loader: ({ params }) =>
+    queryClient.ensureQueryData(getTodosIdSuspenseQueryOptions(params.id)),
+})
+
+export const todoEditRoute = createRoute({
+  getParentRoute: () => authenticatedRoute,
+  path: '/todos/$id/edit',
+  component: TodoEdit,
+  pendingComponent: TodoPending,
+  staticData: {
+    breadcrumbs: [
+      { label: 'Todos', to: '/todos' },
+      { label: 'Edit' },
+      (data) => ({ label: `#${(data as TodoItem).id}` }),
+    ],
+  },
+  beforeLoad: ({ context }) => {
+    if (!context.hasPermission('todos', 'edit')) throw redirect({ to: '/403' })
+  },
+  loader: ({ params }) =>
+    queryClient.ensureQueryData(getTodosIdSuspenseQueryOptions(params.id)),
+})
+
+export const todosRoutes = [
+  todoListRoute,
+  todoCreateRoute,
+  todoDetailRoute,
+  todoEditRoute,
+]

@@ -19,6 +19,7 @@ import { NotFound } from './modules/errors/not-found'
 import { meRoutes } from './modules/me/routes'
 import { permissionsRoutes } from './modules/permissions/routes'
 import { rolesRoutes } from './modules/roles/routes'
+import { todosRoutes } from './modules/todos/routes'
 import { usersRoutes } from './modules/users/routes'
 
 export const rootRoute = createRootRoute({
@@ -31,6 +32,14 @@ const layoutRoute = createRoute({
   getParentRoute: () => rootRoute,
   id: 'layout',
   component: App,
+})
+
+const indexRoute = createRoute({
+  getParentRoute: () => layoutRoute,
+  path: '/',
+  beforeLoad: () => {
+    throw redirect({ to: '/todos', search: { page: 1, pageSize: 10 } })
+  },
 })
 
 const forbiddenRoute = createRoute({
@@ -62,13 +71,15 @@ export const authenticatedRoute = createRoute({
 const routeTree = rootRoute.addChildren([
   ...authRoutes,
   layoutRoute.addChildren([
+    indexRoute,
     forbiddenRoute,
     authenticatedRoute.addChildren([
       ...usersRoutes,
       ...rolesRoutes,
+      ...permissionsRoutes,
       ...auditRoutes,
       ...meRoutes,
-      ...permissionsRoutes,
+      ...todosRoutes,
     ]),
   ]),
 ])
