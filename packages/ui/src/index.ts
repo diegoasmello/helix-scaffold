@@ -1,0 +1,24 @@
+// eslint-disable-next-line @typescript-eslint/triple-slash-reference
+/// <reference path="./declarations.d.ts" />
+
+import '@mantine/core/styles.css'
+import '@mantine/dates/styles.css'
+import '@mantine/tiptap/styles.css'
+import '@mantine/notifications/styles.css'
+import 'mantine-datatable/styles.css'
+import '@fontsource-variable/inter'
+import '@fontsource-variable/plus-jakarta-sans'
+
+export * from './components'
+export { createTheme } from './theme'
+export { css } from '@emotion/react'
+export type { CSSProperties } from '@mantine/core'
+export * from '@mantine/core'
+export * from '@mantine/dates'
+export * from '@mantine/emotion'
+export * from '@mantine/form'
+export * from '@mantine/hooks'
+export * from '@mantine/modals'
+export * from '@mantine/notifications'
+export * from '@tabler/icons-react'
+export { clsx } from 'clsx'

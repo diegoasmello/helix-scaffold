@@ -1,0 +1,59 @@
+{
+  "name": "@helix/ui",
+  "version": "1.0.0",
+  "type": "module",
+  "private": true,
+  "packageManager": "pnpm@10.33.2+sha512.a90faf6feeab71ad6c6e57f94e0fe1a12f5dcc22cd754db40ae9593eb6a3e0b6b12e3540218bb37ae083404b1f2ce6db2a4121e979829b4aff94b99f49da1cf8",
+  "scripts": {
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "type-check": "tsc --noEmit"
+  },
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@emotion/react": "11.14.0",
+    "@fontsource-variable/inter": "5.2.8",
+    "@fontsource-variable/plus-jakarta-sans": "5.2.8",
+    "@mantine/core": "9.1.1",
+    "@mantine/dates": "9.1.1",
+    "@mantine/emotion": "9.1.1",
+    "@mantine/form": "9.1.0",
+    "@mantine/hooks": "9.1.1",
+    "@mantine/modals": "9.1.1",
+    "@mantine/notifications": "9.1.1",
+    "@mantine/tiptap": "9.1.1",
+    "@tabler/icons-react": "3.40.0",
+    "@tiptap/extension-highlight": "3.22.5",
+    "@tiptap/extension-link": "3.22.5",
+    "@tiptap/extension-placeholder": "3.22.5",
+    "@tiptap/extension-subscript": "3.22.5",
+    "@tiptap/extension-superscript": "3.22.5",
+    "@tiptap/extension-text-align": "3.22.5",
+    "@tiptap/pm": "3.22.5",
+    "@tiptap/react": "3.22.5",
+    "@tiptap/starter-kit": "3.22.5",
+    "clsx": "2.1.1",
+    "dayjs": "1.11.20",
+    "mantine-datatable": "8.3.13"
+  },
+  "devDependencies": {
+    "@eslint/js": "catalog:",
+    "@types/react": "19.2.7",
+    "eslint": "catalog:",
+    "eslint-plugin-import-x": "catalog:",
+    "eslint-config-prettier": "catalog:",
+    "eslint-plugin-react-hooks": "7.0.1",
+    "eslint-plugin-react-refresh": "0.4.24",
+    "eslint-plugin-simple-import-sort": "catalog:",
+    "globals": "16.5.0",
+    "prettier": "catalog:",
+    "typescript": "catalog:",
+    "typescript-eslint": "catalog:"
+  },
+  "peerDependencies": {
+    "@tanstack/react-router": "1.168.23",
+    "react": "19.2.0"
+  }
+}
