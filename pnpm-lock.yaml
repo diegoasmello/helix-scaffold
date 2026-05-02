@@ -153,6 +153,9 @@ importers:
       '@helix/ui':
         specifier: workspace:*
         version: link:../../packages/ui
+      '@tanstack/react-query':
+        specifier: 5.100.1
+        version: 5.100.1(react@19.2.0)
       react:
         specifier: 19.2.0
         version: 19.2.0
