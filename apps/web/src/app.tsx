@@ -1,3 +1,5 @@
+import { Layout } from '@helix/ui'
+
 export function App() {
-  return <h1>helix-scaffold</h1>
+  return <Layout sidebarItems={[]} user={{ name: 'Guest' }} />
 }

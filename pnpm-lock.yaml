@@ -156,6 +156,9 @@ importers:
       '@tanstack/react-query':
         specifier: 5.100.1
         version: 5.100.1(react@19.2.0)
+      '@tanstack/react-router':
+        specifier: 1.168.23
+        version: 1.168.23(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
       react:
         specifier: 19.2.0
         version: 19.2.0

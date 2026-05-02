@@ -7,13 +7,14 @@ import {
   Notifications,
 } from '@helix/ui'
 import { QueryClientProvider } from '@tanstack/react-query'
+import { RouterProvider } from '@tanstack/react-router'
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 
-import { App } from './app.tsx'
 import { theme } from './config/theme'
 import { env } from './env'
 import { queryClient } from './lib/query-client.ts'
+import { router } from './routes.ts'
 
 configure({ baseUrl: env.VITE_API_URL })
 
@@ -24,7 +25,7 @@ createRoot(document.getElementById('root')!).render(
         <MantineEmotionProvider>
           <ModalsProvider>
             <Notifications />
-            <App />
+            <RouterProvider router={router} />
           </ModalsProvider>
         </MantineEmotionProvider>
       </MantineProvider>
