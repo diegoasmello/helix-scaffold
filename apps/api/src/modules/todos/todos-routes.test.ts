@@ -267,7 +267,12 @@ describe('Permission enforcement', () => {
     const res = await app.inject({
       method: 'POST',
       url: '/todos',
-      payload: { title: 'New', description: 'Desc', content: 'Content', date: '2025-01-01' },
+      payload: {
+        title: 'New',
+        description: 'Desc',
+        content: 'Content',
+        date: '2025-01-01',
+      },
       headers: { cookie },
     })
     expect(res.statusCode).toBe(403)
