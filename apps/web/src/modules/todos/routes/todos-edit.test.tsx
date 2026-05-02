@@ -17,10 +17,39 @@ import { TodoEdit } from './todos-edit'
 
 const mockNavigate = vi.fn()
 
-vi.mock('@tanstack/react-router', () => ({
-  useNavigate: () => mockNavigate,
-  useParams: () => ({ id: '1' }),
+vi.mock('.', () => ({
+  todoEditRoute: {
+    useNavigate: () => mockNavigate,
+    useParams: () => ({ id: '1' }),
+  },
 }))
+
+vi.mock('@tanstack/react-router', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@tanstack/react-router')>()
+  return { ...actual, useBlocker: vi.fn() }
+})
+
+vi.mock('@helix/ui', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@helix/ui')>()
+  return {
+    ...actual,
+    RichTextEditor: ({
+      label,
+      value,
+      onChange,
+    }: {
+      label?: string
+      value?: string
+      onChange?: (v: string) => void
+    }) => (
+      <textarea
+        aria-label={label}
+        value={value ?? ''}
+        onChange={(e) => onChange?.(e.target.value)}
+      />
+    ),
+  }
+})
 
 const mockTodo = createTodo({
   id: '1',

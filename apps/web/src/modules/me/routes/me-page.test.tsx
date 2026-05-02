@@ -7,7 +7,7 @@ import {
   patchMePasswordHandlerResponse204,
   patchMePasswordHandlerResponse400,
 } from '@helix/api-client/mocks'
-import { MantineProvider } from '@helix/ui'
+import { MantineProvider, Notifications } from '@helix/ui'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -50,6 +50,7 @@ function renderMePage() {
   })
   return render(
     <MantineProvider>
+      <Notifications />
       <QueryClientProvider client={queryClient}>
         <Suspense fallback={<div>Loading...</div>}>
           <MePage />
@@ -93,7 +94,7 @@ describe('Profile update', () => {
     await user.type(nameInput, 'New Name')
     await user.click(screen.getByRole('button', { name: 'Save' }))
 
-    await screen.findByText('Profile updated successfully.')
+    await screen.findByText('Profile updated successfully')
   })
 
   it('shows validation error when name is empty', async () => {
@@ -126,7 +127,7 @@ describe('Password change', () => {
     )
     await user.click(screen.getByRole('button', { name: 'Change Password' }))
 
-    await screen.findByText('Password changed successfully.')
+    await screen.findByText('Password changed successfully')
   })
 
   it('shows error when current password is wrong', async () => {
@@ -151,7 +152,7 @@ describe('Password change', () => {
     )
     await user.click(screen.getByRole('button', { name: 'Change Password' }))
 
-    await screen.findByText('Current password is incorrect.')
+    await screen.findByText('Current password is incorrect')
   })
 
   it('shows validation error when passwords do not match', async () => {

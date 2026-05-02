@@ -12,9 +12,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { server } from '../../../mocks/server'
 import { AuditDetail } from './audit-detail'
 
-vi.mock('@tanstack/react-router', () => ({
-  useNavigate: () => vi.fn(),
-  useParams: () => ({ id: 'log-1' }),
+vi.mock('.', () => ({
+  auditDetailRoute: {
+    useNavigate: () => vi.fn(),
+    useParams: () => ({ id: 'log-1' }),
+  },
 }))
 
 vi.mock('../../../lib/authentication', () => ({

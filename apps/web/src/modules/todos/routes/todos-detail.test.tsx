@@ -8,10 +8,20 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { server } from '../../../mocks/server'
 import { TodoDetail } from './todos-detail'
 
-vi.mock('@tanstack/react-router', () => ({
-  useNavigate: () => vi.fn(),
-  useParams: () => ({ id: '1' }),
+vi.mock('.', () => ({
+  todoDetailRoute: {
+    useNavigate: () => vi.fn(),
+    useParams: () => ({ id: '1' }),
+  },
 }))
+
+vi.mock('@helix/ui', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@helix/ui')>()
+  return {
+    ...actual,
+    RichTextRenderer: ({ value }: { value?: string }) => <>{value ?? ''}</>,
+  }
+})
 
 const completedTodo = createTodo({
   id: '1',

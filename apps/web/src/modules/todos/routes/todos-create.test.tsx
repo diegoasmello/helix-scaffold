@@ -16,9 +16,36 @@ import { TodoCreate } from './todos-create'
 
 const mockNavigate = vi.fn()
 
-vi.mock('@tanstack/react-router', () => ({
-  useNavigate: () => mockNavigate,
+vi.mock('.', () => ({
+  todoCreateRoute: { useNavigate: () => mockNavigate },
 }))
+
+vi.mock('@tanstack/react-router', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@tanstack/react-router')>()
+  return { ...actual, useBlocker: vi.fn() }
+})
+
+vi.mock('@helix/ui', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@helix/ui')>()
+  return {
+    ...actual,
+    RichTextEditor: ({
+      label,
+      value,
+      onChange,
+    }: {
+      label?: string
+      value?: string
+      onChange?: (v: string) => void
+    }) => (
+      <textarea
+        aria-label={label}
+        value={value ?? ''}
+        onChange={(e) => onChange?.(e.target.value)}
+      />
+    ),
+  }
+})
 
 function renderTodoCreate() {
   const queryClient = new QueryClient({
@@ -85,6 +112,7 @@ describe('TodoCreate', () => {
       screen.getByLabelText('Description'),
       'Some description'
     )
+    await userEvent.type(screen.getByLabelText('Content'), 'Some content')
     await userEvent.type(
       screen.getByPlaceholderText('Pick a date'),
       '01/01/2020'
@@ -95,6 +123,7 @@ describe('TodoCreate', () => {
       expect(capturedBody).toMatchObject({
         title: 'My new todo',
         description: 'Some description',
+        content: 'Some content',
       })
       expect(capturedBody).not.toHaveProperty('status')
       expect(mockNavigate).toHaveBeenCalledWith({ to: '/todos' })
@@ -117,6 +146,7 @@ describe('TodoCreate', () => {
       screen.getByLabelText('Description'),
       'Some description'
     )
+    await userEvent.type(screen.getByLabelText('Content'), 'Some content')
     await userEvent.type(
       screen.getByPlaceholderText('Pick a date'),
       '01/01/2020'

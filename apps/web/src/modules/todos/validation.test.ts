@@ -43,8 +43,8 @@ describe('todoFormValidate', () => {
     })
 
     it('returns error when exceeds 1000 characters', () => {
-      expect(todoFormValidate.content('a'.repeat(501))).toBe(
-        'Max 500 characters'
+      expect(todoFormValidate.content('a'.repeat(1001))).toBe(
+        'Max 1000 characters'
       )
     })
 
