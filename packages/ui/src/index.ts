@@ -11,6 +11,7 @@ import '@fontsource-variable/plus-jakarta-sans'
 
 export * from './components'
 export { createTheme } from './theme'
+export * from './utils'
 export { css } from '@emotion/react'
 export type { CSSProperties } from '@mantine/core'
 export * from '@mantine/core'
