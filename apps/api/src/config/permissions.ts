@@ -14,6 +14,16 @@ interface ResourceDefinition {
 
 export const RESOURCE_DEFINITIONS = [
   {
+    resource: 'me',
+    label: 'Profile',
+    actions: ['view', 'edit'],
+  },
+  {
+    resource: 'todos',
+    label: 'Todos',
+    actions: ['view', 'create', 'edit', 'delete'],
+  },
+  {
     resource: 'users',
     label: 'Users',
     actions: ['view', 'create', 'edit', 'delete'],

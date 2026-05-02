@@ -1,8 +1,52 @@
 import type { PermissionAction } from '@helix/api-client/types'
 import type { SidebarItem } from '@helix/ui'
+import {
+  IconChecklist,
+  IconClipboardList,
+  IconLock,
+  IconShield,
+  IconUser,
+  IconUsers,
+} from '@helix/ui'
 
 interface SidebarItemWithPermission extends SidebarItem {
   permission?: { resource: string; action: PermissionAction }
 }
 
-export const sidebarItems: SidebarItemWithPermission[] = []
+export const sidebarItems: SidebarItemWithPermission[] = [
+  {
+    label: 'Profile',
+    icon: IconUser,
+    to: '/me',
+  },
+  {
+    label: 'Todos',
+    icon: IconChecklist,
+    to: '/todos',
+    permission: { resource: 'todos', action: 'view' },
+  },
+  {
+    label: 'Users',
+    icon: IconUsers,
+    to: '/users',
+    permission: { resource: 'users', action: 'view' },
+  },
+  {
+    label: 'Roles',
+    icon: IconShield,
+    to: '/roles',
+    permission: { resource: 'roles', action: 'view' },
+  },
+  {
+    label: 'Permissions',
+    icon: IconLock,
+    to: '/permissions',
+    permission: { resource: 'permissions', action: 'view' },
+  },
+  {
+    label: 'Audit Log',
+    icon: IconClipboardList,
+    to: '/audit',
+    permission: { resource: 'audit', action: 'view' },
+  },
+]
