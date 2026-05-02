@@ -632,12 +632,13 @@ const handleDelete = (id: string) => {
     status: 'danger',
     title: 'Delete Xxx',
     message: 'Are you sure? This action cannot be undone.',
+    confirmLabel: 'Delete',
     onConfirm: () => deleteXxx(id),
   })
 }
 ```
 
-The confirm button is automatically colored with `status: "danger"`. `onConfirm` is called when the user confirms — the modal closes automatically via `ModalsProvider`.
+The confirm button is automatically colored with `status: "danger"`. `onConfirm` is called when the user confirms — the modal closes automatically via `ModalsProvider`. Always pass `confirmLabel: 'Delete'` explicitly — the default label is `'Confirm'`, so omitting it produces a button that says "Confirm" instead of "Delete", which will break tests that assert `getByRole('button', { name: 'Delete' })`.
 
 ### 11. Tests
 
@@ -928,6 +929,16 @@ server.use(
 - Use `waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument())` to assert a modal closed
 - Capture request bodies in MSW handlers to verify payloads without spying on service functions
 - For routes that read a param (`useParams`), add it to the router mock: `useParams: () => ({ id: "1" })`
+- **Create and Edit test files must mock `useBlocker`** — `Form` from `@helix/ui` calls `useFormBlocker` → `useBlocker` from `@tanstack/react-router`, which requires a `RouterProvider` context that is not present in unit tests. Use `importOriginal` to keep all other exports intact:
+
+```ts
+vi.mock('@tanstack/react-router', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@tanstack/react-router')>()
+  return { ...actual, useBlocker: vi.fn() }
+})
+```
+
+This is safe to combine with `vi.mock('.')` (the local route index mock) because `@tanstack/react-router` is an external package and does not trigger the circular dependency that makes the local mock necessary.
 
 **When to add a new endpoint to `src/mocks/handlers.ts`**: every new API endpoint needs a default handler. Follow the pattern below — use generated response helpers for all status codes, never construct raw `Response` objects:
 
