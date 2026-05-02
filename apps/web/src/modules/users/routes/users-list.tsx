@@ -47,8 +47,9 @@ export function UsersList() {
   const handleDelete = (id: string, name: string) => {
     confirm({
       status: 'danger',
-      title: 'Delete User',
+      title: 'Delete user',
       message: `Are you sure you want to delete "${name}"? This action cannot be undone.`,
+      confirmLabel: 'Delete',
       onConfirm: () => deleteUser(id),
     })
   }

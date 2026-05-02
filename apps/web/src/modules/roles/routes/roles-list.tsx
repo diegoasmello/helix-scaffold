@@ -43,8 +43,9 @@ export function RolesList() {
   const handleDelete = (id: string, name: string) => {
     confirm({
       status: 'danger',
-      title: 'Delete Role',
+      title: 'Delete role',
       message: `Are you sure you want to delete "${name}"? This action cannot be undone.`,
+      confirmLabel: 'Delete',
       onConfirm: () => deleteRole(id),
     })
   }

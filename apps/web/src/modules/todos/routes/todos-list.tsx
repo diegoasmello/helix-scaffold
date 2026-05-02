@@ -6,6 +6,7 @@ import {
 } from '@helix/api-client/hooks'
 import {
   ActionIcon,
+  Badge,
   Button,
   confirm,
   DataTable,
@@ -59,9 +60,10 @@ export function TodoList() {
   const handleConfirmDelete = (id: string) => {
     confirm({
       status: 'danger',
-      title: 'Confirm Deletion',
+      title: 'Delete todo',
       message:
         'Are you sure you want to delete this todo? This action cannot be undone.',
+      confirmLabel: 'Delete',
       onConfirm: () => deleteTodo(id),
     })
   }
@@ -83,6 +85,14 @@ export function TodoList() {
       accessor: 'status',
       title: 'Status',
       sortable: true,
+      render: (item) => (
+        <Badge
+          color={item.status === 'completed' ? 'green' : 'gray'}
+          variant="light"
+        >
+          {item.status === 'completed' ? 'Completed' : 'Pending'}
+        </Badge>
+      ),
     },
     {
       accessor: 'actions',
