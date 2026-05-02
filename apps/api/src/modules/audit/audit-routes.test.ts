@@ -135,6 +135,7 @@ describe('Audit logging via onResponse hook', () => {
       payload: {
         title: 'Audited Todo',
         description: 'Desc',
+        content: 'Content',
         date: '2026-01-01',
       },
       headers: { cookie: authCookie },

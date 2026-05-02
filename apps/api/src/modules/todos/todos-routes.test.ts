@@ -44,7 +44,13 @@ describe('GET /todos', () => {
       headers: { cookie: authCookie },
     })
     expect(res.statusCode).toBe(200)
-    expect(res.json()).toEqual([])
+    expect(res.json()).toEqual({
+      data: [],
+      total: 0,
+      page: 1,
+      pageSize: 10,
+      totalPages: 0,
+    })
   })
 
   it('returns all todos', async () => {
@@ -70,9 +76,10 @@ describe('GET /todos', () => {
     })
     expect(res.statusCode).toBe(200)
     const body = res.json()
-    expect(body).toHaveLength(2)
-    expect(body[0].title).toBe('First')
-    expect(body[1].title).toBe('Second')
+    expect(body.data).toHaveLength(2)
+    expect(body.total).toBe(2)
+    expect(body.data[0].title).toBe('First')
+    expect(body.data[1].title).toBe('Second')
   })
 })
 
@@ -120,6 +127,7 @@ describe('POST /todos', () => {
       payload: {
         title: 'New Todo',
         description: 'New Desc',
+        content: 'New Content',
         date: '2025-03-20',
       },
       headers: { cookie: authCookie },
@@ -259,7 +267,7 @@ describe('Permission enforcement', () => {
     const res = await app.inject({
       method: 'POST',
       url: '/todos',
-      payload: { title: 'New', description: 'Desc', date: '2025-01-01' },
+      payload: { title: 'New', description: 'Desc', content: 'Content', date: '2025-01-01' },
       headers: { cookie },
     })
     expect(res.statusCode).toBe(403)
