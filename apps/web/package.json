@@ -14,6 +14,7 @@
   },
   "dependencies": {
     "@helix/api-client": "workspace:*",
+    "@helix/ui": "workspace:*",
     "react": "19.2.0",
     "react-dom": "19.2.0",
     "zod": "catalog:"
@@ -31,6 +32,9 @@
     "eslint-plugin-react-refresh": "0.4.24",
     "eslint-plugin-simple-import-sort": "catalog:",
     "globals": "16.5.0",
+    "postcss": "8.5.8",
+    "postcss-preset-mantine": "1.18.0",
+    "postcss-simple-vars": "7.0.1",
     "prettier": "catalog:",
     "typescript": "catalog:",
     "typescript-eslint": "catalog:",
