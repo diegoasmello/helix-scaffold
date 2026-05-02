@@ -14,6 +14,7 @@
     "db:migrate": "pnpm --filter api run db:migrate",
     "db:seed": "pnpm --filter api run db:seed",
     "db:reset": "pnpm --filter api run db:reset",
+    "db:migrate:test": "pnpm --filter api run db:migrate:test",
     "spec:export": "pnpm --filter @helix/api-client export-spec",
     "spec:generate": "pnpm --filter @helix/api-client generate",
     "spec:dev": "pnpm --filter @helix/api-client dev"
