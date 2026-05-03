@@ -2,9 +2,10 @@ import {
   createGetMe200,
   createPaginatedRoles,
   createPaginatedTodos,
+  createPaginatedUsers,
   createRole,
   createTodo,
-  createUser,
+  createUserWithRole,
   deleteRolesIdHandler,
   deleteRolesIdHandlerResponse204,
   deleteTodosIdHandler,
@@ -90,11 +91,13 @@ export const handlers = [
   deleteRolesIdHandler(() => deleteRolesIdHandlerResponse204()),
 
   // Users
-  getUsersHandler([]),
+  getUsersHandler(
+    createPaginatedUsers({ data: [], total: 0, page: 1, pageSize: 10, totalPages: 0 })
+  ),
   getUsersIdHandler(() =>
     getUsersIdHandlerResponse404({ message: 'Not found' })
   ),
-  postUsersHandler(() => postUsersHandlerResponse201(createUser())),
+  postUsersHandler(() => postUsersHandlerResponse201(createUserWithRole())),
   patchUsersIdHandler(() =>
     patchUsersIdHandlerResponse404({ message: 'Not found' })
   ),

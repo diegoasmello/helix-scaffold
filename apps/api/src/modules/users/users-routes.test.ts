@@ -39,7 +39,7 @@ it('returns 401 on any route when not authenticated', async () => {
 })
 
 describe('GET /users', () => {
-  it('returns only the authenticated user when no others exist', async () => {
+  it('returns paginated response with the authenticated user', async () => {
     const res = await app.inject({
       method: 'GET',
       url: '/users',
@@ -47,9 +47,14 @@ describe('GET /users', () => {
     })
     expect(res.statusCode).toBe(200)
     const body = res.json()
-    expect(body).toHaveLength(1)
-    expect(body[0].email).toBe('test@test.com')
-    expect(body[0].password).toBeUndefined()
+    expect(body.data).toHaveLength(1)
+    expect(body.data[0].email).toBe('test@test.com')
+    expect(body.data[0].password).toBeUndefined()
+    expect(body.data[0]).toHaveProperty('role')
+    expect(body.total).toBe(1)
+    expect(body.page).toBe(1)
+    expect(body.pageSize).toBe(10)
+    expect(body.totalPages).toBe(1)
   })
 
   it('returns all users', async () => {
@@ -66,7 +71,65 @@ describe('GET /users', () => {
       headers: { cookie: authCookie },
     })
     expect(res.statusCode).toBe(200)
-    expect(res.json()).toHaveLength(2)
+    expect(res.json().data).toHaveLength(2)
+    expect(res.json().total).toBe(2)
+  })
+
+  it('embeds role when user has one', async () => {
+    const [role] = await testDb
+      .insert(roles)
+      .values({ name: 'editor' })
+      .returning()
+    await testDb.insert(user).values({
+      id: uuidv7(),
+      name: 'Alice',
+      email: 'alice@test.com',
+      emailVerified: false,
+      roleId: role.id,
+    })
+
+    const res = await app.inject({
+      method: 'GET',
+      url: '/users',
+      headers: { cookie: authCookie },
+    })
+    expect(res.statusCode).toBe(200)
+    const alice = res.json().data.find((u: { email: string }) => u.email === 'alice@test.com')
+    expect(alice.role).toEqual({ id: role.id, name: 'editor' })
+  })
+
+  it('applies page and pageSize correctly', async () => {
+    await testDb.insert(user).values([
+      { id: uuidv7(), name: 'Alice', email: 'alice@test.com', emailVerified: false },
+      { id: uuidv7(), name: 'Bob', email: 'bob@test.com', emailVerified: false },
+    ])
+
+    const res = await app.inject({
+      method: 'GET',
+      url: '/users?page=1&pageSize=2',
+      headers: { cookie: authCookie },
+    })
+    expect(res.statusCode).toBe(200)
+    const body = res.json()
+    expect(body.data).toHaveLength(2)
+    expect(body.total).toBe(3)
+    expect(body.totalPages).toBe(2)
+  })
+
+  it('sorts by name ascending', async () => {
+    await testDb.insert(user).values([
+      { id: uuidv7(), name: 'Zara', email: 'zara@test.com', emailVerified: false },
+      { id: uuidv7(), name: 'Aaron', email: 'aaron@test.com', emailVerified: false },
+    ])
+
+    const res = await app.inject({
+      method: 'GET',
+      url: '/users?sortBy=name&sortOrder=asc',
+      headers: { cookie: authCookie },
+    })
+    expect(res.statusCode).toBe(200)
+    const names = res.json().data.map((u: { name: string }) => u.name)
+    expect(names).toEqual([...names].sort())
   })
 })
 
@@ -81,7 +144,7 @@ describe('GET /users/:id', () => {
     expect(res.json()).toEqual({ message: 'User not found' })
   })
 
-  it('returns the user when found', async () => {
+  it('returns the user with null role when no role assigned', async () => {
     const [inserted] = await testDb
       .insert(user)
       .values({
@@ -102,12 +165,40 @@ describe('GET /users/:id', () => {
     expect(body.id).toBe(inserted.id)
     expect(body.email).toBe('bob@test.com')
     expect(body.roleId).toBeNull()
+    expect(body.role).toBeNull()
     expect(body.password).toBeUndefined()
+  })
+
+  it('returns the user with embedded role', async () => {
+    const [role] = await testDb
+      .insert(roles)
+      .values({ name: 'admin' })
+      .returning()
+    const [inserted] = await testDb
+      .insert(user)
+      .values({
+        id: uuidv7(),
+        name: 'Carol',
+        email: 'carol@test.com',
+        emailVerified: false,
+        roleId: role.id,
+      })
+      .returning()
+
+    const res = await app.inject({
+      method: 'GET',
+      url: `/users/${inserted.id}`,
+      headers: { cookie: authCookie },
+    })
+    expect(res.statusCode).toBe(200)
+    const body = res.json()
+    expect(body.roleId).toBe(role.id)
+    expect(body.role).toEqual({ id: role.id, name: 'admin' })
   })
 })
 
 describe('POST /users', () => {
-  it('creates a user and returns 201', async () => {
+  it('creates a user and returns 201 with null role', async () => {
     const res = await app.inject({
       method: 'POST',
       url: '/users',
@@ -125,10 +216,11 @@ describe('POST /users', () => {
     expect(body.name).toBe('Carol')
     expect(body.email).toBe('carol@test.com')
     expect(body.roleId).toBeNull()
+    expect(body.role).toBeNull()
     expect(body.password).toBeUndefined()
   })
 
-  it('creates a user with roleId and returns 201', async () => {
+  it('creates a user with roleId and returns embedded role', async () => {
     const [role] = await testDb
       .insert(roles)
       .values({ name: 'admin' })
@@ -148,6 +240,7 @@ describe('POST /users', () => {
 
     expect(res.statusCode).toBe(201)
     expect(res.json().roleId).toBe(role.id)
+    expect(res.json().role).toEqual({ id: role.id, name: 'admin' })
   })
 
   it('returns 404 when roleId does not exist', async () => {
@@ -236,9 +329,10 @@ describe('PATCH /users/:id', () => {
     const body = res.json()
     expect(body.name).toBe('New Name')
     expect(body.email).toBe('update@test.com')
+    expect(body.role).toBeNull()
   })
 
-  it('assigns a role to a user', async () => {
+  it('assigns a role to a user and returns embedded role', async () => {
     const [inserted] = await testDb
       .insert(user)
       .values({
@@ -261,6 +355,7 @@ describe('PATCH /users/:id', () => {
     })
     expect(res.statusCode).toBe(200)
     expect(res.json().roleId).toBe(role.id)
+    expect(res.json().role).toEqual({ id: role.id, name: 'editor' })
   })
 
   it('removes the role from a user when roleId is null', async () => {
@@ -287,6 +382,7 @@ describe('PATCH /users/:id', () => {
     })
     expect(res.statusCode).toBe(200)
     expect(res.json().roleId).toBeNull()
+    expect(res.json().role).toBeNull()
   })
 
   it('returns 404 when roleId does not exist', async () => {

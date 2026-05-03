@@ -1,10 +1,9 @@
 import {
-  createRole,
-  createUser,
+  createPaginatedUsers,
+  createUserWithRole,
   deleteUsersIdHandler,
   deleteUsersIdHandlerResponse204,
   getMePermissionsHandler,
-  getRolesAllHandler,
   getUsersHandler,
 } from '@helix/api-client/mocks'
 import { MantineProvider, ModalsProvider } from '@helix/ui'
@@ -18,7 +17,10 @@ import { server } from '../../../mocks/server'
 import { UsersList } from './users-list'
 
 vi.mock('.', () => ({
-  usersListRoute: { useNavigate: () => vi.fn() },
+  usersListRoute: {
+    useNavigate: () => vi.fn(),
+    useSearch: () => ({ page: 1, pageSize: 10, sortOrder: 'desc' }),
+  },
 }))
 
 vi.mock('../../../lib/authentication', () => ({
@@ -38,24 +40,22 @@ vi.mock('../../../lib/authentication', () => ({
   },
 }))
 
-const mockRoles = [
-  createRole({ id: 'role-1', name: 'Admin', description: null }),
-]
-
 const mockUsers = [
-  createUser({
+  createUserWithRole({
     id: '1',
     name: 'Alice Silva',
     email: 'alice@example.com',
     emailVerified: true,
     roleId: 'role-1',
+    role: { id: 'role-1', name: 'Admin' },
   }),
-  createUser({
+  createUserWithRole({
     id: '2',
     name: 'Bob Santos',
     email: 'bob@example.com',
     emailVerified: false,
     roleId: null,
+    role: null,
   }),
 ]
 
@@ -78,8 +78,15 @@ function renderUsersList() {
 
 beforeEach(() => {
   server.use(
-    getUsersHandler(mockUsers),
-    getRolesAllHandler(mockRoles),
+    getUsersHandler(
+      createPaginatedUsers({
+        data: mockUsers,
+        total: mockUsers.length,
+        page: 1,
+        pageSize: 10,
+        totalPages: 1,
+      })
+    ),
     getMePermissionsHandler({
       grants: { users: ['view', 'create', 'edit', 'delete'] },
     })

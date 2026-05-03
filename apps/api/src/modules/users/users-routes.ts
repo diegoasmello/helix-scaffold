@@ -4,7 +4,14 @@ import z from 'zod'
 import type { Auth } from '../../auth'
 import type { Database } from '../../db'
 import type { FastifyTypedInstance, RequirePermission } from '../../types'
-import { createUserSchema, updateUserSchema, userSchema } from './users-schema'
+import { buildPaginatedResponse } from '@/lib/pagination'
+import {
+  createUserSchema,
+  paginatedUsersSchema,
+  updateUserSchema,
+  usersListQuerySchema,
+  userWithRoleSchema,
+} from './users-schema'
 import { createUsersService } from './users-service'
 
 export async function usersRoutes(
@@ -23,11 +30,15 @@ export async function usersRoutes(
       schema: {
         tags: ['users'],
         description: 'List users',
-        response: { 200: z.array(userSchema) },
+        querystring: usersListQuerySchema,
+        response: { 200: paginatedUsersSchema },
       },
       preHandler: requirePermission('users', 'view'),
     },
-    async () => service.list()
+    async (request) => {
+      const { data, total } = await service.list(request.query)
+      return buildPaginatedResponse(data, total, request.query)
+    }
   )
 
   app.get(
@@ -38,7 +49,7 @@ export async function usersRoutes(
         description: 'Get a user by id',
         params: z.object({ id: z.string() }),
         response: {
-          200: userSchema,
+          200: userWithRoleSchema,
           404: z.object({ message: z.string() }),
         },
       },
@@ -59,7 +70,7 @@ export async function usersRoutes(
         description: 'Create a user',
         body: createUserSchema,
         response: {
-          201: userSchema,
+          201: userWithRoleSchema,
           404: z.object({ message: z.string() }),
           409: z.object({ message: z.string() }),
         },
@@ -69,6 +80,7 @@ export async function usersRoutes(
     async (request, reply) => {
       try {
         const item = await service.create(request.body)
+        if (!item) throw new Error('Unexpected: user not found after creation')
         const { password: _, ...meta } = request.body
         await request.audit('create', 'users', item.id, meta)
         return reply.status(201).send(item)
@@ -99,7 +111,7 @@ export async function usersRoutes(
         params: z.object({ id: z.string() }),
         body: updateUserSchema,
         response: {
-          200: userSchema,
+          200: userWithRoleSchema,
           404: z.object({ message: z.string() }),
         },
       },

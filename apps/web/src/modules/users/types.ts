@@ -1,10 +1,10 @@
 import type {
   PatchUsersIdMutationRequest,
   PostUsersMutationRequest,
-  User,
+  UserWithRole,
 } from '@helix/api-client/types'
 
-export type UserItem = User
+export type UserItem = UserWithRole
 export type CreateUserInput = PostUsersMutationRequest
 export type UpdateUserInput = PatchUsersIdMutationRequest
 

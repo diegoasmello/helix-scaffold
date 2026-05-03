@@ -2,30 +2,46 @@ import {
   deleteUsersId,
   getUsersIdSuspenseQueryKey,
   getUsersSuspenseQueryKey,
-  useGetRolesAllSuspense,
   useGetUsersSuspense,
 } from '@helix/api-client/hooks'
 import {
   ActionIcon,
   Button,
   confirm,
+  DataTable,
+  type DataTableColumn,
+  getDataTablePaginationProps,
+  getDataTableSortingProps,
   Group,
   notify,
   PageList,
-  Table,
 } from '@helix/ui'
 import { IconEdit, IconEye, IconPlus, IconTrash } from '@helix/ui'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 
 import { HasPermission } from '../../auth/components/has-permission'
+import type { UserItem } from '../types'
 import { usersListRoute } from '.'
 
 export function UsersList() {
   const queryClient = useQueryClient()
   const navigate = usersListRoute.useNavigate()
+  const search = usersListRoute.useSearch()
+  const { page, pageSize, sortBy, sortOrder } = search
 
-  const { data: users } = useGetUsersSuspense()
-  const { data: roles } = useGetRolesAllSuspense()
+  const { data: usersResponse } = useGetUsersSuspense({
+    page,
+    pageSize,
+    sortBy,
+    sortOrder,
+  })
+
+  const paginationProps = getDataTablePaginationProps(
+    usersResponse,
+    search,
+    navigate
+  )
+  const sortingProps = getDataTableSortingProps(search, navigate)
 
   const { mutate: deleteUser } = useMutation({
     mutationFn: (id: string) => deleteUsersId(id),
@@ -42,8 +58,6 @@ export function UsersList() {
     },
   })
 
-  const roleMap = new Map(roles.map((r) => [r.id, r.name]))
-
   const handleDelete = (id: string, name: string) => {
     confirm({
       status: 'danger',
@@ -54,14 +68,20 @@ export function UsersList() {
     })
   }
 
-  const rows = users.map((item) => (
-    <Table.Tr key={item.id}>
-      <Table.Td>{item.name}</Table.Td>
-      <Table.Td>{item.email}</Table.Td>
-      <Table.Td>
-        {item.roleId ? (roleMap.get(item.roleId) ?? item.roleId) : '—'}
-      </Table.Td>
-      <Table.Td>
+  const columns: DataTableColumn<UserItem>[] = [
+    { accessor: 'name', title: 'Name', sortable: true },
+    { accessor: 'email', title: 'Email', sortable: true },
+    {
+      accessor: 'role',
+      title: 'Role',
+      render: (item) => item.role?.name ?? '—',
+    },
+    {
+      accessor: 'actions',
+      title: 'Actions',
+      textAlign: 'center',
+      width: 124,
+      render: (item) => (
         <Group gap="xs">
           <ActionIcon
             variant="light"
@@ -94,9 +114,9 @@ export function UsersList() {
             </ActionIcon>
           </HasPermission>
         </Group>
-      </Table.Td>
-    </Table.Tr>
-  ))
+      ),
+    },
+  ]
 
   return (
     <PageList
@@ -112,17 +132,12 @@ export function UsersList() {
         </HasPermission>
       }
     >
-      <Table verticalSpacing="sm" withTableBorder highlightOnHover>
-        <Table.Thead>
-          <Table.Tr>
-            <Table.Th>Name</Table.Th>
-            <Table.Th>Email</Table.Th>
-            <Table.Th>Role</Table.Th>
-            <Table.Th>Actions</Table.Th>
-          </Table.Tr>
-        </Table.Thead>
-        <Table.Tbody>{rows}</Table.Tbody>
-      </Table>
+      <DataTable
+        records={usersResponse.data}
+        columns={columns}
+        {...paginationProps}
+        {...sortingProps}
+      />
     </PageList>
   )
 }

@@ -1,9 +1,10 @@
 import {
-  getRolesSuspenseQueryOptions,
+  getRolesAllSuspenseQueryOptions,
   getUsersIdSuspenseQueryOptions,
   getUsersSuspenseQueryOptions,
 } from '@helix/api-client/hooks'
 import { createRoute, redirect } from '@tanstack/react-router'
+import { z } from 'zod'
 
 import { authenticatedRoute } from '@/routes'
 
@@ -26,10 +27,20 @@ export const usersListRoute = createRoute({
   beforeLoad: ({ context }) => {
     if (!context.hasPermission('users', 'view')) throw redirect({ to: '/403' })
   },
-  loader: () => {
-    queryClient.ensureQueryData(getRolesSuspenseQueryOptions())
-    return queryClient.ensureQueryData(getUsersSuspenseQueryOptions())
-  },
+  validateSearch: z.object({
+    page: z.number().int().min(1).default(1),
+    pageSize: z.number().int().min(1).max(100).default(10),
+    sortBy: z.enum(['name', 'email', 'createdAt']).optional(),
+    sortOrder: z.enum(['asc', 'desc']).default('desc'),
+  }),
+  loaderDeps: ({ search: { page, pageSize, sortBy, sortOrder } }) => ({
+    page,
+    pageSize,
+    sortBy,
+    sortOrder,
+  }),
+  loader: ({ deps }) =>
+    queryClient.ensureQueryData(getUsersSuspenseQueryOptions(deps)),
 })
 
 export const usersCreateRoute = createRoute({
@@ -45,7 +56,7 @@ export const usersCreateRoute = createRoute({
       throw redirect({ to: '/403' })
   },
   loader: () => {
-    queryClient.ensureQueryData(getRolesSuspenseQueryOptions())
+    queryClient.ensureQueryData(getRolesAllSuspenseQueryOptions())
   },
 })
 
@@ -64,12 +75,8 @@ export const usersDetailRoute = createRoute({
   beforeLoad: ({ context }) => {
     if (!context.hasPermission('users', 'view')) throw redirect({ to: '/403' })
   },
-  loader: ({ params }) => {
-    queryClient.ensureQueryData(getRolesSuspenseQueryOptions())
-    return queryClient.ensureQueryData(
-      getUsersIdSuspenseQueryOptions(params.id)
-    )
-  },
+  loader: ({ params }) =>
+    queryClient.ensureQueryData(getUsersIdSuspenseQueryOptions(params.id)),
 })
 
 export const usersEditRoute = createRoute({
@@ -88,7 +95,7 @@ export const usersEditRoute = createRoute({
     if (!context.hasPermission('users', 'edit')) throw redirect({ to: '/403' })
   },
   loader: ({ params }) => {
-    queryClient.ensureQueryData(getRolesSuspenseQueryOptions())
+    queryClient.ensureQueryData(getRolesAllSuspenseQueryOptions())
     return queryClient.ensureQueryData(
       getUsersIdSuspenseQueryOptions(params.id)
     )
