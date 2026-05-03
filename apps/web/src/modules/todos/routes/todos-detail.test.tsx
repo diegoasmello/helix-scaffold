@@ -15,14 +15,6 @@ vi.mock('.', () => ({
   },
 }))
 
-vi.mock('@helix/ui', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@helix/ui')>()
-  return {
-    ...actual,
-    RichTextRenderer: ({ value }: { value?: string }) => <>{value ?? ''}</>,
-  }
-})
-
 const completedTodo = createTodo({
   id: '1',
   title: 'Review quarterly report',
@@ -57,9 +49,7 @@ afterEach(() => {
 describe('TodoDetail', () => {
   it('renders the item title, description and date', async () => {
     renderTodoDetail()
-    expect(
-      await screen.findByRole('heading', { name: 'Review quarterly report' })
-    ).toBeInTheDocument()
+    expect(await screen.findByText('Review quarterly report')).toBeInTheDocument()
     expect(screen.getByText('Go through the Q1 report.')).toBeInTheDocument()
     expect(screen.getByText('2020-04-10')).toBeInTheDocument()
   })

@@ -29,28 +29,6 @@ vi.mock('@tanstack/react-router', async (importOriginal) => {
   return { ...actual, useBlocker: vi.fn() }
 })
 
-vi.mock('@helix/ui', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@helix/ui')>()
-  return {
-    ...actual,
-    RichTextEditor: ({
-      label,
-      value,
-      onChange,
-    }: {
-      label?: string
-      value?: string
-      onChange?: (v: string) => void
-    }) => (
-      <textarea
-        aria-label={label}
-        value={value ?? ''}
-        onChange={(e) => onChange?.(e.target.value)}
-      />
-    ),
-  }
-})
-
 const mockTodo = createTodo({
   id: '1',
   title: 'Review quarterly report',

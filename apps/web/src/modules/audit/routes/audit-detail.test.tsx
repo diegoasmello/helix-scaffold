@@ -77,7 +77,9 @@ afterEach(() => vi.clearAllMocks())
 describe('AuditDetail', () => {
   it('renders the page title', async () => {
     renderAuditDetail()
-    expect(await screen.findByText('todos — create')).toBeInTheDocument()
+    expect(
+      await screen.findByRole('heading', { name: 'View Audit Log' })
+    ).toBeInTheDocument()
   })
 
   it('renders user information', async () => {
