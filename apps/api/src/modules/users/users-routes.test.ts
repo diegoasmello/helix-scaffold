@@ -94,14 +94,26 @@ describe('GET /users', () => {
       headers: { cookie: authCookie },
     })
     expect(res.statusCode).toBe(200)
-    const alice = res.json().data.find((u: { email: string }) => u.email === 'alice@test.com')
+    const alice = res
+      .json()
+      .data.find((u: { email: string }) => u.email === 'alice@test.com')
     expect(alice.role).toEqual({ id: role.id, name: 'editor' })
   })
 
   it('applies page and pageSize correctly', async () => {
     await testDb.insert(user).values([
-      { id: uuidv7(), name: 'Alice', email: 'alice@test.com', emailVerified: false },
-      { id: uuidv7(), name: 'Bob', email: 'bob@test.com', emailVerified: false },
+      {
+        id: uuidv7(),
+        name: 'Alice',
+        email: 'alice@test.com',
+        emailVerified: false,
+      },
+      {
+        id: uuidv7(),
+        name: 'Bob',
+        email: 'bob@test.com',
+        emailVerified: false,
+      },
     ])
 
     const res = await app.inject({
@@ -118,8 +130,18 @@ describe('GET /users', () => {
 
   it('sorts by name ascending', async () => {
     await testDb.insert(user).values([
-      { id: uuidv7(), name: 'Zara', email: 'zara@test.com', emailVerified: false },
-      { id: uuidv7(), name: 'Aaron', email: 'aaron@test.com', emailVerified: false },
+      {
+        id: uuidv7(),
+        name: 'Zara',
+        email: 'zara@test.com',
+        emailVerified: false,
+      },
+      {
+        id: uuidv7(),
+        name: 'Aaron',
+        email: 'aaron@test.com',
+        emailVerified: false,
+      },
     ])
 
     const res = await app.inject({

@@ -1,10 +1,11 @@
 import { APIError } from 'better-auth'
 import z from 'zod'
 
+import { buildPaginatedResponse } from '@/lib/pagination'
+
 import type { Auth } from '../../auth'
 import type { Database } from '../../db'
 import type { FastifyTypedInstance, RequirePermission } from '../../types'
-import { buildPaginatedResponse } from '@/lib/pagination'
 import {
   createUserSchema,
   paginatedUsersSchema,

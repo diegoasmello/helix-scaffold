@@ -85,7 +85,11 @@ export function filterQuerySchema<T extends string>(
 }
 
 export type FilterQuery<T extends string = string> = {
-  filters: Array<{ field: T; op: FilterOperator; value?: FilterCondition['value'] }>
+  filters: Array<{
+    field: T
+    op: FilterOperator
+    value?: FilterCondition['value']
+  }>
   filterLogic: FilterLogic
 }
 

@@ -42,10 +42,13 @@ export const USER_SORT_COLUMNS = ['name', 'email', 'createdAt'] as const
 export type UserSortColumn = (typeof USER_SORT_COLUMNS)[number]
 
 export const usersSortingSchema = sortingQuerySchema([...USER_SORT_COLUMNS])
-export const usersListQuerySchema = paginationQuerySchema.merge(usersSortingSchema)
+export const usersListQuerySchema =
+  paginationQuerySchema.merge(usersSortingSchema)
 export type UsersListQuery = z.infer<typeof usersListQuerySchema>
 
-export const paginatedUsersSchema = paginatedResponseSchema(userWithRoleSchema).meta({
+export const paginatedUsersSchema = paginatedResponseSchema(
+  userWithRoleSchema
+).meta({
   id: 'PaginatedUsers',
   title: 'PaginatedUsers',
 })

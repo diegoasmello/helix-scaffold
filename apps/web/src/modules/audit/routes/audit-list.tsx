@@ -80,9 +80,7 @@ export function AuditList() {
         <ActionIcon
           variant="light"
           aria-label="View"
-          onClick={() =>
-            navigate({ to: '/audit/$id', params: { id: log.id } })
-          }
+          onClick={() => navigate({ to: '/audit/$id', params: { id: log.id } })}
         >
           <IconEye style={{ width: '70%', height: '70%' }} stroke={1.5} />
         </ActionIcon>

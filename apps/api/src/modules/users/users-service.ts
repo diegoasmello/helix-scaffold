@@ -5,7 +5,11 @@ import type { Database } from '@/db'
 import { roles, user } from '@/db/schema'
 import { getPaginationParams } from '@/lib/pagination'
 
-import type { CreateUserInput, UpdateUserInput, UsersListQuery } from './users-schema'
+import type {
+  CreateUserInput,
+  UpdateUserInput,
+  UsersListQuery,
+} from './users-schema'
 
 const SORT_COLUMNS = {
   name: user.name,
@@ -25,7 +29,10 @@ function toUserWithRole(row: {
   roleName: string | null
 }) {
   const { roleRefId, roleName, ...rest } = row
-  return { ...rest, role: roleRefId ? { id: roleRefId, name: roleName! } : null }
+  return {
+    ...rest,
+    role: roleRefId ? { id: roleRefId, name: roleName! } : null,
+  }
 }
 
 export function createUsersService(database: Database, auth: Auth) {

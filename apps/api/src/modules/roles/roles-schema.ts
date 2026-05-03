@@ -33,7 +33,8 @@ export const ROLE_SORT_COLUMNS = ['name', 'createdAt'] as const
 export type RoleSortColumn = (typeof ROLE_SORT_COLUMNS)[number]
 
 export const rolesSortingSchema = sortingQuerySchema([...ROLE_SORT_COLUMNS])
-export const rolesListQuerySchema = paginationQuerySchema.merge(rolesSortingSchema)
+export const rolesListQuerySchema =
+  paginationQuerySchema.merge(rolesSortingSchema)
 export type RolesListQuery = z.infer<typeof rolesListQuerySchema>
 
 export const paginatedRolesSchema = paginatedResponseSchema(roleSchema).meta({

@@ -78,11 +78,9 @@ describe('GET /roles', () => {
   })
 
   it('applies page and pageSize correctly', async () => {
-    await testDb.insert(roles).values([
-      { name: 'role-a' },
-      { name: 'role-b' },
-      { name: 'role-c' },
-    ])
+    await testDb
+      .insert(roles)
+      .values([{ name: 'role-a' }, { name: 'role-b' }, { name: 'role-c' }])
 
     const res = await app.inject({
       method: 'GET',
@@ -98,11 +96,9 @@ describe('GET /roles', () => {
   })
 
   it('sorts by name in descending order', async () => {
-    await testDb.insert(roles).values([
-      { name: 'alpha' },
-      { name: 'zeta' },
-      { name: 'beta' },
-    ])
+    await testDb
+      .insert(roles)
+      .values([{ name: 'alpha' }, { name: 'zeta' }, { name: 'beta' }])
 
     const res = await app.inject({
       method: 'GET',
@@ -129,11 +125,9 @@ describe('GET /roles/all', () => {
   })
 
   it('returns all roles sorted by name', async () => {
-    await testDb.insert(roles).values([
-      { name: 'zeta' },
-      { name: 'alpha' },
-      { name: 'beta' },
-    ])
+    await testDb
+      .insert(roles)
+      .values([{ name: 'zeta' }, { name: 'alpha' }, { name: 'beta' }])
 
     const res = await app.inject({
       method: 'GET',
