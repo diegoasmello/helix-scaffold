@@ -17,13 +17,13 @@ export const roleSchema = z
   .meta({ id: 'Role', title: 'Role' })
 
 export const createRoleSchema = z.object({
-  name: z.string().min(1),
-  description: z.string().min(1).optional(),
+  name: z.string().min(1).max(100),
+  description: z.string().min(1).max(300).optional(),
 })
 
 export const updateRoleSchema = z.object({
-  name: z.string().min(1).optional(),
-  description: z.string().min(1).optional(),
+  name: z.string().min(1).max(100).optional(),
+  description: z.string().min(1).max(300).optional(),
 })
 
 export type CreateRoleInput = z.infer<typeof createRoleSchema>

@@ -20,16 +20,16 @@ export const todoSchema = z
   .meta({ id: 'Todo', title: 'Todo' })
 
 export const createTodoSchema = z.object({
-  title: z.string().min(1),
-  description: z.string().min(1),
-  content: z.string().min(1),
+  title: z.string().min(1).max(200),
+  description: z.string().min(1).max(500),
+  content: z.string().min(1).max(1000),
   date: z.coerce.date(),
 })
 
 export const updateTodoSchema = z.object({
-  title: z.string().min(1).optional(),
-  description: z.string().min(1).optional(),
-  content: z.string().min(1).optional(),
+  title: z.string().min(1).max(200).optional(),
+  description: z.string().min(1).max(500).optional(),
+  content: z.string().min(1).max(1000).optional(),
   status: z.enum(['pending', 'completed']).optional(),
   date: z.coerce.date().optional(),
 })

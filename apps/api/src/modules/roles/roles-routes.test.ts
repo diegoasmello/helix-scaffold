@@ -204,6 +204,16 @@ describe('POST /roles', () => {
     })
     expect(res.statusCode).toBe(400)
   })
+
+  it('returns 400 when fields exceed max length', async () => {
+    const res = await app.inject({
+      method: 'POST',
+      url: '/roles',
+      payload: { name: 'a'.repeat(101), description: 'b'.repeat(301) },
+      headers: { cookie: authCookie },
+    })
+    expect(res.statusCode).toBe(400)
+  })
 })
 
 describe('PATCH /roles/:id', () => {

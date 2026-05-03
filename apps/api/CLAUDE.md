@@ -107,12 +107,12 @@ export const featureSchema = z
   .meta({ id: 'Feature', title: 'Feature' })
 
 export const createFeatureSchema = z.object({
-  title: z.string().min(1),
-  // ...mutable fields
+  title: z.string().min(1).max(200),
+  // ...mutable fields — always add .max() to mirror the frontend constraint
 })
 
 export const updateFeatureSchema = z.object({
-  title: z.string().min(1).optional(),
+  title: z.string().min(1).max(200).optional(),
   // ...optional fields
 })
 

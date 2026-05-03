@@ -294,6 +294,20 @@ describe('POST /users', () => {
     })
     expect(res.statusCode).toBe(400)
   })
+
+  it('returns 400 when name exceeds max length', async () => {
+    const res = await app.inject({
+      method: 'POST',
+      url: '/users',
+      payload: {
+        name: 'a'.repeat(101),
+        email: 'toolong@test.com',
+        password: 'Password123!',
+      },
+      headers: { cookie: authCookie },
+    })
+    expect(res.statusCode).toBe(400)
+  })
 })
 
 describe('PATCH /users/:id', () => {

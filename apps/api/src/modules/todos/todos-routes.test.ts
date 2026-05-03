@@ -150,6 +150,21 @@ describe('POST /todos', () => {
     })
     expect(res.statusCode).toBe(400)
   })
+
+  it('returns 400 when fields exceed max length', async () => {
+    const res = await app.inject({
+      method: 'POST',
+      url: '/todos',
+      payload: {
+        title: 'a'.repeat(201),
+        description: 'b'.repeat(501),
+        content: 'c'.repeat(1001),
+        date: '2025-03-20',
+      },
+      headers: { cookie: authCookie },
+    })
+    expect(res.statusCode).toBe(400)
+  })
 })
 
 describe('PATCH /todos/:id', () => {

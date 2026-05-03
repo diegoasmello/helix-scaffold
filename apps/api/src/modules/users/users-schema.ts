@@ -23,14 +23,14 @@ export const userWithRoleSchema = userSchema
   .meta({ id: 'UserWithRole', title: 'UserWithRole' })
 
 export const createUserSchema = z.object({
-  name: z.string().min(1),
+  name: z.string().min(1).max(100),
   email: z.email(),
   password: z.string().min(8),
   roleId: z.string().optional(),
 })
 
 export const updateUserSchema = z.object({
-  name: z.string().min(1).optional(),
+  name: z.string().min(1).max(100).optional(),
   email: z.email().optional(),
   roleId: z.string().nullable().optional(),
 })
