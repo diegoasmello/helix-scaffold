@@ -1,5 +1,6 @@
 import {
   createGetMe200,
+  createPaginatedAuditLogs,
   createPaginatedRoles,
   createPaginatedTodos,
   createPaginatedUsers,
@@ -114,7 +115,15 @@ export const handlers = [
   postBootstrapHandler(),
 
   // Audit logs
-  getAuditLogsHandler([]),
+  getAuditLogsHandler(
+    createPaginatedAuditLogs({
+      data: [],
+      total: 0,
+      page: 1,
+      pageSize: 10,
+      totalPages: 0,
+    })
+  ),
   getAuditLogsIdHandler(() =>
     getAuditLogsIdHandlerResponse404({ message: 'Not found' })
   ),

@@ -1,10 +1,19 @@
 import { useGetAuditLogsSuspense } from '@helix/api-client/hooks'
 import type { AuditLog } from '@helix/api-client/types'
-import { Badge, PageList, Table } from '@helix/ui'
+import {
+  ActionIcon,
+  Badge,
+  DataTable,
+  type DataTableColumn,
+  getDataTablePaginationProps,
+  getDataTableSortingProps,
+  PageList,
+} from '@helix/ui'
+import { IconEye } from '@helix/ui'
 
 import { auditListRoute } from '.'
 
-const ACTION_COLORS: Record<AuditLog['action'], string> = {
+const ACTION_COLORS: Record<string, string> = {
   create: 'green',
   edit: 'blue',
   delete: 'red',
@@ -15,43 +24,80 @@ function formatDate(iso: string) {
 }
 
 export function AuditList() {
-  const { data: logs } = useGetAuditLogsSuspense()
   const navigate = auditListRoute.useNavigate()
+  const search = auditListRoute.useSearch()
+  const { page, pageSize, sortBy, sortOrder } = search
 
-  const rows = logs.map((log) => (
-    <Table.Tr
-      key={log.id}
-      style={{ cursor: 'pointer' }}
-      onClick={() => navigate({ to: '/audit/$id', params: { id: log.id } })}
-    >
-      <Table.Td>{formatDate(log.createdAt)}</Table.Td>
-      <Table.Td>{log.userName}</Table.Td>
-      <Table.Td>
-        <Badge color={ACTION_COLORS[log.action]} variant="light">
+  const { data: auditLogsResponse } = useGetAuditLogsSuspense({
+    page,
+    pageSize,
+    sortBy,
+    sortOrder,
+  })
+
+  const paginationProps = getDataTablePaginationProps(
+    auditLogsResponse,
+    search,
+    navigate
+  )
+  const sortingProps = getDataTableSortingProps(search, navigate)
+
+  const columns: DataTableColumn<AuditLog>[] = [
+    {
+      accessor: 'createdAt',
+      title: 'Date',
+      sortable: true,
+      render: (log) => formatDate(log.createdAt),
+    },
+    { accessor: 'userName', title: 'User', sortable: true },
+    {
+      accessor: 'action',
+      title: 'Action',
+      sortable: true,
+      render: (log) => (
+        <Badge color={ACTION_COLORS[log.action] ?? 'gray'} variant="light">
           {log.action}
         </Badge>
-      </Table.Td>
-      <Table.Td>{log.resource}</Table.Td>
-      <Table.Td>{log.resourceId ?? '—'}</Table.Td>
-      <Table.Td>{log.ip ?? '—'}</Table.Td>
-    </Table.Tr>
-  ))
+      ),
+    },
+    { accessor: 'resource', title: 'Resource', sortable: true },
+    {
+      accessor: 'resourceId',
+      title: 'Resource ID',
+      render: (log) => log.resourceId ?? '—',
+    },
+    {
+      accessor: 'ip',
+      title: 'IP',
+      render: (log) => log.ip ?? '—',
+    },
+    {
+      accessor: 'actions',
+      title: 'Actions',
+      textAlign: 'center',
+      width: 80,
+      render: (log) => (
+        <ActionIcon
+          variant="light"
+          aria-label="View"
+          onClick={() =>
+            navigate({ to: '/audit/$id', params: { id: log.id } })
+          }
+        >
+          <IconEye style={{ width: '70%', height: '70%' }} stroke={1.5} />
+        </ActionIcon>
+      ),
+    },
+  ]
 
   return (
     <PageList title="Audit Log">
-      <Table verticalSpacing="sm" withTableBorder highlightOnHover>
-        <Table.Thead>
-          <Table.Tr>
-            <Table.Th>Date</Table.Th>
-            <Table.Th>User</Table.Th>
-            <Table.Th>Action</Table.Th>
-            <Table.Th>Resource</Table.Th>
-            <Table.Th>Resource ID</Table.Th>
-            <Table.Th>IP</Table.Th>
-          </Table.Tr>
-        </Table.Thead>
-        <Table.Tbody>{rows}</Table.Tbody>
-      </Table>
+      <DataTable
+        records={auditLogsResponse.data}
+        columns={columns}
+        {...paginationProps}
+        {...sortingProps}
+      />
     </PageList>
   )
 }

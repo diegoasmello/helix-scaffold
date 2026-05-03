@@ -37,17 +37,23 @@ it('returns 401 on any route when not authenticated', async () => {
 })
 
 describe('GET /audit-logs', () => {
-  it('returns empty array when no logs exist', async () => {
+  it('returns empty paginated response when no logs exist', async () => {
     const res = await app.inject({
       method: 'GET',
       url: '/audit-logs',
       headers: { cookie: authCookie },
     })
     expect(res.statusCode).toBe(200)
-    expect(res.json()).toEqual([])
+    expect(res.json()).toEqual({
+      data: [],
+      total: 0,
+      page: 1,
+      pageSize: 10,
+      totalPages: 0,
+    })
   })
 
-  it('returns logs ordered by createdAt descending', async () => {
+  it('returns logs ordered by createdAt ascending by default', async () => {
     await testDb.insert(auditLogs).values([
       {
         userId: 'u1',
@@ -76,9 +82,189 @@ describe('GET /audit-logs', () => {
     })
     expect(res.statusCode).toBe(200)
     const body = res.json()
-    expect(body).toHaveLength(2)
-    expect(body[0].action).toBe('delete')
-    expect(body[1].action).toBe('create')
+    expect(body.data).toHaveLength(2)
+    expect(body.total).toBe(2)
+    expect(body.data[0].action).toBe('create')
+    expect(body.data[1].action).toBe('delete')
+  })
+
+  it('sorts by createdAt descending when sortOrder=desc', async () => {
+    await testDb.insert(auditLogs).values([
+      {
+        userId: 'u1',
+        userName: 'Alice',
+        userEmail: 'alice@example.com',
+        action: 'create',
+        resource: 'todos',
+        createdAt: new Date('2026-01-01T10:00:00Z'),
+      },
+      {
+        userId: 'u1',
+        userName: 'Alice',
+        userEmail: 'alice@example.com',
+        action: 'delete',
+        resource: 'todos',
+        createdAt: new Date('2026-01-01T12:00:00Z'),
+      },
+    ])
+
+    const res = await app.inject({
+      method: 'GET',
+      url: '/audit-logs?sortBy=createdAt&sortOrder=desc',
+      headers: { cookie: authCookie },
+    })
+    expect(res.statusCode).toBe(200)
+    const body = res.json()
+    expect(body.data[0].action).toBe('delete')
+    expect(body.data[1].action).toBe('create')
+  })
+
+  it('applies page and pageSize correctly', async () => {
+    await testDb.insert(auditLogs).values([
+      {
+        userId: 'u1',
+        userName: 'Alice',
+        userEmail: 'alice@example.com',
+        action: 'create',
+        resource: 'todos',
+        createdAt: new Date('2026-01-01T10:00:00Z'),
+      },
+      {
+        userId: 'u1',
+        userName: 'Alice',
+        userEmail: 'alice@example.com',
+        action: 'edit',
+        resource: 'todos',
+        createdAt: new Date('2026-01-01T11:00:00Z'),
+      },
+      {
+        userId: 'u1',
+        userName: 'Alice',
+        userEmail: 'alice@example.com',
+        action: 'delete',
+        resource: 'todos',
+        createdAt: new Date('2026-01-01T12:00:00Z'),
+      },
+    ])
+
+    const res = await app.inject({
+      method: 'GET',
+      url: '/audit-logs?page=1&pageSize=2',
+      headers: { cookie: authCookie },
+    })
+    expect(res.statusCode).toBe(200)
+    const body = res.json()
+    expect(body.data).toHaveLength(2)
+    expect(body.total).toBe(3)
+    expect(body.page).toBe(1)
+    expect(body.pageSize).toBe(2)
+    expect(body.totalPages).toBe(2)
+  })
+
+  it('returns correct slice for page 2', async () => {
+    await testDb.insert(auditLogs).values([
+      {
+        userId: 'u1',
+        userName: 'Alice',
+        userEmail: 'alice@example.com',
+        action: 'create',
+        resource: 'todos',
+        createdAt: new Date('2026-01-01T10:00:00Z'),
+      },
+      {
+        userId: 'u1',
+        userName: 'Alice',
+        userEmail: 'alice@example.com',
+        action: 'edit',
+        resource: 'todos',
+        createdAt: new Date('2026-01-01T11:00:00Z'),
+      },
+      {
+        userId: 'u1',
+        userName: 'Alice',
+        userEmail: 'alice@example.com',
+        action: 'delete',
+        resource: 'todos',
+        createdAt: new Date('2026-01-01T12:00:00Z'),
+      },
+    ])
+
+    const res = await app.inject({
+      method: 'GET',
+      url: '/audit-logs?page=2&pageSize=2',
+      headers: { cookie: authCookie },
+    })
+    expect(res.statusCode).toBe(200)
+    const body = res.json()
+    expect(body.data).toHaveLength(1)
+    expect(body.page).toBe(2)
+    expect(body.data[0].action).toBe('delete')
+  })
+
+  it('sorts by userName ascending', async () => {
+    await testDb.insert(auditLogs).values([
+      {
+        userId: 'u1',
+        userName: 'Charlie',
+        userEmail: 'charlie@example.com',
+        action: 'create',
+        resource: 'todos',
+      },
+      {
+        userId: 'u2',
+        userName: 'Alice',
+        userEmail: 'alice@example.com',
+        action: 'edit',
+        resource: 'todos',
+      },
+      {
+        userId: 'u3',
+        userName: 'Bob',
+        userEmail: 'bob@example.com',
+        action: 'delete',
+        resource: 'todos',
+      },
+    ])
+
+    const res = await app.inject({
+      method: 'GET',
+      url: '/audit-logs?sortBy=userName&sortOrder=asc',
+      headers: { cookie: authCookie },
+    })
+    expect(res.statusCode).toBe(200)
+    const body = res.json()
+    expect(body.data[0].userName).toBe('Alice')
+    expect(body.data[1].userName).toBe('Bob')
+    expect(body.data[2].userName).toBe('Charlie')
+  })
+
+  it('sorts by resource descending', async () => {
+    await testDb.insert(auditLogs).values([
+      {
+        userId: 'u1',
+        userName: 'Alice',
+        userEmail: 'alice@example.com',
+        action: 'create',
+        resource: 'roles',
+      },
+      {
+        userId: 'u1',
+        userName: 'Alice',
+        userEmail: 'alice@example.com',
+        action: 'edit',
+        resource: 'todos',
+      },
+    ])
+
+    const res = await app.inject({
+      method: 'GET',
+      url: '/audit-logs?sortBy=resource&sortOrder=desc',
+      headers: { cookie: authCookie },
+    })
+    expect(res.statusCode).toBe(200)
+    const body = res.json()
+    expect(body.data[0].resource).toBe('todos')
+    expect(body.data[1].resource).toBe('roles')
   })
 })
 

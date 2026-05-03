@@ -2,7 +2,12 @@ import z from 'zod'
 
 import type { Database } from '../../db'
 import type { FastifyTypedInstance, RequirePermission } from '../../types'
-import { auditLogSchema } from './audit-schema'
+import { buildPaginatedResponse } from '@/lib/pagination'
+import {
+  auditLogSchema,
+  auditLogsListQuerySchema,
+  paginatedAuditLogsSchema,
+} from './audit-schema'
 import { createAuditService } from './audit-service'
 
 export async function auditRoutes(
@@ -20,11 +25,15 @@ export async function auditRoutes(
       schema: {
         tags: ['audit'],
         description: 'List audit log entries',
-        response: { 200: z.array(auditLogSchema) },
+        querystring: auditLogsListQuerySchema,
+        response: { 200: paginatedAuditLogsSchema },
       },
       preHandler: requirePermission('audit', 'view'),
     },
-    async () => service.list()
+    async (request) => {
+      const { data, total } = await service.list(request.query)
+      return buildPaginatedResponse(data, total, request.query)
+    }
   )
 
   app.get(

@@ -1,5 +1,6 @@
 import {
   createAuditLog,
+  createPaginatedAuditLogs,
   getAuditLogsHandler,
   getMePermissionsHandler,
 } from '@helix/api-client/mocks'
@@ -13,7 +14,10 @@ import { server } from '../../../mocks/server'
 import { AuditList } from './audit-list'
 
 vi.mock('.', () => ({
-  auditListRoute: { useNavigate: () => vi.fn() },
+  auditListRoute: {
+    useNavigate: () => vi.fn(),
+    useSearch: () => ({ page: 1, pageSize: 10, sortOrder: 'desc' }),
+  },
 }))
 
 vi.mock('../../../lib/authentication', () => ({
@@ -77,7 +81,15 @@ function renderAuditList() {
 
 beforeEach(() => {
   server.use(
-    getAuditLogsHandler(mockLogs),
+    getAuditLogsHandler(
+      createPaginatedAuditLogs({
+        data: mockLogs,
+        total: mockLogs.length,
+        page: 1,
+        pageSize: 10,
+        totalPages: 1,
+      })
+    ),
     getMePermissionsHandler({ grants: { audit: ['view'] } })
   )
 })
@@ -105,14 +117,34 @@ describe('AuditList', () => {
   })
 
   it('shows dash when resourceId is null', async () => {
-    server.use(getAuditLogsHandler([{ ...mockLogs[0], resourceId: null }]))
+    server.use(
+      getAuditLogsHandler(
+        createPaginatedAuditLogs({
+          data: [{ ...mockLogs[0], resourceId: null }],
+          total: 1,
+          page: 1,
+          pageSize: 10,
+          totalPages: 1,
+        })
+      )
+    )
     renderAuditList()
     await screen.findByText('Alice Silva')
     expect(screen.getByText('—')).toBeInTheDocument()
   })
 
   it('renders empty state when no logs exist', async () => {
-    server.use(getAuditLogsHandler([]))
+    server.use(
+      getAuditLogsHandler(
+        createPaginatedAuditLogs({
+          data: [],
+          total: 0,
+          page: 1,
+          pageSize: 10,
+          totalPages: 0,
+        })
+      )
+    )
     renderAuditList()
     await screen.findByText('Audit Log')
     expect(

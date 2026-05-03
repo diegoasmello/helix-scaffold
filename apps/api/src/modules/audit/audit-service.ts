@@ -1,7 +1,10 @@
-import { desc, eq } from 'drizzle-orm'
+import { asc, count, desc, eq } from 'drizzle-orm'
 
 import type { Database } from '@/db'
 import { auditLogs } from '@/db/schema'
+import { getPaginationParams } from '@/lib/pagination'
+
+import type { AuditLogsListQuery } from './audit-schema'
 
 interface AuditLogInput {
   userId: string
@@ -14,6 +17,13 @@ interface AuditLogInput {
   ip?: string | null
   userAgent?: string | null
 }
+
+const SORT_COLUMNS = {
+  createdAt: auditLogs.createdAt,
+  userName: auditLogs.userName,
+  action: auditLogs.action,
+  resource: auditLogs.resource,
+} as const
 
 export type AuditService = ReturnType<typeof createAuditService>
 
@@ -32,8 +42,20 @@ export function createAuditService(database: Database) {
     })
   }
 
-  async function list() {
-    return database.select().from(auditLogs).orderBy(desc(auditLogs.createdAt))
+  async function list(query: AuditLogsListQuery) {
+    const { limit, offset } = getPaginationParams(query.page, query.pageSize)
+    const sortCol = SORT_COLUMNS[query.sortBy ?? 'createdAt']
+    const sortFn = query.sortOrder === 'desc' ? desc : asc
+    const [data, [{ total }]] = await Promise.all([
+      database
+        .select()
+        .from(auditLogs)
+        .orderBy(sortFn(sortCol))
+        .limit(limit)
+        .offset(offset),
+      database.select({ total: count() }).from(auditLogs),
+    ])
+    return { data, total }
   }
 
   async function getById(id: string) {
