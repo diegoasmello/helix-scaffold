@@ -55,7 +55,13 @@ service      →  receives the combined query, applies getPaginationParams + ord
 route        →  uses the combined querystring schema, calls buildPaginatedResponse
 ```
 
-See the `todos` module (`todos-schema.ts`, `todos-service.ts`, `todos-routes.ts`) as the canonical reference.
+See the `todos` module (`todos-schema.ts`, `todos-service.ts`, `todos-routes.ts`) as the canonical reference. The `audit` module is a read-only example (no POST/PATCH/DELETE) that also demonstrates the full pagination + sorting pattern.
+
+### Non-paginated "all" endpoints
+
+Occasionally a module needs to expose **all** records in a single array — for example, to populate a select field in another module (e.g. `GET /roles/all` populates the role selector in the Users form). Add a `/all` endpoint only when another module genuinely needs it for a UI select component. This endpoint returns a plain array (no pagination shape) and has no `page`/`pageSize`/`sortBy` params.
+
+**Never** replace the main `GET /xxx` list endpoint with a non-paginated variant. The list endpoint is always paginated; the `/all` variant is an optional addition for select-field use cases.
 
 ---
 

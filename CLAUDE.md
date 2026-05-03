@@ -73,6 +73,15 @@ Before implementing either side, read the workspace-specific `CLAUDE.md` — it 
 
 A module is only complete when both sides are implemented and all tests are written.
 
+### Pagination defaults
+
+Unless the prompt explicitly says otherwise:
+
+- **Backend**: the `GET /xxx` list endpoint is always paginated (uses `paginationQuerySchema` + `sortingQuerySchema` + `buildPaginatedResponse`).
+- **Frontend**: the list screen always uses `DataTable` with `getDataTablePaginationProps` and `getDataTableSortingProps`. Never use a plain `Table` for a list screen.
+
+The only exception is a `/all` endpoint for select-field use cases (e.g. `GET /roles/all`) — this returns a plain array with no pagination and is added only when another module needs it for a UI selector.
+
 ### RBAC checklist
 
 When a new module exposes user-facing resources, register it in the permission system as part of module creation:

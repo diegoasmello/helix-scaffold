@@ -65,6 +65,16 @@ import { useNavigate, useSearch } from '@tanstack/react-router'
 
 This applies to every route hook (`useNavigate`, `useSearch`, `useParams`, `useLoaderData`).
 
+### Default rule: list screens always use DataTable
+
+Every new module list screen uses `DataTable` with full pagination and sorting. **Never use a plain `Table` for a list screen**, even when the dataset is expected to be small. `DataTable` handles the empty state and provides a consistent UX across all modules.
+
+When asked to create a new module, always generate the list screen with `DataTable`, `getDataTablePaginationProps`, and `getDataTableSortingProps` — unless the prompt explicitly asks for something different.
+
+### Select-field queries are not paginated
+
+When a field needs all records from another module (e.g. a role selector in the Users form), use a dedicated `/all` endpoint that returns an unfiltered array without pagination. These queries use `getXxxAllSuspenseQueryOptions()` — not the paginated `getXxxsSuspenseQueryOptions()`. Never pass `page`/`pageSize` to a select-field query.
+
 ## Auth
 
 `src/core/auth/` contains the full auth layer:
