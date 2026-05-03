@@ -21,8 +21,8 @@ import {
   getMeHandlerResponse200,
   getMePermissionsHandler,
   getPermissionsResourcesHandler,
-  getRolesHandler,
   getRolesAllHandler,
+  getRolesHandler,
   getRolesIdHandler,
   getRolesIdHandlerResponse404,
   getRolesIdPermissionsHandler,
@@ -79,7 +79,13 @@ export const handlers = [
 
   // Roles
   getRolesHandler(
-    createPaginatedRoles({ data: [], total: 0, page: 1, pageSize: 10, totalPages: 0 })
+    createPaginatedRoles({
+      data: [],
+      total: 0,
+      page: 1,
+      pageSize: 10,
+      totalPages: 0,
+    })
   ),
   getRolesAllHandler([]),
   getRolesIdHandler(() =>
@@ -93,7 +99,13 @@ export const handlers = [
 
   // Users
   getUsersHandler(
-    createPaginatedUsers({ data: [], total: 0, page: 1, pageSize: 10, totalPages: 0 })
+    createPaginatedUsers({
+      data: [],
+      total: 0,
+      page: 1,
+      pageSize: 10,
+      totalPages: 0,
+    })
   ),
   getUsersIdHandler(() =>
     getUsersIdHandlerResponse404({ message: 'Not found' })
