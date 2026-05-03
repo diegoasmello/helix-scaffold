@@ -31,12 +31,18 @@ export const todoListRoute = createRoute({
     pageSize: z.number().int().min(1).max(100).default(10),
     sortBy: z.enum(['title', 'status', 'date', 'createdAt']).optional(),
     sortOrder: z.enum(['asc', 'desc']).default('desc'),
+    filters: z.string().optional(),
+    filterLogic: z.enum(['AND', 'OR']).default('AND'),
   }),
-  loaderDeps: ({ search: { page, pageSize, sortBy, sortOrder } }) => ({
+  loaderDeps: ({
+    search: { page, pageSize, sortBy, sortOrder, filters, filterLogic },
+  }) => ({
     page,
     pageSize,
     sortBy,
     sortOrder,
+    filters,
+    filterLogic,
   }),
   loader: ({ deps }) =>
     queryClient.ensureQueryData(getTodosSuspenseQueryOptions(deps)),

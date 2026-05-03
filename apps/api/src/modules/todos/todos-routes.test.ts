@@ -81,6 +81,129 @@ describe('GET /todos', () => {
     expect(body.data[0].title).toBe('First')
     expect(body.data[1].title).toBe('Second')
   })
+
+  describe('Filtering', () => {
+    beforeEach(async () => {
+      await testDb.insert(todos).values([
+        {
+          title: 'Buy milk',
+          description: 'Grocery errand',
+          content: 'Content A',
+          status: 'pending',
+          date: new Date('2025-01-01'),
+        },
+        {
+          title: 'Learn Rust',
+          description: 'Programming task',
+          content: 'Content B',
+          status: 'pending',
+          date: new Date('2025-03-01'),
+        },
+        {
+          title: 'Read book',
+          description: 'Leisure activity',
+          content: 'Content C',
+          status: 'completed',
+          date: new Date('2025-06-01'),
+        },
+      ])
+    })
+
+    it('filters by status eq', async () => {
+      const filters = JSON.stringify([
+        { field: 'status', op: 'eq', value: 'completed' },
+      ])
+      const res = await app.inject({
+        method: 'GET',
+        url: `/todos?filters=${encodeURIComponent(filters)}`,
+        headers: { cookie: authCookie },
+      })
+      expect(res.statusCode).toBe(200)
+      const body = res.json()
+      expect(body.total).toBe(1)
+      expect(body.data[0].title).toBe('Read book')
+    })
+
+    it('filters by title contains (case-insensitive)', async () => {
+      const filters = JSON.stringify([
+        { field: 'title', op: 'contains', value: 'buy' },
+      ])
+      const res = await app.inject({
+        method: 'GET',
+        url: `/todos?filters=${encodeURIComponent(filters)}`,
+        headers: { cookie: authCookie },
+      })
+      expect(res.statusCode).toBe(200)
+      const body = res.json()
+      expect(body.total).toBe(1)
+      expect(body.data[0].title).toBe('Buy milk')
+    })
+
+    it('filters by date gte', async () => {
+      const filters = JSON.stringify([
+        { field: 'date', op: 'gte', value: '2025-03-01' },
+      ])
+      const res = await app.inject({
+        method: 'GET',
+        url: `/todos?filters=${encodeURIComponent(filters)}`,
+        headers: { cookie: authCookie },
+      })
+      expect(res.statusCode).toBe(200)
+      const body = res.json()
+      expect(body.total).toBe(2)
+    })
+
+    it('applies AND logic across two conditions', async () => {
+      const filters = JSON.stringify([
+        { field: 'status', op: 'eq', value: 'pending' },
+        { field: 'title', op: 'contains', value: 'rust' },
+      ])
+      const res = await app.inject({
+        method: 'GET',
+        url: `/todos?filters=${encodeURIComponent(filters)}&filterLogic=AND`,
+        headers: { cookie: authCookie },
+      })
+      expect(res.statusCode).toBe(200)
+      const body = res.json()
+      expect(body.total).toBe(1)
+      expect(body.data[0].title).toBe('Learn Rust')
+    })
+
+    it('applies OR logic across two conditions', async () => {
+      const filters = JSON.stringify([
+        { field: 'status', op: 'eq', value: 'completed' },
+        { field: 'title', op: 'contains', value: 'milk' },
+      ])
+      const res = await app.inject({
+        method: 'GET',
+        url: `/todos?filters=${encodeURIComponent(filters)}&filterLogic=OR`,
+        headers: { cookie: authCookie },
+      })
+      expect(res.statusCode).toBe(200)
+      const body = res.json()
+      expect(body.total).toBe(2)
+    })
+
+    it('returns all todos when filters is an empty array', async () => {
+      const res = await app.inject({
+        method: 'GET',
+        url: `/todos?filters=${encodeURIComponent('[]')}`,
+        headers: { cookie: authCookie },
+      })
+      expect(res.statusCode).toBe(200)
+      expect(res.json().total).toBe(3)
+    })
+
+    it('returns all todos when filters is invalid JSON', async () => {
+      const res = await app.inject({
+        method: 'GET',
+        url: `/todos?filters=not-valid-json`,
+        headers: { cookie: authCookie },
+      })
+      expect(res.statusCode).toBe(200)
+      expect(res.json().total).toBe(3)
+    })
+  })
 })
 
 describe('GET /todos/:id', () => {

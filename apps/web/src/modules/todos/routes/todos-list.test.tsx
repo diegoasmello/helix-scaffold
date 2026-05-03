@@ -15,12 +15,28 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { server } from '../../../mocks/server'
 import { TodoList } from './todos-list'
 
-vi.mock('.', () => ({
-  todoListRoute: {
-    useNavigate: () => vi.fn(),
-    useSearch: () => ({ page: 1, pageSize: 10, sortOrder: 'desc' }),
+const mockNavigate = vi.hoisted(() => vi.fn())
+const mockSearch = vi.hoisted(() => ({
+  state: {
+    page: 1,
+    pageSize: 10,
+    sortOrder: 'desc' as const,
+    filterLogic: 'AND' as const,
+    filters: undefined as string | undefined,
   },
 }))
+
+vi.mock('.', () => ({
+  todoListRoute: {
+    useNavigate: () => mockNavigate,
+    useSearch: () => mockSearch.state,
+  },
+}))
+
+vi.mock('@tanstack/react-router', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@tanstack/react-router')>()
+  return { ...actual, useBlocker: vi.fn() }
+})
 
 const mockTodos = [
   createTodo({
@@ -53,6 +69,14 @@ function renderTodoList() {
 }
 
 beforeEach(() => {
+  mockSearch.state = {
+    page: 1,
+    pageSize: 10,
+    sortOrder: 'desc',
+    filterLogic: 'AND',
+    filters: undefined,
+  }
+  mockNavigate.mockReset()
   server.use(
     getTodosHandler(
       createPaginatedTodos({
@@ -142,5 +166,132 @@ describe('TodoList', () => {
     await waitFor(() =>
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     )
+  })
+})
+
+describe('Filter panel', () => {
+  it('renders Filters button without badge when no filters are active', async () => {
+    renderTodoList()
+    await screen.findByText('Review quarterly report')
+    const filtersBtn = screen.getByRole('button', { name: /filters/i })
+    expect(filtersBtn).toBeInTheDocument()
+    expect(filtersBtn.textContent).not.toMatch(/\d/)
+  })
+
+  it('opens the filter panel when Filters button is clicked', async () => {
+    renderTodoList()
+    await screen.findByText('Review quarterly report')
+
+    await userEvent.click(screen.getByRole('button', { name: /filters/i }))
+
+    expect(
+      await screen.findByRole('button', { name: 'Add filter' })
+    ).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Apply' })).toBeInTheDocument()
+  })
+
+  it('closes the filter panel when Filters button is clicked again', async () => {
+    renderTodoList()
+    await screen.findByText('Review quarterly report')
+    await userEvent.click(screen.getByRole('button', { name: /filters/i }))
+    await screen.findByRole('button', { name: 'Add filter' })
+
+    await userEvent.click(screen.getByRole('button', { name: /filters/i }))
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('button', { name: 'Add filter' })
+      ).not.toBeInTheDocument()
+    )
+  })
+
+  it('shows filter badge with count when filters are active in the URL', async () => {
+    mockSearch.state = {
+      ...mockSearch.state,
+      filters: JSON.stringify([
+        { field: 'status', op: 'eq', value: 'pending' },
+      ]),
+    }
+    renderTodoList()
+    await screen.findByText('Review quarterly report')
+    const filtersBtn = screen.getByRole('button', { name: /filters/i })
+    expect(within(filtersBtn).getByText('1')).toBeInTheDocument()
+  })
+
+  it('auto-opens filter panel when URL contains active filters', async () => {
+    mockSearch.state = {
+      ...mockSearch.state,
+      filters: JSON.stringify([
+        { field: 'status', op: 'eq', value: 'pending' },
+      ]),
+    }
+    renderTodoList()
+    await screen.findByText('Review quarterly report')
+    expect(
+      await screen.findByRole('button', { name: 'Apply' })
+    ).toBeInTheDocument()
+  })
+
+  it('adds a condition row when Add filter is clicked', async () => {
+    renderTodoList()
+    await screen.findByText('Review quarterly report')
+    await userEvent.click(screen.getByRole('button', { name: /filters/i }))
+    await screen.findByRole('button', { name: 'Add filter' })
+
+    await userEvent.click(screen.getByRole('button', { name: 'Add filter' }))
+
+    expect(await screen.findByLabelText('Remove filter')).toBeInTheDocument()
+  })
+
+  it('calls navigate with JSON-encoded filters when Apply is clicked', async () => {
+    renderTodoList()
+    await screen.findByText('Review quarterly report')
+    await userEvent.click(screen.getByRole('button', { name: /filters/i }))
+    await screen.findByRole('button', { name: 'Add filter' })
+
+    await userEvent.click(screen.getByRole('button', { name: 'Add filter' }))
+    await screen.findByLabelText('Remove filter')
+
+    const valueInput = screen.getByPlaceholderText('Value')
+    await userEvent.type(valueInput, 'test')
+
+    await userEvent.click(screen.getByRole('button', { name: 'Apply' }))
+
+    expect(mockNavigate).toHaveBeenCalledWith(
+      expect.objectContaining({ search: expect.any(Function) })
+    )
+    const searchFn = (
+      mockNavigate.mock.calls[0][0] as { search: (prev: object) => object }
+    ).search
+    const result = searchFn({ page: 2, pageSize: 10 }) as Record<
+      string,
+      unknown
+    >
+    expect(result.page).toBe(1)
+    expect(typeof result.filters).toBe('string')
+    expect(result.filterLogic).toBe('AND')
+  })
+
+  it('calls navigate with filters=undefined when Clear is clicked', async () => {
+    mockSearch.state = {
+      ...mockSearch.state,
+      filters: JSON.stringify([
+        { field: 'status', op: 'eq', value: 'pending' },
+      ]),
+    }
+    renderTodoList()
+    await screen.findByText('Review quarterly report')
+    await screen.findByRole('button', { name: 'Apply' })
+
+    await userEvent.click(screen.getByRole('button', { name: 'Clear' }))
+
+    expect(mockNavigate).toHaveBeenCalledWith(
+      expect.objectContaining({ search: expect.any(Function) })
+    )
+    const searchFn = (
+      mockNavigate.mock.calls[0][0] as { search: (prev: object) => object }
+    ).search
+    const result = searchFn({ page: 2 }) as Record<string, unknown>
+    expect(result.filters).toBeUndefined()
+    expect(result.page).toBe(1)
   })
 })

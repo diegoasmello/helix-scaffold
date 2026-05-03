@@ -65,6 +65,110 @@ Occasionally a module needs to expose **all** records in a single array — for 
 
 ---
 
+## Filtering
+
+Every list endpoint can optionally support field-level filtering via the reusable utilities in `src/lib/filtering.ts`. Add filtering to a module when the list screen needs a filter panel.
+
+| File                    | Exports                                                                                          |
+| ----------------------- | ------------------------------------------------------------------------------------------------ |
+| `src/lib/filtering.ts`  | `filterQuerySchema`, `buildFilterWhereClause`, `FilterCondition`, `FilterLogic`, `FilterOperator` |
+
+**`filterQuerySchema(allowedFields)`** — factory that accepts a non-empty tuple of filterable column names and returns a Zod schema with two fields:
+
+- `filters` — accepts a JSON-encoded `FilterCondition[]` string; transforms to a typed array on validation; invalid JSON silently becomes `[]`
+- `filterLogic` — `'AND' | 'OR'`, defaults to `'AND'`
+
+Merge this into the module's `listQuerySchema` alongside pagination and sorting.
+
+**`buildFilterWhereClause(conditions, logic, columnMap, coerce?)`** — builds a Drizzle `SQL | undefined` from the parsed filter conditions. Returns `undefined` when the list is empty (no `.where()` added). Pass the result to both the data query and the count query so pagination totals remain consistent.
+
+The optional `coerce` map transforms raw filter values before Drizzle receives them. This is required for columns whose DB type differs from the serialized URL value — most commonly `timestamp` columns where the filter value arrives as an ISO string:
+
+```ts
+const FILTER_COERCE = {
+  date: (v: unknown) => (typeof v === 'string' ? new Date(v) : v),
+} as const
+```
+
+Without coercion, Drizzle will pass the raw string to PostgreSQL and the comparison will fail or error at runtime.
+
+### Adding filtering to a module
+
+#### 1. Schema (`<feature>-schema.ts`)
+
+```ts
+import { filterQuerySchema } from '@/lib/filtering'
+
+export const FEATURE_FILTER_FIELDS = ['title', 'status', 'date'] as const
+export type FeatureFilterField = (typeof FEATURE_FILTER_FIELDS)[number]
+
+export const featuresFilterQuerySchema = filterQuerySchema([...FEATURE_FILTER_FIELDS])
+
+// Merge into the existing list query schema
+export const featuresListQuerySchema = paginationQuerySchema
+  .merge(featuresSortingSchema)
+  .merge(featuresFilterQuerySchema)
+```
+
+Only list fields that users will actually filter by. The field names must match the Drizzle column map keys in the service (see below) and the `FilterFieldDef.name` values on the frontend.
+
+#### 2. Service (`<feature>-service.ts`)
+
+```ts
+import { buildFilterWhereClause } from '@/lib/filtering'
+
+const FILTER_COLUMNS = {
+  title: features.title,
+  status: features.status,
+  date: features.date,
+} as const
+
+// Only needed when a column type differs from the serialized URL value
+const FILTER_COERCE = {
+  date: (v: unknown) => (typeof v === 'string' ? new Date(v) : v),
+} as const
+
+async function list(query: FeaturesListQuery) {
+  const { limit, offset } = getPaginationParams(query.page, query.pageSize)
+  const sortCol = SORT_COLUMNS[query.sortBy ?? 'createdAt']
+  const sortFn = query.sortOrder === 'desc' ? desc : asc
+  const where = buildFilterWhereClause(
+    query.filters,
+    query.filterLogic,
+    FILTER_COLUMNS,
+    FILTER_COERCE
+  )
+
+  const [data, [{ total }]] = await Promise.all([
+    database.select().from(features).where(where).orderBy(sortFn(sortCol)).limit(limit).offset(offset),
+    database.select({ total: count() }).from(features).where(where),
+  ])
+  return { data, total }
+}
+```
+
+Always pass `where` to both queries — the count query drives pagination totals.
+
+#### 3. Tests (`<feature>-routes.test.ts`)
+
+Add a `describe('Filtering')` block inside `describe('GET /features')`:
+
+| Test | What to verify |
+|------|----------------|
+| `filters` with `eq` on an enum field (e.g. `status=pending`) | returns only matching records |
+| `filters` with `contains` on a text field | case-insensitive match |
+| `filters` with `gte` on a date/number field | range boundary respected |
+| two conditions with `AND` logic | returns intersection |
+| two conditions with `OR` logic | returns union |
+| `filters=[]` (empty array) | returns all records |
+| `filters=invalid-json` | returns all records (silent fallback) |
+
+Seed the data via `testDb.insert` before each test case. Pass `filters` as a JSON-encoded string in the query string: `filters=JSON.stringify([{ field: 'status', op: 'eq', value: 'pending' }])`.
+
+See `apps/api/src/modules/todos/todos-routes.test.ts` for the reference implementation.
+
+---
+
 ## Creating a new module (CRUD)
 
 Use the `todos` module as the reference implementation. Follow this order exactly.

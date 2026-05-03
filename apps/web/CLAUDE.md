@@ -75,6 +75,141 @@ When asked to create a new module, always generate the list screen with `DataTab
 
 When a field needs all records from another module (e.g. a role selector in the Users form), use a dedicated `/all` endpoint that returns an unfiltered array without pagination. These queries use `getXxxAllSuspenseQueryOptions()` — not the paginated `getXxxsSuspenseQueryOptions()`. Never pass `page`/`pageSize` to a select-field query.
 
+## Filtering
+
+List screens can optionally show a collapsible filter panel that lets users combine field conditions with AND/OR logic. The filter state lives entirely in the URL (two extra search params: `filters` and `filterLogic`). The panel open/close state is local only — not persisted in the URL.
+
+### URL shape
+
+Add two params to the route's `validateSearch`:
+
+```ts
+validateSearch: z.object({
+  // ...existing pagination + sorting params
+  filters: z.string().optional(),              // JSON-encoded FilterCondition[]
+  filterLogic: z.enum(['AND', 'OR']).default('AND'),
+}),
+```
+
+`filters` is stored as a raw JSON string because TanStack Router only auto-serialises primitives. The frontend `JSON.stringify`s the conditions array before putting it in the URL; the backend `JSON.parse`s it (and validates field names) on the server side.
+
+Update `loaderDeps` to forward the new params so the loader re-runs when they change:
+
+```ts
+loaderDeps: ({ search: { page, pageSize, sortBy, sortOrder, filters, filterLogic } }) => ({
+  page, pageSize, sortBy, sortOrder, filters, filterLogic,
+}),
+```
+
+Pass them to the suspense hook too:
+
+```ts
+const { data: xxxResponse } = useGetXxxsSuspense({ page, pageSize, sortBy, sortOrder, filters, filterLogic })
+```
+
+### `LogicalFilterForm` component (`@helix/ui`)
+
+The reusable filter UI lives in `packages/ui`. Import `LogicalFilterForm`, `FilterFieldDef`, and `LogicalFilterValue` from `@helix/ui`.
+
+**Define filter fields** in the list file (module-specific):
+
+```ts
+const XXX_FILTER_FIELDS: FilterFieldDef[] = [
+  { name: 'title',  label: 'Title',  type: 'text' },
+  { name: 'status', label: 'Status', type: 'select',
+    options: [{ value: 'active', label: 'Active' }, { value: 'archived', label: 'Archived' }] },
+  { name: 'date',   label: 'Date',   type: 'date' },
+]
+```
+
+Supported `type` values: `'text'` | `'number'` | `'boolean'` | `'date'` | `'select'`. The `name` values must match the field names declared in `XXX_FILTER_FIELDS` on the backend (`apps/api/src/modules/xxx/xxx-schema.ts`).
+
+**State and handlers** in the list component:
+
+```ts
+const [filtersOpen, setFiltersOpen] = useState(false)
+const { ..., filters, filterLogic } = xxxListRoute.useSearch()
+
+// Auto-open the panel when the page loads with active filters (e.g. bookmarked URL)
+useEffect(() => {
+  if (filters) setFiltersOpen(true)
+}, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+const filterValue: LogicalFilterValue = {
+  conditions: filters ? (JSON.parse(filters) as LogicalFilterValue['conditions']) : [],
+  logic: filterLogic,
+}
+const activeFilterCount = filterValue.conditions.length
+
+const handleApplyFilters = (value: LogicalFilterValue) => {
+  const hasFilters = value.conditions.length > 0
+  navigate({
+    search: (prev) => ({
+      ...prev,
+      filters: hasFilters ? JSON.stringify(value.conditions) : undefined,
+      filterLogic: value.logic,
+      page: 1,   // always reset to page 1 when filters change
+    }),
+  })
+  if (!hasFilters) setFiltersOpen(false)
+}
+```
+
+**Filters button** (add to `PageList` `actions`, before the Create button):
+
+```tsx
+<Button
+  variant={activeFilterCount > 0 ? 'light' : 'default'}
+  leftSection={<IconFilter size={16} />}
+  onClick={() => setFiltersOpen((o) => !o)}
+  rightSection={
+    activeFilterCount > 0 ? (
+      <Badge size="xs" circle>{activeFilterCount}</Badge>
+    ) : undefined
+  }
+>
+  Filters
+</Button>
+```
+
+**Filter panel** (between `PageList` header and `DataTable`):
+
+```tsx
+<Collapse expanded={filtersOpen}>
+  <Paper withBorder p="md" mb="md">
+    <LogicalFilterForm
+      key={filters ?? ''}
+      fields={XXX_FILTER_FIELDS}
+      value={filterValue}
+      onApply={handleApplyFilters}
+    />
+  </Paper>
+</Collapse>
+```
+
+The `key={filters ?? ''}` causes the form to remount whenever the active filter string changes (e.g. browser back/forward), so the form stays in sync with the URL.
+
+### Tests
+
+Add a `describe('Filter panel')` block to the list test file. Required cases:
+
+| Test | What to verify |
+|------|----------------|
+| No active filters | Filters button renders with no badge |
+| Click Filters | Panel opens (find `'Add filter'` button asynchronously) |
+| Click Filters again | Panel closes |
+| `useSearch` returns active filters | Badge shows correct count (scope with `within(filtersBtn)` to avoid pagination collisions) |
+| Page loads with active filters | Panel auto-opens |
+| Click Add filter | A condition row appears |
+| Fill value + click Apply | `navigate` called with JSON-encoded `filters` and `page: 1` |
+| Click Clear | `navigate` called with `filters: undefined` and `page: 1` |
+
+Always use `findByRole` (async) for assertions after click — Mantine's `Collapse` animation is asynchronous. Use `within(filtersBtn).getByText('1')` for badge assertions to avoid false matches from pagination controls.
+
+See `apps/web/src/modules/todos/routes/todos-list.test.tsx` → `describe('Filter panel')` for the reference implementation.
+
+---
+
 ## Auth
 
 `src/core/auth/` contains the full auth layer:

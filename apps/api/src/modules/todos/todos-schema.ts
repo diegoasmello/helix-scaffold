@@ -1,5 +1,6 @@
 import z from 'zod'
 
+import { filterQuerySchema } from '@/lib/filtering'
 import {
   paginatedResponseSchema,
   paginationQuerySchema,
@@ -47,9 +48,19 @@ export const TODO_SORT_COLUMNS = [
 ] as const
 export type TodoSortColumn = (typeof TODO_SORT_COLUMNS)[number]
 
+export const TODO_FILTER_FIELDS = [
+  'title',
+  'description',
+  'status',
+  'date',
+] as const
+export type TodoFilterField = (typeof TODO_FILTER_FIELDS)[number]
+
 export const todosSortingSchema = sortingQuerySchema([...TODO_SORT_COLUMNS])
-export const todosListQuerySchema =
-  paginationQuerySchema.merge(todosSortingSchema)
+export const todosFilterQuerySchema = filterQuerySchema([...TODO_FILTER_FIELDS])
+export const todosListQuerySchema = paginationQuerySchema
+  .merge(todosSortingSchema)
+  .merge(todosFilterQuerySchema)
 export type TodosListQuery = z.infer<typeof todosListQuerySchema>
 
 export type CreateTodoInput = z.infer<typeof createTodoSchema>

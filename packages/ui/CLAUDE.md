@@ -39,16 +39,86 @@ theme helper         →  createTheme (from ./theme)
 
 ## Component groups
 
-| Group         | Files                                                | Purpose                                                           |
-| ------------- | ---------------------------------------------------- | ----------------------------------------------------------------- |
-| App shell     | `layout`, `header`, `sidebar`, `user-menu`           | Full-page scaffold rendered by `apps/web`                         |
-| Page wrappers | `page-list`, `page-create`, `page-edit`, `page-view` | Standard CRUD screen layouts                                      |
-| Data display  | `data-table`, `labeled-value`                        | Paginated/sortable table; label + value pair used in detail views |
-| Forms         | `form`                                               | `<Form>` wrapper that handles `useForm` submission and validation |
-| Feedback      | `modals/confirm`, `notifications/notify`             | `confirm()` dialog helper; `notify()` toast helper                |
-| Rich text     | `rich-text-editor`, `rich-text-renderer`             | Tiptap-based editor and read-only renderer                        |
-| Misc          | `language-picker`                                    | Language selection dropdown                                       |
-| Theme         | `theme/index.ts`                                     | `createTheme()` — sets font defaults, accepts Mantine overrides   |
+| Group          | Files                                                | Purpose                                                           |
+| -------------- | ---------------------------------------------------- | ----------------------------------------------------------------- |
+| App shell      | `layout`, `header`, `sidebar`, `user-menu`           | Full-page scaffold rendered by `apps/web`                         |
+| Page wrappers  | `page-list`, `page-create`, `page-edit`, `page-view` | Standard CRUD screen layouts                                      |
+| Data display   | `data-table`, `labeled-value`                        | Paginated/sortable table; label + value pair used in detail views |
+| Forms          | `form`                                               | `<Form>` wrapper that handles `useForm` submission and validation |
+| Filtering      | `logical-filter`                                     | `LogicalFilterForm` — combinable field conditions with AND/OR     |
+| Feedback       | `modals/confirm`, `notifications/notify`             | `confirm()` dialog helper; `notify()` toast helper                |
+| Rich text      | `rich-text-editor`, `rich-text-renderer`             | Tiptap-based editor and read-only renderer                        |
+| Misc           | `language-picker`                                    | Language selection dropdown                                       |
+| Theme          | `theme/index.ts`                                     | `createTheme()` — sets font defaults, accepts Mantine overrides   |
+
+## `LogicalFilterForm` component
+
+Reusable filter panel that lets users combine one or more field conditions with AND/OR logic. Used in list screens above the `DataTable`. Exports from `@helix/ui` (via `./logical-filter`):
+
+```ts
+import {
+  LogicalFilterForm,
+  type FilterFieldDef,
+  type FilterFieldType,
+  type FilterCondition,
+  type LogicalFilterValue,
+  type LogicalFilterFormProps,
+} from '@helix/ui'
+```
+
+**Types:**
+
+```ts
+type FilterFieldType = 'text' | 'number' | 'boolean' | 'date' | 'select'
+
+interface FilterFieldDef<T extends string = string> {
+  name: T
+  label: string
+  type: FilterFieldType
+  options?: Array<{ value: string; label: string }>  // only for 'select' type
+}
+
+interface FilterCondition {
+  field: string
+  op: string
+  value?: string | number | boolean | null | string[]
+}
+
+interface LogicalFilterValue {
+  conditions: FilterCondition[]
+  logic: 'AND' | 'OR'
+}
+```
+
+**Props:**
+
+```ts
+interface LogicalFilterFormProps<T extends string = string> {
+  fields: FilterFieldDef<T>[]   // filterable columns for this module
+  value: LogicalFilterValue      // current filter state (from URL params)
+  onApply: (value: LogicalFilterValue) => void  // called on Apply and on Clear
+}
+```
+
+**Behaviour:**
+
+- The form state is strings internally; values are coerced to the correct type (`number`, `boolean`) on submit before `onApply` is called
+- `isNull` / `isNotNull` operators hide the value input and omit `value` from the condition
+- Clicking **Clear** calls `onApply({ logic: 'AND', conditions: [] })` — the parent is responsible for updating the URL
+- Clicking **Apply** with conditions that have no value set silently skips them
+- Uses `<Form blockNavitationOnDirty={false}>` — never blocks navigation
+
+**Value input rendered per type:**
+
+| type | Input component | Notes |
+|------|-----------------|-------|
+| `text` | `TextInput` | |
+| `number` | `NumberInput` | Stored as string in form; coerced on submit |
+| `date` | `DateInput` | Value is ISO date string; `onChange` returns `string \| null` in Mantine v9 |
+| `select` | `Select` | Uses `field.options` |
+| `boolean` | `Select` | Yes / No options; coerced to `true`/`false` on submit |
+
+**Mantine v9 `DateInput` gotcha**: `onChange` returns `DateStringValue | null` (a string), not `Date | null`. Do not call `.toISOString()` on it. The value prop also accepts `string | null`, not `Date | null`.
 
 ## Props convention
 

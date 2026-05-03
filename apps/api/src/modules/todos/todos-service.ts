@@ -2,6 +2,7 @@ import { asc, count, desc, eq } from 'drizzle-orm'
 
 import type { Database } from '@/db'
 import { todos } from '@/db/schema'
+import { buildFilterWhereClause } from '@/lib/filtering'
 import { getPaginationParams } from '@/lib/pagination'
 
 import type {
@@ -17,20 +18,38 @@ const SORT_COLUMNS = {
   createdAt: todos.createdAt,
 } as const
 
+const FILTER_COLUMNS = {
+  title: todos.title,
+  description: todos.description,
+  status: todos.status,
+  date: todos.date,
+} as const
+
+const FILTER_COERCE = {
+  date: (v: unknown) => (typeof v === 'string' ? new Date(v) : v),
+} as const
+
 export function createTodosService(database: Database) {
   async function list(query: TodosListQuery) {
     const { limit, offset } = getPaginationParams(query.page, query.pageSize)
     const sortCol = SORT_COLUMNS[query.sortBy ?? 'createdAt']
     const sortFn = query.sortOrder === 'desc' ? desc : asc
+    const where = buildFilterWhereClause(
+      query.filters,
+      query.filterLogic,
+      FILTER_COLUMNS,
+      FILTER_COERCE
+    )
 
     const [data, [{ total }]] = await Promise.all([
       database
         .select()
         .from(todos)
+        .where(where)
         .orderBy(sortFn(sortCol))
         .limit(limit)
         .offset(offset),
-      database.select({ total: count() }).from(todos),
+      database.select({ total: count() }).from(todos).where(where),
     ])
     return { data, total }
   }

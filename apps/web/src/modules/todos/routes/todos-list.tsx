@@ -8,32 +8,65 @@ import {
   ActionIcon,
   Badge,
   Button,
+  Collapse,
   confirm,
   DataTable,
   type DataTableColumn,
+  type FilterFieldDef,
   getDataTablePaginationProps,
   getDataTableSortingProps,
   Group,
+  LogicalFilterForm,
+  type LogicalFilterValue,
   notify,
+  Paper,
 } from '@helix/ui'
-import { IconEdit, IconEye, IconPlus, IconTrash } from '@helix/ui'
+import { IconEdit, IconEye, IconFilter, IconPlus, IconTrash } from '@helix/ui'
 import { PageList } from '@helix/ui'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useState } from 'react'
 
 import type { TodoItem } from '../types'
 import { todoListRoute } from '.'
 
+const TODO_FILTER_FIELDS: FilterFieldDef[] = [
+  { name: 'title', label: 'Title', type: 'text' },
+  { name: 'description', label: 'Description', type: 'text' },
+  {
+    name: 'status',
+    label: 'Status',
+    type: 'select',
+    options: [
+      { value: 'pending', label: 'Pending' },
+      { value: 'completed', label: 'Completed' },
+    ],
+  },
+  { name: 'date', label: 'Date', type: 'date' },
+]
+
 export function TodoList() {
   const navigate = todoListRoute.useNavigate()
   const search = todoListRoute.useSearch()
-  const { page, pageSize, sortBy, sortOrder } = search
+  const { page, pageSize, sortBy, sortOrder, filters, filterLogic } = search
   const queryClient = useQueryClient()
+
+  const [filtersOpen, setFiltersOpen] = useState<boolean>(!!filters)
+
+  const filterValue: LogicalFilterValue = {
+    conditions: filters
+      ? (JSON.parse(filters) as LogicalFilterValue['conditions'])
+      : [],
+    logic: filterLogic,
+  }
+  const activeFilterCount = filterValue.conditions.length
 
   const { data: todosResponse } = useGetTodosSuspense({
     page,
     pageSize,
     sortBy,
     sortOrder,
+    filters,
+    filterLogic,
   })
 
   const paginationProps = getDataTablePaginationProps(
@@ -66,6 +99,19 @@ export function TodoList() {
       confirmLabel: 'Delete',
       onConfirm: () => deleteTodo(id),
     })
+  }
+
+  const handleApplyFilters = (value: LogicalFilterValue) => {
+    const hasFilters = value.conditions.length > 0
+    navigate({
+      search: (prev) => ({
+        ...prev,
+        filters: hasFilters ? JSON.stringify(value.conditions) : undefined,
+        filterLogic: value.logic,
+        page: 1,
+      }),
+    })
+    if (!hasFilters) setFiltersOpen(false)
   }
 
   const columns: DataTableColumn<TodoItem>[] = [
@@ -139,14 +185,40 @@ export function TodoList() {
     <PageList
       title="Todos"
       actions={
-        <Button
-          leftSection={<IconPlus size={16} />}
-          onClick={() => navigate({ to: '/todos/create' })}
-        >
-          Create
-        </Button>
+        <Group gap="xs">
+          <Button
+            variant={activeFilterCount > 0 ? 'light' : 'default'}
+            leftSection={<IconFilter size={16} />}
+            onClick={() => setFiltersOpen((o) => !o)}
+            rightSection={
+              activeFilterCount > 0 ? (
+                <Badge size="xs" circle>
+                  {activeFilterCount}
+                </Badge>
+              ) : undefined
+            }
+          >
+            Filters
+          </Button>
+          <Button
+            leftSection={<IconPlus size={16} />}
+            onClick={() => navigate({ to: '/todos/create' })}
+          >
+            Create
+          </Button>
+        </Group>
       }
     >
+      <Collapse expanded={filtersOpen}>
+        <Paper withBorder p="md" mb="md">
+          <LogicalFilterForm
+            key={filters ?? ''}
+            fields={TODO_FILTER_FIELDS}
+            value={filterValue}
+            onApply={handleApplyFilters}
+          />
+        </Paper>
+      </Collapse>
       <DataTable
         records={todosResponse.data}
         columns={columns}

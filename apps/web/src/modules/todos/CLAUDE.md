@@ -79,13 +79,13 @@ date:        required (null → 'Required')
 | `todoDetailRoute` | `/todos/$id`      | `todos:view`   |
 | `todoEditRoute`   | `/todos/$id/edit` | `todos:edit`   |
 
-`todoListRoute` has `validateSearch` with: `page` (default 1), `pageSize` (default 10), `sortBy` (enum: `title | status | date | createdAt`, optional), `sortOrder` (default `'desc'`).
+`todoListRoute` has `validateSearch` with: `page` (default 1), `pageSize` (default 10), `sortBy` (enum: `title | status | date | createdAt`, optional), `sortOrder` (default `'desc'`), `filters` (JSON string, optional), `filterLogic` (`'AND' | 'OR'`, default `'AND'`).
 
 `loaderDeps` forwards all four params so the loader re-runs on search changes.
 
 ## Data fetching hooks
 
-- List: `useGetTodosSuspense({ page, pageSize, sortBy, sortOrder })`
+- List: `useGetTodosSuspense({ page, pageSize, sortBy, sortOrder, filters, filterLogic })`
 - Detail/Edit: `useGetTodosIdSuspense(id)`
 - Loaders use `getTodosSuspenseQueryOptions(deps)` and `getTodosIdSuspenseQueryOptions(id)`
 
@@ -102,6 +102,21 @@ Inline in each component — no `hooks.ts`. Cache operations in `useMutation.onS
 ```ts
 { label: 'Todos', icon: IconChecklist, to: '/todos', permission: { resource: 'todos', action: 'view' } }
 ```
+
+## Filtering
+
+`TodoList` has a collapsible filter panel. The filter fields and their backend equivalents:
+
+| `FilterFieldDef.name` | Type | Backend column (`todos-schema.ts`) |
+|-----------------------|------|-------------------------------------|
+| `title` | `text` | `todos.title` |
+| `description` | `text` | `todos.description` |
+| `status` | `select` | `todos.status` |
+| `date` | `date` | `todos.date` (needs `FILTER_COERCE` — see `todos-service.ts`) |
+
+The `date` column is a `timestamp` in Postgres; the filter value arrives as an ISO string. `FILTER_COERCE` in `todos-service.ts` converts it with `new Date(v)` before passing to Drizzle.
+
+See `apps/web/CLAUDE.md` → _Filtering_ and `apps/api/CLAUDE.md` → _Filtering_ for the full implementation guide.
 
 ## Notes
 
