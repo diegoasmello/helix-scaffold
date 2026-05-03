@@ -11,7 +11,7 @@ export function RolesDetail() {
 
   return (
     <PageView
-      title={item.name}
+      title="View Role"
       actions={
         <Button variant="light" onClick={() => navigate({ to: '/roles' })}>
           Back
@@ -19,6 +19,11 @@ export function RolesDetail() {
       }
     >
       <Grid>
+        <Grid.Col span={12}>
+          <LabeledValue label="Name">
+            <Text size="md">{item.name}</Text>
+          </LabeledValue>
+        </Grid.Col>
         <Grid.Col span={12}>
           <LabeledValue label="Description">
             <Text size="md">{item.description}</Text>

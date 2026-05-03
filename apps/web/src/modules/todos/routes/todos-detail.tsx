@@ -12,7 +12,7 @@ export function TodoDetail() {
 
   return (
     <PageView
-      title={item.title}
+      title="View Todo"
       actions={
         <Button variant="light" onClick={() => navigate({ to: '/todos' })}>
           Back
@@ -20,6 +20,11 @@ export function TodoDetail() {
       }
     >
       <Grid>
+        <Grid.Col span={12}>
+          <LabeledValue label="Title">
+            <Text size="md">{item.title}</Text>
+          </LabeledValue>
+        </Grid.Col>
         <Grid.Col span={12}>
           <LabeledValue label="Description">
             <Text size="md">{item.description}</Text>

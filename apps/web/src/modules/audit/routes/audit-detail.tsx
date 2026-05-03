@@ -22,7 +22,7 @@ export function AuditDetail() {
 
   return (
     <PageView
-      title={`${log.resource} — ${log.action}`}
+      title="View Audit Log"
       actions={
         <Button variant="light" onClick={() => navigate({ to: '/audit' })}>
           Back

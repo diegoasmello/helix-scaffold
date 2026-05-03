@@ -11,7 +11,7 @@ export function UsersDetail() {
 
   return (
     <PageView
-      title={item.name}
+      title="View User"
       actions={
         <Button variant="light" onClick={() => navigate({ to: '/users' })}>
           Back
@@ -19,6 +19,11 @@ export function UsersDetail() {
       }
     >
       <Grid>
+        <Grid.Col span={{ base: 12, sm: 6 }}>
+          <LabeledValue label="Name">
+            <Text size="md">{item.name}</Text>
+          </LabeledValue>
+        </Grid.Col>
         <Grid.Col span={{ base: 12, sm: 6 }}>
           <LabeledValue label="Email">
             <Text size="md">{item.email}</Text>
