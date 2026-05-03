@@ -118,3 +118,13 @@ export function MyComponent(props: Readonly<MyComponentProps>) {
 ```
 
 Never destructure directly in the function signature.
+
+Always leave a blank line after the props destructuring before the rest of the function body:
+
+```ts
+export function MyComponent(props: Readonly<MyComponentProps>) {
+  const { foo, bar } = props;
+
+  return <div />;
+}
+```
