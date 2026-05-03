@@ -1,13 +1,39 @@
-import { eq } from 'drizzle-orm'
+import { asc, count, desc, eq } from 'drizzle-orm'
 
 import type { Database } from '@/db'
 import { roles, user } from '@/db/schema'
+import { getPaginationParams } from '@/lib/pagination'
 
-import type { CreateRoleInput, UpdateRoleInput } from './roles-schema'
+import type {
+  CreateRoleInput,
+  RolesListQuery,
+  UpdateRoleInput,
+} from './roles-schema'
+
+const SORT_COLUMNS = {
+  name: roles.name,
+  createdAt: roles.createdAt,
+} as const
 
 export function createRolesService(database: Database) {
-  async function list() {
-    return database.select().from(roles)
+  async function list(query: RolesListQuery) {
+    const { limit, offset } = getPaginationParams(query.page, query.pageSize)
+    const sortCol = SORT_COLUMNS[query.sortBy ?? 'createdAt']
+    const sortFn = query.sortOrder === 'desc' ? desc : asc
+    const [data, [{ total }]] = await Promise.all([
+      database
+        .select()
+        .from(roles)
+        .orderBy(sortFn(sortCol))
+        .limit(limit)
+        .offset(offset),
+      database.select({ total: count() }).from(roles),
+    ])
+    return { data, total }
+  }
+
+  async function listAll() {
+    return database.select().from(roles).orderBy(asc(roles.name))
   }
 
   async function getById(id: string) {
@@ -42,7 +68,7 @@ export function createRolesService(database: Database) {
     await database.delete(roles).where(eq(roles.id, id))
   }
 
-  return { list, getById, hasUsers, create, update, remove }
+  return { list, listAll, getById, hasUsers, create, update, remove }
 }
 
 export type RolesService = ReturnType<typeof createRolesService>

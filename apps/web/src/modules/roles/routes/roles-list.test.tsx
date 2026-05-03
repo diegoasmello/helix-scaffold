@@ -1,4 +1,5 @@
 import {
+  createPaginatedRoles,
   createRole,
   deleteRolesIdHandler,
   deleteRolesIdHandlerResponse204,
@@ -16,7 +17,10 @@ import { server } from '../../../mocks/server'
 import { RolesList } from './roles-list'
 
 vi.mock('.', () => ({
-  rolesListRoute: { useNavigate: () => vi.fn() },
+  rolesListRoute: {
+    useNavigate: () => vi.fn(),
+    useSearch: () => ({ page: 1, pageSize: 10, sortOrder: 'desc' }),
+  },
 }))
 
 vi.mock('../../../lib/authentication', () => ({
@@ -64,7 +68,15 @@ function renderRolesList() {
 
 beforeEach(() => {
   server.use(
-    getRolesHandler(mockRoles),
+    getRolesHandler(
+      createPaginatedRoles({
+        data: mockRoles,
+        total: mockRoles.length,
+        page: 1,
+        pageSize: 10,
+        totalPages: 1,
+      })
+    ),
     getMePermissionsHandler({
       grants: { roles: ['view', 'create', 'edit', 'delete'] },
     })

@@ -1,5 +1,5 @@
 import {
-  useGetRolesSuspense,
+  useGetRolesAllSuspense,
   useGetUsersIdSuspense,
 } from '@helix/api-client/hooks'
 import { Button, Grid, LabeledValue, PageView, Text } from '@helix/ui'
@@ -11,7 +11,7 @@ export function UsersDetail() {
   const navigate = usersDetailRoute.useNavigate()
 
   const { data: item } = useGetUsersIdSuspense(id)
-  const { data: roles } = useGetRolesSuspense()
+  const { data: roles } = useGetRolesAllSuspense()
 
   const roleName = item.roleId
     ? (roles.find((r) => r.id === item.roleId)?.name ?? item.roleId)

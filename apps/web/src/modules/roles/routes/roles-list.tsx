@@ -8,22 +8,40 @@ import {
   ActionIcon,
   Button,
   confirm,
+  DataTable,
+  type DataTableColumn,
+  getDataTablePaginationProps,
+  getDataTableSortingProps,
   Group,
   notify,
   PageList,
-  Table,
 } from '@helix/ui'
 import { IconEdit, IconEye, IconPlus, IconTrash } from '@helix/ui'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 
 import { HasPermission } from '../../auth/components/has-permission'
+import type { RoleItem } from '../types'
 import { rolesListRoute } from '.'
 
 export function RolesList() {
   const queryClient = useQueryClient()
   const navigate = rolesListRoute.useNavigate()
+  const search = rolesListRoute.useSearch()
+  const { page, pageSize, sortBy, sortOrder } = search
 
-  const { data: roles } = useGetRolesSuspense()
+  const { data: rolesResponse } = useGetRolesSuspense({
+    page,
+    pageSize,
+    sortBy,
+    sortOrder,
+  })
+
+  const paginationProps = getDataTablePaginationProps(
+    rolesResponse,
+    search,
+    navigate
+  )
+  const sortingProps = getDataTableSortingProps(search, navigate)
 
   const { mutate: deleteRole } = useMutation({
     mutationFn: (id: string) => deleteRolesId(id),
@@ -50,12 +68,16 @@ export function RolesList() {
     })
   }
 
-  const rows = roles.map((item) => (
-    <Table.Tr key={item.id}>
-      <Table.Td>{item.name}</Table.Td>
-      <Table.Td>{item.description}</Table.Td>
-      <Table.Td>{item.createdAt}</Table.Td>
-      <Table.Td>
+  const columns: DataTableColumn<RoleItem>[] = [
+    { accessor: 'name', title: 'Name', sortable: true },
+    { accessor: 'description', title: 'Description' },
+    { accessor: 'createdAt', title: 'Created At', sortable: true },
+    {
+      accessor: 'actions',
+      title: 'Actions',
+      textAlign: 'center',
+      width: 124,
+      render: (item) => (
         <Group gap="xs">
           <ActionIcon
             variant="light"
@@ -88,9 +110,9 @@ export function RolesList() {
             </ActionIcon>
           </HasPermission>
         </Group>
-      </Table.Td>
-    </Table.Tr>
-  ))
+      ),
+    },
+  ]
 
   return (
     <PageList
@@ -106,17 +128,12 @@ export function RolesList() {
         </HasPermission>
       }
     >
-      <Table verticalSpacing="sm" withTableBorder highlightOnHover>
-        <Table.Thead>
-          <Table.Tr>
-            <Table.Th>Name</Table.Th>
-            <Table.Th>Description</Table.Th>
-            <Table.Th>Created At</Table.Th>
-            <Table.Th>Actions</Table.Th>
-          </Table.Tr>
-        </Table.Thead>
-        <Table.Tbody>{rows}</Table.Tbody>
-      </Table>
+      <DataTable
+        records={rolesResponse.data}
+        columns={columns}
+        {...paginationProps}
+        {...sortingProps}
+      />
     </PageList>
   )
 }

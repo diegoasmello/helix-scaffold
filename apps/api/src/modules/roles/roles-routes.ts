@@ -2,7 +2,14 @@ import z from 'zod'
 
 import type { Database } from '../../db'
 import type { FastifyTypedInstance, RequirePermission } from '../../types'
-import { createRoleSchema, roleSchema, updateRoleSchema } from './roles-schema'
+import { buildPaginatedResponse } from '@/lib/pagination'
+import {
+  createRoleSchema,
+  paginatedRolesSchema,
+  roleSchema,
+  rolesListQuerySchema,
+  updateRoleSchema,
+} from './roles-schema'
 import { createRolesService } from './roles-service'
 
 export async function rolesRoutes(
@@ -20,11 +27,28 @@ export async function rolesRoutes(
       schema: {
         tags: ['roles'],
         description: 'List roles',
+        querystring: rolesListQuerySchema,
+        response: { 200: paginatedRolesSchema },
+      },
+      preHandler: requirePermission('roles', 'view'),
+    },
+    async (request) => {
+      const { data, total } = await service.list(request.query)
+      return buildPaginatedResponse(data, total, request.query)
+    }
+  )
+
+  app.get(
+    '/roles/all',
+    {
+      schema: {
+        tags: ['roles'],
+        description: 'List all roles without pagination',
         response: { 200: z.array(roleSchema) },
       },
       preHandler: requirePermission('roles', 'view'),
     },
-    async () => service.list()
+    async () => service.listAll()
   )
 
   app.get(

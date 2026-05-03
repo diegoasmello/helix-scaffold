@@ -1,11 +1,11 @@
-import { useGetRolesSuspense } from '@helix/api-client/hooks'
+import { useGetRolesAllSuspense } from '@helix/api-client/hooks'
 import { Center, Loader, PageList, Select, Text } from '@helix/ui'
 import { Suspense, useState } from 'react'
 
 import { PermissionsEditor } from '../components/permissions-editor'
 
 export function Permissions() {
-  const { data: roles } = useGetRolesSuspense()
+  const { data: roles } = useGetRolesAllSuspense()
   const [selectedRoleId, setSelectedRoleId] = useState<string | null>(null)
 
   return (

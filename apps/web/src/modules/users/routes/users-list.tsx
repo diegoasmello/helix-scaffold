@@ -2,7 +2,7 @@ import {
   deleteUsersId,
   getUsersIdSuspenseQueryKey,
   getUsersSuspenseQueryKey,
-  useGetRolesSuspense,
+  useGetRolesAllSuspense,
   useGetUsersSuspense,
 } from '@helix/api-client/hooks'
 import {
@@ -25,7 +25,7 @@ export function UsersList() {
   const navigate = usersListRoute.useNavigate()
 
   const { data: users } = useGetUsersSuspense()
-  const { data: roles } = useGetRolesSuspense()
+  const { data: roles } = useGetRolesAllSuspense()
 
   const { mutate: deleteUser } = useMutation({
     mutationFn: (id: string) => deleteUsersId(id),

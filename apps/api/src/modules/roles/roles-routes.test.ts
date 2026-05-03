@@ -44,17 +44,20 @@ function filterTestRole(roles: { name: string }[]) {
 }
 
 describe('GET /roles', () => {
-  it('returns empty array when no application roles exist', async () => {
+  it('returns empty paginated response when no application roles exist', async () => {
     const res = await app.inject({
       method: 'GET',
       url: '/roles',
       headers: { cookie: authCookie },
     })
     expect(res.statusCode).toBe(200)
-    expect(filterTestRole(res.json())).toEqual([])
+    const body = res.json()
+    expect(filterTestRole(body.data)).toEqual([])
+    expect(body.page).toBe(1)
+    expect(body.pageSize).toBe(10)
   })
 
-  it('returns all roles', async () => {
+  it('returns all roles in paginated response', async () => {
     await testDb.insert(roles).values([
       { name: 'admin', description: 'Administrator' },
       { name: 'viewer', description: 'Read-only user' },
@@ -66,10 +69,83 @@ describe('GET /roles', () => {
       headers: { cookie: authCookie },
     })
     expect(res.statusCode).toBe(200)
+    const body = res.json()
+    const data = filterTestRole(body.data)
+    expect(data).toHaveLength(2)
+    expect(body.total).toBeGreaterThanOrEqual(2)
+    expect(body.page).toBe(1)
+    expect(body.pageSize).toBe(10)
+  })
+
+  it('applies page and pageSize correctly', async () => {
+    await testDb.insert(roles).values([
+      { name: 'role-a' },
+      { name: 'role-b' },
+      { name: 'role-c' },
+    ])
+
+    const res = await app.inject({
+      method: 'GET',
+      url: '/roles?page=2&pageSize=2&sortBy=name&sortOrder=asc',
+      headers: { cookie: authCookie },
+    })
+    expect(res.statusCode).toBe(200)
+    const body = res.json()
+    expect(body.page).toBe(2)
+    expect(body.pageSize).toBe(2)
+    // Page 2 with pageSize 2 and sortBy name asc: third item (role-c) plus possibly __test_admin__
+    expect(body.data).toHaveLength(2)
+  })
+
+  it('sorts by name in descending order', async () => {
+    await testDb.insert(roles).values([
+      { name: 'alpha' },
+      { name: 'zeta' },
+      { name: 'beta' },
+    ])
+
+    const res = await app.inject({
+      method: 'GET',
+      url: '/roles?sortBy=name&sortOrder=desc',
+      headers: { cookie: authCookie },
+    })
+    expect(res.statusCode).toBe(200)
+    const body = filterTestRole(res.json().data)
+    expect(body[0].name).toBe('zeta')
+    expect(body[1].name).toBe('beta')
+    expect(body[2].name).toBe('alpha')
+  })
+})
+
+describe('GET /roles/all', () => {
+  it('returns empty array when no application roles exist', async () => {
+    const res = await app.inject({
+      method: 'GET',
+      url: '/roles/all',
+      headers: { cookie: authCookie },
+    })
+    expect(res.statusCode).toBe(200)
+    expect(filterTestRole(res.json())).toEqual([])
+  })
+
+  it('returns all roles sorted by name', async () => {
+    await testDb.insert(roles).values([
+      { name: 'zeta' },
+      { name: 'alpha' },
+      { name: 'beta' },
+    ])
+
+    const res = await app.inject({
+      method: 'GET',
+      url: '/roles/all',
+      headers: { cookie: authCookie },
+    })
+    expect(res.statusCode).toBe(200)
     const body = filterTestRole(res.json())
-    expect(body).toHaveLength(2)
-    expect(body[0].name).toBe('admin')
-    expect(body[1].name).toBe('viewer')
+    expect(body).toHaveLength(3)
+    expect(body[0].name).toBe('alpha')
+    expect(body[1].name).toBe('beta')
+    expect(body[2].name).toBe('zeta')
   })
 })
 

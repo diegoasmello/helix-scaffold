@@ -4,7 +4,7 @@ import {
   deleteUsersIdHandler,
   deleteUsersIdHandlerResponse204,
   getMePermissionsHandler,
-  getRolesHandler,
+  getRolesAllHandler,
   getUsersHandler,
 } from '@helix/api-client/mocks'
 import { MantineProvider, ModalsProvider } from '@helix/ui'
@@ -79,7 +79,7 @@ function renderUsersList() {
 beforeEach(() => {
   server.use(
     getUsersHandler(mockUsers),
-    getRolesHandler(mockRoles),
+    getRolesAllHandler(mockRoles),
     getMePermissionsHandler({
       grants: { users: ['view', 'create', 'edit', 'delete'] },
     })

@@ -1,5 +1,6 @@
 import {
   createGetMe200,
+  createPaginatedRoles,
   createPaginatedTodos,
   createRole,
   createTodo,
@@ -19,6 +20,7 @@ import {
   getMePermissionsHandler,
   getPermissionsResourcesHandler,
   getRolesHandler,
+  getRolesAllHandler,
   getRolesIdHandler,
   getRolesIdHandlerResponse404,
   getRolesIdPermissionsHandler,
@@ -74,7 +76,10 @@ export const handlers = [
   deleteTodosIdHandler(() => deleteTodosIdHandlerResponse204()),
 
   // Roles
-  getRolesHandler([]),
+  getRolesHandler(
+    createPaginatedRoles({ data: [], total: 0, page: 1, pageSize: 10, totalPages: 0 })
+  ),
+  getRolesAllHandler([]),
   getRolesIdHandler(() =>
     getRolesIdHandlerResponse404({ message: 'Not found' })
   ),

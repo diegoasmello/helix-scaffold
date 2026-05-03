@@ -3,6 +3,7 @@ import {
   getRolesSuspenseQueryOptions,
 } from '@helix/api-client/hooks'
 import { createRoute, redirect } from '@tanstack/react-router'
+import { z } from 'zod'
 
 import { authenticatedRoute } from '@/routes'
 
@@ -25,7 +26,20 @@ export const rolesListRoute = createRoute({
   beforeLoad: ({ context }) => {
     if (!context.hasPermission('roles', 'view')) throw redirect({ to: '/403' })
   },
-  loader: () => queryClient.ensureQueryData(getRolesSuspenseQueryOptions()),
+  validateSearch: z.object({
+    page: z.number().int().min(1).default(1),
+    pageSize: z.number().int().min(1).max(100).default(10),
+    sortBy: z.enum(['name', 'createdAt']).optional(),
+    sortOrder: z.enum(['asc', 'desc']).default('desc'),
+  }),
+  loaderDeps: ({ search: { page, pageSize, sortBy, sortOrder } }) => ({
+    page,
+    pageSize,
+    sortBy,
+    sortOrder,
+  }),
+  loader: ({ deps }) =>
+    queryClient.ensureQueryData(getRolesSuspenseQueryOptions(deps)),
 })
 
 export const rolesCreateRoute = createRoute({
