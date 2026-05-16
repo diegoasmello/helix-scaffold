@@ -12,15 +12,15 @@ export function PageView(props: Readonly<PageViewProps>) {
   const { title, actions, children, footerActions } = props
 
   return (
-    <Flex direction="column" gap="md">
+    <Flex direction="column" gap="lg">
       <Group justify="space-between" align="center">
-        <Title order={1}>{title}</Title>
+        <Title order={2}>{title}</Title>
         {actions}
       </Group>
       {children}
       {footerActions && (
         <>
-          <Divider />
+          <Divider my="xl" />
           {footerActions}
         </>
       )}

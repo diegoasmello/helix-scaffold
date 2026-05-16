@@ -58,7 +58,7 @@ const useStyles = createStyles((theme, _, u) => ({
       background-color: ${theme.white};
     }
     ${u.dark} {
-      background-color: ${theme.colors.dark[6]};
+      background-color: ${theme.colors.dark[7]};
     }
   `,
   scrollArea: css`
@@ -82,7 +82,7 @@ const useStyles = createStyles((theme, _, u) => ({
     padding: ${theme.spacing.xs} ${theme.spacing.md};
     padding-left: 20px;
     ${u.light} {
-      color: ${theme.colors.dark[3]};
+      color: ${theme.colors.gray[6]};
     }
     ${u.dark} {
       color: ${theme.colors.dark[3]};

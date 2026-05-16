@@ -8,6 +8,7 @@ import '@mantine/notifications/styles.css'
 import 'mantine-datatable/styles.css'
 import '@fontsource-variable/inter'
 import '@fontsource-variable/plus-jakarta-sans'
+import './global.css'
 
 export * from './components'
 export * from './hooks'

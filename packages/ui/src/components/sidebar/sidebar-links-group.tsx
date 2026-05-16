@@ -68,13 +68,12 @@ export function SidebarLinksGroup(props: Readonly<SidebarLinksGroupProps>) {
               active={isGroupActive}
             />
             <IconChevronRight
-              className={classes.chevron}
+              className={cx(classes.chevron, {
+                [classes.chevronActive]: isGroupActive,
+              })}
               stroke={1.5}
               size={16}
-              style={{
-                transform: opened ? 'rotate(-90deg)' : 'none',
-                color: isGroupActive ? '#1b59f8' : 'rgba(0,0,0,0.35)',
-              }}
+              style={{ transform: opened ? 'rotate(-90deg)' : 'none' }}
             />
           </Group>
         </UnstyledButton>
@@ -104,7 +103,7 @@ export function SidebarLinksGroup(props: Readonly<SidebarLinksGroupProps>) {
   )
 }
 
-const useStyles = createStyles(() => ({
+const useStyles = createStyles((theme, _, u) => ({
   control: css`
     display: flex;
     align-items: center;
@@ -117,11 +116,21 @@ const useStyles = createStyles(() => ({
     background-color: transparent;
 
     &:hover {
-      background-color: #f8fafd;
+      ${u.light} {
+        background-color: ${theme.colors.gray[0]};
+      }
+      ${u.dark} {
+        background-color: ${theme.colors.dark[5]};
+      }
     }
   `,
   activeControl: css`
-    background-color: #f8fafd;
+    ${u.light} {
+      background-color: ${theme.colors.main[0]};
+    }
+    ${u.dark} {
+      background-color: ${theme.colors.dark[5]};
+    }
   `,
   indicator: css`
     position: absolute;
@@ -134,7 +143,7 @@ const useStyles = createStyles(() => ({
     flex-shrink: 0;
   `,
   indicatorActive: css`
-    background-color: #1b59f8;
+    background-color: ${theme.colors.main[6]};
   `,
   link: css`
     display: flex;
@@ -145,20 +154,35 @@ const useStyles = createStyles(() => ({
     font-weight: 500;
     letter-spacing: -0.154px;
     text-decoration: none;
-    color: rgba(0, 0, 0, 0.7);
+    color: light-dark(rgba(0, 0, 0, 0.7), rgba(255, 255, 255, 0.7));
 
     &:hover {
-      background-color: #f8fafd;
-      color: rgba(0, 0, 0, 0.7);
+      ${u.light} {
+        background-color: ${theme.colors.gray[0]};
+        color: rgba(0, 0, 0, 0.7);
+      }
+      ${u.dark} {
+        background-color: ${theme.colors.dark[5]};
+        color: rgba(255, 255, 255, 0.7);
+      }
     }
   `,
   linkActive: css`
-    color: #1b59f8;
+    color: ${theme.colors.main[6]};
     font-weight: 600;
-    background-color: #f8fafd;
+    ${u.light} {
+      background-color: ${theme.colors.main[0]};
+    }
+    ${u.dark} {
+      background-color: ${theme.colors.dark[5]};
+    }
   `,
   chevron: css`
     transition: transform 200ms ease, color 200ms ease;
     flex-shrink: 0;
+    color: light-dark(rgba(0, 0, 0, 0.35), rgba(255, 255, 255, 0.35));
+  `,
+  chevronActive: css`
+    color: ${theme.colors.main[6]};
   `,
 }))

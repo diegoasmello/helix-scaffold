@@ -30,28 +30,28 @@ export function SidebarLinksGroupItem(
   )
 }
 
-const useStyles = createStyles(() => ({
+const useStyles = createStyles((theme) => ({
   item: css`
     display: flex;
     align-items: center;
     gap: 14px;
   `,
   icon: css`
-    color: rgba(0, 0, 0, 0.4);
+    color: light-dark(rgba(0, 0, 0, 0.4), rgba(255, 255, 255, 0.4));
     flex-shrink: 0;
   `,
   iconActive: css`
-    color: #1b59f8;
+    color: ${theme.colors.main[6]};
   `,
   label: css`
     font-size: 14px;
     font-weight: 500;
     letter-spacing: -0.154px;
-    color: rgba(0, 0, 0, 0.7);
+    color: light-dark(rgba(0, 0, 0, 0.7), rgba(255, 255, 255, 0.75));
     line-height: normal;
   `,
   labelActive: css`
     font-weight: 600;
-    color: #1b59f8;
+    color: ${theme.colors.main[6]};
   `,
 }))

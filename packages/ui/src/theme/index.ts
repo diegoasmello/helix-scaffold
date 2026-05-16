@@ -11,6 +11,7 @@ export function createTheme(
     headings: {
       fontFamily: 'Plus Jakarta Sans Variable, sans-serif',
     },
+    defaultRadius: 'md',
     ...overrides,
   })
 }

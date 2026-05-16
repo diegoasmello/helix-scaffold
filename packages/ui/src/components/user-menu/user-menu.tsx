@@ -52,24 +52,33 @@ export function UserMenu(props: Readonly<UserMenuProps>) {
   )
 }
 
-const useStyles = createStyles(() => ({
+const useStyles = createStyles((theme, _, u) => ({
   user: css`
-    color: light-dark(var(--mantine-color-black), var(--mantine-color-dark-0));
-    padding: var(--mantine-spacing-xs) var(--mantine-spacing-sm);
-    border-radius: var(--mantine-radius-sm);
+    padding: ${theme.spacing.xs} ${theme.spacing.sm};
+    border-radius: ${theme.radius.sm};
     transition: background-color 100ms ease;
+    ${u.light} {
+      color: ${theme.black};
+    }
+    ${u.dark} {
+      color: ${theme.colors.dark[0]};
+    }
 
     &:hover {
-      background-color: light-dark(
-        var(--mantine-color-white),
-        var(--mantine-color-dark-8)
-      );
+      ${u.light} {
+        background-color: ${theme.colors.gray[1]};
+      }
+      ${u.dark} {
+        background-color: ${theme.colors.dark[8]};
+      }
     }
   `,
   userActive: css`
-    background-color: light-dark(
-      var(--mantine-color-white),
-      var(--mantine-color-dark-8)
-    );
+    ${u.light} {
+      background-color: ${theme.colors.gray[1]};
+    }
+    ${u.dark} {
+      background-color: ${theme.colors.dark[8]};
+    }
   `,
 }))
