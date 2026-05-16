@@ -40,3 +40,8 @@ export type SidebarItem = {
   links?: SidebarLink[]
   initiallyOpened?: boolean
 }
+
+export type SidebarGroup = {
+  title?: string
+  items: SidebarItem[]
+}

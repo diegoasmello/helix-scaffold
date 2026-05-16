@@ -13,40 +13,54 @@ interface SidebarItemWithPermission extends SidebarItem {
   permission?: { resource: string; action: PermissionAction }
 }
 
-export const sidebarItems: SidebarItemWithPermission[] = [
+interface SidebarGroupWithPermission {
+  title?: string
+  items: SidebarItemWithPermission[]
+}
+
+export const sidebarGroups: SidebarGroupWithPermission[] = [
   {
-    label: 'Profile',
-    icon: IconUser,
-    to: '/me',
+    items: [
+      {
+        label: 'Profile',
+        icon: IconUser,
+        to: '/me',
+      },
+      {
+        label: 'Todos',
+        icon: IconChecklist,
+        to: '/todos',
+        permission: { resource: 'todos', action: 'view' },
+      },
+    ],
   },
   {
-    label: 'Todos',
-    icon: IconChecklist,
-    to: '/todos',
-    permission: { resource: 'todos', action: 'view' },
-  },
-  {
-    label: 'Users',
-    icon: IconUsers,
-    to: '/users',
-    permission: { resource: 'users', action: 'view' },
-  },
-  {
-    label: 'Roles',
-    icon: IconShield,
-    to: '/roles',
-    permission: { resource: 'roles', action: 'view' },
-  },
-  {
-    label: 'Permissions',
-    icon: IconLock,
-    to: '/permissions',
-    permission: { resource: 'permissions', action: 'view' },
-  },
-  {
-    label: 'Audit Log',
-    icon: IconClipboardList,
-    to: '/audit',
-    permission: { resource: 'audit', action: 'view' },
+    title: 'Settings',
+    items: [
+      {
+        label: 'Users',
+        icon: IconUsers,
+        to: '/users',
+        permission: { resource: 'users', action: 'view' },
+      },
+      {
+        label: 'Roles',
+        icon: IconShield,
+        to: '/roles',
+        permission: { resource: 'roles', action: 'view' },
+      },
+      {
+        label: 'Permissions',
+        icon: IconLock,
+        to: '/permissions',
+        permission: { resource: 'permissions', action: 'view' },
+      },
+      {
+        label: 'Audit Log',
+        icon: IconClipboardList,
+        to: '/audit',
+        permission: { resource: 'audit', action: 'view' },
+      },
+    ],
   },
 ]

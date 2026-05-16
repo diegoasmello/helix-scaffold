@@ -1,18 +1,18 @@
 import { css } from '@emotion/react'
-import { Box, Flex, ScrollArea } from '@mantine/core'
+import { Box, Flex, ScrollArea, Text } from '@mantine/core'
 import { createStyles } from '@mantine/emotion'
 import type { ReactNode } from 'react'
 
 import { SidebarLinksGroup } from './sidebar-links-group'
-import type { SidebarItem } from './types'
+import type { SidebarGroup } from './types'
 
 export interface SidebarProps {
-  items: SidebarItem[]
+  groups: SidebarGroup[]
   logo?: ReactNode
 }
 
 export function Sidebar(props: Readonly<SidebarProps>) {
-  const { items, logo } = props
+  const { groups, logo } = props
 
   const { classes } = useStyles()
 
@@ -22,15 +22,22 @@ export function Sidebar(props: Readonly<SidebarProps>) {
         {logo}
         <ScrollArea className={classes.scrollArea}>
           <div className={classes.scrollAreaInner}>
-            {items.map((item) => (
-              <SidebarLinksGroup
-                key={item.label}
-                icon={item.icon}
-                label={item.label}
-                initiallyOpened={item.initiallyOpened}
-                links={item.links}
-                to={item.to}
-              />
+            {groups.map((group, index) => (
+              <div key={group.title ?? index} className={classes.group}>
+                {group.title && (
+                  <Text className={classes.groupTitle}>{group.title}</Text>
+                )}
+                {group.items.map((item) => (
+                  <SidebarLinksGroup
+                    key={item.label}
+                    icon={item.icon}
+                    label={item.label}
+                    initiallyOpened={item.initiallyOpened}
+                    links={item.links}
+                    to={item.to}
+                  />
+                ))}
+              </div>
             ))}
           </div>
         </ScrollArea>
@@ -62,5 +69,23 @@ const useStyles = createStyles((theme, _, u) => ({
   `,
   scrollAreaInner: css`
     padding-bottom: ${theme.spacing.xl};
+  `,
+  group: css`
+    &:not(:first-of-type) {
+      margin-top: ${theme.spacing.xs};
+    }
+  `,
+  groupTitle: css`
+    font-size: 0.875rem;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    padding: ${theme.spacing.xs} ${theme.spacing.md};
+    padding-left: 20px;
+    ${u.light} {
+      color: ${theme.colors.dark[3]};
+    }
+    ${u.dark} {
+      color: ${theme.colors.dark[3]};
+    }
   `,
 }))

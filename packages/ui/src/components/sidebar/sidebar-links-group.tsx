@@ -2,7 +2,7 @@ import { css } from '@emotion/react'
 import { Collapse, Group, UnstyledButton } from '@mantine/core'
 import { createStyles } from '@mantine/emotion'
 import { IconChevronRight, type IconProps } from '@tabler/icons-react'
-import { Link } from '@tanstack/react-router'
+import { Link, useRouterState } from '@tanstack/react-router'
 import { type RefAttributes, useState } from 'react'
 
 import { SidebarLinksGroupItem } from './sidebar-links-group-item'
@@ -19,92 +19,146 @@ export interface SidebarLinksGroupProps {
 export function SidebarLinksGroup(props: Readonly<SidebarLinksGroupProps>) {
   const { icon: Icon, label, initiallyOpened, links, to } = props
 
-  const { classes } = useStyles()
+  const { classes, cx } = useStyles()
   const hasLinks = Array.isArray(links)
   const [opened, setOpened] = useState(initiallyOpened || false)
 
+  const pathname = useRouterState({ select: (s) => s.location.pathname })
+
+  const isActive =
+    !hasLinks && !!to && (pathname === to || pathname.startsWith(to + '/'))
+
+  const isGroupActive =
+    hasLinks &&
+    links.some(
+      (link) =>
+        pathname === link.to || pathname.startsWith(String(link.to) + '/')
+    )
+
   return (
     <>
-      <UnstyledButton
-        onClick={() => setOpened((o) => !o)}
-        className={classes.control}
-      >
-        {!hasLinks && (
-          <Link to={to}>
-            <SidebarLinksGroupItem icon={Icon} label={label} />
-          </Link>
-        )}
-
-        {hasLinks && (
-          <Group justify="space-between" gap={0}>
-            <SidebarLinksGroupItem icon={Icon} label={label} />
+      {!hasLinks && !!to ? (
+        <Link
+          to={to}
+          className={cx(classes.control, { [classes.activeControl]: isActive })}
+        >
+          <div
+            className={cx(classes.indicator, {
+              [classes.indicatorActive]: isActive,
+            })}
+          />
+          <SidebarLinksGroupItem icon={Icon} label={label} active={isActive} />
+        </Link>
+      ) : (
+        <UnstyledButton
+          onClick={() => setOpened((o) => !o)}
+          className={cx(classes.control, {
+            [classes.activeControl]: isGroupActive,
+          })}
+        >
+          <div
+            className={cx(classes.indicator, {
+              [classes.indicatorActive]: isGroupActive,
+            })}
+          />
+          <Group justify="space-between" gap={0} style={{ flex: 1, minWidth: 0 }}>
+            <SidebarLinksGroupItem
+              icon={Icon}
+              label={label}
+              active={isGroupActive}
+            />
             <IconChevronRight
               className={classes.chevron}
               stroke={1.5}
               size={16}
-              style={{ transform: opened ? 'rotate(-90deg)' : 'none' }}
+              style={{
+                transform: opened ? 'rotate(-90deg)' : 'none',
+                color: isGroupActive ? '#1b59f8' : 'rgba(0,0,0,0.35)',
+              }}
             />
           </Group>
-        )}
-      </UnstyledButton>
+        </UnstyledButton>
+      )}
 
-      {hasLinks ? (
+      {hasLinks && (
         <Collapse expanded={opened}>
-          {links.map((link) => (
-            <Link to={link.to} key={link.label} className={classes.link}>
-              {link.label}
-            </Link>
-          ))}
+          {links.map((link) => {
+            const isLinkActive =
+              pathname === link.to ||
+              pathname.startsWith(String(link.to) + '/')
+            return (
+              <Link
+                to={link.to}
+                key={link.label}
+                className={cx(classes.link, {
+                  [classes.linkActive]: isLinkActive,
+                })}
+              >
+                {link.label}
+              </Link>
+            )
+          })}
         </Collapse>
-      ) : null}
+      )}
     </>
   )
 }
 
-const useStyles = createStyles((theme) => ({
+const useStyles = createStyles(() => ({
   control: css`
-    font-weight: 500;
-    display: block;
+    display: flex;
+    align-items: center;
     width: 100%;
-    padding: ${theme.spacing.xs} ${theme.spacing.md};
-    color: var(--mantine-color-text);
-    font-size: ${theme.fontSizes.sm};
+    height: 49px;
+    padding: 0 16px 0 20px;
+    position: relative;
+    text-decoration: none;
+    color: inherit;
+    background-color: transparent;
 
     &:hover {
-      background-color: light-dark(
-        var(--mantine-color-gray-0),
-        var(--mantine-color-dark-7)
-      );
-      color: light-dark(
-        var(--mantine-color-black),
-        var(--mantine-color-dark-0)
-      );
+      background-color: #f8fafd;
     }
+  `,
+  activeControl: css`
+    background-color: #f8fafd;
+  `,
+  indicator: css`
+    position: absolute;
+    left: 0;
+    top: 8.5px;
+    width: 4px;
+    height: 32px;
+    border-radius: 0 100px 100px 0;
+    background-color: transparent;
+    flex-shrink: 0;
+  `,
+  indicatorActive: css`
+    background-color: #1b59f8;
   `,
   link: css`
+    display: flex;
+    align-items: center;
+    height: 49px;
+    padding: 0 16px 0 56px;
+    font-size: 14px;
     font-weight: 500;
-    display: block;
+    letter-spacing: -0.154px;
     text-decoration: none;
-    padding: var(--mantine-spacing-xs) var(--mantine-spacing-md);
-    padding-left: var(--mantine-spacing-md);
-    margin-left: var(--mantine-spacing-xl);
-    font-size: var(--mantine-font-size-sm);
-    color: light-dark(var(--mantine-color-gray-7), var(--mantine-color-dark-0));
-    border-left: 1px solid
-      light-dark(var(--mantine-color-gray-3), var(--mantine-color-dark-4));
+    color: rgba(0, 0, 0, 0.7);
 
     &:hover {
-      background-color: light-dark(
-        var(--mantine-color-gray-0),
-        var(--mantine-color-dark-7)
-      );
-      color: light-dark(
-        var(--mantine-color-black),
-        var(--mantine-color-dark-0)
-      );
+      background-color: #f8fafd;
+      color: rgba(0, 0, 0, 0.7);
     }
   `,
+  linkActive: css`
+    color: #1b59f8;
+    font-weight: 600;
+    background-color: #f8fafd;
+  `,
   chevron: css`
-    transition: transform 200ms ease;
+    transition: transform 200ms ease, color 200ms ease;
+    flex-shrink: 0;
   `,
 }))

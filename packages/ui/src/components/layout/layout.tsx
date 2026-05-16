@@ -5,15 +5,15 @@ import { Outlet } from '@tanstack/react-router'
 import Logo from '../../assets/helix.svg'
 import { Header } from '../header/header'
 import { Sidebar } from '../sidebar/sidebar'
-import type { SidebarItem } from '../sidebar/types'
+import type { SidebarGroup } from '../sidebar/types'
 
 export interface LayoutProps {
-  sidebarItems: SidebarItem[]
+  sidebarGroups: SidebarGroup[]
   user: { name: string; avatar?: string }
 }
 
 export function Layout(props: Readonly<LayoutProps>) {
-  const { sidebarItems, user } = props
+  const { sidebarGroups, user } = props
 
   const [opened, { toggle }] = useDisclosure()
 
@@ -32,7 +32,7 @@ export function Layout(props: Readonly<LayoutProps>) {
 
       <AppShell.Navbar unstyled style={{ padding: 0 }}>
         <Sidebar
-          items={sidebarItems}
+          groups={sidebarGroups}
           logo={<img src={Logo} alt="Logo" height={32} />}
         />
       </AppShell.Navbar>
