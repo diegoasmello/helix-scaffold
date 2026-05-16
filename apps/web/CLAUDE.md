@@ -291,6 +291,29 @@ Two-level theming:
 - `src/config/theme.ts` — app-level Mantine theme (primary color `"main"`), uses `createTheme()` from `@helix/ui`
 - `packages/ui/src/theme/index.ts` — sets font defaults (Inter + Plus Jakarta Sans) and exports `createTheme()` helper
 
+### Styling conventions
+
+**Always use `createStyles` + `useStyles` — never the `style` prop.** Inline `style={{…}}` on any component is forbidden; move every CSS rule into a `createStyles` block:
+
+```tsx
+// ✅ correct
+const { classes } = useStyles()
+<Text className={classes.label}>…</Text>
+
+const useStyles = createStyles(() => ({
+  label: css`letter-spacing: 0.5px;`,
+}))
+
+// ❌ wrong
+<Text style={{ letterSpacing: '0.5px' }}>…</Text>
+```
+
+**Only declare `createStyles` parameters you actually use** — `() => ({})`, `(theme) => ({})`, or `(theme, _, u) => ({})`. Never declare a parameter you don't reference.
+
+**Theme tokens over raw CSS variables** — always `${theme.spacing.*}` / `${theme.colors.*[shade]}`, never `var(--mantine-*)`.
+
+This applies to both `packages/ui` components and any `createStyles` used in `apps/web`.
+
 ---
 
 ## Creating a new module (CRUD)

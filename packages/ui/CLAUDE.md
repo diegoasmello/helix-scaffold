@@ -120,6 +120,55 @@ interface LogicalFilterFormProps<T extends string = string> {
 
 **Mantine v9 `DateInput` gotcha**: `onChange` returns `DateStringValue | null` (a string), not `Date | null`. Do not call `.toISOString()` on it. The value prop also accepts `string | null`, not `Date | null`.
 
+## Styling conventions
+
+**Always use `createStyles` + `useStyles` — never the `style` prop.** Inline `style={{...}}` on any component is forbidden; move every CSS rule into a `createStyles` block:
+
+```tsx
+// ✅ correct
+const { classes } = useStyles()
+<Text className={classes.label}>…</Text>
+
+const useStyles = createStyles(() => ({
+  label: css`
+    letter-spacing: 0.5px;
+  `,
+}))
+
+// ❌ wrong
+<Text style={{ letterSpacing: '0.5px' }}>…</Text>
+```
+
+**Only declare `createStyles` parameters you actually use.** If none of `theme`, `_`, `u` are referenced in the block, use `() => ({…})`. If only `theme` is needed, use `(theme) => ({…})`. Never declare `(theme, _, u)` unless all three are referenced:
+
+```ts
+// ✅ no theme needed
+createStyles(() => ({ … }))
+
+// ✅ only theme
+createStyles((theme) => ({ … }))
+
+// ✅ theme + u (light/dark selectors)
+createStyles((theme, _, u) => ({ … }))
+
+// ❌ declared but unused
+createStyles((theme, _, u) => ({ label: css`color: red;` }))
+```
+
+**Theme tokens over raw CSS variables.** Always access values through the `theme` object — never raw CSS vars:
+
+```ts
+// ✅ correct
+padding: ${theme.spacing.md};
+color: ${theme.colors.gray[6]};
+
+// ❌ wrong
+padding: var(--mantine-spacing-md);
+color: var(--mantine-color-dimmed);
+```
+
+**Spacing**: always `${theme.spacing.*}`. **Colors**: always `${theme.colors.*[shade]}`, `${theme.white}`, or `${theme.black}`. The `light-dark()` CSS function is allowed for simple rgba literals only.
+
 ## Props convention
 
 Follows the monorepo-wide rule (see root `CLAUDE.md`): props defined as `interface` (never `type`), named `props` parameter typed `Readonly<...>`, destructured inside the function body — never in the signature.
