@@ -45,7 +45,7 @@ const useStyles = createStyles((theme) => ({
   dataTable: css`
     .mantine-datatable-table {
       border-collapse: separate;
-      border-spacing: 0 0.75rem;
+      border-spacing: 0 0.625rem;
     }
 
     .mantine-datatable-header {
@@ -102,6 +102,10 @@ const useStyles = createStyles((theme) => ({
       td:last-child {
         border-top-right-radius: ${theme.radius['md']};
         border-bottom-right-radius: ${theme.radius['md']};
+      }
+
+      td {
+        padding: 0.5rem 0.75rem;
       }
     }
 
