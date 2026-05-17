@@ -71,7 +71,6 @@ export function RolesList() {
   const columns: DataTableColumn<RoleItem>[] = [
     { accessor: 'name', title: 'Name', sortable: true },
     { accessor: 'description', title: 'Description' },
-    { accessor: 'createdAt', title: 'Created At', sortable: true },
     {
       accessor: 'actions',
       title: 'Actions',

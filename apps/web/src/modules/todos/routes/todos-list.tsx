@@ -24,7 +24,10 @@ import {
 import { IconEdit, IconEye, IconFilter, IconPlus, IconTrash } from '@helix/ui'
 import { PageList } from '@helix/ui'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { parseISO } from 'date-fns'
 import { useState } from 'react'
+
+import { formatDate } from '@/utils/date'
 
 import type { TodoItem } from '../types'
 import { todoListRoute } from '.'
@@ -120,17 +123,22 @@ export function TodoList() {
       title: 'Title',
       sortable: true,
       width: '60%',
+      ellipsis: true,
     },
     {
       accessor: 'date',
       title: 'Date',
       sortable: true,
       width: '20%',
+      textAlign: 'center',
+      render: (record) => formatDate(parseISO(record.date), 'short'),
     },
     {
       accessor: 'status',
       title: 'Status',
       sortable: true,
+      width: '20%',
+      textAlign: 'center',
       render: (item) => (
         <Badge
           color={item.status === 'completed' ? 'green' : 'gray'}
@@ -144,7 +152,7 @@ export function TodoList() {
       accessor: 'actions',
       title: 'Actions',
       textAlign: 'center',
-      width: 124,
+      width: 132,
       render: (item) => (
         <Group gap="xs">
           <ActionIcon
@@ -210,7 +218,7 @@ export function TodoList() {
       }
     >
       <Collapse expanded={filtersOpen}>
-        <Paper withBorder p="md" mb="md">
+        <Paper p="md">
           <LogicalFilterForm
             key={filters ?? ''}
             fields={TODO_FILTER_FIELDS}
@@ -219,6 +227,7 @@ export function TodoList() {
           />
         </Paper>
       </Collapse>
+
       <DataTable
         records={todosResponse.data}
         columns={columns}
