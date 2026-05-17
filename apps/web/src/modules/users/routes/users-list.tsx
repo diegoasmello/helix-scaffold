@@ -69,13 +69,14 @@ export function UsersList() {
   }
 
   const columns: DataTableColumn<UserItem>[] = [
-    { accessor: 'name', title: 'Name', sortable: true },
-    { accessor: 'email', title: 'Email', sortable: true },
+    { accessor: 'name', title: 'Name', sortable: true, width: '30%' },
     {
       accessor: 'role',
       title: 'Role',
       render: (item) => item.role?.name ?? '—',
+      width: '30%',
     },
+    { accessor: 'email', title: 'Email', sortable: true },
     {
       accessor: 'actions',
       title: 'Actions',
