@@ -27,16 +27,18 @@ export function Sidebar(props: Readonly<SidebarProps>) {
                 {group.title && (
                   <Text className={classes.groupTitle}>{group.title}</Text>
                 )}
-                {group.items.map((item) => (
-                  <SidebarLinksGroup
-                    key={item.label}
-                    icon={item.icon}
-                    label={item.label}
-                    initiallyOpened={item.initiallyOpened}
-                    links={item.links}
-                    to={item.to}
-                  />
-                ))}
+                <nav className={classes.nav}>
+                  {group.items.map((item) => (
+                    <SidebarLinksGroup
+                      key={item.label}
+                      icon={item.icon}
+                      label={item.label}
+                      initiallyOpened={item.initiallyOpened}
+                      links={item.links}
+                      to={item.to}
+                    />
+                  ))}
+                </nav>
               </div>
             ))}
           </div>
@@ -87,5 +89,9 @@ const useStyles = createStyles((theme, _, u) => ({
     ${u.dark} {
       color: ${theme.colors.dark[3]};
     }
+  `,
+  nav: css`
+    display: grid;
+    gap: 0.25rem;
   `,
 }))

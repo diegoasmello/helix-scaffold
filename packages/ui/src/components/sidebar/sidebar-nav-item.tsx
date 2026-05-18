@@ -31,14 +31,7 @@ export function SidebarNavItem(props: Readonly<SidebarNavItemProps>) {
   const { classes, cx } = useStyles()
 
   const content = (
-    <>
-      {!nested && (
-        <div
-          className={cx(classes.indicator, {
-            [classes.indicatorActive]: active,
-          })}
-        />
-      )}
+    <div>
       <div className={classes.inner}>
         {Icon && (
           <Icon
@@ -61,7 +54,7 @@ export function SidebarNavItem(props: Readonly<SidebarNavItemProps>) {
           size={16}
         />
       )}
-    </>
+    </div>
   )
 
   const controlClass = cx(classes.control, {
@@ -89,19 +82,35 @@ const useStyles = createStyles((theme, _, u) => ({
     display: flex;
     align-items: center;
     width: 100%;
-    height: 49px;
-    padding: 0 16px 0 20px;
+    height: 3rem;
+    padding: 0 1rem;
     position: relative;
     text-decoration: none;
     color: inherit;
     background-color: transparent;
 
+    & > div {
+      height: 100%;
+      width: 100%;
+      display: flex;
+      align-items: center;
+      /* padding: 0 0.75rem; */
+      padding: 0 1rem;
+      border-radius: ${theme.radius.lg};
+
+      transition:
+        background-color 0.3s ease,
+        color 0.3s ease;
+    }
+
     &:hover {
-      ${u.light} {
-        background-color: ${theme.colors.gray[0]};
-      }
-      ${u.dark} {
-        background-color: ${theme.colors.dark[5]};
+      & > div {
+        ${u.light} {
+          background-color: ${theme.colors.gray[1]};
+        }
+        ${u.dark} {
+          background-color: ${theme.colors.dark[5]};
+        }
       }
     }
   `,
@@ -109,35 +118,29 @@ const useStyles = createStyles((theme, _, u) => ({
     padding-left: 56px;
   `,
   activeControl: css`
-    ${u.light} {
-      background-color: ${theme.colors.main[0]};
+    &,
+    &:hover {
+      cursor: default;
+
+      & > div {
+        ${u.light} {
+          background-color: ${theme.colors.main[0]};
+        }
+        ${u.dark} {
+          background-color: ${theme.colors.dark[5]};
+        }
+      }
     }
-    ${u.dark} {
-      background-color: ${theme.colors.dark[5]};
-    }
-  `,
-  indicator: css`
-    position: absolute;
-    left: 0;
-    top: 8.5px;
-    width: 4px;
-    height: 32px;
-    border-radius: 0 100px 100px 0;
-    background-color: transparent;
-    flex-shrink: 0;
-  `,
-  indicatorActive: css`
-    background-color: ${theme.colors.main[6]};
   `,
   inner: css`
     flex: 1;
     display: flex;
     align-items: center;
-    gap: 14px;
+    gap: 0.875rem;
     min-width: 0;
   `,
   icon: css`
-    color: light-dark(rgba(0, 0, 0, 0.4), rgba(255, 255, 255, 0.4));
+    color: light-dark(rgba(0, 0, 0, 0.7), rgba(255, 255, 255, 0.7));
     flex-shrink: 0;
   `,
   iconActive: css`
@@ -151,7 +154,6 @@ const useStyles = createStyles((theme, _, u) => ({
     line-height: normal;
   `,
   labelActive: css`
-    font-weight: 600;
     color: ${theme.colors.main[6]};
   `,
   chevron: css`
