@@ -1,4 +1,4 @@
-import { AppShell, Burger, Divider, Group } from '@mantine/core'
+import { AppShell, Group } from '@mantine/core'
 import { useMatches } from '@tanstack/react-router'
 
 import type { BreadcrumbItem } from '../../router'
@@ -7,13 +7,11 @@ import { LanguagePicker } from '../language-picker/language-picker'
 import { UserMenu } from '../user-menu/user-menu'
 
 export interface HeaderProps {
-  opened: boolean
-  onToggle: () => void
   user: { name: string; avatar?: string }
 }
 
 export function Header(props: Readonly<HeaderProps>) {
-  const { opened, onToggle, user } = props
+  const { user } = props
   const matches = useMatches()
 
   const activeMatch = [...matches]
@@ -37,8 +35,6 @@ export function Header(props: Readonly<HeaderProps>) {
         },
       }}
     >
-      <Burger opened={opened} onClick={onToggle} size="sm" />
-      <Divider orientation="vertical" />
       <Group justify="space-between" style={{ width: '100%' }}>
         <Breadcrumb crumbs={crumbs} />
         <Group>

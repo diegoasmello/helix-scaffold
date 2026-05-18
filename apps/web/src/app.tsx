@@ -1,10 +1,18 @@
-import { Layout } from '@helix/ui'
+import { Center, Layout, Loader } from '@helix/ui'
 
 import { sidebarGroups } from './config/sidebar'
 import { useAuth } from './modules/auth/use-auth'
 
 export function App() {
-  const { user, hasPermission, isAuthenticated } = useAuth()
+  const { user, hasPermission, isAuthenticated, isPending } = useAuth()
+
+  if (isPending) {
+    return (
+      <Center h="100vh">
+        <Loader />
+      </Center>
+    )
+  }
 
   const visibleGroups = sidebarGroups
     .map((group) => ({

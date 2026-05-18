@@ -5,6 +5,8 @@ import { IconChevronRight, type IconProps } from '@tabler/icons-react'
 import { Link } from '@tanstack/react-router'
 import type { RefAttributes } from 'react'
 
+import { useSidebar } from './sidebar-context'
+
 export interface SidebarNavItemProps {
   label: string
   active?: boolean
@@ -28,7 +30,34 @@ export function SidebarNavItem(props: Readonly<SidebarNavItemProps>) {
     onClick,
   } = props
 
+  const { collapsed } = useSidebar()
   const { classes, cx } = useStyles()
+
+  if (collapsed) {
+    const collapsedClass = cx(classes.control, classes.collapsedControl, {
+      [classes.activeControl]: active,
+    })
+    const iconEl = Icon ? (
+      <Icon
+        size={18}
+        className={cx(classes.icon, { [classes.iconActive]: active })}
+      />
+    ) : null
+
+    if (to !== undefined) {
+      return (
+        <Link to={to} className={collapsedClass}>
+          <div>{iconEl}</div>
+        </Link>
+      )
+    }
+
+    return (
+      <UnstyledButton onClick={onClick} className={collapsedClass}>
+        <div>{iconEl}</div>
+      </UnstyledButton>
+    )
+  }
 
   const content = (
     <div>
@@ -36,7 +65,6 @@ export function SidebarNavItem(props: Readonly<SidebarNavItemProps>) {
         {Icon && (
           <Icon
             size={18}
-            stroke={1.5}
             className={cx(classes.icon, { [classes.iconActive]: active })}
           />
         )}
@@ -94,7 +122,6 @@ const useStyles = createStyles((theme, _, u) => ({
       width: 100%;
       display: flex;
       align-items: center;
-      /* padding: 0 0.75rem; */
       padding: 0 1rem;
       border-radius: ${theme.radius.lg};
 
@@ -112,6 +139,15 @@ const useStyles = createStyles((theme, _, u) => ({
           background-color: ${theme.colors.dark[5]};
         }
       }
+    }
+  `,
+  collapsedControl: css`
+    justify-content: center;
+    padding: 0 0.5rem;
+
+    & > div {
+      padding: 0;
+      justify-content: center;
     }
   `,
   nestedControl: css`

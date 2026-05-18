@@ -3,6 +3,7 @@ import type { IconProps } from '@tabler/icons-react'
 import { useRouterState } from '@tanstack/react-router'
 import { type RefAttributes, useState } from 'react'
 
+import { useSidebar } from './sidebar-context'
 import { SidebarNavItem } from './sidebar-nav-item'
 import type { SidebarLink } from './types'
 
@@ -17,6 +18,7 @@ export interface SidebarLinksGroupProps {
 export function SidebarLinksGroup(props: Readonly<SidebarLinksGroupProps>) {
   const { icon: Icon, label, initiallyOpened, links, to } = props
 
+  const { collapsed } = useSidebar()
   const hasLinks = Array.isArray(links)
   const [opened, setOpened] = useState(initiallyOpened || false)
 
@@ -47,7 +49,7 @@ export function SidebarLinksGroup(props: Readonly<SidebarLinksGroupProps>) {
         />
       )}
 
-      {hasLinks && (
+      {hasLinks && !collapsed && (
         <Collapse expanded={opened}>
           {links.map((link) => {
             const isLinkActive =
