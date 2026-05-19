@@ -622,12 +622,18 @@ staticData: {
 
 Use the page wrapper components from `@helix/ui`:
 
-| Screen | Wrapper      | Key props                                                                |
-| ------ | ------------ | ------------------------------------------------------------------------ |
-| List   | `PageList`   | `title`, `actions` (Create button)                                       |
-| Create | `PageCreate` | `title`, `children` (form fields), `footerActions` (Cancel + Save)       |
-| Edit   | `PageEdit`   | `title`, `children` (form fields), `footerActions` (Cancel + Save)       |
-| Detail | `PageView`   | `title` (item name), `actions` (Back button), `children` (LabeledValues) |
+| Screen | Wrapper      | Key props                                                                      |
+| ------ | ------------ | ------------------------------------------------------------------------------ |
+| List   | `PageList`   | `title`, `actions` (Create button)                                             |
+| Create | `PageCreate` | `title`, `children` (form fields), `footerActions` (Cancel + Save)             |
+| Edit   | `PageEdit`   | `title`, `children` (form fields), `footerActions` (Cancel + Save)             |
+| Detail | `PageView`   | `title` (item name), `footerActions` (Back button), `children` (LabeledValues) |
+
+**Footer button conventions** — apply to every Create, Edit, and Detail screen:
+
+- **Cancel / Back**: `size="md" variant="secondary"` — neutral action, never draws attention
+- **Save / Submit**: `size="md"` with default variant — primary action, uses the app's primary color
+- Always wrap footer buttons in `<Group justify="flex-end">` so they align to the right
 
 **List screen (`PageList` + `DataTable`)** — the DataTable drives pagination and sorting. Columns that map to a sortable API field get `sortable: true`. All state lives in the URL via the route's `useSearch()`.
 
