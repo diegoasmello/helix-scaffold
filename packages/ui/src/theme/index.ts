@@ -12,6 +12,21 @@ export function createTheme(
       fontFamily: 'Plus Jakarta Sans Variable, sans-serif',
     },
     defaultRadius: 'md',
+    components: {
+      Badge: {
+        defaultProps: { variant: 'light' },
+        styles: {
+          root: {
+            textTransform: 'capitalize',
+            fontSize: '0.825rem',
+            fontWeight: 500,
+            padding: '0 8px',
+            borderRadius: '4px',
+            height: '26px',
+          },
+        },
+      },
+    },
     ...overrides,
   })
 }
