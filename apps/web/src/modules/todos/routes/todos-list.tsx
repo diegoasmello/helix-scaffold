@@ -5,7 +5,6 @@ import {
   useGetTodosSuspense,
 } from '@helix/api-client/hooks'
 import {
-  ActionIcon,
   Badge,
   Button,
   Collapse,
@@ -21,7 +20,7 @@ import {
   notify,
   Paper,
 } from '@helix/ui'
-import { IconEdit, IconEye, IconFilter, IconPlus, IconTrash } from '@helix/ui'
+import { IconFilter, IconPlus } from '@helix/ui'
 import { PageList } from '@helix/ui'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { parseISO } from 'date-fns'
@@ -77,6 +76,7 @@ export function TodoList() {
     search,
     navigate
   )
+
   const sortingProps = getDataTableSortingProps(search, navigate)
 
   const { mutate: deleteTodo } = useMutation({
@@ -121,23 +121,23 @@ export function TodoList() {
     {
       accessor: 'title',
       title: 'Title',
-      sortable: true,
       width: '60%',
+      sortable: true,
       ellipsis: true,
     },
     {
       accessor: 'date',
       title: 'Date',
-      sortable: true,
       width: '20%',
+      sortable: true,
       textAlign: 'center',
       render: (record) => formatDate(parseISO(record.date), 'short'),
     },
     {
       accessor: 'status',
       title: 'Status',
-      sortable: true,
       width: '20%',
+      sortable: true,
       textAlign: 'center',
       render: (item) => (
         <Badge
@@ -152,20 +152,22 @@ export function TodoList() {
       accessor: 'actions',
       title: 'Actions',
       textAlign: 'center',
-      width: 132,
+      width: 240,
       render: (item) => (
         <Group gap="xs">
-          <ActionIcon
-            variant="light"
+          <Button
+            size="xs"
+            variant="secondary"
             aria-label="View"
             onClick={() =>
               navigate({ to: '/todos/$id', params: { id: item.id } })
             }
           >
-            <IconEye style={{ width: '70%', height: '70%' }} stroke={1.5} />
-          </ActionIcon>
-          <ActionIcon
-            variant="light"
+            View
+          </Button>
+          <Button
+            size="xs"
+            variant="secondary"
             aria-label="Edit"
             onClick={() =>
               navigate({
@@ -174,16 +176,17 @@ export function TodoList() {
               })
             }
           >
-            <IconEdit style={{ width: '70%', height: '70%' }} stroke={1.5} />
-          </ActionIcon>
-          <ActionIcon
-            variant="light"
+            Edit
+          </Button>
+          <Button
+            size="xs"
+            variant="outline"
             color="red"
             aria-label="Delete"
             onClick={() => handleConfirmDelete(item.id)}
           >
-            <IconTrash style={{ width: '70%', height: '70%' }} stroke={1.5} />
-          </ActionIcon>
+            Delete
+          </Button>
         </Group>
       ),
     },
@@ -192,6 +195,7 @@ export function TodoList() {
   return (
     <PageList
       title="Todos"
+      description="Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua."
       actions={
         <Group gap="xs">
           <Button
