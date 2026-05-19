@@ -1,19 +1,27 @@
-import { Flex, Group, Title } from '@mantine/core'
+import { Flex, Group, Text, Title } from '@mantine/core'
 import type { ReactNode } from 'react'
 
 export interface PageListProps {
   title: string
+  description?: string
   actions?: ReactNode
   children: ReactNode
 }
 
 export function PageList(props: Readonly<PageListProps>) {
-  const { title, actions, children } = props
+  const { title, description, actions, children } = props
 
   return (
     <Flex direction="column" gap="lg">
       <Group justify="space-between" align="center">
-        <Title order={2}>{title}</Title>
+        <Flex direction="column" gap={8}>
+          <Title order={2}>{title}</Title>
+          {description && (
+            <Text maw="420" size="sm" c="gray.8">
+              {description}
+            </Text>
+          )}
+        </Flex>
         {actions}
       </Group>
       {children}
