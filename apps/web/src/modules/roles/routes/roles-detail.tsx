@@ -1,5 +1,5 @@
 import { useGetRolesIdSuspense } from '@helix/api-client/hooks'
-import { Button, Grid, LabeledValue, PageView, Text } from '@helix/ui'
+import { Button, Grid, Group, LabeledValue, PageView, Text } from '@helix/ui'
 
 import { rolesDetailRoute } from '.'
 
@@ -12,10 +12,16 @@ export function RolesDetail() {
   return (
     <PageView
       title="View Role"
-      actions={
-        <Button variant="light" onClick={() => navigate({ to: '/roles' })}>
-          Back
-        </Button>
+      footerActions={
+        <Group justify="flex-end">
+          <Button
+            size="md"
+            variant="secondary"
+            onClick={() => navigate({ to: '/roles' })}
+          >
+            Back
+          </Button>
+        </Group>
       }
     >
       <Grid>
