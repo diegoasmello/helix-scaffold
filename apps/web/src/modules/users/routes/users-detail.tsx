@@ -1,5 +1,5 @@
 import { useGetUsersIdSuspense } from '@helix/api-client/hooks'
-import { Button, Grid, LabeledValue, PageView, Text } from '@helix/ui'
+import { Button, Grid, Group, LabeledValue, PageView, Text } from '@helix/ui'
 
 import { usersDetailRoute } from '.'
 
@@ -12,10 +12,16 @@ export function UsersDetail() {
   return (
     <PageView
       title="View User"
-      actions={
-        <Button variant="light" onClick={() => navigate({ to: '/users' })}>
-          Back
-        </Button>
+      footerActions={
+        <Group justify="flex-end">
+          <Button
+            size="md"
+            variant="secondary"
+            onClick={() => navigate({ to: '/users' })}
+          >
+            Back
+          </Button>
+        </Group>
       }
     >
       <Grid>

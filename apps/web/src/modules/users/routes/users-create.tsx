@@ -58,14 +58,14 @@ export function UsersCreate() {
         footerActions={
           <Group justify="flex-end">
             <Button
-              size="lg"
-              variant="light"
+              size="md"
+              variant="secondary"
               disabled={isPending}
               onClick={() => navigate({ to: '/users' })}
             >
               Cancel
             </Button>
-            <Button size="lg" type="submit" loading={isPending}>
+            <Button size="md" type="submit" loading={isPending}>
               Save
             </Button>
           </Group>
