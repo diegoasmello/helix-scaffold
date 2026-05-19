@@ -1,4 +1,4 @@
-import { Divider, Flex, Group, Title } from '@mantine/core'
+import { Divider, Flex, Group, Paper, Title } from '@mantine/core'
 import type { ReactNode } from 'react'
 
 export interface PageViewProps {
@@ -17,13 +17,15 @@ export function PageView(props: Readonly<PageViewProps>) {
         <Title order={2}>{title}</Title>
         {actions}
       </Group>
-      {children}
-      {footerActions && (
-        <>
-          <Divider my="xl" />
-          {footerActions}
-        </>
-      )}
+      <Paper p="24" radius="lg">
+        {children}
+        {footerActions && (
+          <>
+            <Divider my="xl" />
+            {footerActions}
+          </>
+        )}
+      </Paper>
     </Flex>
   )
 }
