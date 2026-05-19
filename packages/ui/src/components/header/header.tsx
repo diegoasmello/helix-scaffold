@@ -3,7 +3,6 @@ import { useMatches } from '@tanstack/react-router'
 
 import type { BreadcrumbItem } from '../../router'
 import { Breadcrumb } from '../breadcrumb/breadcrumb'
-import { LanguagePicker } from '../language-picker/language-picker'
 import { UserMenu } from '../user-menu/user-menu'
 
 export interface HeaderProps {
@@ -38,7 +37,6 @@ export function Header(props: Readonly<HeaderProps>) {
       <Group justify="space-between" style={{ width: '100%' }}>
         <Breadcrumb crumbs={crumbs} />
         <Group>
-          <LanguagePicker />
           <UserMenu user={user} />
         </Group>
       </Group>
