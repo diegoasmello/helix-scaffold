@@ -14,7 +14,7 @@
   },
   "dependencies": {
     "@emotion/react": "11.14.0",
-    "@fontsource-variable/inter": "5.2.8",
+    "@fontsource-variable/geist": "^5.2.9",
     "@fontsource-variable/plus-jakarta-sans": "5.2.8",
     "@mantine/core": "9.1.1",
     "@mantine/dates": "9.1.1",
@@ -42,8 +42,8 @@
     "@eslint/js": "catalog:",
     "@types/react": "19.2.7",
     "eslint": "catalog:",
-    "eslint-plugin-import-x": "catalog:",
     "eslint-config-prettier": "catalog:",
+    "eslint-plugin-import-x": "catalog:",
     "eslint-plugin-react-hooks": "7.0.1",
     "eslint-plugin-react-refresh": "0.4.24",
     "eslint-plugin-simple-import-sort": "catalog:",
