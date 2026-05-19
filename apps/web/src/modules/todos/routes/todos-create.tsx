@@ -64,15 +64,15 @@ export function TodoCreate() {
         footerActions={
           <Group justify="flex-end">
             <Button
-              size="lg"
-              variant="light"
+              size="md"
+              variant="secondary"
               disabled={isPending || form.submitting}
               onClick={() => navigate({ to: '/todos' })}
             >
               Cancel
             </Button>
             <Button
-              size="lg"
+              size="md"
               type="submit"
               loading={isPending || form.submitting}
             >

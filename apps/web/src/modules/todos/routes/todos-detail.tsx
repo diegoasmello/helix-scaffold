@@ -1,5 +1,5 @@
 import { useGetTodosIdSuspense } from '@helix/api-client/hooks'
-import { Badge, Button, Grid, RichTextRenderer, Text } from '@helix/ui'
+import { Badge, Button, Grid, Group, RichTextRenderer, Text } from '@helix/ui'
 import { LabeledValue, PageView } from '@helix/ui'
 
 import { todoDetailRoute } from '.'
@@ -13,10 +13,16 @@ export function TodoDetail() {
   return (
     <PageView
       title="View Todo"
-      actions={
-        <Button variant="light" onClick={() => navigate({ to: '/todos' })}>
-          Back
-        </Button>
+      footerActions={
+        <Group justify="flex-end">
+          <Button
+            size="md"
+            variant="secondary"
+            onClick={() => navigate({ to: '/todos' })}
+          >
+            Back
+          </Button>
+        </Group>
       }
     >
       <Grid>
