@@ -180,8 +180,7 @@ export function TodoList() {
           </Button>
           <Button
             size="xs"
-            variant="outline"
-            color="red"
+            variant="secondary"
             aria-label="Delete"
             onClick={() => handleConfirmDelete(item.id)}
           >

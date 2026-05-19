@@ -5,7 +5,6 @@ import {
   useGetUsersSuspense,
 } from '@helix/api-client/hooks'
 import {
-  ActionIcon,
   Button,
   confirm,
   DataTable,
@@ -16,7 +15,7 @@ import {
   notify,
   PageList,
 } from '@helix/ui'
-import { IconEdit, IconEye, IconPlus, IconTrash } from '@helix/ui'
+import { IconPlus } from '@helix/ui'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 
 import { HasPermission } from '../../auth/components/has-permission'
@@ -81,38 +80,40 @@ export function UsersList() {
       accessor: 'actions',
       title: 'Actions',
       textAlign: 'center',
-      width: 124,
+      width: 240,
       render: (item) => (
         <Group gap="xs">
-          <ActionIcon
-            variant="light"
+          <Button
+            size="xs"
+            variant="secondary"
             aria-label="View"
             onClick={() =>
               navigate({ to: '/users/$id', params: { id: item.id } })
             }
           >
-            <IconEye style={{ width: '70%', height: '70%' }} stroke={1.5} />
-          </ActionIcon>
+            View
+          </Button>
           <HasPermission resource="users" action="edit">
-            <ActionIcon
-              variant="light"
+            <Button
+              size="xs"
+              variant="secondary"
               aria-label="Edit"
               onClick={() =>
                 navigate({ to: '/users/$id/edit', params: { id: item.id } })
               }
             >
-              <IconEdit style={{ width: '70%', height: '70%' }} stroke={1.5} />
-            </ActionIcon>
+              Edit
+            </Button>
           </HasPermission>
           <HasPermission resource="users" action="delete">
-            <ActionIcon
-              variant="light"
-              color="red"
+            <Button
+              size="xs"
+              variant="secondary"
               aria-label="Delete"
               onClick={() => handleDelete(item.id, item.name)}
             >
-              <IconTrash style={{ width: '70%', height: '70%' }} stroke={1.5} />
-            </ActionIcon>
+              Delete
+            </Button>
           </HasPermission>
         </Group>
       ),
