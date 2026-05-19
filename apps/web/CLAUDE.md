@@ -653,7 +653,7 @@ const sortingProps = getDataTableSortingProps(search, navigate);
 const columns: DataTableColumn<XxxItem>[] = [
   { accessor: "title", title: "Title", sortable: true, width: "60%" },
   { accessor: "createdAt", title: "Created", sortable: true },
-  { accessor: "actions", title: "Actions", textAlign: "center", width: 124, render: ... },
+  { accessor: "actions", title: "Actions", textAlign: "center", width: 240, render: ... },
 ];
 
 <DataTable
@@ -670,26 +670,34 @@ const columns: DataTableColumn<XxxItem>[] = [
 
 Form screens use the `<Form>` component from `@helix/ui` wrapping `PageCreate`/`PageEdit`. `Form` receives `form` (the `useForm` instance) and `onSubmit` (a plain function that receives the validated values — not `form.onSubmit(...)`). It handles validation and submission internally.
 
-**Permission guards on action buttons**: wrap the Create button, and each Edit/Delete `ActionIcon` in the list, with `<HasPermission>`:
+**Per-row action buttons** — always use `Button size="xs" variant="secondary"` with a text label. Never use `ActionIcon` with an icon in the actions column:
 
 ```tsx
-// List — actions prop of PageList
+// View is always visible — reading the list already requires `features:view`
+<Button size="xs" variant="secondary" aria-label="View" onClick={() => navigate({ to: "/features/$id", params: { id: item.id } })}>
+  View
+</Button>
+<HasPermission resource="features" action="edit">
+  <Button size="xs" variant="secondary" aria-label="Edit" onClick={() => navigate({ to: "/features/$id/edit", params: { id: item.id } })}>
+    Edit
+  </Button>
+</HasPermission>
+<HasPermission resource="features" action="delete">
+  <Button size="xs" variant="secondary" aria-label="Delete" onClick={() => handleDelete(item.id)}>
+    Delete
+  </Button>
+</HasPermission>
+```
+
+**Create button** (in `PageList` `actions` prop) — wrap with `<HasPermission>`:
+
+```tsx
 <HasPermission resource="features" action="create">
   <Button leftSection={<IconPlus size={16} />} onClick={() => navigate({ to: "/features/create" })}>
     Create
   </Button>
 </HasPermission>
-
-// List — per-row action icons
-<HasPermission resource="features" action="edit">
-  <ActionIcon aria-label="Edit" onClick={...}><IconEdit /></ActionIcon>
-</HasPermission>
-<HasPermission resource="features" action="delete">
-  <ActionIcon aria-label="Delete" color="red" onClick={...}><IconTrash /></ActionIcon>
-</HasPermission>
 ```
-
-The View (`aria-label="View"`) button is always visible — reading the list already requires `features:view`.
 
 ### 7. Shared form component
 
