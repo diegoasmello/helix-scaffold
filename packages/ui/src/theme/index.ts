@@ -12,8 +12,23 @@ export function createTheme(
     headings: {
       fontFamily: 'Plus Jakarta Sans Variable, sans-serif',
     },
+    focusRing: 'auto',
     defaultRadius: 'md',
     components: {
+      Input: {
+        styles: (theme: MantineTheme) => ({
+          input: {
+            borderRadius: theme.radius.sm,
+            '&:focus, &:focus-visible': {
+              outline: '2px solid var(--mantine-primary-color-filled)',
+              outlineOffset: 'calc(0.125rem * var(--mantine-scale))',
+            },
+            '&[aria-invalid="true"]:focus, &[aria-invalid="true"]:focus-visible': {
+              outline: '2px solid var(--mantine-color-error)',
+            },
+          },
+        }),
+      },
       Button: {
         styles: (
           theme: MantineTheme,

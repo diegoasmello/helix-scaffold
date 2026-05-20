@@ -92,6 +92,8 @@ export function RichTextEditor(props: Readonly<RichTextEditorProps>) {
         editor={editor}
         className={clsx(classes.editor, {
           [classes.editorWithError]: hasError,
+          [classes.editorFocused]: editor?.isFocused && !hasError,
+          [classes.editorFocusedError]: editor?.isFocused && hasError,
         })}
       >
         <TipTapEditor.Toolbar sticky stickyOffset="var(--docs-header-height)">
@@ -161,6 +163,14 @@ const useStyles = createStyles((theme) => ({
   `,
   editorWithError: css`
     border: 1px solid ${theme.colors.red[7]};
+  `,
+  editorFocused: css`
+    outline: 2px solid var(--mantine-primary-color-filled);
+    outline-offset: calc(0.125rem * var(--mantine-scale));
+  `,
+  editorFocusedError: css`
+    outline: 2px solid var(--mantine-color-error);
+    outline-offset: calc(0.125rem * var(--mantine-scale));
   `,
   content: css`
     display: flex;
