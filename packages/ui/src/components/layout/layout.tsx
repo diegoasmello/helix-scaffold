@@ -12,6 +12,8 @@ import type { SidebarGroup } from '../sidebar/types'
 export interface LayoutProps {
   sidebarGroups: SidebarGroup[]
   user: { id?: string; name: string; avatar?: string }
+  onAccountSettings: () => void
+  onLogout: () => void
 }
 
 const SIDEBAR_WIDTH = 256
@@ -47,7 +49,7 @@ function usePersistedSidebar(userId: string | undefined) {
 }
 
 export function Layout(props: Readonly<LayoutProps>) {
-  const { sidebarGroups, user } = props
+  const { sidebarGroups, user, onAccountSettings, onLogout } = props
 
   const { classes } = useStyles()
   const [sidebarCollapsed, toggleSidebar] = usePersistedSidebar(user.id)
@@ -63,7 +65,11 @@ export function Layout(props: Readonly<LayoutProps>) {
       layout="alt"
       withBorder={false}
     >
-      <Header user={user} />
+      <Header
+        user={user}
+        onAccountSettings={onAccountSettings}
+        onLogout={onLogout}
+      />
 
       <AppShell.Navbar unstyled style={{ padding: 0, overflow: 'visible' }}>
         <Sidebar

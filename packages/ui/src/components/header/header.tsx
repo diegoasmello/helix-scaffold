@@ -7,10 +7,12 @@ import { UserMenu } from '../user-menu/user-menu'
 
 export interface HeaderProps {
   user: { name: string }
+  onAccountSettings: () => void
+  onLogout: () => void
 }
 
 export function Header(props: Readonly<HeaderProps>) {
-  const { user } = props
+  const { user, onAccountSettings, onLogout } = props
   const matches = useMatches()
 
   const activeMatch = [...matches]
@@ -37,7 +39,11 @@ export function Header(props: Readonly<HeaderProps>) {
       <Group justify="space-between" style={{ width: '100%' }}>
         <Breadcrumb crumbs={crumbs} />
         <Group>
-          <UserMenu user={user} />
+          <UserMenu
+            user={user}
+            onAccountSettings={onAccountSettings}
+            onLogout={onLogout}
+          />
         </Group>
       </Group>
     </AppShell.Header>

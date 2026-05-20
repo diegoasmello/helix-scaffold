@@ -9,10 +9,12 @@ export interface UserMenuProps {
   user: {
     name: string
   }
+  onAccountSettings: () => void
+  onLogout: () => void
 }
 
 export function UserMenu(props: Readonly<UserMenuProps>) {
-  const { user } = props
+  const { user, onAccountSettings, onLogout } = props
 
   const { classes } = useStyles()
   const [userMenuOpened, setUserMenuOpened] = useState(false)
@@ -40,10 +42,16 @@ export function UserMenu(props: Readonly<UserMenuProps>) {
         </UnstyledButton>
       </Menu.Target>
       <Menu.Dropdown>
-        <Menu.Item leftSection={<IconSettings size={16} stroke={1.5} />}>
+        <Menu.Item
+          leftSection={<IconSettings size={16} stroke={1.5} />}
+          onClick={onAccountSettings}
+        >
           Account settings
         </Menu.Item>
-        <Menu.Item leftSection={<IconLogout size={16} stroke={1.5} />}>
+        <Menu.Item
+          leftSection={<IconLogout size={16} stroke={1.5} />}
+          onClick={onLogout}
+        >
           Logout
         </Menu.Item>
       </Menu.Dropdown>

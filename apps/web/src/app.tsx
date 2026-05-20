@@ -1,10 +1,13 @@
 import { Center, Layout, Loader } from '@helix/ui'
+import { useNavigate } from '@tanstack/react-router'
 
 import { sidebarGroups } from './config/sidebar'
+import { authClient } from './lib/authentication'
 import { useAuth } from './modules/auth/use-auth'
 
 export function App() {
   const { user, hasPermission, isAuthenticated, isPending } = useAuth()
+  const navigate = useNavigate()
 
   if (isPending) {
     return (
@@ -25,5 +28,18 @@ export function App() {
     }))
     .filter((group) => group.items.length > 0)
 
-  return <Layout sidebarGroups={visibleGroups} user={user ?? { name: 'Guest' }} />
+  const handleAccountSettings = () => navigate({ to: '/me' })
+
+  const handleLogout = async () => {
+    await authClient.signOut()
+  }
+
+  return (
+    <Layout
+      sidebarGroups={visibleGroups}
+      user={user ?? { name: 'Guest' }}
+      onAccountSettings={handleAccountSettings}
+      onLogout={handleLogout}
+    />
+  )
 }
