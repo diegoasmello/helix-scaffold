@@ -17,7 +17,7 @@ export function PageCreate(props: Readonly<PageCreateProps>) {
         <Title order={2}>{title}</Title>
         {actions}
       </Group>
-      <Paper p="24" radius="lg">
+      <Paper p="24">
         {children}
         {footerActions && (
           <>

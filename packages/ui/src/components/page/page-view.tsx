@@ -17,7 +17,7 @@ export function PageView(props: Readonly<PageViewProps>) {
         <Title order={2}>{title}</Title>
         {actions}
       </Group>
-      <Paper p="24" radius="lg">
+      <Paper p="24">
         {children}
         {footerActions && (
           <>
