@@ -14,6 +14,7 @@ export function DataTable<T>(
     borderRadius = 'sm',
     withColumnBorders = false,
     highlightOnHover = true,
+    minHeight = 180,
     ...rest
   } = props
 
@@ -26,6 +27,7 @@ export function DataTable<T>(
     borderRadius,
     withColumnBorders,
     highlightOnHover,
+    minHeight,
     ...rest,
   } as DataTableProps<T>
 
@@ -43,6 +45,10 @@ const useStyles = createStyles((theme) => ({
   `,
 
   dataTable: css`
+    .mantine-datatable-empty-state {
+      padding-top: 72px;
+    }
+
     .mantine-datatable-table {
       border-collapse: separate;
       border-spacing: 0 0.625rem;
