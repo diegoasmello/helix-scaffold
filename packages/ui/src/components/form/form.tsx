@@ -42,7 +42,7 @@ export function Form<Values, TransformedValues = Values>(
   )
 
   return (
-    <form onSubmit={handleSubmit} {...rest}>
+    <form onSubmit={handleSubmit} noValidate {...rest}>
       {children}
     </form>
   )
