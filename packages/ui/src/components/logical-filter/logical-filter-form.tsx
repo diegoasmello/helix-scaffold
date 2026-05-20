@@ -90,7 +90,9 @@ function ValueInput(props: Readonly<ValueInputProps>) {
   const fieldDef = fields.find((f) => f.name === condition.field)
   if (!fieldDef) return null
 
-  const commonProps = { size: 'xs' as const, style: { flex: 1, minWidth: 140 } }
+  const commonProps = {
+    style: { flex: 1, minWidth: 140 },
+  }
 
   switch (fieldDef.type) {
     case 'text':
@@ -255,7 +257,6 @@ export function LogicalFilterForm<T extends string = string>(
               Match
             </Text>
             <Select
-              size="xs"
               w={190}
               data={[
                 { value: 'AND', label: 'all conditions (AND)' },
@@ -291,7 +292,6 @@ export function LogicalFilterForm<T extends string = string>(
             wrap="nowrap"
           >
             <Select
-              size="xs"
               w={140}
               placeholder="Field"
               data={fields.map((f) => ({ value: f.name, label: f.label }))}
@@ -300,7 +300,6 @@ export function LogicalFilterForm<T extends string = string>(
               allowDeselect={false}
             />
             <Select
-              size="xs"
               w={140}
               placeholder="Operator"
               data={OPERATORS_BY_TYPE[getFieldType(condition.field)]}
