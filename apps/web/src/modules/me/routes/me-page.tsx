@@ -95,10 +95,11 @@ export function MePage() {
           </Text>
           <form onSubmit={handleProfileSubmit}>
             <Stack gap="md">
-              <TextInput label="Name" {...profileForm.getInputProps('name')} />
+              <TextInput label="Name" required {...profileForm.getInputProps('name')} />
               <TextInput
                 label="Email"
                 type="email"
+                required
                 {...profileForm.getInputProps('email')}
               />
               <Group justify="flex-end">
@@ -121,14 +122,17 @@ export function MePage() {
             <Stack gap="md">
               <PasswordInput
                 label="Current Password"
+                required
                 {...passwordForm.getInputProps('currentPassword')}
               />
               <PasswordInput
                 label="New Password"
+                required
                 {...passwordForm.getInputProps('newPassword')}
               />
               <PasswordInput
                 label="Confirm New Password"
+                required
                 {...passwordForm.getInputProps('confirmPassword')}
               />
               <Group justify="flex-end">

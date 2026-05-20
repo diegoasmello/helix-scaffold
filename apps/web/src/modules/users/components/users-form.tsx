@@ -18,6 +18,7 @@ export function UsersForm(props: Readonly<UsersFormProps>) {
         <TextInput
           label="Name"
           placeholder="Full name"
+          required
           {...form.getInputProps('name')}
         />
       </Grid.Col>
@@ -26,6 +27,7 @@ export function UsersForm(props: Readonly<UsersFormProps>) {
           label="Email"
           placeholder="email@example.com"
           type="email"
+          required
           {...form.getInputProps('email')}
         />
       </Grid.Col>
@@ -34,6 +36,7 @@ export function UsersForm(props: Readonly<UsersFormProps>) {
           <PasswordInput
             label="Password"
             placeholder="Min 8 characters"
+            required
             {...form.getInputProps('password')}
           />
         </Grid.Col>

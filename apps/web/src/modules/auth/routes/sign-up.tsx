@@ -63,22 +63,26 @@ export function SignUp() {
             <TextInput
               label="Name"
               placeholder="Your name"
+              required
               {...form.getInputProps('name')}
             />
             <TextInput
               label="Email"
               type="email"
               placeholder="you@example.com"
+              required
               {...form.getInputProps('email')}
             />
             <PasswordInput
               label="Password"
               placeholder="At least 8 characters"
+              required
               {...form.getInputProps('password')}
             />
             <PasswordInput
               label="Confirm password"
               placeholder="Repeat your password"
+              required
               {...form.getInputProps('confirmPassword')}
             />
             {serverError && (

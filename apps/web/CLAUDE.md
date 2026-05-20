@@ -774,6 +774,37 @@ const form = useForm<XxxFormValues>({
 - Select and DateInput: bind `value` and `onChange` + `error` explicitly
 - Status toggles (e.g. `pending | completed`): use `Switch`, store the domain value in the form, set via `form.setFieldValue`
 
+**Required fields**: every field that is required — statically or conditionally — must have the `required` prop on the Mantine input component. This renders the asterisk (`*`) indicator next to the label. Never rely on validation errors alone to signal obligation to the user.
+
+```tsx
+<TextInput
+  label="Name"
+  placeholder="Full name"
+  required
+  {...form.getInputProps('name')}
+/>
+```
+
+For conditionally required fields, `required` must be conditional too — the asterisk should appear only when the field is actually required given the current state. Two common cases:
+
+```tsx
+// Field always visible, sometimes required
+<TextInput
+  label="Tax ID"
+  required={form.values.entityType === 'company'}
+  {...form.getInputProps('taxId')}
+/>
+
+// Field only rendered when required — required is always true when shown
+{!isEditing && (
+  <PasswordInput
+    label="Password"
+    required
+    {...form.getInputProps('password')}
+  />
+)}
+```
+
 Validation lives in `validation.ts`, typed against the form values. Use `satisfies` instead of a type annotation — TypeScript validates compatibility with Mantine's type but infers the concrete object shape, avoiding union/optional issues:
 
 ```ts

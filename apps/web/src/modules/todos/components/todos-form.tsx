@@ -23,6 +23,7 @@ export function TodoForm(props: Readonly<TodoFormProps>) {
         <TextInput
           label="Title"
           placeholder="Todo title"
+          required
           {...form.getInputProps('title')}
         />
       </Grid.Col>
@@ -32,6 +33,7 @@ export function TodoForm(props: Readonly<TodoFormProps>) {
           description="Write a large content"
           placeholder="Todo description"
           resize="vertical"
+          required
           {...form.getInputProps('description')}
         />
       </Grid.Col>
@@ -40,6 +42,7 @@ export function TodoForm(props: Readonly<TodoFormProps>) {
           label="Content"
           description="Write a large content"
           placeholder="Todo content"
+          required
           {...form.getInputProps('content')}
         />
       </Grid.Col>
@@ -47,6 +50,7 @@ export function TodoForm(props: Readonly<TodoFormProps>) {
         <DateInput
           label="Date"
           placeholder="Pick a date"
+          required
           {...form.getInputProps('date')}
         />
       </Grid.Col>

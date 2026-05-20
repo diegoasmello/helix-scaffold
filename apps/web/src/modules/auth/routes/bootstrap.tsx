@@ -66,17 +66,20 @@ export function Bootstrap() {
             <TextInput
               label="Name"
               placeholder="Admin name"
+              required
               {...form.getInputProps('name')}
             />
             <TextInput
               label="Email"
               type="email"
               placeholder="admin@example.com"
+              required
               {...form.getInputProps('email')}
             />
             <PasswordInput
               label="Password"
               placeholder="Min 8 characters"
+              required
               {...form.getInputProps('password')}
             />
             {serverError && (

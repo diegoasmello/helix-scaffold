@@ -57,11 +57,13 @@ export function Login() {
               label="Email"
               type="email"
               placeholder="you@example.com"
+              required
               {...form.getInputProps('email')}
             />
             <PasswordInput
               label="Password"
               placeholder="Your password"
+              required
               {...form.getInputProps('password')}
             />
             {serverError && (

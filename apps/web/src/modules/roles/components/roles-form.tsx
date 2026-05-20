@@ -16,6 +16,7 @@ export function RolesForm(props: Readonly<RolesFormProps>) {
         <TextInput
           label="Name"
           placeholder="Role name"
+          required
           {...form.getInputProps('name')}
         />
       </Grid.Col>
@@ -24,6 +25,7 @@ export function RolesForm(props: Readonly<RolesFormProps>) {
           label="Description"
           placeholder="Role description"
           resize="vertical"
+          required
           {...form.getInputProps('description')}
         />
       </Grid.Col>
