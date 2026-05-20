@@ -1,5 +1,6 @@
 export * from './breadcrumb/breadcrumb'
 export * from './data-table/data-table'
+export * from './empty-state/empty-state'
 export * from './form/form'
 export * from './header/header'
 export * from './labeled-value/labeled-value'
