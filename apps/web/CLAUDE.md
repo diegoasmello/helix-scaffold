@@ -668,6 +668,36 @@ const columns: DataTableColumn<XxxItem>[] = [
 
 `getDataTableSortingProps(search, navigate)` — derives `sortStatus` (`undefined` when `sortBy` is absent, so headers render unsorted) and `onSortStatusChange` (always resets `page` to 1 when sort changes).
 
+**Empty state** — every list screen must handle the case where there are no records and no active filters. In this case, render `EmptyState` from `@helix/ui` in place of the entire `PageList` (not just the `DataTable`). Include a direct call-to-action button so the user can create the first record without navigating back to find the Create button:
+
+```tsx
+if (xxxResponse.data.length === 0 && !filters) {
+  return (
+    <EmptyState
+      title="No xxxs yet"
+      description="Get started by creating your first xxx."
+    >
+      <Button
+        size="lg"
+        leftSection={<IconPlus size={16} />}
+        onClick={() => navigate({ to: '/xxx/create' })}
+      >
+        Create first xxx
+      </Button>
+    </EmptyState>
+  )
+}
+
+return (
+  <PageList ...>
+    ...
+    <DataTable records={xxxResponse.data} ... />
+  </PageList>
+)
+```
+
+When active filters are present and the result is empty, skip the `EmptyState` — the `DataTable` handles that case with its own built-in empty message, which correctly signals "no results for these filters" rather than "nothing exists yet".
+
 Form screens use the `<Form>` component from `@helix/ui` wrapping `PageCreate`/`PageEdit`. `Form` receives `form` (the `useForm` instance) and `onSubmit` (a plain function that receives the validated values — not `form.onSubmit(...)`). It handles validation and submission internally.
 
 **Per-row action buttons** — always use `Button size="xs" variant="secondary"` with a text label. Never use `ActionIcon` with an icon in the actions column:
