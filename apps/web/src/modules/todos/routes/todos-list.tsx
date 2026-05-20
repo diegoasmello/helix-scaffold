@@ -11,6 +11,7 @@ import {
   confirm,
   DataTable,
   type DataTableColumn,
+  EmptyState,
   type FilterFieldDef,
   getDataTablePaginationProps,
   getDataTableSortingProps,
@@ -190,6 +191,23 @@ export function TodoList() {
       ),
     },
   ]
+
+  if (todosResponse.data.length === 0 && !filters) {
+    return (
+      <EmptyState
+        title="No todos yet"
+        description="Get started by creating your first todo."
+      >
+        <Button
+          size="lg"
+          leftSection={<IconPlus size={16} />}
+          onClick={() => navigate({ to: '/todos/create' })}
+        >
+          Create first todo
+        </Button>
+      </EmptyState>
+    )
+  }
 
   return (
     <PageList
