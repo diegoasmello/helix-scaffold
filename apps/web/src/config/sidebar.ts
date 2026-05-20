@@ -5,7 +5,6 @@ import {
   IconClipboardList,
   IconLock,
   IconShield,
-  IconUser,
   IconUsers,
 } from '@helix/ui'
 
@@ -21,11 +20,6 @@ interface SidebarGroupWithPermission {
 export const sidebarGroups: SidebarGroupWithPermission[] = [
   {
     items: [
-      {
-        label: 'Profile',
-        icon: IconUser,
-        to: '/me',
-      },
       {
         label: 'Todos',
         icon: IconChecklist,
