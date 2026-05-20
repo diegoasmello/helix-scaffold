@@ -8,7 +8,6 @@ import { useState } from 'react'
 export interface UserMenuProps {
   user: {
     name: string
-    avatar?: string
   }
 }
 
@@ -32,7 +31,7 @@ export function UserMenu(props: Readonly<UserMenuProps>) {
           className={cx(classes.user, { [classes.userActive]: userMenuOpened })}
         >
           <Group gap={7}>
-            <Avatar src={user.avatar} alt="" radius="xl" size={20} />
+            <Avatar radius="xl" size={20} />
             <Text fw={500} size="sm" lh={1} mr={3}>
               {user.name}
             </Text>

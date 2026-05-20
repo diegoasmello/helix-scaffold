@@ -6,7 +6,7 @@ import { Breadcrumb } from '../breadcrumb/breadcrumb'
 import { UserMenu } from '../user-menu/user-menu'
 
 export interface HeaderProps {
-  user: { name: string; avatar?: string }
+  user: { name: string }
 }
 
 export function Header(props: Readonly<HeaderProps>) {
