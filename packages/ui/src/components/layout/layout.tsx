@@ -1,4 +1,6 @@
+import { css } from '@emotion/react'
 import { AppShell, Container } from '@mantine/core'
+import { createStyles } from '@mantine/emotion'
 import { Outlet } from '@tanstack/react-router'
 import { useState } from 'react'
 
@@ -12,7 +14,7 @@ export interface LayoutProps {
   user: { id?: string; name: string; avatar?: string }
 }
 
-const SIDEBAR_WIDTH = 280
+const SIDEBAR_WIDTH = 256
 const SIDEBAR_COLLAPSED_WIDTH = 72
 
 function usePersistedSidebar(userId: string | undefined) {
@@ -47,11 +49,11 @@ function usePersistedSidebar(userId: string | undefined) {
 export function Layout(props: Readonly<LayoutProps>) {
   const { sidebarGroups, user } = props
 
+  const { classes } = useStyles()
   const [sidebarCollapsed, toggleSidebar] = usePersistedSidebar(user.id)
 
   return (
     <AppShell
-      padding="md"
       header={{ height: 60 }}
       navbar={{
         width: sidebarCollapsed ? SIDEBAR_COLLAPSED_WIDTH : SIDEBAR_WIDTH,
@@ -72,11 +74,29 @@ export function Layout(props: Readonly<LayoutProps>) {
         />
       </AppShell.Navbar>
 
-      <AppShell.Main>
-        <Container fluid>
-          <Outlet />
-        </Container>
+      <AppShell.Main className={classes.main}>
+        <div className={classes.inner}>
+          <Container fluid>
+            <Outlet />
+          </Container>
+        </div>
       </AppShell.Main>
     </AppShell>
   )
 }
+
+const useStyles = createStyles((theme) => ({
+  main: css`
+    display: flex;
+    flex-direction: column;
+  `,
+  inner: css`
+    flex: 1;
+    background-color: ${theme.colors.gray[1]};
+    border-top-left-radius: ${theme.radius.lg};
+    padding-top: ${theme.spacing.lg};
+    padding-left: ${theme.spacing.xs};
+    padding-right: ${theme.spacing.xs};
+    padding-bottom: ${theme.spacing.lg};
+  `,
+}))
