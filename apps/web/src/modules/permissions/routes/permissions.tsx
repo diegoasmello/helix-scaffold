@@ -1,43 +1,33 @@
 import { useGetRolesAllSuspense } from '@helix/api-client/hooks'
-import { Center, Loader, PageList, Select, Text } from '@helix/ui'
-import { Suspense, useState } from 'react'
+import { Flex, PageList, Paper, Select, Text } from '@helix/ui'
 
-import { PermissionsEditor } from '../components/permissions-editor'
+import { permissionsRoute } from '../routes'
 
 export function Permissions() {
   const { data: roles } = useGetRolesAllSuspense()
-  const [selectedRoleId, setSelectedRoleId] = useState<string | null>(null)
+  const navigate = permissionsRoute.useNavigate()
 
   return (
-    <PageList
-      title="Permissions"
-      actions={
-        <Select
-          placeholder="Select a role"
-          data={roles.map((r) => ({ value: r.id, label: r.name }))}
-          value={selectedRoleId}
-          onChange={setSelectedRoleId}
-          w={200}
-        />
-      }
-    >
-      {selectedRoleId ? (
-        <Suspense
-          fallback={
-            <Center h={200}>
-              <Loader />
-            </Center>
-          }
-        >
-          <PermissionsEditor roleId={selectedRoleId} key={selectedRoleId} />
-        </Suspense>
-      ) : (
-        <Center h={200}>
+    <PageList title="Permissions">
+      <Paper p="24">
+        <Flex direction="column" align="center" gap="md">
           <Text c="dimmed" size="sm">
             Select a role to configure its permissions.
           </Text>
-        </Center>
-      )}
+          <Select
+            placeholder="Select a role"
+            data={roles.map((r) => ({ value: r.id, label: r.name }))}
+            onChange={(roleId) => {
+              if (roleId) {
+                navigate({
+                  to: '/permissions/edit/$roleId',
+                  params: { roleId },
+                })
+              }
+            }}
+          />
+        </Flex>
+      </Paper>
     </PageList>
   )
 }

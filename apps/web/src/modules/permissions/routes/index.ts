@@ -1,5 +1,6 @@
 import {
   getPermissionsResourcesSuspenseQueryOptions,
+  getRolesIdPermissionsSuspenseQueryOptions,
   getRolesSuspenseQueryOptions,
 } from '@helix/api-client/hooks'
 import { createRoute, redirect } from '@tanstack/react-router'
@@ -8,9 +9,10 @@ import { authenticatedRoute } from '@/routes'
 
 import { queryClient } from '../../../lib/query-client'
 import { Permissions } from './permissions'
+import { PermissionsEdit } from './permissions-edit'
 import { PermissionsPending } from './permissions-pending'
 
-const permissionsRoute = createRoute({
+export const permissionsRoute = createRoute({
   getParentRoute: () => authenticatedRoute,
   path: '/permissions',
   component: Permissions,
@@ -28,4 +30,24 @@ const permissionsRoute = createRoute({
   },
 })
 
-export const permissionsRoutes = [permissionsRoute]
+export const permissionsEditRoute = createRoute({
+  getParentRoute: () => authenticatedRoute,
+  path: '/permissions/edit/$roleId',
+  component: PermissionsEdit,
+  pendingComponent: PermissionsPending,
+  staticData: {
+    breadcrumbs: [{ label: 'Permissions', to: '/permissions' }, { label: 'Edit' }],
+  },
+  beforeLoad: ({ context }) => {
+    if (!context.hasPermission('permissions', 'edit'))
+      throw redirect({ to: '/403' })
+  },
+  loader: ({ params }) => {
+    queryClient.ensureQueryData(getPermissionsResourcesSuspenseQueryOptions())
+    return queryClient.ensureQueryData(
+      getRolesIdPermissionsSuspenseQueryOptions(params.roleId)
+    )
+  },
+})
+
+export const permissionsRoutes = [permissionsRoute, permissionsEditRoute]
