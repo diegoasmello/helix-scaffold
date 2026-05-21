@@ -33,7 +33,9 @@ export function UserMenu(props: Readonly<UserMenuProps>) {
           className={cx(classes.user, { [classes.userActive]: userMenuOpened })}
         >
           <Group gap={7}>
-            <Avatar radius="xl" size={20} />
+            <Avatar radius="xl" size={32}>
+              {user.name[0]}
+            </Avatar>
             <Text fw={500} size="sm" lh={1} mr={3}>
               {user.name}
             </Text>
@@ -61,8 +63,8 @@ export function UserMenu(props: Readonly<UserMenuProps>) {
 
 const useStyles = createStyles((theme, _, u) => ({
   user: css`
-    padding: ${theme.spacing.xs} ${theme.spacing.sm};
-    border-radius: ${theme.radius.sm};
+    padding: 0.5rem ${theme.spacing.sm};
+    border-radius: ${theme.radius.mg};
     transition: background-color 100ms ease;
     ${u.light} {
       color: ${theme.black};
