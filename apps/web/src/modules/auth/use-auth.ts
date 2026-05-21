@@ -15,7 +15,7 @@ export function useAuth(): AuthState {
 
   const { data: meData } = useQuery({
     queryKey: getMeSuspenseQueryKey(),
-    queryFn: getMeSuspense,
+    queryFn: async () => getMeSuspense(),
     enabled: false,
     staleTime: Infinity,
   })
