@@ -17,16 +17,19 @@ export function createTheme(
     components: {
       Input: {
         styles: (theme: MantineTheme) => ({
+          wrapper: {
+            overflow: 'visible',
+            borderRadius: theme.radius.sm,
+            '&:focus-within': {
+              outline: `2px solid ${theme.colors.main[6]}`,
+              outlineOffset: '2px',
+            },
+            '&:has([aria-invalid="true"]):focus-within': {
+              outline: `2px solid ${theme.colors.red[6]}`,
+            },
+          },
           input: {
             borderRadius: theme.radius.sm,
-            '&:focus, &:focus-visible': {
-              outline: '2px solid var(--mantine-primary-color-filled)',
-              outlineOffset: 'calc(0.125rem * var(--mantine-scale))',
-            },
-            '&[aria-invalid="true"]:focus, &[aria-invalid="true"]:focus-visible':
-              {
-                outline: '2px solid var(--mantine-color-error)',
-              },
           },
         }),
       },
