@@ -1,13 +1,15 @@
 import { getMeSuspenseQueryOptions } from '@helix/api-client/hooks'
-import { createRoute } from '@tanstack/react-router'
+import { createRoute, redirect } from '@tanstack/react-router'
 
 import { authenticatedRoute } from '@/routes'
 
 import { queryClient } from '../../../lib/query-client'
+import { MeAccount } from './me-account'
 import { MePage } from './me-page'
 import { MePending } from './me-pending'
+import { MeSecurity } from './me-security'
 
-export const meRoute = createRoute({
+const meRoute = createRoute({
   getParentRoute: () => authenticatedRoute,
   path: '/me',
   component: MePage,
@@ -18,4 +20,26 @@ export const meRoute = createRoute({
   loader: () => queryClient.ensureQueryData(getMeSuspenseQueryOptions()),
 })
 
-export const meRoutes = [meRoute]
+const meIndexRoute = createRoute({
+  getParentRoute: () => meRoute,
+  path: '/',
+  beforeLoad: () => {
+    throw redirect({ to: '/me/account' })
+  },
+})
+
+const meAccountRoute = createRoute({
+  getParentRoute: () => meRoute,
+  path: '/account',
+  component: MeAccount,
+})
+
+const meSecurityRoute = createRoute({
+  getParentRoute: () => meRoute,
+  path: '/security',
+  component: MeSecurity,
+})
+
+export const meRoutes = [
+  meRoute.addChildren([meIndexRoute, meAccountRoute, meSecurityRoute]),
+]

@@ -1,149 +1,43 @@
-import {
-  getMeSuspenseQueryKey,
-  patchMe,
-  patchMePassword,
-  useGetMeSuspense,
-} from '@helix/api-client/hooks'
-import {
-  Button,
-  Group,
-  notify,
-  PageView,
-  Paper,
-  PasswordInput,
-  Stack,
-  Text,
-  TextInput,
-  Title,
-  useForm,
-} from '@helix/ui'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
-
-import type {
-  MeFormValues,
-  PasswordFormValues,
-  UpdateMeInput,
-  UpdateMePasswordInput,
-} from '../types'
-import { meFormValidate, passwordFormValidate } from '../validation'
+import { Grid, GridCol, NavigationItem, Title } from '@helix/ui'
+import { Paper, Stack, Text } from '@helix/ui'
+import { IconLock, IconUser } from '@helix/ui'
+import { Outlet } from '@tanstack/react-router'
 
 export function MePage() {
-  const { data: profile } = useGetMeSuspense()
-  const queryClient = useQueryClient()
-
-  const { mutate: updateProfile, isPending: isUpdatingProfile } = useMutation({
-    mutationFn: (data: UpdateMeInput) => patchMe(data),
-    onSuccess: (updated) => {
-      queryClient.setQueryData(getMeSuspenseQueryKey(), updated)
-      notify({ status: 'success', message: 'Profile updated successfully' })
-    },
-    onError: () => {
-      notify({ status: 'danger', message: 'Failed to update profile' })
-    },
-  })
-
-  const { mutate: changePassword, isPending: isChangingPassword } = useMutation(
-    {
-      mutationFn: (data: UpdateMePasswordInput) => patchMePassword(data),
-      onSuccess: () => {
-        passwordForm.reset()
-        notify({ status: 'success', message: 'Password changed successfully' })
-      },
-      onError: () => {
-        notify({ status: 'danger', message: 'Current password is incorrect' })
-      },
-    }
-  )
-
-  const profileForm = useForm<MeFormValues>({
-    initialValues: {
-      name: profile.name,
-      email: profile.email,
-    },
-    validate: meFormValidate,
-  })
-
-  const passwordForm = useForm<PasswordFormValues>({
-    initialValues: {
-      currentPassword: '',
-      newPassword: '',
-      confirmPassword: '',
-    },
-    validate: passwordFormValidate,
-  })
-
-  const handleProfileSubmit = profileForm.onSubmit((values) => {
-    updateProfile({ name: values.name, email: values.email })
-  })
-
-  const handlePasswordSubmit = passwordForm.onSubmit((values) => {
-    changePassword({
-      currentPassword: values.currentPassword,
-      newPassword: values.newPassword,
-    })
-  })
-
   return (
-    <PageView title="Profile">
-      <Stack gap="xl">
-        <Paper p="lg" withBorder>
-          <Title order={3} mb="xs">
-            Personal Info
-          </Title>
-          <Text c="dimmed" size="sm" mb="lg">
-            Update your name and email address.
-          </Text>
-          <form onSubmit={handleProfileSubmit}>
-            <Stack gap="md">
-              <TextInput label="Name" required {...profileForm.getInputProps('name')} />
-              <TextInput
-                label="Email"
-                type="email"
-                required
-                {...profileForm.getInputProps('email')}
-              />
-              <Group justify="flex-end">
-                <Button type="submit" loading={isUpdatingProfile}>
-                  Save
-                </Button>
-              </Group>
+    <Grid>
+      <GridCol span={3}>
+        <Paper p="lg" h="100%">
+          <Stack gap={16}>
+            <Stack gap={4}>
+              <Title order={4} lh={1.2}>
+                Account settings
+              </Title>
+              <Text c="dimmed" size="xs">
+                Update your name and email address.
+              </Text>
             </Stack>
-          </form>
-        </Paper>
 
-        <Paper p="lg" withBorder>
-          <Title order={3} mb="xs">
-            Change Password
-          </Title>
-          <Text c="dimmed" size="sm" mb="lg">
-            Choose a strong password with at least 8 characters.
-          </Text>
-          <form onSubmit={handlePasswordSubmit}>
-            <Stack gap="md">
-              <PasswordInput
-                label="Current Password"
-                required
-                {...passwordForm.getInputProps('currentPassword')}
+            <Stack gap={8}>
+              <NavigationItem
+                label="Account"
+                icon={IconUser}
+                to="/me/account"
               />
-              <PasswordInput
-                label="New Password"
-                required
-                {...passwordForm.getInputProps('newPassword')}
+              <NavigationItem
+                label="Security"
+                icon={IconLock}
+                to="/me/security"
               />
-              <PasswordInput
-                label="Confirm New Password"
-                required
-                {...passwordForm.getInputProps('confirmPassword')}
-              />
-              <Group justify="flex-end">
-                <Button type="submit" loading={isChangingPassword}>
-                  Change Password
-                </Button>
-              </Group>
             </Stack>
-          </form>
+          </Stack>
         </Paper>
-      </Stack>
-    </PageView>
+      </GridCol>
+      <GridCol span={9}>
+        <Paper p="lg">
+          <Outlet />
+        </Paper>
+      </GridCol>
+    </Grid>
   )
 }
