@@ -1,6 +1,17 @@
 import { useGetAuditLogsIdSuspense } from '@helix/api-client/hooks'
 import type { AuditLog } from '@helix/api-client/types'
-import { Badge, Button, Grid, LabeledValue, PageView, Text } from '@helix/ui'
+import {
+  Badge,
+  Button,
+  Grid,
+  Group,
+  LabeledValue,
+  PageView,
+  Text,
+} from '@helix/ui'
+import { parseISO } from 'date-fns'
+
+import { formatDateTime } from '@/utils/date'
 
 import { auditDetailRoute } from '.'
 
@@ -8,10 +19,6 @@ const ACTION_COLORS: Record<AuditLog['action'], string> = {
   create: 'green',
   edit: 'blue',
   delete: 'red',
-}
-
-function formatDate(iso: string) {
-  return new Date(iso).toLocaleString()
 }
 
 export function AuditDetail() {
@@ -23,16 +30,22 @@ export function AuditDetail() {
   return (
     <PageView
       title="View Audit Log"
-      actions={
-        <Button variant="light" onClick={() => navigate({ to: '/audit' })}>
-          Back
-        </Button>
+      footerActions={
+        <Group justify="flex-end">
+          <Button
+            size="md"
+            variant="secondary"
+            onClick={() => navigate({ to: '/audit' })}
+          >
+            Back
+          </Button>
+        </Group>
       }
     >
       <Grid>
         <Grid.Col span={{ base: 12, sm: 6 }}>
           <LabeledValue label="Date">
-            <Text size="md">{formatDate(log.createdAt)}</Text>
+            <Text size="md">{formatDateTime(parseISO(log.createdAt))}</Text>
           </LabeledValue>
         </Grid.Col>
         <Grid.Col span={{ base: 12, sm: 6 }}>

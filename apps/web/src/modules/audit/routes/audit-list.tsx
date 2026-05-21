@@ -1,15 +1,17 @@
 import { useGetAuditLogsSuspense } from '@helix/api-client/hooks'
 import type { AuditLog } from '@helix/api-client/types'
 import {
-  ActionIcon,
   Badge,
+  Button,
   DataTable,
   type DataTableColumn,
   getDataTablePaginationProps,
   getDataTableSortingProps,
   PageList,
 } from '@helix/ui'
-import { IconEye } from '@helix/ui'
+import { parseISO } from 'date-fns'
+
+import { formatDateTime } from '@/utils/date'
 
 import { auditListRoute } from '.'
 
@@ -17,10 +19,6 @@ const ACTION_COLORS: Record<string, string> = {
   create: 'green',
   edit: 'blue',
   delete: 'red',
-}
-
-function formatDate(iso: string) {
-  return new Date(iso).toLocaleString()
 }
 
 export function AuditList() {
@@ -47,7 +45,7 @@ export function AuditList() {
       accessor: 'createdAt',
       title: 'Date',
       sortable: true,
-      render: (log) => formatDate(log.createdAt),
+      render: (log) => formatDateTime(parseISO(log.createdAt)),
     },
     { accessor: 'userName', title: 'User', sortable: true },
     {
@@ -75,15 +73,16 @@ export function AuditList() {
       accessor: 'actions',
       title: 'Actions',
       textAlign: 'center',
-      width: 80,
+      width: 96,
       render: (log) => (
-        <ActionIcon
-          variant="light"
+        <Button
+          size="xs"
+          variant="secondary"
           aria-label="View"
           onClick={() => navigate({ to: '/audit/$id', params: { id: log.id } })}
         >
-          <IconEye style={{ width: '70%', height: '70%' }} stroke={1.5} />
-        </ActionIcon>
+          View
+        </Button>
       ),
     },
   ]
