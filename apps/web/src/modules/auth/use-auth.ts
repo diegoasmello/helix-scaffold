@@ -1,6 +1,8 @@
 import {
   getMePermissions,
   getMePermissionsQueryKey,
+  getMeSuspense,
+  getMeSuspenseQueryKey,
 } from '@helix/api-client/hooks'
 import type { PermissionAction } from '@helix/api-client/types'
 import { useQuery } from '@tanstack/react-query'
@@ -11,10 +13,17 @@ import type { AuthState, User } from './types'
 export function useAuth(): AuthState {
   const { data: session, isPending: sessionPending } = authClient.useSession()
 
+  const { data: meData } = useQuery({
+    queryKey: getMeSuspenseQueryKey(),
+    queryFn: getMeSuspense,
+    enabled: false,
+    staleTime: Infinity,
+  })
+
   const user: User | null = session?.user
     ? {
         id: session.user.id,
-        name: session.user.name,
+        name: meData?.name ?? session.user.name,
         email: session.user.email,
         avatar: session.user.image ?? undefined,
         roleId: (session.user as { roleId?: string | null }).roleId ?? null,
