@@ -23,9 +23,10 @@ export function createTheme(
               outline: '2px solid var(--mantine-primary-color-filled)',
               outlineOffset: 'calc(0.125rem * var(--mantine-scale))',
             },
-            '&[aria-invalid="true"]:focus, &[aria-invalid="true"]:focus-visible': {
-              outline: '2px solid var(--mantine-color-error)',
-            },
+            '&[aria-invalid="true"]:focus, &[aria-invalid="true"]:focus-visible':
+              {
+                outline: '2px solid var(--mantine-color-error)',
+              },
           },
         }),
       },
@@ -48,6 +49,16 @@ export function createTheme(
             }),
           },
         }),
+      },
+      Modal: {
+        defaultProps: { radius: 'lg' },
+        styles: {
+          title: {
+            alignSelf: 'stretch',
+            display: 'flex',
+            alignItems: 'center',
+          },
+        },
       },
       Badge: {
         defaultProps: { variant: 'light' },

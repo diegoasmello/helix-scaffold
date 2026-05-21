@@ -11,9 +11,10 @@ export function useFormBlocker(
       if (!isDirty) return false
 
       const shouldLeave = await asyncConfirm({
-        status: 'warning',
+        status: 'info',
         title: 'Unsaved changes',
         message: 'You have unsaved changes. Are you sure you want to leave?',
+        color: 'main',
         confirmLabel: 'Leave',
         cancelLabel: 'Stay',
       })

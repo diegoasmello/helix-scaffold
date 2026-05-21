@@ -1,4 +1,4 @@
-import { Group, Text } from '@mantine/core'
+import { Box, Group, Title } from '@mantine/core'
 import { modals } from '@mantine/modals'
 import {
   IconAlertCircle,
@@ -10,7 +10,7 @@ import type { ReactNode } from 'react'
 
 export type ConfirmDialogStatus = 'success' | 'warning' | 'info' | 'danger'
 
-const statusConfig: Record<
+const STATUS_CONFIG: Record<
   ConfirmDialogStatus,
   { color: string; icon: ReactNode }
 > = {
@@ -28,55 +28,59 @@ export interface ConfirmOptions {
   onCancel?: () => void
   confirmLabel?: string
   cancelLabel?: string
+  color?: 'main' | ConfirmDialogStatus
   closeOnConfirm?: boolean
   closeOnCancel?: boolean
   centered?: boolean
 }
 
-export function confirm(options: ConfirmOptions): void {
-  const { status, title, message, confirmLabel, cancelLabel, ...rest } = options
-  const { color, icon } = statusConfig[status]
+type SharedOptions = Omit<ConfirmOptions, 'onConfirm' | 'onCancel'>
 
-  modals.openConfirmModal({
+function buildModalProps(options: SharedOptions) {
+  const { status, title, message, confirmLabel, cancelLabel, color, ...rest } =
+    options
+
+  const { color: statusColor, icon } = STATUS_CONFIG[status]
+
+  const computedColor = color ?? statusColor
+
+  return {
     title: (
       <Group gap="xs">
-        <Text c={color}>{icon}</Text>
-        <Text fw={600}>{title}</Text>
+        <Box h={20} c={computedColor}>
+          {icon}
+        </Box>
+        <Title order={5} fw={700} lh={1}>
+          {title}
+        </Title>
       </Group>
     ),
     children: message,
+    centered: true,
     labels: {
       confirm: confirmLabel ?? 'Confirm',
       cancel: cancelLabel ?? 'Cancel',
     },
-    confirmProps: { color },
+    confirmProps: { color: computedColor },
+    groupProps: { gap: 'xs' },
     ...rest,
-  })
+  }
+}
+
+export function confirm(options: ConfirmOptions): void {
+  const { onConfirm, onCancel, ...shared } = options
+
+  modals.openConfirmModal({ ...buildModalProps(shared), onConfirm, onCancel })
 }
 
 export function asyncConfirm(
-  options: Omit<ConfirmOptions, 'onConfirm' | 'onCancel '>
+  options: Omit<ConfirmOptions, 'onConfirm' | 'onCancel'>
 ): Promise<boolean> {
-  const { status, title, message, confirmLabel, cancelLabel, ...rest } = options
-  const { color, icon } = statusConfig[status]
-
   return new Promise((resolve) => {
     modals.openConfirmModal({
-      title: (
-        <Group gap="xs">
-          <Text c={color}>{icon}</Text>
-          <Text fw={600}>{title}</Text>
-        </Group>
-      ),
-      children: message,
-      labels: {
-        confirm: confirmLabel ?? 'Confirm',
-        cancel: cancelLabel ?? 'Cancel',
-      },
-      confirmProps: { color },
+      ...buildModalProps(options),
       onConfirm: () => resolve(true),
       onCancel: () => resolve(false),
-      ...rest,
     })
   })
 }
