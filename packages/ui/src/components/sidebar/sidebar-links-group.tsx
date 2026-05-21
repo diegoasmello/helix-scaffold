@@ -24,9 +24,6 @@ export function SidebarLinksGroup(props: Readonly<SidebarLinksGroupProps>) {
 
   const pathname = useRouterState({ select: (s) => s.location.pathname })
 
-  const isActive =
-    !hasLinks && !!to && (pathname === to || pathname.startsWith(to + '/'))
-
   const isGroupActive =
     hasLinks &&
     links.some(
@@ -37,7 +34,7 @@ export function SidebarLinksGroup(props: Readonly<SidebarLinksGroupProps>) {
   return (
     <>
       {!hasLinks && !!to ? (
-        <SidebarNavItem icon={Icon} label={label} active={isActive} to={to} />
+        <SidebarNavItem icon={Icon} label={label} to={to} />
       ) : (
         <SidebarNavItem
           icon={Icon}
@@ -51,19 +48,9 @@ export function SidebarLinksGroup(props: Readonly<SidebarLinksGroupProps>) {
 
       {hasLinks && !collapsed && (
         <Collapse expanded={opened}>
-          {links.map((link) => {
-            const isLinkActive =
-              pathname === link.to || pathname.startsWith(String(link.to) + '/')
-            return (
-              <SidebarNavItem
-                key={link.label}
-                label={link.label}
-                active={isLinkActive}
-                nested
-                to={link.to}
-              />
-            )
-          })}
+          {links.map((link) => (
+            <SidebarNavItem key={link.label} label={link.label} nested to={link.to} />
+          ))}
         </Collapse>
       )}
     </>

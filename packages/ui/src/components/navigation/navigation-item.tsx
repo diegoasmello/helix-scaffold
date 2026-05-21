@@ -13,16 +13,17 @@ export interface NavigationItemProps {
   icon?: React.FC<IconProps & RefAttributes<SVGSVGElement>>
   to?: string
   onClick?: () => void
+  px?: string
 }
 
 export function NavigationItem(props: Readonly<NavigationItemProps>) {
-  const { label, active, chevron, chevronOpen, icon: Icon, to, onClick } = props
+  const { label, active, chevron, chevronOpen, icon: Icon, to, onClick, px = '0' } = props
 
   const matchRoute = useMatchRoute()
   const isActive =
-    active ?? (to !== undefined ? Boolean(matchRoute({ to })) : false)
+    active ?? (to !== undefined ? Boolean(matchRoute({ to, fuzzy: true })) : false)
 
-  const { classes, cx } = useStyles()
+  const { classes, cx } = useStyles({ px })
 
   const rootClass = cx(classes.navItem, { [classes.navItemActive]: isActive })
 
@@ -69,7 +70,7 @@ export function NavigationItem(props: Readonly<NavigationItemProps>) {
   )
 }
 
-const useStyles = createStyles((theme, _, u) => ({
+const useStyles = createStyles((theme, params: { px: string }, u) => ({
   navItem: css`
     display: flex;
     align-items: center;
@@ -79,6 +80,7 @@ const useStyles = createStyles((theme, _, u) => ({
     text-decoration: none;
     color: inherit;
     background-color: transparent;
+    padding: 0 ${params.px};
 
     &:hover > div {
       ${u.light} {
