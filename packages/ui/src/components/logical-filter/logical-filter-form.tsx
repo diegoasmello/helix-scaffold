@@ -1,5 +1,7 @@
+import { css } from '@emotion/react'
 import {
   ActionIcon,
+  Box,
   Button,
   Group,
   NumberInput,
@@ -7,8 +9,10 @@ import {
   Stack,
   Text,
   TextInput,
+  UnstyledButton,
 } from '@mantine/core'
 import { DateInput } from '@mantine/dates'
+import { createStyles } from '@mantine/emotion'
 import { useForm, type UseFormReturnType } from '@mantine/form'
 import { IconPlus, IconX } from '@tabler/icons-react'
 
@@ -87,12 +91,12 @@ interface ValueInputProps {
 
 function ValueInput(props: Readonly<ValueInputProps>) {
   const { condition, index, fields, form } = props
+  const { classes } = useStyles()
+
   const fieldDef = fields.find((f) => f.name === condition.field)
   if (!fieldDef) return null
 
-  const commonProps = {
-    style: { flex: 1, minWidth: 140 },
-  }
+  const commonProps = { className: classes.valueInput }
 
   switch (fieldDef.type) {
     case 'text':
@@ -172,6 +176,7 @@ export function LogicalFilterForm<T extends string = string>(
   props: Readonly<LogicalFilterFormProps<T>>
 ) {
   const { fields, value, onApply } = props
+  const { classes } = useStyles()
 
   const form = useForm<FilterFormValues>({
     initialValues: {
@@ -251,7 +256,7 @@ export function LogicalFilterForm<T extends string = string>(
   return (
     <Form form={form} onSubmit={handleSubmit} blockNavitationOnDirty={false}>
       <Stack gap="xs">
-        <Group justify="space-between">
+        <Group justify="space-between" align="center">
           <Group gap="xs" align="center">
             <Text size="sm" fw={500} c="dimmed">
               Match
@@ -272,74 +277,109 @@ export function LogicalFilterForm<T extends string = string>(
           <Group gap="xs">
             <Button
               variant="subtle"
-              size="xs"
+              color="gray"
               onClick={handleClear}
               type="button"
             >
               Clear
             </Button>
-            <Button size="xs" type="submit">
-              Apply
-            </Button>
+            <Button type="submit">Apply</Button>
           </Group>
         </Group>
 
-        {form.values.conditions.map((condition, index) => (
-          <Group
-            key={form.key(`conditions.${index}`)}
-            gap="xs"
-            align="flex-start"
-            wrap="nowrap"
-          >
-            <Select
-              w={140}
-              placeholder="Field"
-              data={fields.map((f) => ({ value: f.name, label: f.label }))}
-              value={condition.field || null}
-              onChange={(v) => handleFieldChange(index, v ?? '')}
-              allowDeselect={false}
-            />
-            <Select
-              w={140}
-              placeholder="Operator"
-              data={OPERATORS_BY_TYPE[getFieldType(condition.field)]}
-              value={condition.op || null}
-              onChange={(v) => handleOpChange(index, v ?? '')}
-              allowDeselect={false}
-            />
-            {!NO_VALUE_OPS.has(condition.op) && (
-              <ValueInput
-                condition={condition}
-                index={index}
-                fields={fields}
-                form={form}
-              />
-            )}
-            <ActionIcon
-              variant="subtle"
-              color="red"
-              size="sm"
-              type="button"
-              aria-label="Remove filter"
-              onClick={() => form.removeListItem('conditions', index)}
-              mt={2}
-            >
-              <IconX size={14} />
-            </ActionIcon>
-          </Group>
-        ))}
+        <Stack gap={5}>
+          {form.values.conditions.map((condition, index) => (
+            <Stack key={form.key(`conditions.${index}`)}>
+              <Box className={classes.row}>
+                <Group gap="xs" align="center" wrap="nowrap">
+                  <Select
+                    w={140}
+                    placeholder="Field"
+                    data={fields.map((f) => ({
+                      value: f.name,
+                      label: f.label,
+                    }))}
+                    value={condition.field || null}
+                    onChange={(v) => handleFieldChange(index, v ?? '')}
+                    allowDeselect={false}
+                  />
+                  <Select
+                    w={140}
+                    placeholder="Operator"
+                    data={OPERATORS_BY_TYPE[getFieldType(condition.field)]}
+                    value={condition.op || null}
+                    onChange={(v) => handleOpChange(index, v ?? '')}
+                    allowDeselect={false}
+                  />
+                  {!NO_VALUE_OPS.has(condition.op) && (
+                    <ValueInput
+                      condition={condition}
+                      index={index}
+                      fields={fields}
+                      form={form}
+                    />
+                  )}
+                  <ActionIcon
+                    variant="subtle"
+                    color="secondary"
+                    size="sm"
+                    type="button"
+                    aria-label="Remove filter"
+                    onClick={() => form.removeListItem('conditions', index)}
+                  >
+                    <IconX size={14} />
+                  </ActionIcon>
+                </Group>
+              </Box>
+            </Stack>
+          ))}
+        </Stack>
 
-        <Button
-          variant="subtle"
-          size="xs"
-          leftSection={<IconPlus size={14} />}
+        <UnstyledButton
+          className={classes.addTrigger}
           onClick={handleAddCondition}
           type="button"
-          w="fit-content"
         >
-          Add filter
-        </Button>
+          <Group gap={6}>
+            <IconPlus size={14} />
+            <Text size="sm">Add filter</Text>
+          </Group>
+        </UnstyledButton>
       </Stack>
     </Form>
   )
 }
+
+const useStyles = createStyles((theme) => ({
+  row: css`
+    padding: ${theme.spacing.xs} ${theme.spacing.sm};
+    background-color: ${theme.colors.gray[0]};
+    border: 1px solid ${theme.colors.gray[2]};
+    border-radius: ${theme.radius.sm};
+  `,
+  connector: css`
+    letter-spacing: 0.5px;
+    font-size: 10px;
+  `,
+  valueInput: css`
+    flex: 1;
+    min-width: 140px;
+  `,
+  addTrigger: css`
+    width: 100%;
+    padding: ${theme.spacing.xs} ${theme.spacing.sm};
+    border: 1px dashed ${theme.colors.gray[3]};
+    border-radius: ${theme.radius.sm};
+    color: ${theme.colors.gray[6]};
+    transition:
+      border-color 150ms ease,
+      color 150ms ease,
+      background-color 150ms ease;
+
+    &:hover {
+      border-color: ${theme.colors.gray[5]};
+      color: ${theme.colors.gray[8]};
+      background-color: ${theme.colors.gray[0]};
+    }
+  `,
+}))
