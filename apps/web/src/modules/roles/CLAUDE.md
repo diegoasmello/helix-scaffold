@@ -1,6 +1,6 @@
 # roles module — frontend
 
-Full CRUD module. Also exports `RoleSelectField`, a cross-module component consumed by the users module and the permissions module.
+Full CRUD module. Also exports two cross-module components consumed by other modules: `RoleSelectField` and `RoleCreateDrawer`.
 
 ## File structure
 
@@ -11,7 +11,8 @@ src/modules/roles/
 ├── validation.test.ts
 ├── components/
 │   ├── roles-form.tsx          ← shared form fields (create + edit)
-│   └── role-select-field.tsx   ← cross-module Select component
+│   ├── role-select-field.tsx   ← cross-module Select component
+│   └── role-create-drawer.tsx  ← cross-module creation drawer (used by role-select-field)
 └── routes/
     ├── index.ts
     ├── roles-pending.tsx
@@ -63,11 +64,13 @@ No `isEditing` prop — the form is identical for create and edit.
 
 ## `RoleSelectField` (`components/role-select-field.tsx`)
 
-Cross-module component exported for use by other modules. Wraps a `<Select>` backed by `useGetRolesAllSuspense()` (consumes `GET /roles/all`). Props are `Omit<SelectProps, 'data'>` — callers pass `value`, `onChange`, `error`, and any other `Select` props except `data`.
+Cross-module component exported for use by other modules. Wraps a `<Select>` backed by `useGetRolesAllSuspense()` (consumes `GET /roles/all`). Props are `Omit<SelectProps, 'data'> & { allowCreate?: boolean }`.
+
+Always `searchable` and `clearable`. Selecting nothing returns `null`. Callers must ensure `getRolesAllSuspenseQueryOptions()` is prefetched in the route loader or the component will suspend on its own.
+
+**Basic usage:**
 
 ```tsx
-import { RoleSelectField } from '../../roles/components/role-select-field'
-
 <RoleSelectField
   value={form.values.roleId}
   onChange={(value) => form.setFieldValue('roleId', value)}
@@ -75,7 +78,22 @@ import { RoleSelectField } from '../../roles/components/role-select-field'
 />
 ```
 
-Always `searchable` and `clearable`. Selecting nothing returns `null`. Callers must ensure `getRolesAllSuspenseQueryOptions()` is prefetched in the route loader or the component will suspend on its own.
+**With inline creation** (`allowCreate`): renders the select followed by a "Create related role" button below it. Clicking the button opens `RoleCreateDrawer`. On successful creation the new role is automatically selected.
+
+```tsx
+<RoleSelectField
+  allowCreate
+  value={form.values.roleId}
+  onChange={(value) => form.setFieldValue('roleId', value)}
+  error={form.errors.roleId}
+/>
+```
+
+## `RoleCreateDrawer` (`components/role-create-drawer.tsx`)
+
+Cross-module drawer that renders a full role creation form (`RolesForm`) inside a Mantine `Drawer`. Used internally by `RoleSelectField` when `allowCreate` is true — consuming modules do not import it directly.
+
+Props: `opened`, `onClose`, `onSuccess(roleId)`. On success: invalidates `getRolesAllSuspenseQueryKey()` so `RoleSelectField` refreshes, then calls `onSuccess` with the created role's ID.
 
 ## Routes (`routes/index.ts`)
 
@@ -104,7 +122,7 @@ Inline in each component — no `hooks.ts`.
 **Update**: invalidates list + `setQueryData` on item cache.  
 **Delete** (in `RolesList`): `onError` on `useMutation` itself (not on `mutate`) — notifies on failure. Confirm message includes the role's name: `Are you sure you want to delete "${name}"?`. Invalidates list + `removeQueries` on item cache.
 
-**No `/roles/all` cache invalidation on mutations** — after creating, editing, or deleting a role, the `getRolesAllSuspenseQueryKey()` cache is not invalidated. If stale data in `RoleSelectField` is a concern, add `queryClient.invalidateQueries({ queryKey: getRolesAllSuspenseQueryKey() })` to each mutation's `onSuccess`.
+**`/roles/all` cache invalidation** — the standard CRUD mutations (create/edit/delete in the routes) do not invalidate `getRolesAllSuspenseQueryKey()`. Only `RoleCreateDrawer` invalidates it, because that is the one creation path that must immediately refresh the select options.
 
 ## RBAC in the list screen
 

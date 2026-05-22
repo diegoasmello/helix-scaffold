@@ -268,6 +268,168 @@ modules/news/
 
 App-specific components that are not reusable belong in the module's `components/`. Reusable components built on top of Mantine belong in `packages/ui`.
 
+**Cross-module components** — components from one module consumed by another — always live in the **source module's** `components/`, not in the consuming module. Examples:
+
+- `roles/components/role-select-field.tsx` — used by `users`, lives in `roles`
+- `roles/components/role-create-drawer.tsx` — used by `users`, lives in `roles`
+
+Never place a component in the consuming module just because it's used there. The source module owns it.
+
+### Relational select fields with inline creation
+
+When a `Select` field for a related entity needs to allow creating that entity inline (without leaving the form), follow this pattern:
+
+**Files (both live in the source module):**
+
+- `xxx-select-field.tsx` — the select component, accepts optional `allowCreate` prop
+- `xxx-create-drawer.tsx` — the creation drawer, opened by the select when `allowCreate` is true
+
+**Why a drawer, not a modal:** scales across modules regardless of form complexity — 2 fields or 10, the experience is consistent.
+
+**Select field (`xxx-select-field.tsx`):**
+
+```tsx
+export type XxxSelectFieldProps = Omit<SelectProps, 'data'> & {
+  allowCreate?: boolean
+}
+
+export function XxxSelectField(props: Readonly<XxxSelectFieldProps>) {
+  const { allowCreate, onChange, className, ...selectProps } = props
+
+  const { data: items } = useGetXxxAllSuspense()
+  const { classes, cx } = useStyles()
+  const [opened, { open, close }] = useDisclosure(false)
+
+  const select = (
+    <Select
+      data={items.map((item) => ({ value: String(item.id), label: item.name }))}
+      label="Xxx"
+      placeholder="Pick one"
+      searchable
+      clearable
+      onChange={onChange}
+      className={allowCreate ? cx(classes.select, className) : className}
+      {...selectProps}
+    />
+  )
+
+  if (!allowCreate) return select
+
+  return (
+    <>
+      <Stack align="flex-start" gap="xs">
+        {select}
+        <Tooltip label="Create xxx">
+          <Button
+            variant="default"
+            leftSection={<IconPlus size={16} />}
+            aria-label="Create xxx"
+            onClick={open}
+          >
+            Create related xxx
+          </Button>
+        </Tooltip>
+      </Stack>
+      <XxxCreateDrawer
+        opened={opened}
+        onClose={close}
+        onSuccess={(id) => onChange?.(id, { value: id, label: '' })}
+      />
+    </>
+  )
+}
+
+const useStyles = createStyles(() => ({
+  select: css`
+    width: 100%;
+  `,
+}))
+```
+
+- Hooks (`useDisclosure`, `useStyles`) are always called — no conditional hook calls
+- `className` from the caller is merged via `cx` with the internal `width: 100%` only when `allowCreate` is true
+- `onSuccess` calls `onChange` with the new entity's ID so the field auto-selects the created entity; the `label` argument is empty because Mantine always resolves the displayed label from `data`, not from the `onChange` callback
+
+**Creation drawer (`xxx-create-drawer.tsx`):**
+
+```tsx
+export interface XxxCreateDrawerProps {
+  opened: boolean
+  onClose: () => void
+  onSuccess: (id: string) => void
+}
+
+export function XxxCreateDrawer(props: Readonly<XxxCreateDrawerProps>) {
+  const { opened, onClose, onSuccess } = props
+
+  const queryClient = useQueryClient()
+
+  const { mutate: createXxx, isPending } = useMutation({
+    mutationFn: (data: CreateXxxInput) => postXxx(data),
+    onSuccess: () => {
+      // Invalidate the /all query so the select refreshes after creation
+      queryClient.invalidateQueries({ queryKey: getXxxAllSuspenseQueryKey() })
+    },
+  })
+
+  const form = useForm<XxxFormValues>({
+    initialValues: { name: '', /* other fields */ },
+    validate: xxxFormValidate,
+  })
+
+  const handleClose = () => {
+    form.reset()
+    onClose()
+  }
+
+  const handleSubmit = (values: XxxFormValues) => {
+    createXxx(values, {
+      onSuccess: (created) => {
+        notify({ status: 'success', message: 'Xxx created successfully' })
+        handleClose()
+        onSuccess(created.id)
+      },
+      onError: () => {
+        notify({ status: 'danger', message: 'Failed to create xxx' })
+      },
+    })
+  }
+
+  return (
+    <Drawer opened={opened} onClose={handleClose} title="Create Xxx" position="right">
+      <form onSubmit={form.onSubmit(handleSubmit)}>
+        <Stack>
+          <XxxForm form={form} />
+          <Group justify="flex-end">
+            <Button size="md" variant="secondary" type="button" disabled={isPending} onClick={handleClose}>
+              Cancel
+            </Button>
+            <Button size="md" type="submit" loading={isPending}>
+              Save
+            </Button>
+          </Group>
+        </Stack>
+      </form>
+    </Drawer>
+  )
+}
+```
+
+- Uses a plain `<form>` (not `<Form>` from `@helix/ui`) — the `Form` wrapper is for full-page screens and brings navigation-blocking behaviour that is inappropriate inside a drawer
+- `handleClose` resets the form before closing, so reopening the drawer always shows a blank form
+- Cache invalidation is in `useMutation.onSuccess` (always fires); `notify` and `onSuccess(id)` are in `mutate`'s callback (fires only if the component is still mounted)
+
+**Consuming module** — just add `allowCreate` to the existing field, no wrapper needed:
+
+```tsx
+<RoleSelectField
+  allowCreate
+  value={form.values.roleId}
+  onChange={(value) => form.setFieldValue('roleId', value)}
+  error={form.errors.roleId}
+/>
+```
+
 ## Shared UI package (`packages/ui`)
 
 `packages/ui` is a **local workspace package** (not published to npm). It is the single source of truth for all UI imports — it re-exports everything from Mantine, Tabler Icons, and clsx, and provides custom components built on top of Mantine.
