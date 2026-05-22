@@ -1,5 +1,8 @@
 import { useGetUsersIdSuspense } from '@helix/api-client/hooks'
 import { Button, Grid, Group, LabeledValue, PageView, Text } from '@helix/ui'
+import { parseISO } from 'date-fns'
+
+import { formatDate } from '@/utils/date'
 
 import { usersDetailRoute } from '.'
 
@@ -47,7 +50,7 @@ export function UsersDetail() {
         </Grid.Col>
         <Grid.Col span={{ base: 12, sm: 6 }}>
           <LabeledValue label="Created At">
-            <Text size="md">{item.createdAt}</Text>
+            <Text size="md">{formatDate(parseISO(item.createdAt), 'short')}</Text>
           </LabeledValue>
         </Grid.Col>
       </Grid>

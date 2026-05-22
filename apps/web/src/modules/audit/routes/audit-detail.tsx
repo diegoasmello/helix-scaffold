@@ -11,7 +11,7 @@ import {
 } from '@helix/ui'
 import { parseISO } from 'date-fns'
 
-import { formatDateTime } from '@/utils/date'
+import { formatDate } from '@/utils/date'
 
 import { auditDetailRoute } from '.'
 
@@ -45,7 +45,7 @@ export function AuditDetail() {
       <Grid>
         <Grid.Col span={{ base: 12, sm: 6 }}>
           <LabeledValue label="Date">
-            <Text size="md">{formatDateTime(parseISO(log.createdAt))}</Text>
+            <Text size="md">{formatDate(parseISO(log.createdAt), 'short')}</Text>
           </LabeledValue>
         </Grid.Col>
         <Grid.Col span={{ base: 12, sm: 6 }}>

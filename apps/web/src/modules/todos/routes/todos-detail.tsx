@@ -1,6 +1,9 @@
 import { useGetTodosIdSuspense } from '@helix/api-client/hooks'
 import { Badge, Button, Grid, Group, RichTextRenderer, Text } from '@helix/ui'
 import { LabeledValue, PageView } from '@helix/ui'
+import { parseISO } from 'date-fns'
+
+import { formatDate } from '@/utils/date'
 
 import { todoDetailRoute } from '.'
 
@@ -43,7 +46,7 @@ export function TodoDetail() {
         </Grid.Col>
         <Grid.Col span={{ base: 12, sm: 6 }}>
           <LabeledValue label="Date">
-            <Text size="md">{item.date}</Text>
+            <Text size="md">{formatDate(parseISO(item.date), 'short')}</Text>
           </LabeledValue>
         </Grid.Col>
         <Grid.Col span={{ base: 12, sm: 6 }}>
@@ -58,7 +61,7 @@ export function TodoDetail() {
         </Grid.Col>
         <Grid.Col span={{ base: 12, sm: 6 }}>
           <LabeledValue label="Created At">
-            <Text size="md">{item.createdAt}</Text>
+            <Text size="md">{formatDate(parseISO(item.createdAt), 'short')}</Text>
           </LabeledValue>
         </Grid.Col>
       </Grid>
