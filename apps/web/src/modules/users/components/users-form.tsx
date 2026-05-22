@@ -14,7 +14,7 @@ export function UsersForm(props: Readonly<UsersFormProps>) {
 
   return (
     <Grid>
-      <Grid.Col span={{ base: 12, sm: 6 }}>
+      <Grid.Col span={12}>
         <TextInput
           label="Name"
           placeholder="Full name"
@@ -22,7 +22,7 @@ export function UsersForm(props: Readonly<UsersFormProps>) {
           {...form.getInputProps('name')}
         />
       </Grid.Col>
-      <Grid.Col span={{ base: 12, sm: 6 }}>
+      <Grid.Col span={12}>
         <TextInput
           label="Email"
           placeholder="email@example.com"
@@ -32,7 +32,7 @@ export function UsersForm(props: Readonly<UsersFormProps>) {
         />
       </Grid.Col>
       {!isEditing && (
-        <Grid.Col span={{ base: 12, sm: 6 }}>
+        <Grid.Col span={12}>
           <PasswordInput
             label="Password"
             placeholder="Min 8 characters"
@@ -41,8 +41,9 @@ export function UsersForm(props: Readonly<UsersFormProps>) {
           />
         </Grid.Col>
       )}
-      <Grid.Col span={{ base: 12, sm: 6 }}>
+      <Grid.Col span={12}>
         <RoleSelectField
+          allowCreate
           value={form.values.roleId}
           onChange={(value) => form.setFieldValue('roleId', value)}
           error={form.errors.roleId}
