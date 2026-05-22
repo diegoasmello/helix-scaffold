@@ -41,9 +41,9 @@ export function RichTextRenderer(props: Readonly<RichTextRendererProps>) {
 
 const useStyles = createStyles((theme, _, u) => ({
   content: css`
-    border: ${theme.colors.gray[4]} 1px solid;
-    border-radius: ${theme.radius.sm};
-    padding: 0 ${theme.spacing.md};
+    border: 1px solid ${theme.colors.gray[3]};
+    border-radius: ${theme.radius.md};
+    padding: 0 ${theme.spacing.lg};
     background-color: ${u.light ? theme.white : theme.colors.dark[7]};
   `,
 }))
