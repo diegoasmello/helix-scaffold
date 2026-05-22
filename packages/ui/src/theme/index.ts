@@ -76,6 +76,53 @@ export function createTheme(
           },
         },
       },
+      Notification: {
+        styles: (theme: MantineTheme, props: { color?: string }) => {
+          const colorKey = (props.color ?? 'main') as keyof typeof theme.colors
+          const palette = theme.colors[colorKey] ?? theme.colors.main
+          const accent = palette[6]
+          const accentLight = palette[1]
+
+          return {
+            root: {
+              borderRadius: theme.radius.lg,
+              border: `1px solid ${theme.colors.gray[2]}`,
+              boxShadow:
+                '0 4px 16px rgba(0, 0, 0, 0.06), 0 1px 4px rgba(0, 0, 0, 0.04)',
+              backgroundColor: theme.white,
+              padding: `${theme.spacing.sm} ${theme.spacing.md}`,
+            },
+            icon: {
+              backgroundColor: accentLight,
+              color: accent,
+              borderRadius: theme.radius.md,
+              width: '32px',
+              height: '32px',
+              minWidth: '32px',
+            },
+            title: {
+              fontWeight: 600,
+              fontSize: '16px',
+              color: theme.colors.dark[9],
+              lineHeight: '1.4',
+              marginBottom: '2px',
+            },
+            description: {
+              fontSize: '14px',
+              color: theme.colors.dark[6],
+              lineHeight: '1.5',
+            },
+            closeButton: {
+              color: theme.colors.gray[7],
+              borderRadius: theme.radius.sm,
+              '&:hover': {
+                backgroundColor: theme.colors.gray[1],
+                color: theme.colors.gray[9],
+              },
+            },
+          }
+        },
+      },
     },
     ...overrides,
   })
