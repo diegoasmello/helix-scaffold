@@ -23,8 +23,18 @@ createRoot(document.getElementById('root')!).render(
     <QueryClientProvider client={queryClient}>
       <MantineProvider theme={theme} stylesTransform={emotionTransform}>
         <MantineEmotionProvider>
-          <ModalsProvider>
-            <Notifications />
+          <ModalsProvider
+            modalProps={{
+              transitionProps: {
+                transition: 'pop',
+              },
+            }}
+          >
+            <Notifications
+              position="bottom-right"
+              containerWidth={380}
+              limit={5}
+            />
             <RouterProvider router={router} />
           </ModalsProvider>
         </MantineEmotionProvider>
