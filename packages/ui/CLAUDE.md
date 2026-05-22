@@ -24,7 +24,7 @@ re-exports           →  @mantine/core, @mantine/hooks, @mantine/emotion, @mant
 named export         →  css (from @emotion/react — only this function, not export *)
 custom components    →  export * from "./components"
 hooks                →  export * from "./hooks" (use-form-blocker)
-utilities            →  export * from "./utils" (data-table helpers)
+utilities            →  export * from "./utils" (data-table helpers, validator primitives, createValidator)
 theme helper         →  createTheme (from ./theme)
 ```
 
@@ -119,6 +119,60 @@ interface LogicalFilterFormProps<T extends string = string> {
 | `boolean` | `Select` | Yes / No options; coerced to `true`/`false` on submit |
 
 **Mantine v9 `DateInput` gotcha**: `onChange` returns `DateStringValue | null` (a string), not `Date | null`. Do not call `.toISOString()` on it. The value prop also accepts `string | null`, not `Date | null`.
+
+## Form validation utilities
+
+Three files under `src/utils/` provide a shared validation API consumed by every module's `validation.ts`.
+
+### Error messages (`validator-messages.ts`)
+
+Exports `msg` — the single place where all error strings live. When i18n is needed, replace the values here with `t(...)` calls; no validator logic changes.
+
+```ts
+export const msg = {
+  required: 'Required',
+  maxLength: (max: number) => `Max ${max} characters`,
+  minLength: (min: number) => `Min ${min} characters`,
+  email: 'Invalid email address',
+}
+```
+
+### Validator primitives (`validators.ts`)
+
+Each primitive is a function `(value) => string | null`. Import from `@helix/ui`.
+
+| Export | Signature | Notes |
+|--------|-----------|-------|
+| `Validator<T>` | `type` | `(value: T) => string \| null` — use to annotate custom validators |
+| `required` | `Validator<unknown>` | Fails on falsy values and whitespace-only strings |
+| `requiredHtml` | `Validator<string>` | Like `required` but strips HTML tags first — use for `RichTextEditor` fields |
+| `maxLength(n)` | `(max: number) => Validator<string>` | |
+| `minLength(n)` | `(min: number) => Validator<string>` | |
+| `email` | `Validator<string>` | Basic format check |
+| `rules(...fns)` | `<T>(...Validator<T>[]) => Validator<T>` | Composes validators left-to-right, returns first error |
+
+### Validator factory (`create-validator.ts`)
+
+`createValidator` builds the `validate` object for `useForm`. It is curried so that `TValues` is explicit while `TSchema` (the exact schema shape) is inferred from the argument — this makes all fields in the return type required rather than optional:
+
+```ts
+// validation.ts
+import { createValidator, required, requiredHtml, maxLength } from '@helix/ui'
+import type { XxxFormValues } from './types'
+
+export const xxxFormValidate = createValidator<XxxFormValues>()({
+  // array syntax — validators run left-to-right, first error wins
+  title: [required, maxLength(200)],
+
+  // function syntax — access other fields for cross-field rules
+  date: (v, values) => (values.status !== 'pending' ? required(v) : null),
+
+  // use requiredHtml for RichTextEditor fields (strips tags before checking)
+  content: [requiredHtml, maxLength(1000)],
+})
+```
+
+Each field accepts either an array of `Validator<T>` (composed with `rules` internally) or a `(value, values) => string | null` function for cross-field logic. The two forms cannot be mixed per field — use the function form when you need `values`.
 
 ## Styling conventions
 

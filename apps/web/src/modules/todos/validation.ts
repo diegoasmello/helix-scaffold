@@ -1,13 +1,10 @@
-import type { UseFormInput } from '@helix/ui'
+import { createValidator, maxLength, required, requiredHtml } from '@helix/ui'
 
 import type { TodoFormValues } from './types'
 
-export const todoFormValidate = {
-  title: (v: string) =>
-    !v.trim() ? 'Required' : v.length > 200 ? 'Max 200 characters' : null,
-  description: (v: string) =>
-    !v.trim() ? 'Required' : v.length > 500 ? 'Max 500 characters' : null,
-  content: (v: string) =>
-    !v.trim() ? 'Required' : v.length > 1000 ? 'Max 1000 characters' : null,
-  date: (v: string | null) => (!v ? 'Required' : null),
-} satisfies UseFormInput<TodoFormValues>['validate']
+export const todoFormValidate = createValidator<TodoFormValues>()({
+  title: [required, maxLength(200)],
+  description: [required, maxLength(500)],
+  content: [requiredHtml, maxLength(1000)],
+  date: (v, values) => (values.status !== 'pending' ? required(v) : null),
+})

@@ -835,16 +835,25 @@ For conditionally required fields, `required` must be conditional too — the as
 )}
 ```
 
-Validation lives in `validation.ts`, typed against the form values. Use `satisfies` instead of a type annotation — TypeScript validates compatibility with Mantine's type but infers the concrete object shape, avoiding union/optional issues:
+Validation lives in `validation.ts`. Use `createValidator<XxxFormValues>()({...})` — the curried form is necessary so TypeScript infers the schema shape while keeping `XxxFormValues` explicit:
 
 ```ts
-import type { UseFormInput } from '@helix/ui'
+import { createValidator, required, requiredHtml, maxLength } from '@helix/ui'
 import type { XxxFormValues } from './types'
 
-export const xxxFormValidate = {
-  field: (v: string) => (!v.trim() ? 'Required' : null),
-} satisfies UseFormInput<XxxFormValues>['validate']
+export const xxxFormValidate = createValidator<XxxFormValues>()({
+  // array: validators run left-to-right, first error wins
+  title: [required, maxLength(200)],
+
+  // function: access other fields for cross-field rules
+  date: (v, values) => (values.status !== 'pending' ? required(v) : null),
+
+  // RichTextEditor fields must use requiredHtml (strips tags before checking)
+  content: [requiredHtml, maxLength(1000)],
+})
 ```
+
+Available primitives: `required`, `requiredHtml`, `maxLength(n)`, `minLength(n)`, `email`. See `packages/ui/CLAUDE.md` → _Form validation utilities_ for the full reference.
 
 ### 9. Register the module
 
@@ -944,22 +953,40 @@ No per-file server setup is needed. Override a handler for a single test by call
 
 #### Validators (`validation.test.ts`)
 
-Call each validator function directly. Cover: empty input, boundary values, valid input.
+Call each validator function directly. Every call must pass a `base` values object as the second argument — `createValidator` types all fields as `(value, values) => string | null`, and cross-field validators require it at runtime.
+
+Cover: empty input, boundary values, valid input. For cross-field fields, add cases for each condition branch.
 
 ```ts
 import { describe, expect, it } from 'vitest'
+import type { XxxFormValues } from './types'
 import { xxxFormValidate } from './validation'
+
+const base: XxxFormValues = {
+  field: '',
+  // ... all fields with safe defaults
+}
 
 describe('xxxFormValidate', () => {
   describe('field', () => {
     it('returns error when empty', () => {
-      expect(xxxFormValidate.field('')).toBe('Required')
+      expect(xxxFormValidate.field('', base)).toBe('Required')
     })
     it('returns error when exceeds max length', () => {
-      expect(xxxFormValidate.field('a'.repeat(201))).toBe('Max 200 characters')
+      expect(xxxFormValidate.field('a'.repeat(201), base)).toBe('Max 200 characters')
     })
     it('returns null when valid', () => {
-      expect(xxxFormValidate.field('value')).toBeNull()
+      expect(xxxFormValidate.field('value', base)).toBeNull()
+    })
+  })
+
+  // Cross-field example:
+  describe('date', () => {
+    it('returns error when null and status is completed', () => {
+      expect(xxxFormValidate.date(null, { ...base, status: 'completed' })).toBe('Required')
+    })
+    it('returns null when null and status is pending', () => {
+      expect(xxxFormValidate.date(null, { ...base, status: 'pending' })).toBeNull()
     })
   })
 })
