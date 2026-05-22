@@ -1,24 +1,14 @@
-import type { UseFormInput } from '@helix/ui'
+import { createValidator, email, maxLength, minLength, required } from '@helix/ui'
 
 import type { UserFormValues } from './types'
 
-const nameValidator = (v: string) =>
-  !v.trim() ? 'Required' : v.length > 100 ? 'Max 100 characters' : null
+export const userCreateFormValidate = createValidator<UserFormValues>()({
+  name: [required, maxLength(100)],
+  email: [required, email],
+  password: [required, minLength(8)],
+})
 
-const emailValidator = (v: string) => {
-  if (!v.trim()) return 'Required'
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)) return 'Invalid email'
-  return null
-}
-
-export const userCreateFormValidate = {
-  name: nameValidator,
-  email: emailValidator,
-  password: (v: string) =>
-    !v.trim() ? 'Required' : v.length < 8 ? 'Min 8 characters' : null,
-} satisfies UseFormInput<UserFormValues>['validate']
-
-export const userEditFormValidate = {
-  name: nameValidator,
-  email: emailValidator,
-} satisfies UseFormInput<UserFormValues>['validate']
+export const userEditFormValidate = createValidator<UserFormValues>()({
+  name: [required, maxLength(100)],
+  email: [required, email],
+})
