@@ -53,6 +53,12 @@ export function createTheme(
           },
         }),
       },
+      Drawer: {
+        defaultProps: { offset: 8, radius: 'md' },
+        styles: {
+          title: { fontWeight: 500 },
+        },
+      },
       Modal: {
         defaultProps: { radius: 'lg' },
         styles: {
