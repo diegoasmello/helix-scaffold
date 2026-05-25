@@ -11,6 +11,7 @@ import {
   roles,
   session,
   todos,
+  uploads,
   user,
   verification,
 } from '@/db/schema'
@@ -51,6 +52,10 @@ export async function cleanupAuth() {
 
 export async function cleanupTodos() {
   await testDb.delete(todos)
+}
+
+export async function cleanupUploads() {
+  await testDb.delete(uploads)
 }
 
 export async function createTestSession(
