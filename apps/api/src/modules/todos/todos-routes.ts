@@ -1,6 +1,7 @@
 import z from 'zod'
 
 import { buildPaginatedResponse } from '@/lib/pagination'
+import type { StorageProvider } from '@/lib/storage'
 
 import type { Database } from '../../db'
 import type { FastifyTypedInstance, RequirePermission } from '../../types'
@@ -18,9 +19,14 @@ export async function todosRoutes(
   {
     database,
     requirePermission,
-  }: { database: Database; requirePermission: RequirePermission }
+    storage,
+  }: {
+    database: Database
+    requirePermission: RequirePermission
+    storage: StorageProvider
+  },
 ) {
-  const service = createTodosService(database)
+  const service = createTodosService(database, storage)
 
   app.get(
     '/todos',

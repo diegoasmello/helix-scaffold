@@ -2,11 +2,14 @@ import { eq } from 'drizzle-orm'
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 
 import { user } from '@/db/schema/authentication'
+import { todoAttachments } from '@/db/schema/todo-attachments'
 import { todos } from '@/db/schema/todos'
+import { uploads } from '@/db/schema/uploads'
 import {
   cleanupAuth,
   cleanupRoles,
   cleanupTodos,
+  cleanupUploads,
   cleanupUsers,
   createRoleWithPermissions,
   createTestApp,
@@ -355,6 +358,150 @@ describe('DELETE /todos/:id', () => {
       headers: { cookie: authCookie },
     })
     expect(res.statusCode).toBe(204)
+  })
+})
+
+describe('Attachments', () => {
+  async function insertUpload() {
+    const [upload] = await testDb
+      .insert(uploads)
+      .values({
+        originalName: 'file.pdf',
+        mimeType: 'application/pdf',
+        fileSize: 100,
+        storageKey: 'test/original.pdf',
+        url: 'http://localhost:3333/files/test/original.pdf',
+        variants: null,
+      })
+      .returning()
+    return upload
+  }
+
+  beforeEach(async () => {
+    await cleanupTodos()
+    await cleanupUploads()
+  })
+
+  it('creates a todo with attachmentIds and returns attachments in response', async () => {
+    const upload = await insertUpload()
+
+    const res = await app.inject({
+      method: 'POST',
+      url: '/todos',
+      payload: {
+        title: 'With attachment',
+        description: 'Desc',
+        content: 'Content',
+        date: '2025-01-01',
+        attachmentIds: [upload.id],
+      },
+      headers: { cookie: authCookie },
+    })
+    expect(res.statusCode).toBe(201)
+    const todo = res.json()
+    expect(todo.attachments).toHaveLength(1)
+    expect(todo.attachments[0].id).toBe(upload.id)
+  })
+
+  it('returns attachments when fetching a todo by id', async () => {
+    const upload = await insertUpload()
+    const createRes = await app.inject({
+      method: 'POST',
+      url: '/todos',
+      payload: {
+        title: 'With attachment',
+        description: 'Desc',
+        content: 'Content',
+        date: '2025-01-01',
+        attachmentIds: [upload.id],
+      },
+      headers: { cookie: authCookie },
+    })
+    const todoId = createRes.json().id
+
+    const res = await app.inject({
+      method: 'GET',
+      url: `/todos/${todoId}`,
+      headers: { cookie: authCookie },
+    })
+    expect(res.statusCode).toBe(200)
+    expect(res.json().attachments).toHaveLength(1)
+    expect(res.json().attachments[0].id).toBe(upload.id)
+  })
+
+  it('updates attachments when PATCH includes attachmentIds', async () => {
+    const upload1 = await insertUpload()
+    const [upload2] = await testDb
+      .insert(uploads)
+      .values({
+        originalName: 'other.pdf',
+        mimeType: 'application/pdf',
+        fileSize: 200,
+        storageKey: 'other/original.pdf',
+        url: 'http://localhost:3333/files/other/original.pdf',
+        variants: null,
+      })
+      .returning()
+
+    const createRes = await app.inject({
+      method: 'POST',
+      url: '/todos',
+      payload: {
+        title: 'Todo',
+        description: 'Desc',
+        content: 'Content',
+        date: '2025-01-01',
+        attachmentIds: [upload1.id],
+      },
+      headers: { cookie: authCookie },
+    })
+    const todoId = createRes.json().id
+
+    const patchRes = await app.inject({
+      method: 'PATCH',
+      url: `/todos/${todoId}`,
+      payload: { attachmentIds: [upload2.id] },
+      headers: { cookie: authCookie },
+    })
+    expect(patchRes.statusCode).toBe(200)
+    const updated = patchRes.json()
+    expect(updated.attachments).toHaveLength(1)
+    expect(updated.attachments[0].id).toBe(upload2.id)
+  })
+
+  it('deletes attachment records when todo is deleted', async () => {
+    const upload = await insertUpload()
+    const createRes = await app.inject({
+      method: 'POST',
+      url: '/todos',
+      payload: {
+        title: 'To delete',
+        description: 'Desc',
+        content: 'Content',
+        date: '2025-01-01',
+        attachmentIds: [upload.id],
+      },
+      headers: { cookie: authCookie },
+    })
+    const todoId = createRes.json().id
+
+    await app.inject({
+      method: 'DELETE',
+      url: `/todos/${todoId}`,
+      headers: { cookie: authCookie },
+    })
+
+    const rows = await testDb
+      .select()
+      .from(todoAttachments)
+      .where(eq(todoAttachments.todoId, todoId))
+    expect(rows).toHaveLength(0)
+
+    const [remainingUpload] = await testDb
+      .select()
+      .from(uploads)
+      .where(eq(uploads.id, upload.id))
+    expect(remainingUpload).toBeUndefined()
   })
 })
 
