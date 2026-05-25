@@ -3,14 +3,18 @@ import {
   createPaginatedAuditLogs,
   createPaginatedRoles,
   createPaginatedTodos,
+  createPaginatedUploads,
   createPaginatedUsers,
   createRole,
   createTodo,
+  createUpload,
   createUserWithRole,
   deleteRolesIdHandler,
   deleteRolesIdHandlerResponse204,
   deleteTodosIdHandler,
   deleteTodosIdHandlerResponse204,
+  deleteUploadsIdHandler,
+  deleteUploadsIdHandlerResponse204,
   deleteUsersIdHandler,
   deleteUsersIdHandlerResponse204,
   getAuditLogsHandler,
@@ -29,6 +33,9 @@ import {
   getTodosHandler,
   getTodosIdHandler,
   getTodosIdHandlerResponse404,
+  getUploadsHandler,
+  getUploadsIdHandler,
+  getUploadsIdHandlerResponse404,
   getUsersHandler,
   getUsersIdHandler,
   getUsersIdHandlerResponse404,
@@ -47,6 +54,8 @@ import {
   postRolesHandlerResponse201,
   postTodosHandler,
   postTodosHandlerResponse201,
+  postUploadsHandler,
+  postUploadsHandlerResponse201,
   postUsersHandler,
   postUsersHandlerResponse201,
   putRolesIdPermissionsHandler,
@@ -121,6 +130,22 @@ export const handlers = [
   getMePermissionsHandler({ grants: {} }),
   getRolesIdPermissionsHandler({ grants: {} }),
   putRolesIdPermissionsHandler({ grants: {} }),
+
+  // Uploads
+  getUploadsHandler(
+    createPaginatedUploads({
+      data: [],
+      total: 0,
+      page: 1,
+      pageSize: 10,
+      totalPages: 0,
+    })
+  ),
+  getUploadsIdHandler(() =>
+    getUploadsIdHandlerResponse404({ message: 'Not found' })
+  ),
+  postUploadsHandler(() => postUploadsHandlerResponse201(createUpload())),
+  deleteUploadsIdHandler(() => deleteUploadsIdHandlerResponse204()),
 
   // Bootstrap
   getBootstrapStatusHandler({ bootstrapped: true }),
