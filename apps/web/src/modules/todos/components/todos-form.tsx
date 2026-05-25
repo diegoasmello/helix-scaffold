@@ -56,7 +56,7 @@ export function TodoForm(props: Readonly<TodoFormProps>) {
         <DateInput
           label="Date"
           placeholder="Pick a date"
-          required
+          required={form.values.status !== 'pending'}
           {...form.getInputProps('date')}
         />
       </Grid.Col>
@@ -77,6 +77,7 @@ export function TodoForm(props: Readonly<TodoFormProps>) {
         <FilesInput
           label="Attachments"
           description="Upload up to 10 files of any type"
+          required
           value={form.values.attachments}
           onChange={(uploads) => form.setFieldValue('attachments', uploads)}
           onUpload={uploadFile}
@@ -88,6 +89,7 @@ export function TodoForm(props: Readonly<TodoFormProps>) {
         <FileInput
           label="File (PDF)"
           description="Only PDF documents are accepted"
+          required
           value={form.values.file}
           onChange={(upload) => form.setFieldValue('file', upload)}
           onUpload={uploadFile}
@@ -99,6 +101,7 @@ export function TodoForm(props: Readonly<TodoFormProps>) {
         <FileInput
           label="Image"
           description="JPEG, PNG, WebP or GIF"
+          required
           value={form.values.image}
           onChange={(upload) => form.setFieldValue('image', upload)}
           onUpload={uploadFile}

@@ -30,9 +30,9 @@ export const createTodoSchema = z.object({
   description: z.string().min(1).max(500),
   content: z.string().min(1).max(1000),
   date: z.coerce.date(),
-  attachmentIds: z.array(z.string()).optional().default([]),
-  fileId: z.string().optional(),
-  imageId: z.string().optional(),
+  attachmentIds: z.array(z.string()).min(1),
+  fileId: z.string(),
+  imageId: z.string(),
 })
 
 export const updateTodoSchema = z.object({
@@ -41,7 +41,7 @@ export const updateTodoSchema = z.object({
   content: z.string().min(1).max(1000).optional(),
   status: z.enum(['pending', 'completed']).optional(),
   date: z.coerce.date().optional(),
-  attachmentIds: z.array(z.string()).optional(),
+  attachmentIds: z.array(z.string()).min(1).optional(),
   fileId: z.string().nullable().optional(),
   imageId: z.string().nullable().optional(),
 })
