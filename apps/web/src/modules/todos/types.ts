@@ -3,8 +3,10 @@ import type {
   PostTodosMutationRequest,
   Todo,
   TodoStatusEnumKey,
+  Upload,
 } from '@helix/api-client/types'
 
+export type UploadItem = Upload
 export type TodoItem = Todo
 export type TodoStatus = TodoStatusEnumKey
 export type CreateTodoInput = PostTodosMutationRequest
@@ -17,4 +19,7 @@ export interface TodoFormValues {
   content: string
   date: string | null
   status: TodoStatus
+  attachments: UploadItem[]
+  file: UploadItem | null
+  image: UploadItem | null
 }

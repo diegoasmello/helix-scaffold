@@ -27,6 +27,9 @@ export function TodoCreate() {
       content: '',
       date: null,
       status: 'pending',
+      attachments: [],
+      file: null,
+      image: null,
     },
     validate: todoFormValidate,
   })
@@ -38,6 +41,7 @@ export function TodoCreate() {
         description: values.description,
         content: values.content,
         date: values.date!,
+        attachmentIds: values.attachments.map((a) => a.id),
       },
       {
         onSuccess: () => {

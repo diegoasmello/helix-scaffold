@@ -1,6 +1,16 @@
 import { useGetTodosIdSuspense } from '@helix/api-client/hooks'
-import { Badge, Button, Grid, Group, RichTextRenderer, Text } from '@helix/ui'
-import { LabeledValue, PageView } from '@helix/ui'
+import {
+  Badge,
+  Button,
+  FilePreview,
+  Grid,
+  Group,
+  LabeledValue,
+  PageView,
+  RichTextRenderer,
+  SimpleGrid,
+  Text,
+} from '@helix/ui'
 import { parseISO } from 'date-fns'
 
 import { formatDate } from '@/utils/date'
@@ -61,9 +71,22 @@ export function TodoDetail() {
         </Grid.Col>
         <Grid.Col span={{ base: 12, sm: 6 }}>
           <LabeledValue label="Created At">
-            <Text size="md">{formatDate(parseISO(item.createdAt), 'short')}</Text>
+            <Text size="md">
+              {formatDate(parseISO(item.createdAt), 'short')}
+            </Text>
           </LabeledValue>
         </Grid.Col>
+        {item.attachments && item.attachments.length > 0 && (
+          <Grid.Col span={12}>
+            <LabeledValue label="Attachments">
+              <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="xs">
+                {item.attachments.map((attachment) => (
+                  <FilePreview key={attachment.id} upload={attachment} />
+                ))}
+              </SimpleGrid>
+            </LabeledValue>
+          </Grid.Col>
+        )}
       </Grid>
     </PageView>
   )

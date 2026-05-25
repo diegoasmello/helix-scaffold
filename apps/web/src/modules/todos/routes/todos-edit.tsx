@@ -41,6 +41,9 @@ export function TodoEdit() {
       content: item.content,
       date: item.date,
       status: item.status,
+      attachments: item.attachments ?? [],
+      file: null,
+      image: null,
     },
     validate: todoFormValidate,
   })
@@ -55,6 +58,7 @@ export function TodoEdit() {
           content: values.content,
           date: values.date!,
           status: values.status,
+          attachmentIds: values.attachments.map((a) => a.id),
         },
       },
       {
