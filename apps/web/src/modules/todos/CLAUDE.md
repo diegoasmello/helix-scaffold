@@ -30,6 +30,7 @@ src/modules/todos/
 | ----------------- | ---------------------------------- |
 | `TodoItem`        | `Todo`                             |
 | `TodoStatus`      | `TodoStatusEnumKey`                |
+| `UploadItem`      | `Upload`                           |
 | `CreateTodoInput` | `PostTodosMutationRequest`         |
 | `UpdateTodoInput` | `PatchTodosIdMutationRequest`      |
 
@@ -40,12 +41,17 @@ interface TodoFormValues {
   title: string
   description: string
   content: string
-  date: string | null // DateInput returns string; null until user picks
-  status: TodoStatus // 'pending' | 'completed'
+  date: string | null      // DateInput returns string; null until user picks
+  status: TodoStatus       // 'pending' | 'completed'
+  attachments: UploadItem[] // multi-file upload field
+  file: UploadItem | null  // single PDF upload field
+  image: UploadItem | null // single image upload field
 }
 ```
 
 `status` is included in `TodoFormValues` even though the **create** API body does not accept it — on create, `status` is simply omitted when mapping values to `CreateTodoInput`. On edit, it is passed in `UpdateTodoInput`.
+
+`attachments`, `file`, and `image` are mapped to `attachmentIds`, `fileId`, and `imageId` (arrays/strings of upload IDs) on submit. On edit, they are prefilled from `item.attachments`, `item.file`, and `item.image`.
 
 ## Form fields (`components/todos-form.tsx`)
 
@@ -56,8 +62,13 @@ interface TodoFormValues {
 | `content`     | `RichTextEditor` | Produces an HTML string; **not** a plain Textarea                    |
 | `date`        | `DateInput`      | Value/onChange/error bound explicitly (not via `getInputProps`)      |
 | `status`      | `Switch`         | `checked={form.values.status === 'completed'}`, `form.setFieldValue` |
+| `attachments` | `FilesInput`     | `onUpload={uploadFile}`, `maxFiles={10}` |
+| `file`        | `FileInput`      | `accept={PDF_MIME_TYPE}`, `onUpload={uploadFile}` |
+| `image`       | `FileInput`      | `accept={IMAGE_MIME_TYPE}`, `onUpload={uploadFile}` |
 
 The detail screen uses `RichTextRenderer` (from `@helix/ui`) to render the `content` HTML string — never render it as plain text.
+
+`uploadFile` is imported from `@/modules/uploads/service`. `FilesInput`, `FileInput`, `PDF_MIME_TYPE`, and `IMAGE_MIME_TYPE` come from `@helix/ui`. The detail screen renders attachments using `FilePreview` from `@helix/ui` inside a `SimpleGrid cols={{ base: 1, sm: 2 }}`.
 
 ## Validation (`validation.ts`)
 
@@ -121,5 +132,6 @@ See `apps/web/CLAUDE.md` → _Filtering_ and `apps/api/CLAUDE.md` → _Filtering
 ## Notes
 
 - Action buttons (Edit, Delete, Create) in `TodoList` are **not** wrapped in `<HasPermission>` — they are always rendered. If RBAC guards on action buttons are needed, wrap them per the workspace `CLAUDE.md` convention.
-- `date` arrives from the API as a serialized value — the detail screen renders it with `<Text>{item.date}</Text>` without any formatting. Add a date formatting helper if display format becomes a requirement.
 - `content` is stored as an HTML string (rich text). Always use `RichTextEditor` for editing and `RichTextRenderer` for display.
+- `attachments`, `file`, and `image` are not validated — they are optional upload fields with no required constraint.
+- The upload fields (`attachments`, `file`, `image`) in `TodoFormValues` hold full `UploadItem` objects for previewing during the session. On submit they are mapped to IDs (`attachmentIds`, `fileId`, `imageId`). See `apps/web/CLAUDE.md` → _File uploads_ for the full pattern.

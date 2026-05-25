@@ -478,6 +478,108 @@ This applies to both `packages/ui` components and any `createStyles` used in `ap
 
 ---
 
+## File uploads
+
+File upload fields are provided by `@helix/ui` as pure UI components. The actual HTTP call lives in `src/modules/uploads/service.ts` and is passed as the `onUpload` prop — keeping the UI components free of API dependencies.
+
+### Components (from `@helix/ui`)
+
+| Component | Use case |
+|-----------|----------|
+| `FilesInput` | Multiple files — dropzone + `SimpleGrid` of `FileCard`s |
+| `FileInput` | Single file — compact dropzone that collapses into a `FileCard` |
+| `FilePreview` | Read-only — download link wrapping a `FileCard`-style card; used in detail screens |
+
+All three accept `label`, `description`, and `error` props and use `Input.Wrapper` internally, so their spacing matches native Mantine inputs exactly.
+
+`FilesInput` and `FileInput` are generic over `T extends UploadedFile` — TypeScript infers `T` from the `value` prop, so passing `Upload` (from `@helix/api-client/types`) works without explicit type annotation.
+
+### `uploadFile` service (`src/modules/uploads/service.ts`)
+
+```ts
+import { uploadFile } from '@/modules/uploads/service'
+```
+
+Wraps `POST /uploads` as a multipart request. Returns `Upload` from `@helix/api-client/types`. Pass it directly as `onUpload` to `FilesInput` or `FileInput`.
+
+### Wiring a form field
+
+```tsx
+import { FilesInput, FileInput, IMAGE_MIME_TYPE, PDF_MIME_TYPE } from '@helix/ui'
+import { uploadFile } from '@/modules/uploads/service'
+
+// Multiple files
+<FilesInput
+  label="Attachments"
+  description="Upload up to 10 files of any type"
+  value={form.values.attachments}           // UploadItem[]
+  onChange={(uploads) => form.setFieldValue('attachments', uploads)}
+  onUpload={uploadFile}
+  error={form.errors.attachments as string | undefined}
+  maxFiles={10}
+/>
+
+// Single file
+<FileInput
+  label="Image"
+  description="JPEG, PNG, WebP or GIF"
+  value={form.values.image}                 // UploadItem | null
+  onChange={(upload) => form.setFieldValue('image', upload)}
+  onUpload={uploadFile}
+  accept={IMAGE_MIME_TYPE}
+  error={form.errors.image as string | undefined}
+/>
+```
+
+### Mapping to the API on submit
+
+The form holds full `UploadItem` objects for previewing. On submit, map them to IDs:
+
+```ts
+createXxx({
+  // ...other fields
+  attachmentIds: values.attachments.map((u) => u.id),
+})
+```
+
+On edit, prefill from the API response:
+
+```ts
+initialValues: {
+  // ...other fields
+  attachments: item.attachments,   // UploadItem[] from API
+}
+```
+
+### Detail screen
+
+Use `FilePreview` from `@helix/ui` inside a `SimpleGrid`:
+
+```tsx
+{item.attachments.length > 0 && (
+  <LabeledValue label="Attachments">
+    <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="xs">
+      {item.attachments.map((a) => (
+        <FilePreview key={a.id} upload={a} />
+      ))}
+    </SimpleGrid>
+  </LabeledValue>
+)}
+```
+
+### Adding uploads to a new module
+
+See `todos` as the reference implementation. The checklist:
+
+1. Add `attachments: UploadItem[]` (and optionally `file`/`image: UploadItem | null`) to `XxxFormValues`
+2. Add `attachments: []` (and `file: null`, `image: null`) to `useForm` `initialValues`
+3. Drop `<FilesInput>` / `<FileInput>` into the form component with `onUpload={uploadFile}`
+4. Map to `attachmentIds` (and `fileId`, `imageId`) on submit
+5. Prefill from `item.attachments` on edit
+6. Render `<FilePreview>` in the detail screen
+
+---
+
 ## Creating a new module (CRUD)
 
 When asked to create a new feature module, follow this pattern exactly. Use the `todos` module as reference implementation.
