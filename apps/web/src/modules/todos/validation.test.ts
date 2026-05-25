@@ -9,6 +9,9 @@ const base: TodoFormValues = {
   content: '',
   date: null,
   status: 'completed',
+  attachments: [],
+  file: null,
+  image: null,
 }
 
 describe('todoFormValidate', () => {

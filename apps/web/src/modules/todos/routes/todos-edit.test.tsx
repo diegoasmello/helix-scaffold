@@ -1,10 +1,11 @@
 import {
   createTodo,
+  createUpload,
   getTodosIdHandler,
   patchTodosIdHandler,
   patchTodosIdHandlerResponse200,
 } from '@helix/api-client/mocks'
-import { MantineProvider } from '@helix/ui'
+import { MantineEmotionProvider, MantineProvider } from '@helix/ui'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -29,12 +30,15 @@ vi.mock('@tanstack/react-router', async (importOriginal) => {
   return { ...actual, useBlocker: vi.fn() }
 })
 
+const mockAttachment = createUpload({ id: 'attach-1', originalName: 'report.pdf', mimeType: 'application/pdf', variants: null })
+
 const mockTodo = createTodo({
   id: '1',
   title: 'Review quarterly report',
   description: 'Go through the Q1 report.',
   date: '2020-04-10',
   status: 'completed',
+  attachments: [mockAttachment],
 })
 
 function renderTodoEdit() {
@@ -43,11 +47,13 @@ function renderTodoEdit() {
   })
   return render(
     <MantineProvider>
-      <QueryClientProvider client={queryClient}>
-        <Suspense fallback={<div>Loading...</div>}>
-          <TodoEdit />
-        </Suspense>
-      </QueryClientProvider>
+      <MantineEmotionProvider>
+        <QueryClientProvider client={queryClient}>
+          <Suspense fallback={<div>Loading...</div>}>
+            <TodoEdit />
+          </Suspense>
+        </QueryClientProvider>
+      </MantineEmotionProvider>
     </MantineProvider>
   )
 }
@@ -101,9 +107,17 @@ describe('TodoEdit', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Save' }))
 
     await waitFor(() => {
-      expect(capturedBody).toMatchObject({ title: 'Updated title' })
+      expect(capturedBody).toMatchObject({
+        title: 'Updated title',
+        attachmentIds: ['attach-1'],
+      })
       expect(mockNavigate).toHaveBeenCalledWith({ to: '/todos' })
     })
+  })
+
+  it('pre-populates attachment field with existing attachments', async () => {
+    renderTodoEdit()
+    expect(await screen.findByText('report.pdf')).toBeInTheDocument()
   })
 
   it('does not navigate when API returns error', async () => {

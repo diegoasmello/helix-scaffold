@@ -1,5 +1,5 @@
-import { createTodo, getTodosIdHandler } from '@helix/api-client/mocks'
-import { MantineProvider } from '@helix/ui'
+import { createTodo, createUpload, getTodosIdHandler } from '@helix/api-client/mocks'
+import { MantineEmotionProvider, MantineProvider } from '@helix/ui'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen } from '@testing-library/react'
 import { Suspense } from 'react'
@@ -21,6 +21,7 @@ const completedTodo = createTodo({
   description: 'Go through the Q1 report.',
   date: '2020-04-10',
   status: 'completed',
+  attachments: [],
 })
 
 function renderTodoDetail() {
@@ -29,11 +30,13 @@ function renderTodoDetail() {
   })
   return render(
     <MantineProvider>
-      <QueryClientProvider client={queryClient}>
-        <Suspense fallback={<div>Loading...</div>}>
-          <TodoDetail />
-        </Suspense>
-      </QueryClientProvider>
+      <MantineEmotionProvider>
+        <QueryClientProvider client={queryClient}>
+          <Suspense fallback={<div>Loading...</div>}>
+            <TodoDetail />
+          </Suspense>
+        </QueryClientProvider>
+      </MantineEmotionProvider>
     </MantineProvider>
   )
 }
@@ -67,5 +70,25 @@ describe('TodoDetail', () => {
     )
     renderTodoDetail()
     expect(await screen.findByText('Pending')).toBeInTheDocument()
+  })
+
+  it('renders attachment filenames when item has attachments', async () => {
+    const attachment = createUpload({
+      id: 'att-1',
+      originalName: 'design.pdf',
+      mimeType: 'application/pdf',
+      variants: null,
+    })
+    server.use(
+      getTodosIdHandler(createTodo({ ...completedTodo, attachments: [attachment] }))
+    )
+    renderTodoDetail()
+    expect(await screen.findByText('design.pdf')).toBeInTheDocument()
+  })
+
+  it('does not render the attachments section when item has no attachments', async () => {
+    renderTodoDetail()
+    await screen.findByText('Review quarterly report')
+    expect(screen.queryByText('Attachments')).not.toBeInTheDocument()
   })
 })

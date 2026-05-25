@@ -3,7 +3,7 @@ import {
   postTodosHandler,
   postTodosHandlerResponse201,
 } from '@helix/api-client/mocks'
-import { MantineProvider } from '@helix/ui'
+import { MantineEmotionProvider, MantineProvider } from '@helix/ui'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -31,11 +31,13 @@ function renderTodoCreate() {
   })
   return render(
     <MantineProvider>
-      <QueryClientProvider client={queryClient}>
-        <Suspense fallback={<div>Loading...</div>}>
-          <TodoCreate />
-        </Suspense>
-      </QueryClientProvider>
+      <MantineEmotionProvider>
+        <QueryClientProvider client={queryClient}>
+          <Suspense fallback={<div>Loading...</div>}>
+            <TodoCreate />
+          </Suspense>
+        </QueryClientProvider>
+      </MantineEmotionProvider>
     </MantineProvider>
   )
 }
@@ -102,6 +104,7 @@ describe('TodoCreate', () => {
         title: 'My new todo',
         description: 'Some description',
         content: 'Some content',
+        attachmentIds: [],
       })
       expect(capturedBody).not.toHaveProperty('status')
       expect(mockNavigate).toHaveBeenCalledWith({ to: '/todos' })
