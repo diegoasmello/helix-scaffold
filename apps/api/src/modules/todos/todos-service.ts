@@ -67,6 +67,37 @@ async function syncAttachments(
   }
 }
 
+async function getUploadsById(
+  database: Database,
+  ids: string[],
+): Promise<Record<string, typeof uploads.$inferSelect>> {
+  if (ids.length === 0) return {}
+  const rows = await database
+    .select()
+    .from(uploads)
+    .where(inArray(uploads.id, ids))
+  return Object.fromEntries(rows.map((u) => [u.id, u]))
+}
+
+function deleteUploadKeys(
+  storage: StorageProvider,
+  uploadList: (typeof uploads.$inferSelect)[],
+) {
+  const keys = uploadList.flatMap((u) => {
+    const result = [u.storageKey]
+    if (u.variants) {
+      result.push(
+        u.variants.thumbnail.key,
+        u.variants.small.key,
+        u.variants.medium.key,
+        u.variants.large.key,
+      )
+    }
+    return result
+  })
+  return Promise.allSettled(keys.map((k) => storage.delete(k)))
+}
+
 export function createTodosService(
   database: Database,
   storage: StorageProvider,
@@ -93,12 +124,25 @@ export function createTodosService(
       database.select({ total: count() }).from(todos).where(where),
     ])
 
-    const attachmentsMap = await getAttachmentsForTodos(
-      database,
-      data.map((t) => t.id),
-    )
+    const todoIds = data.map((t) => t.id)
+    const singleUploadIds = [
+      ...new Set(
+        data.flatMap((t) => [t.fileId, t.imageId].filter(Boolean) as string[]),
+      ),
+    ]
+
+    const [attachmentsMap, uploadsById] = await Promise.all([
+      getAttachmentsForTodos(database, todoIds),
+      getUploadsById(database, singleUploadIds),
+    ])
+
     return {
-      data: data.map((t) => ({ ...t, attachments: attachmentsMap[t.id] ?? [] })),
+      data: data.map((t) => ({
+        ...t,
+        attachments: attachmentsMap[t.id] ?? [],
+        file: t.fileId ? (uploadsById[t.fileId] ?? null) : null,
+        image: t.imageId ? (uploadsById[t.imageId] ?? null) : null,
+      })),
       total,
     }
   }
@@ -106,16 +150,43 @@ export function createTodosService(
   async function getById(id: string) {
     const [todo] = await database.select().from(todos).where(eq(todos.id, id))
     if (!todo) return null
-    const attachmentsMap = await getAttachmentsForTodos(database, [id])
-    return { ...todo, attachments: attachmentsMap[id] ?? [] }
+
+    const singleUploadIds = [todo.fileId, todo.imageId].filter(
+      Boolean,
+    ) as string[]
+
+    const [attachmentsMap, uploadsById] = await Promise.all([
+      getAttachmentsForTodos(database, [id]),
+      getUploadsById(database, singleUploadIds),
+    ])
+
+    return {
+      ...todo,
+      attachments: attachmentsMap[id] ?? [],
+      file: todo.fileId ? (uploadsById[todo.fileId] ?? null) : null,
+      image: todo.imageId ? (uploadsById[todo.imageId] ?? null) : null,
+    }
   }
 
   async function create(data: CreateTodoInput) {
     const { attachmentIds = [], ...todoData } = data
     const [todo] = await database.insert(todos).values(todoData).returning()
     await syncAttachments(database, todo.id, attachmentIds)
-    const attachmentsMap = await getAttachmentsForTodos(database, [todo.id])
-    return { ...todo, attachments: attachmentsMap[todo.id] ?? [] }
+
+    const singleUploadIds = [todo.fileId, todo.imageId].filter(
+      Boolean,
+    ) as string[]
+    const [attachmentsMap, uploadsById] = await Promise.all([
+      getAttachmentsForTodos(database, [todo.id]),
+      getUploadsById(database, singleUploadIds),
+    ])
+
+    return {
+      ...todo,
+      attachments: attachmentsMap[todo.id] ?? [],
+      file: todo.fileId ? (uploadsById[todo.fileId] ?? null) : null,
+      image: todo.imageId ? (uploadsById[todo.imageId] ?? null) : null,
+    }
   }
 
   async function update(id: string, data: UpdateTodoInput) {
@@ -143,35 +214,47 @@ export function createTodosService(
     if (attachmentIds !== undefined) {
       await syncAttachments(database, id, attachmentIds)
     }
-    const attachmentsMap = await getAttachmentsForTodos(database, [id])
-    return { ...todo, attachments: attachmentsMap[id] ?? [] }
+
+    const singleUploadIds = [todo.fileId, todo.imageId].filter(
+      Boolean,
+    ) as string[]
+    const [attachmentsMap, uploadsById] = await Promise.all([
+      getAttachmentsForTodos(database, [id]),
+      getUploadsById(database, singleUploadIds),
+    ])
+
+    return {
+      ...todo,
+      attachments: attachmentsMap[id] ?? [],
+      file: todo.fileId ? (uploadsById[todo.fileId] ?? null) : null,
+      image: todo.imageId ? (uploadsById[todo.imageId] ?? null) : null,
+    }
   }
 
   async function remove(id: string) {
-    const attachmentsMap = await getAttachmentsForTodos(database, [id])
+    const [todo] = await database.select().from(todos).where(eq(todos.id, id))
+    if (!todo) return
+
+    const singleUploadIds = [todo.fileId, todo.imageId].filter(
+      Boolean,
+    ) as string[]
+
+    const [attachmentsMap, singleUploads] = await Promise.all([
+      getAttachmentsForTodos(database, [id]),
+      singleUploadIds.length > 0
+        ? database.select().from(uploads).where(inArray(uploads.id, singleUploadIds))
+        : Promise.resolve([]),
+    ])
+
     const attachmentList = attachmentsMap[id] ?? []
+    const allUploads = [...attachmentList, ...singleUploads]
+    const allUploadIds = allUploads.map((u) => u.id)
 
     await database.delete(todos).where(eq(todos.id, id))
 
-    if (attachmentList.length > 0) {
-      const uploadIds = attachmentList.map((a) => a.id)
-      await database
-        .delete(uploads)
-        .where(inArray(uploads.id, uploadIds))
-
-      const keysToDelete = attachmentList.flatMap((a) => {
-        const keys = [a.storageKey]
-        if (a.variants) {
-          keys.push(
-            a.variants.thumbnail.key,
-            a.variants.small.key,
-            a.variants.medium.key,
-            a.variants.large.key,
-          )
-        }
-        return keys
-      })
-      await Promise.allSettled(keysToDelete.map((key) => storage.delete(key)))
+    if (allUploadIds.length > 0) {
+      await database.delete(uploads).where(inArray(uploads.id, allUploadIds))
+      await deleteUploadKeys(storage, allUploads)
     }
   }
 

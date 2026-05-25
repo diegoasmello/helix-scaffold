@@ -18,6 +18,8 @@ export const todoSchema = z
     status: z.enum(['pending', 'completed']),
     date: z.date(),
     attachments: z.array(uploadSchema),
+    file: uploadSchema.nullable(),
+    image: uploadSchema.nullable(),
     createdAt: z.date(),
     updatedAt: z.date(),
   })
@@ -29,6 +31,8 @@ export const createTodoSchema = z.object({
   content: z.string().min(1).max(1000),
   date: z.coerce.date(),
   attachmentIds: z.array(z.string()).optional().default([]),
+  fileId: z.string().optional(),
+  imageId: z.string().optional(),
 })
 
 export const updateTodoSchema = z.object({
@@ -38,6 +42,8 @@ export const updateTodoSchema = z.object({
   status: z.enum(['pending', 'completed']).optional(),
   date: z.coerce.date().optional(),
   attachmentIds: z.array(z.string()).optional(),
+  fileId: z.string().nullable().optional(),
+  imageId: z.string().nullable().optional(),
 })
 
 export const paginatedTodosSchema = paginatedResponseSchema(todoSchema).meta({

@@ -76,6 +76,20 @@ export function TodoDetail() {
             </Text>
           </LabeledValue>
         </Grid.Col>
+        {item.file && (
+          <Grid.Col span={{ base: 12, sm: 6 }}>
+            <LabeledValue label="File">
+              <FilePreview upload={item.file} />
+            </LabeledValue>
+          </Grid.Col>
+        )}
+        {item.image && (
+          <Grid.Col span={{ base: 12, sm: 6 }}>
+            <LabeledValue label="Image">
+              <FilePreview upload={item.image} />
+            </LabeledValue>
+          </Grid.Col>
+        )}
         {item.attachments && item.attachments.length > 0 && (
           <Grid.Col span={12}>
             <LabeledValue label="Attachments">
