@@ -2,6 +2,7 @@ import { css } from '@emotion/react'
 import { createStyles } from '@mantine/emotion'
 import { Link } from '@mantine/tiptap'
 import Highlight from '@tiptap/extension-highlight'
+import Image from '@tiptap/extension-image'
 import SubScript from '@tiptap/extension-subscript'
 import Superscript from '@tiptap/extension-superscript'
 import TextAlign from '@tiptap/extension-text-align'
@@ -25,6 +26,7 @@ export function RichTextRenderer(props: Readonly<RichTextRendererProps>) {
       SubScript,
       Highlight,
       TextAlign.configure({ types: ['heading', 'paragraph'] }),
+      Image,
     ],
     content: value,
     editable: false,
@@ -45,5 +47,10 @@ const useStyles = createStyles((theme, _, u) => ({
     border-radius: ${theme.radius.md};
     padding: 0 ${theme.spacing.lg};
     background-color: ${u.light ? theme.white : theme.colors.dark[7]};
+
+    img {
+      max-width: 100%;
+      height: auto;
+    }
   `,
 }))

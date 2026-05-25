@@ -1,16 +1,18 @@
 import { css } from '@emotion/react'
 import { createStyles } from '@mantine/emotion'
 import { Link, RichTextEditor as TipTapEditor } from '@mantine/tiptap'
+import { IconPhoto } from '@tabler/icons-react'
 import Highlight from '@tiptap/extension-highlight'
+import Image from '@tiptap/extension-image'
 import Placeholder from '@tiptap/extension-placeholder'
 import SubScript from '@tiptap/extension-subscript'
 import Superscript from '@tiptap/extension-superscript'
 import TextAlign from '@tiptap/extension-text-align'
 import { useEditor } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
-import { useId } from 'react'
+import { useId, useRef, useState } from 'react'
 
-import { clsx, Input, type InputWrapperProps } from '../..'
+import { clsx, Input, type InputWrapperProps, Loader } from '../..'
 
 export interface RichTextEditorProps extends Omit<
   InputWrapperProps,
@@ -22,6 +24,7 @@ export interface RichTextEditorProps extends Omit<
   onChange?: (value: string) => void
   onFocus?: (event: FocusEvent) => void
   onBlur?: (event: FocusEvent) => void
+  onUploadImage?: (file: File) => Promise<{ url: string }>
   'data-path'?: string
 }
 
@@ -36,11 +39,14 @@ export function RichTextEditor(props: Readonly<RichTextEditorProps>) {
     onChange,
     onFocus,
     onBlur,
+    onUploadImage,
     'data-path': dataPath,
   } = props
 
   const id = useId()
   const { classes } = useStyles()
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const [isUploadingImage, setIsUploadingImage] = useState(false)
 
   const editor = useEditor({
     shouldRerenderOnTransaction: true,
@@ -52,11 +58,31 @@ export function RichTextEditor(props: Readonly<RichTextEditorProps>) {
       Highlight,
       TextAlign.configure({ types: ['heading', 'paragraph'] }),
       Placeholder.configure({ placeholder }),
+      Image,
     ],
     editorProps: {
       attributes: {
         'aria-labelledby': `${id}-label`,
         role: 'textbox',
+      },
+      handleDrop: (view, event, _slice, moved) => {
+        if (moved || !onUploadImage) return false
+
+        const files = Array.from(event.dataTransfer?.files ?? [])
+        const imageFiles = files.filter((f) => f.type.startsWith('image/'))
+        if (imageFiles.length === 0) return false
+
+        const pos = view.posAtCoords({ left: event.clientX, top: event.clientY })
+        if (!pos) return false
+
+        for (const file of imageFiles) {
+          onUploadImage(file).then(({ url }) => {
+            const node = view.state.schema.nodes.image.create({ src: url })
+            view.dispatch(view.state.tr.insert(pos.pos, node))
+          })
+        }
+
+        return true
       },
     },
     immediatelyRender: true,
@@ -73,6 +99,22 @@ export function RichTextEditor(props: Readonly<RichTextEditorProps>) {
       onBlur?.(event)
     },
   })
+
+  const handleImageFileChange = async (
+    e: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const file = e.target.files?.[0]
+    if (!file || !onUploadImage) return
+    e.target.value = ''
+
+    setIsUploadingImage(true)
+    try {
+      const { url } = await onUploadImage(file)
+      editor?.chain().focus().setImage({ src: url }).run()
+    } finally {
+      setIsUploadingImage(false)
+    }
+  }
 
   const hasError = !!error
 
@@ -139,7 +181,34 @@ export function RichTextEditor(props: Readonly<RichTextEditorProps>) {
             <TipTapEditor.Undo />
             <TipTapEditor.Redo />
           </TipTapEditor.ControlsGroup>
+
+          {onUploadImage && (
+            <TipTapEditor.ControlsGroup>
+              <TipTapEditor.Control
+                onClick={() => fileInputRef.current?.click()}
+                aria-label="Insert image"
+                title="Insert image"
+                disabled={isUploadingImage}
+              >
+                {isUploadingImage ? (
+                  <Loader size={16} />
+                ) : (
+                  <IconPhoto size={16} stroke={1.5} />
+                )}
+              </TipTapEditor.Control>
+            </TipTapEditor.ControlsGroup>
+          )}
         </TipTapEditor.Toolbar>
+
+        {onUploadImage && (
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            className={classes.hiddenInput}
+            onChange={handleImageFileChange}
+          />
+        )}
 
         <TipTapEditor.Content
           className={clsx(classes.content, {
@@ -188,6 +257,17 @@ const useStyles = createStyles((theme) => ({
         padding: ${theme.spacing.xs} ${theme.spacing.sm}!important;
       }
     }
+
+    img {
+      max-width: 100%;
+      height: auto;
+    }
+
+    img.ProseMirror-selectednode {
+      outline: 2px solid ${theme.colors.dark[5]};
+      outline-offset: 2px;
+      border-radius: ${theme.radius.sm};
+    }
   `,
   contentWithError: css`
     & > div > div p::before {
@@ -197,5 +277,8 @@ const useStyles = createStyles((theme) => ({
   contentResizable: css`
     resize: vertical;
     overflow: auto;
+  `,
+  hiddenInput: css`
+    display: none;
   `,
 }))

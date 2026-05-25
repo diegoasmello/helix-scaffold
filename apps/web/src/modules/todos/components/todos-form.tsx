@@ -72,6 +72,7 @@ export function TodoForm(props: Readonly<TodoFormProps>) {
           description="Write a large content"
           placeholder="Todo content"
           required
+          onUploadImage={uploadFile}
           {...form.getInputProps('content')}
         />
       </Grid.Col>
