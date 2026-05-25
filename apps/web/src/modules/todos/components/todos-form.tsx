@@ -4,6 +4,7 @@ import {
   FileInput,
   FilesInput,
   Grid,
+  Image,
   IMAGE_MIME_TYPE,
   PDF_MIME_TYPE,
   RichTextEditor,
@@ -25,6 +26,28 @@ export function TodoForm(props: Readonly<TodoFormProps>) {
 
   return (
     <Grid>
+      <Grid.Col span={12}>
+        {form.values.image && (
+          <Image
+            src={form.values.image.url}
+            radius="md"
+            mah={300}
+            w="auto"
+            fit="contain"
+            mb="xs"
+          />
+        )}
+        <FileInput
+          label="Image"
+          description="JPEG, PNG, WebP or GIF"
+          required
+          value={form.values.image}
+          onChange={(upload) => form.setFieldValue('image', upload)}
+          onUpload={uploadFile}
+          accept={IMAGE_MIME_TYPE}
+          error={form.errors.image as string | undefined}
+        />
+      </Grid.Col>
       <Grid.Col span={12}>
         <TextInput
           label="Title"
@@ -85,7 +108,7 @@ export function TodoForm(props: Readonly<TodoFormProps>) {
           maxFiles={10}
         />
       </Grid.Col>
-      <Grid.Col span={{ base: 12, sm: 6 }}>
+      <Grid.Col span={12}>
         <FileInput
           label="File (PDF)"
           description="Only PDF documents are accepted"
@@ -95,18 +118,6 @@ export function TodoForm(props: Readonly<TodoFormProps>) {
           onUpload={uploadFile}
           accept={PDF_MIME_TYPE}
           error={form.errors.file as string | undefined}
-        />
-      </Grid.Col>
-      <Grid.Col span={{ base: 12, sm: 6 }}>
-        <FileInput
-          label="Image"
-          description="JPEG, PNG, WebP or GIF"
-          required
-          value={form.values.image}
-          onChange={(upload) => form.setFieldValue('image', upload)}
-          onUpload={uploadFile}
-          accept={IMAGE_MIME_TYPE}
-          error={form.errors.image as string | undefined}
         />
       </Grid.Col>
     </Grid>
