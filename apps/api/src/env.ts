@@ -8,6 +8,10 @@ const envSchema = z.object({
   AUTH_SECRET: z.string().min(1),
   BASE_URL: z.url(),
   CLIENT_URL: z.url(),
+  STORAGE_PROVIDER: z.enum(['local', 's3']).default('local'),
+  UPLOAD_DIR: z.string().default('./uploads'),
+  UPLOAD_MAX_SIZE_MB: z.coerce.number().default(50),
+  UPLOAD_BASE_URL: z.url().default('http://localhost:3333'),
 })
 
 export const env = envSchema.parse(process.env)
