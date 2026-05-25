@@ -133,6 +133,7 @@ export const msg = {
   required: 'Required',
   maxLength: (max: number) => `Max ${max} characters`,
   minLength: (min: number) => `Min ${min} characters`,
+  minFiles: (min: number) => min === 1 ? 'At least one file is required' : `At least ${min} files are required`,
   email: 'Invalid email address',
 }
 ```
@@ -148,6 +149,7 @@ Each primitive is a function `(value) => string | null`. Import from `@helix/ui`
 | `requiredHtml` | `Validator<string>` | Like `required` but strips HTML tags first — use for `RichTextEditor` fields |
 | `maxLength(n)` | `(max: number) => Validator<string>` | |
 | `minLength(n)` | `(min: number) => Validator<string>` | |
+| `minFiles(n)` | `(min: number) => Validator<unknown[]>` | Use for `FilesInput` fields — fails when `value.length < min` |
 | `email` | `Validator<string>` | Basic format check |
 | `rules(...fns)` | `<T>(...Validator<T>[]) => Validator<T>` | Composes validators left-to-right, returns first error |
 

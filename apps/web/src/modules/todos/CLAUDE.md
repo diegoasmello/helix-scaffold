@@ -77,9 +77,19 @@ title:       required, max 200 chars
 description: required, max 500 chars
 content:     required, max 1000 chars
 date:        required (null → 'Required')
+attachments: minFiles(1)   — 'At least one file is required'
+file:        required      — fails when null
+image:       required      — fails when null
 ```
 
 `status` has no validator — the Switch is always in a valid state.
+
+For upload fields, use `minFiles(n)` (from `@helix/ui`) for `FilesInput` and `required` for `FileInput`. Both validators treat `null` / empty array as invalid. The `required` prop on the component renders the asterisk indicator and must match the validator:
+
+```tsx
+<FilesInput required error={form.errors.attachments as string | undefined} ... />
+<FileInput  required error={form.errors.file as string | undefined} ... />
+```
 
 ## Routes (`routes/index.ts`)
 
