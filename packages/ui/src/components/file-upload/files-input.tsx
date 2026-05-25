@@ -19,6 +19,7 @@ export interface FilesInputProps<T extends UploadedFile = UploadedFile> {
   accept?: string[]
   label?: string
   description?: string
+  required?: boolean
   error?: string
 }
 
@@ -33,6 +34,7 @@ export function FilesInput<T extends UploadedFile>(
     accept,
     label,
     description,
+    required,
     error,
   } = props
 
@@ -76,10 +78,14 @@ export function FilesInput<T extends UploadedFile>(
   }
 
   return (
-    <Input.Wrapper label={label} description={description} error={error}>
-      <Stack gap="xs">
+    <Input.Wrapper label={label} description={description} required={required} error={error}>
+      <Stack gap="xs" mt={description ? 4 : undefined} mb={error ? 4 : undefined}>
         {!isAtLimit && (
-          <Dropzone onDrop={handleDrop} accept={accept}>
+          <Dropzone
+          onDrop={handleDrop}
+          accept={accept}
+          classNames={{ root: error ? classes.dropzoneError : undefined }}
+        >
             <Group
               justify="center"
               gap="xl"
@@ -141,6 +147,15 @@ export function FilesInput<T extends UploadedFile>(
 const useStyles = createStyles((theme) => ({
   dropzoneContent: css`
     pointer-events: none;
+  `,
+  dropzoneError: css`
+    border-color: ${theme.colors.red[6]};
+    border-style: solid;
+
+    &:focus,
+    &:focus-visible {
+      outline-color: ${theme.colors.red[6]};
+    }
   `,
   uploadingCard: css`
     border: 1px dashed ${theme.colors.gray[4]};

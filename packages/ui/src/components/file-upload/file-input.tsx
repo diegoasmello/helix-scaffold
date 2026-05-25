@@ -1,5 +1,5 @@
 import { css } from '@emotion/react'
-import { Group, Input, Loader, Stack, Text } from '@mantine/core'
+import { Box, Group, Input, Loader, Stack, Text } from '@mantine/core'
 import type { FileWithPath } from '@mantine/dropzone'
 import { Dropzone } from '@mantine/dropzone'
 import { createStyles } from '@mantine/emotion'
@@ -17,15 +17,16 @@ export interface FileInputProps<T extends UploadedFile = UploadedFile> {
   accept?: string[]
   label?: string
   description?: string
+  required?: boolean
   error?: string
 }
 
 export function FileInput<T extends UploadedFile>(
   props: Readonly<FileInputProps<T>>
 ) {
-  const { value, onChange, onUpload, accept, label, description, error } = props
+  const { value, onChange, onUpload, accept, label, description, required, error } = props
 
-  const { classes } = useStyles()
+  const { classes, cx } = useStyles()
   const [isUploading, setIsUploading] = useState(false)
 
   const handleDrop = async (files: FileWithPath[]) => {
@@ -44,11 +45,12 @@ export function FileInput<T extends UploadedFile>(
   }
 
   return (
-    <Input.Wrapper label={label} description={description} error={error}>
+    <Input.Wrapper label={label} description={description} required={required} error={error}>
+      <Box mt={description ? 4 : undefined} mb={error ? 4 : undefined}>
       {value ? (
         <FileCard upload={value} onRemove={() => onChange(null)} />
       ) : isUploading ? (
-        <Group className={classes.loadingCard} gap="sm" wrap="nowrap">
+        <Group className={cx(classes.loadingCard, error && classes.cardError)} gap="sm" wrap="nowrap">
           <Stack
             className={classes.loadingIcon}
             align="center"
@@ -61,7 +63,12 @@ export function FileInput<T extends UploadedFile>(
           </Text>
         </Group>
       ) : (
-        <Dropzone onDrop={handleDrop} accept={accept} maxFiles={1}>
+        <Dropzone
+          onDrop={handleDrop}
+          accept={accept}
+          maxFiles={1}
+          classNames={{ root: error ? classes.dropzoneError : undefined }}
+        >
           <Group justify="center" gap="sm" className={classes.dropzoneContent}>
             <Dropzone.Accept>
               <IconUpload size={18} />
@@ -78,6 +85,7 @@ export function FileInput<T extends UploadedFile>(
           </Group>
         </Dropzone>
       )}
+      </Box>
     </Input.Wrapper>
   )
 }
@@ -87,12 +95,24 @@ const useStyles = createStyles((theme) => ({
     pointer-events: none;
     height: 60px;
   `,
+  dropzoneError: css`
+    border-color: ${theme.colors.red[6]};
+    border-style: solid;
+
+    &:focus,
+    &:focus-visible {
+      outline-color: ${theme.colors.red[6]};
+    }
+  `,
   loadingCard: css`
     border: 1px solid ${theme.colors.gray[3]};
     border-radius: ${theme.radius.sm};
     padding: 0 ${theme.spacing.sm};
     background: ${theme.white};
     height: 60px;
+  `,
+  cardError: css`
+    border-color: ${theme.colors.red[6]};
   `,
   loadingIcon: css`
     width: 40px;

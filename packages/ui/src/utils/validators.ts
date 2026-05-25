@@ -14,6 +14,11 @@ export const minLength = (min: number): Validator<string> => (v) =>
 export const requiredHtml: Validator<string> = (v) =>
   !v.replace(/<[^>]*>/g, '').trim() ? msg.required : null
 
+export const minFiles =
+  (min: number): Validator<unknown[]> =>
+  (v) =>
+    v.length < min ? msg.minFiles(min) : null
+
 export const email: Validator<string> = (v) =>
   v && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v) ? msg.email : null
 
