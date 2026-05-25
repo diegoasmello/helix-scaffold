@@ -1,4 +1,8 @@
+import path from 'node:path'
+
 import { fastifyCors } from '@fastify/cors'
+import fastifyMultipart from '@fastify/multipart'
+import fastifyStatic from '@fastify/static'
 import { fastifySwagger } from '@fastify/swagger'
 import ScalarApiReference from '@scalar/fastify-api-reference'
 import { fromNodeHeaders } from 'better-auth/node'
@@ -17,6 +21,7 @@ import { env } from './env'
 import { registerAuditRequest } from './hooks/audit-request'
 import { createRequireAuth } from './hooks/require-auth'
 import { createRequirePermission } from './hooks/require-permission'
+import { createStorageProvider } from './lib/storage'
 import { auditRoutes } from './modules/audit/audit-routes'
 import { createAuditService } from './modules/audit/audit-service'
 import { bootstrapRoutes } from './modules/bootstrap/bootstrap-routes'
@@ -24,6 +29,7 @@ import { meRoutes } from './modules/me/me-routes'
 import { permissionsRoutes } from './modules/permissions/permissions-routes'
 import { rolesRoutes } from './modules/roles/roles-routes'
 import { todosRoutes } from './modules/todos/todos-routes'
+import { uploadsRoutes } from './modules/uploads/uploads-routes'
 import { usersRoutes } from './modules/users/users-routes'
 
 export function buildApp(database: Database) {
@@ -36,10 +42,22 @@ export function buildApp(database: Database) {
     },
   }).withTypeProvider<ZodTypeProvider>()
 
+  const storage = createStorageProvider(env)
+
   const auth = createAuth(database)
 
   app.setValidatorCompiler(validatorCompiler)
   app.setSerializerCompiler(serializerCompiler)
+
+  app.register(fastifyMultipart, {
+    limits: { fileSize: env.UPLOAD_MAX_SIZE_MB * 1024 * 1024 },
+  })
+
+  app.register(fastifyStatic, {
+    root: path.resolve(env.UPLOAD_DIR),
+    prefix: '/files/',
+    decorateReply: false,
+  })
 
   app.register(fastifyCors, {
     origin: env.CLIENT_URL,
@@ -114,7 +132,8 @@ export function buildApp(database: Database) {
     authenticated.register(rolesRoutes, { database, requirePermission })
     authenticated.register(usersRoutes, { database, auth, requirePermission })
 
-    authenticated.register(todosRoutes, { database, requirePermission })
+    authenticated.register(todosRoutes, { database, requirePermission, storage })
+    authenticated.register(uploadsRoutes, { database, requirePermission, storage })
   })
 
   return app
