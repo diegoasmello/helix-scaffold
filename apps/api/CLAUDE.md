@@ -169,6 +169,41 @@ See `apps/api/src/modules/todos/todos-routes.test.ts` for the reference implemen
 
 ---
 
+## File uploads
+
+The file upload system is implemented as a standalone `uploads` module. Any other module can allow users to attach files by adding a junction table and a few lines to its service. See `src/modules/uploads/CLAUDE.md` for the full reference.
+
+### Infrastructure (`src/lib/`)
+
+| File | Purpose |
+|------|---------|
+| `src/lib/storage/types.ts` | `StorageProvider` interface (`save`, `delete`, `getUrl`) |
+| `src/lib/storage/local-storage.ts` | `LocalStorageProvider` — writes to `UPLOAD_DIR`, serves via `/files/*` |
+| `src/lib/storage/index.ts` | `createStorageProvider(env)` factory — returns local or throws for S3 (stub) |
+| `src/lib/image-processor.ts` | `processImage(buffer, mimeType)` — generates 4 WebP variants via `sharp` |
+
+The provider instance is created once in `app.ts` and injected into every module that needs it via route options. Files are served publicly at `/files/*` via `@fastify/static` — no auth required on that path (needed for `<img>` tags).
+
+### Environment variables
+
+| Variable | Default | Notes |
+|----------|---------|-------|
+| `STORAGE_PROVIDER` | `'local'` | `'s3'` stub exists but throws |
+| `UPLOAD_DIR` | `'./storage'` | Local storage root directory |
+| `UPLOAD_MAX_SIZE_MB` | `50` | Enforced in `POST /uploads` |
+| `UPLOAD_BASE_URL` | `'http://localhost:3333'` | Prepended to storage keys to build public URLs |
+
+### Adding file attachments to a module
+
+Use `todos` as the reference implementation.
+
+1. Create a junction table `xxx_attachments(xxx_id FK cascade, upload_id FK cascade)`
+2. Add `attachments: uploadSchema.array()` to the response schema and `attachmentIds: z.array(z.string()).optional().default([])` to create/update schemas
+3. In the service: JOIN with `uploads` on reads; sync `xxx_attachments` rows on create/update; on delete, fetch upload IDs → delete the record (cascades junction rows) → delete upload DB rows → delete storage keys (best-effort)
+4. Accept `storage: StorageProvider` in route options and pass it through to the service factory
+
+---
+
 ## Creating a new module (CRUD)
 
 Use the `todos` module as the reference implementation. Follow this order exactly.
