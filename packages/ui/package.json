@@ -18,6 +18,7 @@
     "@fontsource-variable/plus-jakarta-sans": "5.2.8",
     "@mantine/core": "9.1.1",
     "@mantine/dates": "9.1.1",
+    "@mantine/dropzone": "9.1.1",
     "@mantine/emotion": "9.1.1",
     "@mantine/form": "9.1.0",
     "@mantine/hooks": "9.1.1",
