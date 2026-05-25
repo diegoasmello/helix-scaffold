@@ -140,3 +140,30 @@ Register in `app.ts` passing the shared `storage` instance:
 ```ts
 authenticated.register(xxxRoutes, { database, requirePermission, storage })
 ```
+
+### 5. Register upload references for orphan cleanup
+
+Uploads are persisted immediately when the user selects a file — before the parent record exists. If the user abandons the form, those uploads become orphaned. A scheduled job (`deleteOrphanUploads`) runs every 6 hours and removes uploads older than 24 hours that are not referenced by any module.
+
+For the job to know which uploads are in use, every column that references `uploads.id` must be registered in `src/config/upload-references.ts`:
+
+```ts
+// src/config/upload-references.ts
+import { isNotNull } from 'drizzle-orm'
+import { xxxAttachments, xxx } from '@/db/schema'
+import { registerUploadReference } from '@/lib/upload-references'
+
+// Junction table column (NOT NULL — no filter needed)
+registerUploadReference(async (db) => {
+  const rows = await db.selectDistinct({ id: xxxAttachments.uploadId }).from(xxxAttachments)
+  return rows.map((r) => r.id)
+})
+
+// Direct FK column (nullable — filter nulls)
+registerUploadReference(async (db) => {
+  const rows = await db.select({ id: xxx.fileId }).from(xxx).where(isNotNull(xxx.fileId))
+  return rows.map((r) => r.id).filter((id): id is string => id !== null)
+})
+```
+
+Add one `registerUploadReference` call per column. If a module's uploads are not registered, the job will treat them as orphaned and delete them after the grace period.
