@@ -9,15 +9,14 @@ import {
 } from '@helix/api-client/mocks'
 import { MantineProvider, Notifications } from '@helix/ui'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { Suspense } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { server } from '../../../mocks/server'
-import { MePage } from './me-page'
-
-vi.mock('@tanstack/react-router', () => ({ useNavigate: () => vi.fn() }))
+import { MeAccount } from './me-account'
+import { MeSecurity } from './me-security'
 
 vi.mock('../../../lib/authentication', () => ({
   authClient: {
@@ -44,7 +43,7 @@ const mockProfile = createGetMe200({
   emailVerified: true,
 })
 
-function renderMePage() {
+function renderMeAccount() {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   })
@@ -53,8 +52,22 @@ function renderMePage() {
       <Notifications />
       <QueryClientProvider client={queryClient}>
         <Suspense fallback={<div>Loading...</div>}>
-          <MePage />
+          <MeAccount />
         </Suspense>
+      </QueryClientProvider>
+    </MantineProvider>
+  )
+}
+
+function renderMeSecurity() {
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  })
+  return render(
+    <MantineProvider>
+      <Notifications />
+      <QueryClientProvider client={queryClient}>
+        <MeSecurity />
       </QueryClientProvider>
     </MantineProvider>
   )
@@ -67,17 +80,17 @@ beforeEach(() => {
 afterEach(() => vi.clearAllMocks())
 
 describe('Profile display', () => {
-  it('renders the profile page title', async () => {
-    renderMePage()
-    await screen.findByRole('heading', { name: 'Profile' })
+  it('renders the account page title', async () => {
+    renderMeAccount()
+    await screen.findByRole('heading', { name: 'Account' })
   })
 
   it('pre-populates form fields with user data', async () => {
-    renderMePage()
-    const nameInput = await screen.findByLabelText('Name')
-    const emailInput = await screen.findByLabelText('Email')
-    expect(nameInput).toHaveValue('Test User')
-    expect(emailInput).toHaveValue('test@example.com')
+    renderMeAccount()
+    const nameInput = await screen.findByDisplayValue('Test User')
+    const emailInput = screen.getByDisplayValue('test@example.com')
+    expect(nameInput).toBeInTheDocument()
+    expect(emailInput).toBeInTheDocument()
   })
 })
 
@@ -88,8 +101,8 @@ describe('Profile update', () => {
 
     server.use(patchMeHandler(() => patchMeHandlerResponse200(updatedProfile)))
 
-    renderMePage()
-    const nameInput = await screen.findByLabelText('Name')
+    renderMeAccount()
+    const nameInput = await screen.findByDisplayValue('Test User')
     await user.clear(nameInput)
     await user.type(nameInput, 'New Name')
     await user.click(screen.getByRole('button', { name: 'Save' }))
@@ -99,10 +112,11 @@ describe('Profile update', () => {
 
   it('shows validation error when name is empty', async () => {
     const user = userEvent.setup()
-    renderMePage()
-    const nameInput = await screen.findByLabelText('Name')
+    renderMeAccount()
+    const nameInput = await screen.findByDisplayValue('Test User')
     await user.clear(nameInput)
-    await user.click(screen.getByRole('button', { name: 'Save' }))
+    const form = nameInput.closest('form')!
+    fireEvent.submit(form)
 
     await screen.findByText('Required')
   })
@@ -116,15 +130,13 @@ describe('Password change', () => {
       patchMePasswordHandler(() => patchMePasswordHandlerResponse204())
     )
 
-    renderMePage()
-    await screen.findByLabelText('Current Password')
+    renderMeSecurity()
+    const [currentPwdInput, newPwdInput, confirmPwdInput] =
+      document.querySelectorAll('input[type="password"]')
 
-    await user.type(screen.getByLabelText('Current Password'), 'Password123!')
-    await user.type(screen.getByLabelText('New Password'), 'NewPass456!')
-    await user.type(
-      screen.getByLabelText('Confirm New Password'),
-      'NewPass456!'
-    )
+    await user.type(currentPwdInput, 'Password123!')
+    await user.type(newPwdInput, 'NewPass456!')
+    await user.type(confirmPwdInput, 'NewPass456!')
     await user.click(screen.getByRole('button', { name: 'Change Password' }))
 
     await screen.findByText('Password changed successfully')
@@ -141,15 +153,13 @@ describe('Password change', () => {
       )
     )
 
-    renderMePage()
-    await screen.findByLabelText('Current Password')
+    renderMeSecurity()
+    const [currentPwdInput, newPwdInput, confirmPwdInput] =
+      document.querySelectorAll('input[type="password"]')
 
-    await user.type(screen.getByLabelText('Current Password'), 'WrongPass!')
-    await user.type(screen.getByLabelText('New Password'), 'NewPass456!')
-    await user.type(
-      screen.getByLabelText('Confirm New Password'),
-      'NewPass456!'
-    )
+    await user.type(currentPwdInput, 'WrongPass!')
+    await user.type(newPwdInput, 'NewPass456!')
+    await user.type(confirmPwdInput, 'NewPass456!')
     await user.click(screen.getByRole('button', { name: 'Change Password' }))
 
     await screen.findByText('Current password is incorrect')
@@ -157,12 +167,13 @@ describe('Password change', () => {
 
   it('shows validation error when passwords do not match', async () => {
     const user = userEvent.setup()
-    renderMePage()
-    await screen.findByLabelText('Current Password')
+    renderMeSecurity()
+    const [currentPwdInput, newPwdInput, confirmPwdInput] =
+      document.querySelectorAll('input[type="password"]')
 
-    await user.type(screen.getByLabelText('Current Password'), 'Password123!')
-    await user.type(screen.getByLabelText('New Password'), 'NewPass456!')
-    await user.type(screen.getByLabelText('Confirm New Password'), 'Different!')
+    await user.type(currentPwdInput, 'Password123!')
+    await user.type(newPwdInput, 'NewPass456!')
+    await user.type(confirmPwdInput, 'Different!')
     await user.click(screen.getByRole('button', { name: 'Change Password' }))
 
     await screen.findByText('Passwords do not match')
@@ -170,12 +181,13 @@ describe('Password change', () => {
 
   it('shows validation error when new password is too short', async () => {
     const user = userEvent.setup()
-    renderMePage()
-    await screen.findByLabelText('Current Password')
+    renderMeSecurity()
+    const [currentPwdInput, newPwdInput, confirmPwdInput] =
+      document.querySelectorAll('input[type="password"]')
 
-    await user.type(screen.getByLabelText('Current Password'), 'Password123!')
-    await user.type(screen.getByLabelText('New Password'), 'short')
-    await user.type(screen.getByLabelText('Confirm New Password'), 'short')
+    await user.type(currentPwdInput, 'Password123!')
+    await user.type(newPwdInput, 'short')
+    await user.type(confirmPwdInput, 'short')
     await user.click(screen.getByRole('button', { name: 'Change Password' }))
 
     await screen.findByText('Min 8 characters')
