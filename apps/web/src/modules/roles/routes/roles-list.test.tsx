@@ -6,7 +6,7 @@ import {
   getMePermissionsHandler,
   getRolesHandler,
 } from '@helix/api-client/mocks'
-import { MantineProvider, ModalsProvider } from '@helix/ui'
+import { MantineEmotionProvider, MantineProvider, ModalsProvider } from '@helix/ui'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -55,13 +55,15 @@ function renderRolesList() {
   })
   return render(
     <MantineProvider>
-      <ModalsProvider>
-        <QueryClientProvider client={queryClient}>
-          <Suspense fallback={<div>Loading...</div>}>
-            <RolesList />
-          </Suspense>
-        </QueryClientProvider>
-      </ModalsProvider>
+      <MantineEmotionProvider>
+        <ModalsProvider>
+          <QueryClientProvider client={queryClient}>
+            <Suspense fallback={<div>Loading...</div>}>
+              <RolesList />
+            </Suspense>
+          </QueryClientProvider>
+        </ModalsProvider>
+      </MantineEmotionProvider>
     </MantineProvider>
   )
 }
