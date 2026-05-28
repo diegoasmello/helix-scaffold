@@ -8,6 +8,8 @@
   "include": [
     "src/**/*.test.ts",
     "src/**/*.test.tsx",
+    "__mocks__/**/*.ts",
+    "__mocks__/**/*.tsx",
     "vitest.setup.ts",
     "vitest.config.ts"
   ],
