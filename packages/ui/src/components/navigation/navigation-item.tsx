@@ -17,11 +17,21 @@ export interface NavigationItemProps {
 }
 
 export function NavigationItem(props: Readonly<NavigationItemProps>) {
-  const { label, active, chevron, chevronOpen, icon: Icon, to, onClick, px = '0' } = props
+  const {
+    label,
+    active,
+    chevron,
+    chevronOpen,
+    icon: Icon,
+    to,
+    onClick,
+    px = '0',
+  } = props
 
   const matchRoute = useMatchRoute()
   const isActive =
-    active ?? (to !== undefined ? Boolean(matchRoute({ to, fuzzy: true })) : false)
+    active ??
+    (to !== undefined ? Boolean(matchRoute({ to, fuzzy: true })) : false)
 
   const { classes, cx } = useStyles({ px })
 
@@ -81,6 +91,13 @@ const useStyles = createStyles((theme, params: { px: string }, u) => ({
     color: inherit;
     background-color: transparent;
     padding: 0 ${params.px};
+    outline: none;
+
+    &:focus div,
+    &:focus-within div {
+      outline: 2px solid ${theme.colors.main[6]};
+      outline-offset: 2px;
+    }
 
     &:hover > div {
       ${u.light} {
