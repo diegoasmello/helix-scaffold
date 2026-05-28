@@ -85,9 +85,8 @@ export function RichTextEditor(props: Readonly<RichTextEditorProps>) {
         return true
       },
     },
-    immediatelyRender: true,
+    immediatelyRender: false,
     content: value,
-    enableContentCheck: true,
     onUpdate: ({ editor }) => {
       const html = editor.getHTML()
       onChange?.(html)
