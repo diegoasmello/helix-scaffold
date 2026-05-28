@@ -4,7 +4,7 @@ import {
   getAuditLogsHandler,
   getMePermissionsHandler,
 } from '@helix/api-client/mocks'
-import { MantineProvider } from '@helix/ui'
+import { MantineEmotionProvider, MantineProvider } from '@helix/ui'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen } from '@testing-library/react'
 import { Suspense } from 'react'
@@ -70,11 +70,13 @@ function renderAuditList() {
   })
   return render(
     <MantineProvider>
-      <QueryClientProvider client={queryClient}>
-        <Suspense fallback={<div>Loading...</div>}>
-          <AuditList />
-        </Suspense>
-      </QueryClientProvider>
+      <MantineEmotionProvider>
+        <QueryClientProvider client={queryClient}>
+          <Suspense fallback={<div>Loading...</div>}>
+            <AuditList />
+          </Suspense>
+        </QueryClientProvider>
+      </MantineEmotionProvider>
     </MantineProvider>
   )
 }
