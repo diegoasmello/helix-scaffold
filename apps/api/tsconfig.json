@@ -17,6 +17,7 @@
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
+    "types": ["node"],
 
     "moduleResolution": "bundler",
     "allowImportingTsExtensions": true,
