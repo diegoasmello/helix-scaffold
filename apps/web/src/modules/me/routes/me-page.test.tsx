@@ -80,9 +80,10 @@ beforeEach(() => {
 afterEach(() => vi.clearAllMocks())
 
 describe('Profile display', () => {
-  it('renders the account page title', async () => {
+  it('renders the name and email sections', async () => {
     renderMeAccount()
-    await screen.findByRole('heading', { name: 'Account' })
+    await screen.findByRole('heading', { name: 'Name' })
+    expect(screen.getByRole('heading', { name: 'Email Address' })).toBeInTheDocument()
   })
 
   it('pre-populates form fields with user data', async () => {
@@ -107,7 +108,7 @@ describe('Profile update', () => {
     await user.type(nameInput, 'New Name')
     await user.click(screen.getByRole('button', { name: 'Save' }))
 
-    await screen.findByText('Profile updated successfully')
+    await screen.findByText('Name updated successfully')
   })
 
   it('shows validation error when name is empty', async () => {

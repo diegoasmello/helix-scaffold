@@ -1,12 +1,11 @@
 import { describe, expect, it } from 'vitest'
 
-import type { MeFormValues, PasswordFormValues } from './types'
-import { meFormValidate, passwordFormValidate } from './validation'
+import type { EmailChangeFormValues, MeFormValues, PasswordFormValues } from './types'
+import { createEmailChangeFormValidate, meFormValidate, passwordFormValidate } from './validation'
 
-const meBase: MeFormValues = {
-  name: '',
-  email: '',
-}
+const emailChangeFormValidate = createEmailChangeFormValidate('')
+
+const meBase: MeFormValues = { name: '' }
 
 describe('meFormValidate', () => {
   describe('name', () => {
@@ -22,20 +21,24 @@ describe('meFormValidate', () => {
       expect(meFormValidate.name('John', meBase)).toBeNull()
     })
   })
+})
 
-  describe('email', () => {
+const emailChangeBase: EmailChangeFormValues = { newEmail: '' }
+
+describe('emailChangeFormValidate', () => {
+  describe('newEmail', () => {
     it('returns error when empty', () => {
-      expect(meFormValidate.email('', meBase)).toBe('Required')
+      expect(emailChangeFormValidate.newEmail('', emailChangeBase)).toBe('Required')
     })
 
     it('returns error when invalid format', () => {
-      expect(meFormValidate.email('not-an-email', meBase)).toBe(
+      expect(emailChangeFormValidate.newEmail('not-an-email', emailChangeBase)).toBe(
         'Invalid email address'
       )
     })
 
     it('returns null when valid', () => {
-      expect(meFormValidate.email('user@example.com', meBase)).toBeNull()
+      expect(emailChangeFormValidate.newEmail('user@example.com', emailChangeBase)).toBeNull()
     })
   })
 })
@@ -49,15 +52,11 @@ const passwordBase: PasswordFormValues = {
 describe('passwordFormValidate', () => {
   describe('currentPassword', () => {
     it('returns error when empty', () => {
-      expect(passwordFormValidate.currentPassword('', passwordBase)).toBe(
-        'Required'
-      )
+      expect(passwordFormValidate.currentPassword('', passwordBase)).toBe('Required')
     })
 
     it('returns null when provided', () => {
-      expect(
-        passwordFormValidate.currentPassword('anyvalue', passwordBase)
-      ).toBeNull()
+      expect(passwordFormValidate.currentPassword('anyvalue', passwordBase)).toBeNull()
     })
   })
 
@@ -69,9 +68,7 @@ describe('passwordFormValidate', () => {
     })
 
     it('returns null when at least 8 chars', () => {
-      expect(
-        passwordFormValidate.newPassword('validpass', passwordBase)
-      ).toBeNull()
+      expect(passwordFormValidate.newPassword('validpass', passwordBase)).toBeNull()
     })
   })
 
