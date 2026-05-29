@@ -3,8 +3,8 @@ import { StyleSheet, Text } from '@react-pdf/renderer'
 
 import type { todos } from '@/db/schema'
 import { BaseDocument } from '@/lib/pdf/base-document'
-import { PdfTable, type PdfColumn } from '@/lib/pdf/pdf-table'
 import { pdfColors } from '@/lib/pdf/pdf-styles'
+import { type PdfColumn, PdfTable } from '@/lib/pdf/pdf-table'
 
 type TodoRow = typeof todos.$inferSelect
 
