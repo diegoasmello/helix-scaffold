@@ -1,6 +1,6 @@
 # me module — frontend
 
-Single-screen module for profile self-service. No list/create/detail/edit split — one page with two independent forms. No `beforeLoad` permission guard — the route only requires authentication.
+Single-screen module for profile self-service. No list/create/detail/edit split — one page (`/me/account`, `/me/security`) with independent forms per concern. No `beforeLoad` permission guard — the route only requires authentication.
 
 ## File structure
 
@@ -8,29 +8,45 @@ Single-screen module for profile self-service. No list/create/detail/edit split 
 src/modules/me/
 ├── types.ts
 ├── validation.ts
+├── validation.test.ts
 └── routes/
     ├── index.ts
     ├── me-pending.tsx
-    └── me-page.tsx
+    ├── me-page.tsx      ← layout with sidebar nav (Account / Security)
+    ├── me-account.tsx   ← name form + email change form
+    ├── me-security.tsx  ← password change form
+    └── me-page.test.tsx
 ```
 
 No `hooks.ts`, no `components/`.
 
+## Routes (`routes/index.ts`)
+
+| Path | Component | Notes |
+|---|---|---|
+| `/me` | `MePage` | Layout shell; redirects `/me` → `/me/account` |
+| `/me/account` | `MeAccount` | Name update + email change |
+| `/me/security` | `MeSecurity` | Password change |
+
+No `beforeLoad` permission check. No `loaderDeps`, no `validateSearch`.
+
+Loader on `meRoute`: `queryClient.ensureQueryData(getMeSuspenseQueryOptions())`.
+
 ## Types (`types.ts`)
 
-| Alias                | Source (`@helix/api-client/types`)  |
-| -------------------- | ----------------------------------- |
-| `MeProfile`          | `GetMeQueryResponse`                |
-| `UpdateMeInput`      | `PatchMeMutationRequest`            |
+| Alias | Source (`@helix/api-client/types`) |
+|---|---|
+| `MeProfile` | `GetMeQueryResponse` |
+| `UpdateMeInput` | `PatchMeMutationRequest` — name only |
+| `UpdateMeEmailInput` | `PatchMeEmailMutationRequest` — `{ newEmail: string }` |
 | `UpdateMePasswordInput` | `PatchMePasswordMutationRequest` |
 
 Form-specific interfaces (not from the API):
 
 ```ts
-interface MeFormValues {
-  name: string
-  email: string
-}
+interface MeFormValues { name: string }
+
+interface EmailChangeFormValues { newEmail: string }
 
 interface PasswordFormValues {
   currentPassword: string
@@ -41,73 +57,55 @@ interface PasswordFormValues {
 
 ## Validation (`validation.ts`)
 
-Two validators, each used by its own form:
+**`meFormValidate`** — `name`: required.
 
-**`meFormValidate`**
-- `name`: required
-- `email`: required, must be a valid email format
+**`createEmailChangeFormValidate(currentEmail)`** — factory, not a static export. Takes the user's current email so the validator can reject a no-op change:
+- `newEmail`: required, valid email format, must differ from `currentEmail`
+
+Usage: `validate: createEmailChangeFormValidate(profile.email)` — call inside the component so `profile.email` is in scope.
 
 **`passwordFormValidate`**
 - `currentPassword`: required
 - `newPassword`: min 8 characters
-- `confirmPassword`: cross-field — `(v, values) => v !== values.newPassword ? 'Passwords do not match' : null`
+- `confirmPassword`: cross-field — must match `newPassword`
 
-## Route (`routes/index.ts`)
+## `MeAccount` (`routes/me-account.tsx`)
 
-Single route, not exported as a named constant — assigned to a local `const meRoute` and collected in `meRoutes = [meRoute]`.
+Three independent forms rendered as separate `<Stack>` sections:
 
-| Path  | Permission |
-| ----- | ---------- |
-| `/me` | none (authenticated only) |
+### Name section
+- Single `TextInput` for name.
+- Mutation: `patchMe({ name })` — `onSuccess` updates the cache via `setQueryData` and notifies success.
 
-No `beforeLoad` permission check — accessing the profile page requires only a valid session, not any specific RBAC grant. No `loaderDeps`, no `validateSearch`.
+### Email change section
+- Displays current email in a **disabled** `TextInput` (read-only, not part of any form).
+- Email change form with a `newEmail` input — only shown when `emailChangePending === false`.
+- Mutation: `patchMeEmail({ newEmail })` — calls `PATCH /me/email` on the backend, which sends a verification link to the new address. The email is **not changed immediately** — it changes only after the user clicks the link.
+- `onSuccess`: sets `emailChangePending = true`, stores `pendingEmail`, resets the form. Shows an `Alert` ("Check your inbox") with the pending address.
+- `onError`: notifies danger ("Failed to send verification email").
+- The alert has a "Use a different email" button (`setEmailChangePending(false)`) so the user can correct a typo without a page reload.
 
-Loader: `queryClient.ensureQueryData(getMeSuspenseQueryOptions())`.
+**Important**: `emailChangePending` is component-local state. It resets on unmount (e.g. navigating away and back). This is intentional — the user can always request a new verification link.
 
-## `MePage` (`routes/me-page.tsx`)
+### Password section (in `MeSecurity`)
+See `me-security.tsx` — separate component, same page layout.
 
-Two independent sections, each with its own `<Paper>` and its own native `<form>` (not the `<Form>` component from `@helix/ui`). Using native `<form>` is consistent with other public-scope screens (`login.tsx`, `sign-up.tsx`) — there is no navigation on submit, so `useBlocker` is not needed.
+## `MeSecurity` (`routes/me-security.tsx`)
 
-**Two `useForm` instances:**
-- `profileForm = useForm<MeFormValues>({ initialValues: { name: item.name, email: item.email }, validate: meFormValidate })`
-- `passwordForm = useForm<PasswordFormValues>({ initialValues: { currentPassword: '', newPassword: '', confirmPassword: '' }, validate: passwordFormValidate })`
-
-**Profile mutation** — `useMutation` wrapping `patchMe`:
-
-- `onSuccess`: updates the cache directly with `queryClient.setQueryData(getMeSuspenseQueryKey(), updated)` — no invalidation. Notifies success.
-- `onError`: notifies danger.
-
-Both `onSuccess` and `onError` are declared on `useMutation` itself (not on the `mutate()` call) so they fire regardless of mount state.
-
-**Password mutation** — `useMutation` wrapping `patchMePassword`:
-
-- `onSuccess`: calls `passwordForm.reset()` to clear all three fields, notifies success.
-- `onError`: notifies danger.
-
-Same pattern — `onSuccess`/`onError` on `useMutation`, not on `mutate()`.
-
-**No navigation on save** — the user stays on the same page.
-
-**No `<HasPermission>` wrappers** — there are no RBAC-gated actions on this page.
-
-## Sidebar
-
-```ts
-{ label: 'Profile', icon: IconUser, to: '/me' }
-```
-
-No `permission` field — the Profile link is always visible to authenticated users (`app.tsx` shows items without `permission` when `isAuthenticated` is true).
+Password change form with three `PasswordInput` fields. Mutation: `patchMePassword`. On success: resets the form and notifies. The backend also sends a best-effort notification email — no frontend involvement needed.
 
 ## Tests (`routes/me-page.test.tsx`)
 
-**Wrapper includes `<Notifications />`** (for `notify()` assertions) but **no `<ModalsProvider>`** — the me page has no confirm dialogs.
+**Wrapper includes `<Notifications />`** but **no `<ModalsProvider>`** — no confirm dialogs.
 
-**`createGetMe200` factory** — the test uses this generated factory (not `createUser` — the `me` endpoint returns a different type, `GetMeQueryResponse`).
+**`createGetMe200` factory** — use this generated factory (not `createUser`).
 
-**No `getMePermissionsHandler` override** — `MePage` never renders `<HasPermission>`, so the default `{ grants: {} }` from the MSW handler is sufficient.
+**Email change handlers** — generated mocks include:
+- `patchMeEmailHandler` — override to test success/failure
+- `patchMeEmailHandlerResponse200({ message })` — success helper
 
-**Password test helpers** — the generated handlers ship typed response helpers:
-- `patchMePasswordHandlerResponse204()` — for success cases
-- `patchMePasswordHandlerResponse400({ message })` — for the "current password incorrect" error case
+**Password test helpers**:
+- `patchMePasswordHandlerResponse204()` — success
+- `patchMePasswordHandlerResponse400({ message })` — wrong password
 
-**No router mock needed** — `MePage` calls neither `useNavigate`, `useSearch`, nor `useParams`, so `vi.mock('@tanstack/react-router')` is not required (only the `vi.mock('../../../lib/authentication')` mock is needed for `useAuth`).
+**No router mock needed** — `MeAccount` and `MeSecurity` call neither `useNavigate`, `useSearch`, nor `useParams`.

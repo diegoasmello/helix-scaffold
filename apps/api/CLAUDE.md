@@ -204,6 +204,51 @@ Use `todos` as the reference implementation.
 
 ---
 
+## Email
+
+Transactional email is sent via the `EmailProvider` abstraction in `src/lib/email/`. See `src/lib/email/CLAUDE.md` for the full reference (implementations, env vars, better-auth limitation, workaround pattern).
+
+### Infrastructure
+
+| File | Purpose |
+|---|---|
+| `src/lib/email/index.ts` | `EmailProvider` interface, `createResendEmailProvider`, `createConsoleEmailProvider`, `createEmailProvider(env)` factory |
+
+The provider instance is created once in `app.ts` and injected into `createAuth` and into each route module that needs it via route options — same pattern as `storage`.
+
+### Environment variables
+
+| Variable | Default | Notes |
+|---|---|---|
+| `RESEND_API_KEY` | — | Optional. Omit in dev/test to fall back to console logging. |
+| `EMAIL_FROM` | `noreply@localhost` | Sender address. Must be from a domain verified in Resend for production. |
+
+In `NODE_ENV=test` the console provider is always used, regardless of `RESEND_API_KEY`.
+
+### When to send email
+
+| Scenario | Pattern |
+|---|---|
+| Email is the purpose of the request (verification, invite) | Let `send` throw; catch in route; return 400/500 |
+| Email is a notification after a successful action | `.catch(() => {})` — best-effort, never blocks |
+
+### Wiring a new module that needs email
+
+```ts
+// app.ts — inside the authenticated scope
+authenticated.register(featureRoutes, { database, requirePermission, emailProvider })
+
+// feature-routes.ts
+export async function featureRoutes(
+  app: FastifyTypedInstance,
+  { database, requirePermission, emailProvider }: { ..., emailProvider: EmailProvider }
+) {
+  const service = createFeatureService(database, emailProvider)
+}
+```
+
+---
+
 ## PDF export
 
 Modules can expose a `GET /xxx/export` endpoint that streams a PDF report to the client. The rendering happens server-side via `@react-pdf/renderer`. See `src/lib/pdf/CLAUDE.md` for the rendering infrastructure (templates, `BaseDocument`, colors, styles).
