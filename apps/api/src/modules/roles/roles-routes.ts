@@ -129,6 +129,12 @@ export async function rolesRoutes(
       preHandler: requirePermission('roles', 'delete'),
     },
     async (request, reply) => {
+      const role = await service.getById(request.params.id)
+      if (role?.isDefault) {
+        return reply
+          .status(409)
+          .send({ message: 'Cannot delete the default registration role' })
+      }
       if (await service.hasUsers(request.params.id)) {
         return reply
           .status(409)

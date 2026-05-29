@@ -11,6 +11,7 @@ export const roleSchema = z
     id: z.string(),
     name: z.string(),
     description: z.string().nullable(),
+    isDefault: z.boolean(),
     createdAt: z.date(),
     updatedAt: z.date(),
   })
@@ -19,11 +20,13 @@ export const roleSchema = z
 export const createRoleSchema = z.object({
   name: z.string().min(1).max(100),
   description: z.string().min(1).max(300).optional(),
+  isDefault: z.boolean().optional(),
 })
 
 export const updateRoleSchema = z.object({
   name: z.string().min(1).max(100).optional(),
   description: z.string().min(1).max(300).optional(),
+  isDefault: z.boolean().optional(),
 })
 
 export type CreateRoleInput = z.infer<typeof createRoleSchema>

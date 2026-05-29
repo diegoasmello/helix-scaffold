@@ -88,6 +88,22 @@ export async function bootstrapRoutes(
         .set({ roleId: adminRole.id })
         .where(sql`${user.id} = ${result.user.id}`)
 
+      if (env.REGISTRATION_MODE === 'open') {
+        const [userRole] = await database
+          .insert(roles)
+          .values({
+            name: 'User',
+            description: 'Default role for self-registered users',
+            isDefault: true,
+          })
+          .returning()
+
+        await database.insert(rolePermissions).values([
+          { roleId: userRole.id, resource: 'me', action: 'view' },
+          { roleId: userRole.id, resource: 'me', action: 'edit' },
+        ])
+      }
+
       return reply
         .status(201)
         .send({ message: 'System bootstrapped successfully' })

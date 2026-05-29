@@ -1,3 +1,4 @@
+import { eq } from 'drizzle-orm'
 import { afterAll, beforeEach, describe, expect, it } from 'vitest'
 
 import { ALL_PERMISSIONS } from '@/config/permissions'
@@ -66,11 +67,20 @@ describe('POST /bootstrap', () => {
     expect(users[0].roleId).not.toBeNull()
 
     const allRoles = await testDb.select().from(roles)
-    expect(allRoles).toHaveLength(1)
-    expect(allRoles[0].name).toBe('Admin')
+    const adminRole = allRoles.find((r) => r.name === 'Admin')
+    expect(adminRole).toBeDefined()
+    expect(adminRole?.isDefault).toBe(false)
 
-    const perms = await testDb.select().from(rolePermissions)
-    expect(perms).toHaveLength(ALL_PERMISSIONS.length)
+    // In open registration mode, bootstrap also creates a default User role
+    const userRole = allRoles.find((r) => r.name === 'User')
+    expect(userRole).toBeDefined()
+    expect(userRole?.isDefault).toBe(true)
+
+    const adminPerms = await testDb
+      .select()
+      .from(rolePermissions)
+      .where(eq(rolePermissions.roleId, adminRole!.id))
+    expect(adminPerms).toHaveLength(ALL_PERMISSIONS.length)
   })
 
   it('returns 409 when system is already bootstrapped', async () => {

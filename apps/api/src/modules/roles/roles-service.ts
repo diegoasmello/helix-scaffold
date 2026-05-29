@@ -1,4 +1,4 @@
-import { asc, count, desc, eq } from 'drizzle-orm'
+import { asc, count, desc, eq, sql } from 'drizzle-orm'
 
 import type { Database } from '@/db'
 import { roles, user } from '@/db/schema'
@@ -51,17 +51,33 @@ export function createRolesService(database: Database) {
   }
 
   async function create(data: CreateRoleInput) {
-    const [role] = await database.insert(roles).values(data).returning()
-    return role
+    return database.transaction(async (tx) => {
+      if (data.isDefault) {
+        await tx
+          .update(roles)
+          .set({ isDefault: false })
+          .where(sql`is_default = true`)
+      }
+      const [role] = await tx.insert(roles).values(data).returning()
+      return role
+    })
   }
 
   async function update(id: string, data: UpdateRoleInput) {
-    const [role] = await database
-      .update(roles)
-      .set(data)
-      .where(eq(roles.id, id))
-      .returning()
-    return role ?? null
+    return database.transaction(async (tx) => {
+      if (data.isDefault) {
+        await tx
+          .update(roles)
+          .set({ isDefault: false })
+          .where(sql`is_default = true`)
+      }
+      const [role] = await tx
+        .update(roles)
+        .set(data)
+        .where(eq(roles.id, id))
+        .returning()
+      return role ?? null
+    })
   }
 
   async function remove(id: string) {
