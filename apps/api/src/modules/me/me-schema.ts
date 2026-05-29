@@ -2,7 +2,10 @@ import z from 'zod'
 
 export const updateMeSchema = z.object({
   name: z.string().min(1).optional(),
-  email: z.email().optional(),
+})
+
+export const updateMeEmailSchema = z.object({
+  newEmail: z.email(),
 })
 
 export const updateMePasswordSchema = z.object({
@@ -11,4 +14,5 @@ export const updateMePasswordSchema = z.object({
 })
 
 export type UpdateMeInput = z.infer<typeof updateMeSchema>
+export type UpdateMeEmailInput = z.infer<typeof updateMeEmailSchema>
 export type UpdateMePasswordInput = z.infer<typeof updateMePasswordSchema>

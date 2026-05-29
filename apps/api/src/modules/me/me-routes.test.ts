@@ -1,7 +1,5 @@
-import { eq } from 'drizzle-orm'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 
-import { user } from '@/db/schema/authentication'
 import {
   cleanupAuth,
   createTestApp,
@@ -32,6 +30,15 @@ it('returns 401 on PATCH /me when not authenticated', async () => {
     method: 'PATCH',
     url: '/me',
     payload: { name: 'New Name' },
+  })
+  expect(res.statusCode).toBe(401)
+})
+
+it('returns 401 on PATCH /me/email when not authenticated', async () => {
+  const res = await app.inject({
+    method: 'PATCH',
+    url: '/me/email',
+    payload: { newEmail: 'new@test.com' },
   })
   expect(res.statusCode).toBe(401)
 })
@@ -71,7 +78,6 @@ describe('PATCH /me', () => {
     expect(res.statusCode).toBe(200)
     expect(res.json().name).toBe('Updated Name')
 
-    // restore
     await app.inject({
       method: 'PATCH',
       url: '/me',
@@ -80,54 +86,42 @@ describe('PATCH /me', () => {
     })
   })
 
-  it('updates the user email', async () => {
+  it('returns 400 for invalid body (empty name)', async () => {
     const res = await app.inject({
       method: 'PATCH',
       url: '/me',
-      payload: { email: 'updated@test.com' },
-      headers: { cookie: authCookie },
-    })
-    expect(res.statusCode).toBe(200)
-    expect(res.json().email).toBe('updated@test.com')
-
-    // restore original email
-    await app.inject({
-      method: 'PATCH',
-      url: '/me',
-      payload: { email: 'test@test.com' },
-      headers: { cookie: authCookie },
-    })
-  })
-
-  it('returns 400 for invalid body', async () => {
-    const res = await app.inject({
-      method: 'PATCH',
-      url: '/me',
-      payload: { email: 'not-an-email' },
+      payload: { name: '' },
       headers: { cookie: authCookie },
     })
     expect(res.statusCode).toBe(400)
   })
+})
 
-  it('returns 409 when email is already in use by another user', async () => {
-    const otherEmail = `other-${Date.now()}@test.com`
-    await testDb.insert(user).values({
-      id: `test-other-${Date.now()}`,
-      name: 'Other User',
-      email: otherEmail,
-      emailVerified: false,
-    })
-
+describe('PATCH /me/email', () => {
+  it('initiates email change and returns a confirmation message', async () => {
     const res = await app.inject({
       method: 'PATCH',
-      url: '/me',
-      payload: { email: otherEmail },
+      url: '/me/email',
+      payload: { newEmail: 'newemail@test.com' },
       headers: { cookie: authCookie },
     })
-    expect(res.statusCode).toBe(409)
-    expect(res.json().message).toBe('Email already in use')
+    expect(res.statusCode).toBe(200)
+    expect(res.json().message).toBeTypeOf('string')
 
-    await testDb.delete(user).where(eq(user.email, otherEmail))
+    // clean up any verification token created
+    await testDb.delete(
+      (await import('@/db/schema/authentication')).verification
+    )
+  })
+
+  it('returns 400 for invalid email', async () => {
+    const res = await app.inject({
+      method: 'PATCH',
+      url: '/me/email',
+      payload: { newEmail: 'not-an-email' },
+      headers: { cookie: authCookie },
+    })
+    expect(res.statusCode).toBe(400)
   })
 })
 
@@ -144,7 +138,6 @@ describe('PATCH /me/password', () => {
     })
     expect(res.statusCode).toBe(204)
 
-    // restore original password
     await app.inject({
       method: 'PATCH',
       url: '/me/password',
