@@ -580,6 +580,75 @@ See `todos` as the reference implementation. The checklist:
 
 ---
 
+## PDF export
+
+Modules with a list screen can expose an Export PDF button that downloads a report respecting the current filters and sort order.
+
+### `downloadReport` helper (`src/lib/download-report.ts`)
+
+Generic fetch helper for binary downloads. Use it in any module — do not write raw `fetch` calls inline.
+
+```ts
+import { downloadReport } from '@/lib/download-report'
+
+await downloadReport(
+  '/features/export',           // API path
+  { sortBy, sortOrder, filters, filterLogic },  // params — undefined values are omitted
+  'features-2025-01-01.pdf',    // suggested filename for the browser
+)
+```
+
+The helper:
+- Filters out `undefined` params before building the query string
+- Adds a 60-second `AbortController` timeout
+- Throws with a descriptive message (`status + response body`) on non-2xx responses
+- Creates an object URL, clicks a hidden `<a>` to trigger the download, then revokes the URL
+
+### Wiring an Export button
+
+```tsx
+const [isExporting, setIsExporting] = useState(false)
+
+const handleExport = async () => {
+  setIsExporting(true)
+  try {
+    const date = new Date().toISOString().split('T')[0]
+    await downloadReport(
+      '/features/export',
+      { sortBy, sortOrder, filters, filterLogic },
+      `features-${date}.pdf`,
+    )
+    notify({ status: 'success', message: 'Report downloaded successfully' })
+  } catch {
+    notify({ status: 'danger', message: 'Failed to generate report' })
+  } finally {
+    setIsExporting(false)
+  }
+}
+```
+
+Place the button in `PageList`'s `actions` prop, between the Filters button and the Create button:
+
+```tsx
+<Button
+  variant="default"
+  leftSection={<IconDownload size={16} />}
+  loading={isExporting}
+  onClick={handleExport}
+>
+  Export PDF
+</Button>
+```
+
+Pass the same `sortBy`, `sortOrder`, `filters`, and `filterLogic` values the list hook already uses — this guarantees the exported PDF matches exactly what the user sees on screen.
+
+### Reference implementation
+
+`apps/web/src/modules/todos/routes/todos-list.tsx` — `handleExport` and the Export PDF button.  
+`apps/web/src/lib/download-report.ts` — the shared helper.
+
+---
+
 ## Creating a new module (CRUD)
 
 When asked to create a new feature module, follow this pattern exactly. Use the `todos` module as reference implementation.

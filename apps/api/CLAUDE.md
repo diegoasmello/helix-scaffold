@@ -204,6 +204,107 @@ Use `todos` as the reference implementation.
 
 ---
 
+## PDF export
+
+Modules can expose a `GET /xxx/export` endpoint that streams a PDF report to the client. The rendering happens server-side via `@react-pdf/renderer`. See `src/lib/pdf/CLAUDE.md` for the rendering infrastructure (templates, `BaseDocument`, colors, styles).
+
+Use `todos` as the reference implementation (`todos-schema.ts`, `todos-service.ts`, `todos-routes.ts`, `src/modules/todos/templates/todos-report.tsx`).
+
+### When to add PDF export
+
+Add a PDF export endpoint when the module has a list screen with filters and the user needs to take that data offline. It always mirrors the list endpoint's sort/filter params — minus pagination.
+
+### Adding PDF export to a module
+
+#### 1. Schema (`<feature>-schema.ts`)
+
+The export query reuses the existing sorting and filter schemas, with no pagination:
+
+```ts
+export const featuresExportQuerySchema = featuresSortingSchema.merge(featuresFilterQuerySchema)
+export type FeaturesExportQuery = z.infer<typeof featuresExportQuerySchema>
+```
+
+#### 2. Template (`src/modules/<feature>/templates/<feature>-report.tsx`)
+
+See `src/lib/pdf/CLAUDE.md` for the full template guide. The exported function signature must be:
+
+```ts
+export async function renderFeatureReport(items: FeatureRow[]): Promise<Buffer>
+```
+
+#### 3. Service (`<feature>-service.ts`)
+
+Add `generateReport` to the factory. Always cap with `.limit(5000)` — an unbounded export is a DoS vector. Load the template via dynamic `import()` so the PDF runtime is only initialised when the route is actually called:
+
+```ts
+async function generateReport(query: FeaturesExportQuery): Promise<Buffer> {
+  const sortCol = SORT_COLUMNS[query.sortBy ?? 'createdAt']
+  const sortFn = query.sortOrder === 'desc' ? desc : asc
+  const where = buildFilterWhereClause(
+    query.filters,
+    query.filterLogic,
+    FILTER_COLUMNS,
+    FILTER_COERCE,
+  )
+
+  const data = await database
+    .select()
+    .from(features)
+    .where(where)
+    .orderBy(sortFn(sortCol))
+    .limit(5000)
+
+  const { renderFeatureReport } = await import('./templates/feature-report')
+  return renderFeatureReport(data)
+}
+
+return { list, getById, create, update, remove, generateReport }
+```
+
+#### 4. Route (`<feature>-routes.ts`)
+
+The export endpoint uses the same `view` permission as the list. Wrap `generateReport` in a try/catch — render failures must return a clean 500, not leak a stack trace. Audit after success with a minimal metadata object (never the raw query params — `filters` can contain arbitrary user data):
+
+```ts
+app.get(
+  '/features/export',
+  {
+    schema: {
+      tags: ['features'],
+      description: 'Export features as PDF',
+      querystring: featuresExportQuerySchema,
+    },
+    preHandler: requirePermission('features', 'view'),
+  },
+  async (request, reply) => {
+    let buffer: Buffer
+    try {
+      buffer = await service.generateReport(request.query)
+    } catch {
+      return reply.status(500).send({ message: 'Failed to generate report' })
+    }
+    const date = new Date().toISOString().split('T')[0]
+    await request.audit('export', 'features', undefined, {
+      sortBy: request.query.sortBy,
+      sortOrder: request.query.sortOrder,
+      filterLogic: request.query.filterLogic,
+      filterCount: request.query.filters?.length ?? 0,
+    })
+    return reply
+      .header('Content-Type', 'application/pdf')
+      .header('Content-Disposition', `attachment; filename="features-${date}.pdf"`)
+      .send(buffer)
+  },
+)
+```
+
+> **Note**: `'export'` must be present in the `action` union in `src/modules/audit/audit-service.ts` and `src/types.ts`. It is already registered — no change needed for new modules.
+
+> **Note**: Binary responses cannot carry a Zod `response` schema with `fastify-type-provider-zod`. Omitting `response` from the schema is intentional and correct for this endpoint type.
+
+---
+
 ## Creating a new module (CRUD)
 
 Use the `todos` module as the reference implementation. Follow this order exactly.
