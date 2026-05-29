@@ -1,4 +1,5 @@
 import {
+  Anchor,
   Button,
   Center,
   Paper,
@@ -93,6 +94,9 @@ export function SignUp() {
             <Button type="submit" fullWidth loading={form.submitting}>
               Create account
             </Button>
+            <Text size="sm" ta="center">
+              Already have an account? <Anchor href="/login">Sign in</Anchor>
+            </Text>
           </Stack>
         </form>
       </Paper>

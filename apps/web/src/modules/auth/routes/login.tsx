@@ -1,4 +1,5 @@
 import {
+  Anchor,
   Button,
   Center,
   Paper,
@@ -21,6 +22,7 @@ interface LoginFormValues {
 
 export function Login() {
   const navigate = loginRoute.useNavigate()
+  const { registrationOpen } = loginRoute.useLoaderData()
   const [serverError, setServerError] = useState<string | null>(null)
 
   const form = useForm<LoginFormValues>({
@@ -74,6 +76,12 @@ export function Login() {
             <Button type="submit" fullWidth loading={form.submitting}>
               Sign in
             </Button>
+            {registrationOpen && (
+              <Text size="sm" ta="center">
+                Don't have an account?{' '}
+                <Anchor href="/sign-up">Create one</Anchor>
+              </Text>
+            )}
           </Stack>
         </form>
       </Paper>

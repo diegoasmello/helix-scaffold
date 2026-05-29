@@ -25,6 +25,8 @@ import {
   getMeHandlerResponse200,
   getMePermissionsHandler,
   getPermissionsResourcesHandler,
+  getRegistrationStatusHandler,
+  getRegistrationStatusHandlerResponse200,
   getRolesAllHandler,
   getRolesHandler,
   getRolesIdHandler,
@@ -147,9 +149,12 @@ export const handlers = [
   postUploadsHandler(() => postUploadsHandlerResponse201(createUpload())),
   deleteUploadsIdHandler(() => deleteUploadsIdHandlerResponse204()),
 
-  // Bootstrap
+  // Bootstrap / Registration
   getBootstrapStatusHandler({ bootstrapped: true }),
   postBootstrapHandler(),
+  getRegistrationStatusHandler(() =>
+    getRegistrationStatusHandlerResponse200({ open: false })
+  ),
 
   // Audit logs
   getAuditLogsHandler(
