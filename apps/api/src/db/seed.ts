@@ -5,8 +5,10 @@ import { createAuth } from '@/auth'
 import { ALL_PERMISSIONS } from '@/config/permissions'
 import { db } from '@/db'
 import { rolePermissions, roles, todos, user } from '@/db/schema'
+import { env } from '@/env'
+import { createEmailProvider } from '@/lib/email'
 
-const auth = createAuth(db)
+const auth = createAuth(db, createEmailProvider(env))
 
 const MODERATOR_PERMISSIONS = [
   { resource: 'me', action: 'view' },

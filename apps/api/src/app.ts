@@ -21,6 +21,7 @@ import { env } from './env'
 import { registerAuditRequest } from './hooks/audit-request'
 import { createRequireAuth } from './hooks/require-auth'
 import { createRequirePermission } from './hooks/require-permission'
+import { createEmailProvider } from './lib/email'
 import { createStorageProvider } from './lib/storage'
 import { auditRoutes } from './modules/audit/audit-routes'
 import { createAuditService } from './modules/audit/audit-service'
@@ -43,8 +44,8 @@ export function buildApp(database: Database) {
   }).withTypeProvider<ZodTypeProvider>()
 
   const storage = createStorageProvider(env)
-
-  const auth = createAuth(database)
+  const emailProvider = createEmailProvider(env)
+  const auth = createAuth(database, emailProvider)
 
   app.setValidatorCompiler(validatorCompiler)
   app.setSerializerCompiler(serializerCompiler)
@@ -128,7 +129,7 @@ export function buildApp(database: Database) {
 
     authenticated.register(permissionsRoutes, { database, requirePermission })
     authenticated.register(auditRoutes, { database, requirePermission })
-    authenticated.register(meRoutes, { database, auth })
+    authenticated.register(meRoutes, { database, auth, emailProvider })
     authenticated.register(rolesRoutes, { database, requirePermission })
     authenticated.register(usersRoutes, { database, auth, requirePermission })
 
