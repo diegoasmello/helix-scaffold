@@ -9,6 +9,7 @@ import {
   createTodoSchema,
   paginatedTodosSchema,
   todoSchema,
+  todosExportQuerySchema,
   todosListQuerySchema,
   updateTodoSchema,
 } from './todos-schema'
@@ -27,6 +28,40 @@ export async function todosRoutes(
   },
 ) {
   const service = createTodosService(database, storage)
+
+  app.get(
+    '/todos/export',
+    {
+      schema: {
+        tags: ['todos'],
+        description: 'Export todos as PDF',
+        querystring: todosExportQuerySchema,
+      },
+      preHandler: requirePermission('todos', 'view'),
+    },
+    async (request, reply) => {
+      let buffer: Buffer
+      try {
+        buffer = await service.generateReport(request.query)
+      } catch {
+        return reply.status(500).send({ message: 'Failed to generate report' })
+      }
+      const date = new Date().toISOString().split('T')[0]
+      await request.audit('export', 'todos', undefined, {
+        sortBy: request.query.sortBy,
+        sortOrder: request.query.sortOrder,
+        filterLogic: request.query.filterLogic,
+        filterCount: request.query.filters?.length ?? 0,
+      })
+      return reply
+        .header('Content-Type', 'application/pdf')
+        .header(
+          'Content-Disposition',
+          `attachment; filename="todos-${date}.pdf"`,
+        )
+        .send(buffer)
+    },
+  )
 
   app.get(
     '/todos',

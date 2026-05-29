@@ -10,7 +10,7 @@ interface AuditLogInput {
   userId: string
   userName: string
   userEmail: string
-  action: 'create' | 'edit' | 'delete'
+  action: 'create' | 'edit' | 'delete' | 'export'
   resource: string
   resourceId?: string | null
   metadata?: unknown

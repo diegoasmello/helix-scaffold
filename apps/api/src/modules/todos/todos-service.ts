@@ -8,6 +8,7 @@ import type { StorageProvider } from '@/lib/storage'
 
 import type {
   CreateTodoInput,
+  TodosExportQuery,
   TodosListQuery,
   UpdateTodoInput,
 } from './todos-schema'
@@ -258,7 +259,28 @@ export function createTodosService(
     }
   }
 
-  return { list, getById, create, update, remove }
+  async function generateReport(query: TodosExportQuery): Promise<Buffer> {
+    const sortCol = SORT_COLUMNS[query.sortBy ?? 'createdAt']
+    const sortFn = query.sortOrder === 'desc' ? desc : asc
+    const where = buildFilterWhereClause(
+      query.filters,
+      query.filterLogic,
+      FILTER_COLUMNS,
+      FILTER_COERCE,
+    )
+
+    const data = await database
+      .select()
+      .from(todos)
+      .where(where)
+      .orderBy(sortFn(sortCol))
+      .limit(5000)
+
+    const { renderTodosReport } = await import('./templates/todos-report')
+    return renderTodosReport(data)
+  }
+
+  return { list, getById, create, update, remove, generateReport }
 }
 
 export type TodosService = ReturnType<typeof createTodosService>

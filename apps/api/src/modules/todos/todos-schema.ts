@@ -74,6 +74,9 @@ export const todosListQuerySchema = paginationQuerySchema
   .merge(todosFilterQuerySchema)
 export type TodosListQuery = z.infer<typeof todosListQuerySchema>
 
+export const todosExportQuerySchema = todosSortingSchema.merge(todosFilterQuerySchema)
+export type TodosExportQuery = z.infer<typeof todosExportQuerySchema>
+
 export type CreateTodoInput = z.infer<typeof createTodoSchema>
 export type UpdateTodoInput = z.infer<typeof updateTodoSchema>
 export type PaginatedTodos = z.infer<typeof paginatedTodosSchema>
