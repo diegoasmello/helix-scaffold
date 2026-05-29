@@ -6,6 +6,7 @@ import type { Database } from '../../db'
 import type { FastifyTypedInstance, RequirePermission } from '../../types'
 import {
   auditLogSchema,
+  auditLogsExportQuerySchema,
   auditLogsListQuerySchema,
   paginatedAuditLogsSchema,
 } from './audit-schema'
@@ -19,6 +20,34 @@ export async function auditRoutes(
   }: { database: Database; requirePermission: RequirePermission }
 ) {
   const service = createAuditService(database)
+
+  app.get(
+    '/audit-logs/export',
+    {
+      schema: {
+        tags: ['audit'],
+        description: 'Export audit logs as PDF',
+        querystring: auditLogsExportQuerySchema,
+      },
+      preHandler: requirePermission('audit', 'view'),
+    },
+    async (request, reply) => {
+      let buffer: Buffer
+      try {
+        buffer = await service.generateReport(request.query)
+      } catch {
+        return reply.status(500).send({ message: 'Failed to generate report' })
+      }
+      const date = new Date().toISOString().split('T')[0]
+      return reply
+        .header('Content-Type', 'application/pdf')
+        .header(
+          'Content-Disposition',
+          `attachment; filename="audit-logs-${date}.pdf"`
+        )
+        .send(buffer)
+    }
+  )
 
   app.get(
     '/audit-logs',

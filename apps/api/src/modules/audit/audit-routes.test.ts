@@ -316,6 +316,51 @@ describe('GET /audit-logs/:id', () => {
   })
 })
 
+describe('GET /audit-logs/export', () => {
+  it('returns 200 with a PDF buffer when no logs exist', async () => {
+    const res = await app.inject({
+      method: 'GET',
+      url: '/audit-logs/export',
+      headers: { cookie: authCookie },
+    })
+    expect(res.statusCode).toBe(200)
+    expect(res.headers['content-type']).toContain('application/pdf')
+    expect(res.headers['content-disposition']).toMatch(
+      /^attachment; filename="audit-logs-\d{4}-\d{2}-\d{2}\.pdf"$/
+    )
+    expect(res.rawPayload.length).toBeGreaterThan(0)
+  })
+
+  it('returns a PDF with seeded logs respecting sortOrder', async () => {
+    await testDb.insert(auditLogs).values([
+      {
+        userId: 'u1',
+        userName: 'Alice',
+        userEmail: 'alice@example.com',
+        action: 'create',
+        resource: 'todos',
+        createdAt: new Date('2026-01-01T10:00:00Z'),
+      },
+      {
+        userId: 'u2',
+        userName: 'Bob',
+        userEmail: 'bob@example.com',
+        action: 'delete',
+        resource: 'roles',
+        createdAt: new Date('2026-01-01T12:00:00Z'),
+      },
+    ])
+
+    const res = await app.inject({
+      method: 'GET',
+      url: '/audit-logs/export?sortBy=createdAt&sortOrder=desc',
+      headers: { cookie: authCookie },
+    })
+    expect(res.statusCode).toBe(200)
+    expect(res.headers['content-type']).toContain('application/pdf')
+  })
+})
+
 describe('Audit logging via onResponse hook', () => {
   it('creates an audit log entry when a todo is created', async () => {
     const [attachment] = await testDb
@@ -432,6 +477,16 @@ describe('Permission enforcement', () => {
     const res = await app.inject({
       method: 'GET',
       url: '/audit-logs/some-id',
+      headers: { cookie },
+    })
+    expect(res.statusCode).toBe(403)
+  })
+
+  it('returns 403 on GET /audit-logs/export without audit:view', async () => {
+    const cookie = await createRestrictedSession([])
+    const res = await app.inject({
+      method: 'GET',
+      url: '/audit-logs/export',
       headers: { cookie },
     })
     expect(res.statusCode).toBe(403)

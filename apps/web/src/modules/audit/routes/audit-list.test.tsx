@@ -6,12 +6,18 @@ import {
 } from '@helix/api-client/mocks'
 import { MantineEmotionProvider, MantineProvider } from '@helix/ui'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { Suspense } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+import { downloadReport } from '@/lib/download-report'
 import { server } from '../../../mocks/server'
 import { AuditList } from './audit-list'
+
+vi.mock('@/lib/download-report', () => ({
+  downloadReport: vi.fn().mockResolvedValue(undefined),
+}))
 
 vi.mock('.', () => ({
   auditListRoute: {
@@ -152,5 +158,45 @@ describe('AuditList', () => {
     expect(
       screen.queryByRole('row', { name: /alice/i })
     ).not.toBeInTheDocument()
+  })
+})
+
+describe('Export PDF', () => {
+  it('renders the Export PDF button', async () => {
+    renderAuditList()
+    await screen.findAllByText('Alice Silva')
+    expect(
+      screen.getByRole('button', { name: /export pdf/i })
+    ).toBeInTheDocument()
+  })
+
+  it('calls downloadReport with correct params when Export PDF is clicked', async () => {
+    renderAuditList()
+    await screen.findAllByText('Alice Silva')
+
+    await userEvent.click(screen.getByRole('button', { name: /export pdf/i }))
+
+    await waitFor(() => {
+      expect(downloadReport).toHaveBeenCalledWith(
+        '/audit-logs/export',
+        expect.objectContaining({ sortOrder: 'desc' }),
+        expect.stringMatching(/^audit-logs-\d{4}-\d{2}-\d{2}\.pdf$/)
+      )
+    })
+  })
+
+  it('re-enables the button after export failure', async () => {
+    vi.mocked(downloadReport).mockRejectedValueOnce(new Error('Server error'))
+
+    renderAuditList()
+    await screen.findAllByText('Alice Silva')
+
+    await userEvent.click(screen.getByRole('button', { name: /export pdf/i }))
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole('button', { name: /export pdf/i })
+      ).not.toBeDisabled()
+    })
   })
 })

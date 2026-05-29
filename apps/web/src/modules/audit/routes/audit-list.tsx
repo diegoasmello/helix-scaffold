@@ -7,10 +7,15 @@ import {
   type DataTableColumn,
   getDataTablePaginationProps,
   getDataTableSortingProps,
+  Group,
+  notify,
   PageList,
 } from '@helix/ui'
+import { IconDownload } from '@helix/ui'
 import { parseISO } from 'date-fns'
+import { useState } from 'react'
 
+import { downloadReport } from '@/lib/download-report'
 import { formatDateTime } from '@/utils/date'
 
 import { auditListRoute } from '.'
@@ -25,6 +30,25 @@ export function AuditList() {
   const navigate = auditListRoute.useNavigate()
   const search = auditListRoute.useSearch()
   const { page, pageSize, sortBy, sortOrder } = search
+
+  const [isExporting, setIsExporting] = useState(false)
+
+  const handleExport = async () => {
+    setIsExporting(true)
+    try {
+      const date = new Date().toISOString().split('T')[0]
+      await downloadReport(
+        '/audit-logs/export',
+        { sortBy, sortOrder },
+        `audit-logs-${date}.pdf`
+      )
+      notify({ status: 'success', message: 'Report downloaded successfully' })
+    } catch {
+      notify({ status: 'danger', message: 'Failed to generate report' })
+    } finally {
+      setIsExporting(false)
+    }
+  }
 
   const { data: auditLogsResponse } = useGetAuditLogsSuspense({
     page,
@@ -88,7 +112,21 @@ export function AuditList() {
   ]
 
   return (
-    <PageList title="Audit Log">
+    <PageList
+      title="Audit Log"
+      actions={
+        <Group gap="xs">
+          <Button
+            variant="default"
+            leftSection={<IconDownload size={16} />}
+            loading={isExporting}
+            onClick={handleExport}
+          >
+            Export PDF
+          </Button>
+        </Group>
+      }
+    >
       <DataTable
         records={auditLogsResponse.data}
         columns={columns}

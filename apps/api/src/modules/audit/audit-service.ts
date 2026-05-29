@@ -4,7 +4,7 @@ import type { Database } from '@/db'
 import { auditLogs } from '@/db/schema'
 import { getPaginationParams } from '@/lib/pagination'
 
-import type { AuditLogsListQuery } from './audit-schema'
+import type { AuditLogsExportQuery, AuditLogsListQuery } from './audit-schema'
 
 interface AuditLogInput {
   userId: string
@@ -66,5 +66,19 @@ export function createAuditService(database: Database) {
     return item ?? null
   }
 
-  return { log, list, getById }
+  async function generateReport(query: AuditLogsExportQuery): Promise<Buffer> {
+    const sortCol = SORT_COLUMNS[query.sortBy ?? 'createdAt']
+    const sortFn = query.sortOrder === 'desc' ? desc : asc
+
+    const data = await database
+      .select()
+      .from(auditLogs)
+      .orderBy(sortFn(sortCol))
+      .limit(5000)
+
+    const { renderAuditReport } = await import('./templates/audit-report')
+    return renderAuditReport(data)
+  }
+
+  return { log, list, getById, generateReport }
 }

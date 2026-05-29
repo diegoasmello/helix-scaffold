@@ -45,3 +45,6 @@ export const paginatedAuditLogsSchema = paginatedResponseSchema(
   title: 'PaginatedAuditLogs',
 })
 export type PaginatedAuditLogs = z.infer<typeof paginatedAuditLogsSchema>
+
+export const auditLogsExportQuerySchema = auditLogsSortingSchema
+export type AuditLogsExportQuery = z.infer<typeof auditLogsExportQuerySchema>
