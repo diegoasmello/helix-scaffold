@@ -1474,6 +1474,99 @@ vi.mock('@tanstack/react-router', async (importOriginal) => {
 
 This is safe to combine with `vi.mock('.')` (the local route index mock) because `@tanstack/react-router` is an external package and does not trigger the circular dependency that makes the local mock necessary.
 
+**Mocking the shared form component in Create/Edit tests**
+
+Create and Edit screens render a shared `XxxForm` component that contains Mantine inputs, `RichTextEditor`, and file upload fields — all hard to interact with in jsdom. Mock `XxxForm` with a simplified version that receives the real form instance:
+
+```tsx
+vi.mock('../components/xxx-form', () => ({
+  XxxForm: ({ form }: { form: UseFormReturnType<XxxFormValues> }) => (
+    <div>
+      <input
+        placeholder="Xxx title"
+        value={form.values.title}
+        onChange={(e) => form.setFieldValue('title', e.target.value)}
+      />
+      {form.errors.title && <span>{String(form.errors.title)}</span>}
+      <input
+        placeholder="Pick a date"
+        value={form.values.date ?? ''}
+        onChange={(e) => form.setFieldValue('date', e.target.value || null)}
+      />
+      {/* upload controls — let tests set required upload values */}
+      <button
+        type="button"
+        data-testid="set-attachment"
+        onClick={() => form.setFieldValue('attachments', [createUpload({ id: 'att-1' })])}
+      >Set Attachment</button>
+    </div>
+  ),
+}))
+```
+
+Rules:
+
+- Type `form` as `UseFormReturnType<XxxFormValues>` — never use an inline structural type. Import `UseFormReturnType` from `@helix/ui`.
+- Use `form.values.fieldName` directly for `string` fields — no `as string` casts. The form is fully typed.
+- For `string | null` fields (e.g. `date`): `value={form.values.date ?? ''}` and `onChange={(e) => form.setFieldValue('date', e.target.value || null)}`.
+- For upload fields (`UploadItem | null`, `UploadItem[]`): add `<button data-testid="set-xxx">` controls that call `form.setFieldValue` with a full `Upload` object. Use `createUpload` from `@helix/api-client/mocks` — never a bare `{ id: '...' }` (TypeScript rejects it because `Upload` has many required fields).
+- `createUpload` must be called **inside the mock factory**, not assigned to a module-level `const` before `vi.mock`. Imports are hoisted alongside `vi.mock` and are accessible in the factory; module-level `const` declarations are not (they are in TDZ when the factory runs).
+
+**Form component tests (`xxx-form.test.tsx`)**
+
+Give the shared form component its own test file to verify that it renders the expected fields with correct labels and `required` attributes. The route tests mock this component, so without this file there is no integration test for its rendering.
+
+```tsx
+import { MantineEmotionProvider, MantineProvider, useForm } from '@helix/ui'
+import { render, screen } from '@testing-library/react'
+import { describe, expect, it } from 'vitest'
+
+import type { XxxFormValues } from '../types'
+import { XxxForm } from './xxx-form'
+
+const base: XxxFormValues = {
+  title: '',
+  // ... all fields with safe defaults
+}
+
+function FormWrapper() {
+  const form = useForm<XxxFormValues>({ initialValues: base })
+  return <XxxForm form={form} />
+}
+
+function renderForm() {
+  render(
+    <MantineProvider>
+      <MantineEmotionProvider>
+        <FormWrapper />
+      </MantineEmotionProvider>
+    </MantineProvider>
+  )
+}
+
+describe('XxxForm', () => {
+  it('renders all field labels', () => {
+    renderForm()
+    expect(screen.getByText('Title')).toBeInTheDocument()
+    // add one assertion per label
+  })
+
+  it('marks required fields', () => {
+    renderForm()
+    expect(screen.getByPlaceholderText('Xxx title')).toBeRequired()
+    expect(screen.getByPlaceholderText('Xxx description')).toBeRequired()
+  })
+})
+```
+
+Rules:
+
+- No `QueryClientProvider` or `Suspense` needed — the form component is purely presentational and makes no API calls.
+- Use `getByPlaceholderText` to find native inputs (`TextInput`, `Textarea`, `DateInput`) and assert `toBeRequired()`. `getByLabelText` does not reliably resolve Mantine's `for`/`id` label association in jsdom.
+- `toBeRequired()` only works on native HTML inputs/textareas — not on custom components (`FileInput`, `FilesInput`, `Switch`). Check those fields by asserting their label text is present instead.
+- If the form has a field with conditional `required` (e.g. `date` required only when `status !== 'pending'`), parameterise `FormWrapper` with the relevant prop and add two tests — one per branch.
+- `RichTextEditor` crashes its `Grid.Col` in jsdom because TipTap/ProseMirror initialises the editor synchronously and the instance is `null` before mount. Skip its label assertion and add a comment pointing to E2E coverage.
+
 **When to add a new endpoint to `src/mocks/handlers.ts`**: every new API endpoint needs a default handler. Follow the pattern below — use generated response helpers for all status codes, never construct raw `Response` objects:
 
 ```ts
