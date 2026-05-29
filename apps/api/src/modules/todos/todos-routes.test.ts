@@ -25,8 +25,24 @@ beforeAll(async () => {
   authCookie = await createTestSession(app)
 })
 
+async function insertUpload(name = 'file.pdf', mimeType = 'application/pdf') {
+  const [upload] = await testDb
+    .insert(uploads)
+    .values({
+      originalName: name,
+      mimeType,
+      fileSize: 100,
+      storageKey: `test/${Date.now()}-${name}`,
+      url: `http://localhost:3333/files/test/${name}`,
+      variants: null,
+    })
+    .returning()
+  return upload
+}
+
 beforeEach(async () => {
   await cleanupTodos()
+  await cleanupUploads()
 })
 
 afterAll(async () => {
@@ -247,6 +263,10 @@ describe('GET /todos/:id', () => {
 
 describe('POST /todos', () => {
   it('creates a todo and returns 201', async () => {
+    const attachment = await insertUpload()
+    const file = await insertUpload('document.pdf')
+    const image = await insertUpload('photo.jpg', 'image/jpeg')
+
     const res = await app.inject({
       method: 'POST',
       url: '/todos',
@@ -255,6 +275,9 @@ describe('POST /todos', () => {
         description: 'New Desc',
         content: 'New Content',
         date: '2025-03-20',
+        attachmentIds: [attachment.id],
+        fileId: file.id,
+        imageId: image.id,
       },
       headers: { cookie: authCookie },
     })
@@ -362,28 +385,10 @@ describe('DELETE /todos/:id', () => {
 })
 
 describe('Attachments', () => {
-  async function insertUpload() {
-    const [upload] = await testDb
-      .insert(uploads)
-      .values({
-        originalName: 'file.pdf',
-        mimeType: 'application/pdf',
-        fileSize: 100,
-        storageKey: 'test/original.pdf',
-        url: 'http://localhost:3333/files/test/original.pdf',
-        variants: null,
-      })
-      .returning()
-    return upload
-  }
-
-  beforeEach(async () => {
-    await cleanupTodos()
-    await cleanupUploads()
-  })
-
   it('creates a todo with attachmentIds and returns attachments in response', async () => {
-    const upload = await insertUpload()
+    const attachment = await insertUpload()
+    const file = await insertUpload('doc.pdf')
+    const image = await insertUpload('img.jpg', 'image/jpeg')
 
     const res = await app.inject({
       method: 'POST',
@@ -393,18 +398,23 @@ describe('Attachments', () => {
         description: 'Desc',
         content: 'Content',
         date: '2025-01-01',
-        attachmentIds: [upload.id],
+        attachmentIds: [attachment.id],
+        fileId: file.id,
+        imageId: image.id,
       },
       headers: { cookie: authCookie },
     })
     expect(res.statusCode).toBe(201)
     const todo = res.json()
     expect(todo.attachments).toHaveLength(1)
-    expect(todo.attachments[0].id).toBe(upload.id)
+    expect(todo.attachments[0].id).toBe(attachment.id)
   })
 
   it('returns attachments when fetching a todo by id', async () => {
-    const upload = await insertUpload()
+    const attachment = await insertUpload()
+    const file = await insertUpload('doc.pdf')
+    const image = await insertUpload('img.jpg', 'image/jpeg')
+
     const createRes = await app.inject({
       method: 'POST',
       url: '/todos',
@@ -413,7 +423,9 @@ describe('Attachments', () => {
         description: 'Desc',
         content: 'Content',
         date: '2025-01-01',
-        attachmentIds: [upload.id],
+        attachmentIds: [attachment.id],
+        fileId: file.id,
+        imageId: image.id,
       },
       headers: { cookie: authCookie },
     })
@@ -426,11 +438,13 @@ describe('Attachments', () => {
     })
     expect(res.statusCode).toBe(200)
     expect(res.json().attachments).toHaveLength(1)
-    expect(res.json().attachments[0].id).toBe(upload.id)
+    expect(res.json().attachments[0].id).toBe(attachment.id)
   })
 
   it('updates attachments when PATCH includes attachmentIds', async () => {
     const upload1 = await insertUpload()
+    const file = await insertUpload('doc.pdf')
+    const image = await insertUpload('img.jpg', 'image/jpeg')
     const [upload2] = await testDb
       .insert(uploads)
       .values({
@@ -452,6 +466,8 @@ describe('Attachments', () => {
         content: 'Content',
         date: '2025-01-01',
         attachmentIds: [upload1.id],
+        fileId: file.id,
+        imageId: image.id,
       },
       headers: { cookie: authCookie },
     })
@@ -471,6 +487,8 @@ describe('Attachments', () => {
 
   it('deletes attachment records when todo is deleted', async () => {
     const upload = await insertUpload()
+    const file = await insertUpload('doc.pdf')
+    const image = await insertUpload('img.jpg', 'image/jpeg')
     const createRes = await app.inject({
       method: 'POST',
       url: '/todos',
@@ -480,6 +498,8 @@ describe('Attachments', () => {
         content: 'Content',
         date: '2025-01-01',
         attachmentIds: [upload.id],
+        fileId: file.id,
+        imageId: image.id,
       },
       headers: { cookie: authCookie },
     })
@@ -557,6 +577,9 @@ describe('Permission enforcement', () => {
         description: 'Desc',
         content: 'Content',
         date: '2025-01-01',
+        attachmentIds: ['fake-att-id'],
+        fileId: 'fake-file-id',
+        imageId: 'fake-image-id',
       },
       headers: { cookie },
     })
