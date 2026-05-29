@@ -21,7 +21,9 @@ describe('userCreateFormValidate', () => {
     })
 
     it('returns error when exceeds 100 characters', () => {
-      expect(userCreateFormValidate.name('a'.repeat(101), base)).toBe('Max 100 characters')
+      expect(userCreateFormValidate.name('a'.repeat(101), base)).toBe(
+        'Max 100 characters'
+      )
     })
 
     it('returns null when valid', () => {
@@ -39,11 +41,15 @@ describe('userCreateFormValidate', () => {
     })
 
     it('returns error when missing @', () => {
-      expect(userCreateFormValidate.email('notanemail', base)).toBe('Invalid email address')
+      expect(userCreateFormValidate.email('notanemail', base)).toBe(
+        'Invalid email address'
+      )
     })
 
     it('returns error when missing domain', () => {
-      expect(userCreateFormValidate.email('user@', base)).toBe('Invalid email address')
+      expect(userCreateFormValidate.email('user@', base)).toBe(
+        'Invalid email address'
+      )
     })
 
     it('returns null when valid', () => {
@@ -61,7 +67,9 @@ describe('userCreateFormValidate', () => {
     })
 
     it('returns error when shorter than 8 characters', () => {
-      expect(userCreateFormValidate.password('short', base)).toBe('Min 8 characters')
+      expect(userCreateFormValidate.password('short', base)).toBe(
+        'Min 8 characters'
+      )
     })
 
     it('returns null when valid', () => {

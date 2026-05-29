@@ -132,8 +132,16 @@ export function buildApp(database: Database) {
     authenticated.register(rolesRoutes, { database, requirePermission })
     authenticated.register(usersRoutes, { database, auth, requirePermission })
 
-    authenticated.register(todosRoutes, { database, requirePermission, storage })
-    authenticated.register(uploadsRoutes, { database, requirePermission, storage })
+    authenticated.register(todosRoutes, {
+      database,
+      requirePermission,
+      storage,
+    })
+    authenticated.register(uploadsRoutes, {
+      database,
+      requirePermission,
+      storage,
+    })
   })
 
   return app

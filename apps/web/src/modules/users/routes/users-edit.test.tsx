@@ -100,9 +100,7 @@ afterEach(() => {
 describe('UsersEdit', () => {
   it('renders form pre-populated with item data', async () => {
     renderUsersEdit()
-    expect(
-      await screen.findByDisplayValue('Alice Silva')
-    ).toBeInTheDocument()
+    expect(await screen.findByDisplayValue('Alice Silva')).toBeInTheDocument()
     expect(screen.getByDisplayValue('alice@example.com')).toBeInTheDocument()
   })
 

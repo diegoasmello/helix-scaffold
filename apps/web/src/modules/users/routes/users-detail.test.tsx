@@ -1,7 +1,4 @@
-import {
-  createUserWithRole,
-  getUsersIdHandler,
-} from '@helix/api-client/mocks'
+import { createUserWithRole, getUsersIdHandler } from '@helix/api-client/mocks'
 import { MantineEmotionProvider, MantineProvider } from '@helix/ui'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen } from '@testing-library/react'

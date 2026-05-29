@@ -116,7 +116,10 @@ describe('UsersCreate', () => {
     renderUsersCreate()
     await screen.findByRole('heading', { name: 'Create User' })
 
-    await userEvent.type(screen.getByPlaceholderText('Full name'), 'Alice Silva')
+    await userEvent.type(
+      screen.getByPlaceholderText('Full name'),
+      'Alice Silva'
+    )
     await userEvent.type(
       screen.getByPlaceholderText('email@example.com'),
       'alice@example.com'
@@ -151,7 +154,10 @@ describe('UsersCreate', () => {
     renderUsersCreate()
     await screen.findByRole('heading', { name: 'Create User' })
 
-    await userEvent.type(screen.getByPlaceholderText('Full name'), 'Alice Silva')
+    await userEvent.type(
+      screen.getByPlaceholderText('Full name'),
+      'Alice Silva'
+    )
     await userEvent.type(
       screen.getByPlaceholderText('email@example.com'),
       'alice@example.com'

@@ -65,21 +65,27 @@ vi.mock('../components/todos-form', () => ({
       <button
         type="button"
         data-testid="set-attachment"
-        onClick={() => form.setFieldValue('attachments', [createUpload({ id: 'att-1' })])}
+        onClick={() =>
+          form.setFieldValue('attachments', [createUpload({ id: 'att-1' })])
+        }
       >
         Set Attachment
       </button>
       <button
         type="button"
         data-testid="set-file"
-        onClick={() => form.setFieldValue('file', createUpload({ id: 'file-1' }))}
+        onClick={() =>
+          form.setFieldValue('file', createUpload({ id: 'file-1' }))
+        }
       >
         Set File
       </button>
       <button
         type="button"
         data-testid="set-image"
-        onClick={() => form.setFieldValue('image', createUpload({ id: 'img-1' }))}
+        onClick={() =>
+          form.setFieldValue('image', createUpload({ id: 'img-1' }))
+        }
       >
         Set Image
       </button>

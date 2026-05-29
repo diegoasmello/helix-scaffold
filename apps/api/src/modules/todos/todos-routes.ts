@@ -25,7 +25,7 @@ export async function todosRoutes(
     database: Database
     requirePermission: RequirePermission
     storage: StorageProvider
-  },
+  }
 ) {
   const service = createTodosService(database, storage)
 
@@ -57,10 +57,10 @@ export async function todosRoutes(
         .header('Content-Type', 'application/pdf')
         .header(
           'Content-Disposition',
-          `attachment; filename="todos-${date}.pdf"`,
+          `attachment; filename="todos-${date}.pdf"`
         )
         .send(buffer)
-    },
+    }
   )
 
   app.get(

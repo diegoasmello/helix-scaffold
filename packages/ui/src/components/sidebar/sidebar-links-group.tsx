@@ -49,7 +49,12 @@ export function SidebarLinksGroup(props: Readonly<SidebarLinksGroupProps>) {
       {hasLinks && !collapsed && (
         <Collapse expanded={opened}>
           {links.map((link) => (
-            <SidebarNavItem key={link.label} label={link.label} nested to={link.to} />
+            <SidebarNavItem
+              key={link.label}
+              label={link.label}
+              nested
+              to={link.to}
+            />
           ))}
         </Collapse>
       )}

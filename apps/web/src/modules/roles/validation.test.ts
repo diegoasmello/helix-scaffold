@@ -19,7 +19,9 @@ describe('roleFormValidate', () => {
     })
 
     it('returns error when exceeds 100 characters', () => {
-      expect(roleFormValidate.name('a'.repeat(101), base)).toBe('Max 100 characters')
+      expect(roleFormValidate.name('a'.repeat(101), base)).toBe(
+        'Max 100 characters'
+      )
     })
 
     it('returns null when valid', () => {
@@ -37,11 +39,15 @@ describe('roleFormValidate', () => {
     })
 
     it('returns error when exceeds 300 characters', () => {
-      expect(roleFormValidate.description('a'.repeat(301), base)).toBe('Max 300 characters')
+      expect(roleFormValidate.description('a'.repeat(301), base)).toBe(
+        'Max 300 characters'
+      )
     })
 
     it('returns null when valid', () => {
-      expect(roleFormValidate.description('Full access to all features.', base)).toBeNull()
+      expect(
+        roleFormValidate.description('Full access to all features.', base)
+      ).toBeNull()
     })
   })
 })

@@ -25,7 +25,9 @@ describe('todoFormValidate', () => {
     })
 
     it('returns error when exceeds 200 characters', () => {
-      expect(todoFormValidate.title('a'.repeat(201), base)).toBe('Max 200 characters')
+      expect(todoFormValidate.title('a'.repeat(201), base)).toBe(
+        'Max 200 characters'
+      )
     })
 
     it('returns null when valid', () => {
@@ -39,7 +41,9 @@ describe('todoFormValidate', () => {
     })
 
     it('returns error when exceeds 500 characters', () => {
-      expect(todoFormValidate.description('a'.repeat(501), base)).toBe('Max 500 characters')
+      expect(todoFormValidate.description('a'.repeat(501), base)).toBe(
+        'Max 500 characters'
+      )
     })
 
     it('returns null when valid', () => {
@@ -57,11 +61,18 @@ describe('todoFormValidate', () => {
     })
 
     it('returns error when paragraph with only a line break', () => {
-      expect(todoFormValidate.content('<p><br class="ProseMirror-trailingBreak"></p>', base)).toBe('Required')
+      expect(
+        todoFormValidate.content(
+          '<p><br class="ProseMirror-trailingBreak"></p>',
+          base
+        )
+      ).toBe('Required')
     })
 
     it('returns error when exceeds 1000 characters', () => {
-      expect(todoFormValidate.content('a'.repeat(1001), base)).toBe('Max 1000 characters')
+      expect(todoFormValidate.content('a'.repeat(1001), base)).toBe(
+        'Max 1000 characters'
+      )
     })
 
     it('returns null when valid plain text', () => {
@@ -75,15 +86,21 @@ describe('todoFormValidate', () => {
 
   describe('date', () => {
     it('returns error when null and status is completed', () => {
-      expect(todoFormValidate.date(null, { ...base, status: 'completed' })).toBe('Required')
+      expect(
+        todoFormValidate.date(null, { ...base, status: 'completed' })
+      ).toBe('Required')
     })
 
     it('returns null when null and status is pending', () => {
-      expect(todoFormValidate.date(null, { ...base, status: 'pending' })).toBeNull()
+      expect(
+        todoFormValidate.date(null, { ...base, status: 'pending' })
+      ).toBeNull()
     })
 
     it('returns null when date is provided', () => {
-      expect(todoFormValidate.date('2026-01-01', { ...base, status: 'completed' })).toBeNull()
+      expect(
+        todoFormValidate.date('2026-01-01', { ...base, status: 'completed' })
+      ).toBeNull()
     })
   })
 })

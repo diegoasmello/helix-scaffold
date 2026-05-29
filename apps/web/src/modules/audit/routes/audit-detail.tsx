@@ -45,7 +45,9 @@ export function AuditDetail() {
       <Grid>
         <Grid.Col span={{ base: 12, sm: 6 }}>
           <LabeledValue label="Date">
-            <Text size="md">{formatDate(parseISO(log.createdAt), 'short')}</Text>
+            <Text size="md">
+              {formatDate(parseISO(log.createdAt), 'short')}
+            </Text>
           </LabeledValue>
         </Grid.Col>
         <Grid.Col span={{ base: 12, sm: 6 }}>

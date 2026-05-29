@@ -36,7 +36,10 @@ export const permissionsEditRoute = createRoute({
   component: PermissionsEdit,
   pendingComponent: PermissionsPending,
   staticData: {
-    breadcrumbs: [{ label: 'Permissions', to: '/permissions' }, { label: 'Edit' }],
+    breadcrumbs: [
+      { label: 'Permissions', to: '/permissions' },
+      { label: 'Edit' },
+    ],
   },
   beforeLoad: ({ context }) => {
     if (!context.hasPermission('permissions', 'edit'))

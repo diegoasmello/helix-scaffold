@@ -24,7 +24,16 @@ export interface FileInputProps<T extends UploadedFile = UploadedFile> {
 export function FileInput<T extends UploadedFile>(
   props: Readonly<FileInputProps<T>>
 ) {
-  const { value, onChange, onUpload, accept, label, description, required, error } = props
+  const {
+    value,
+    onChange,
+    onUpload,
+    accept,
+    label,
+    description,
+    required,
+    error,
+  } = props
 
   const { classes, cx } = useStyles()
   const [isUploading, setIsUploading] = useState(false)
@@ -45,46 +54,59 @@ export function FileInput<T extends UploadedFile>(
   }
 
   return (
-    <Input.Wrapper label={label} description={description} required={required} error={error}>
+    <Input.Wrapper
+      label={label}
+      description={description}
+      required={required}
+      error={error}
+    >
       <Box mt={description ? 4 : undefined} mb={error ? 4 : undefined}>
-      {value ? (
-        <FileCard upload={value} onRemove={() => onChange(null)} />
-      ) : isUploading ? (
-        <Group className={cx(classes.loadingCard, error && classes.cardError)} gap="sm" wrap="nowrap">
-          <Stack
-            className={classes.loadingIcon}
-            align="center"
-            justify="center"
+        {value ? (
+          <FileCard upload={value} onRemove={() => onChange(null)} />
+        ) : isUploading ? (
+          <Group
+            className={cx(classes.loadingCard, error && classes.cardError)}
+            gap="sm"
+            wrap="nowrap"
           >
-            <Loader size="xs" />
-          </Stack>
-          <Text size="sm" c="dimmed">
-            Uploading…
-          </Text>
-        </Group>
-      ) : (
-        <Dropzone
-          onDrop={handleDrop}
-          accept={accept}
-          maxFiles={1}
-          classNames={{ root: error ? classes.dropzoneError : undefined }}
-        >
-          <Group justify="center" gap="sm" className={classes.dropzoneContent}>
-            <Dropzone.Accept>
-              <IconUpload size={18} />
-            </Dropzone.Accept>
-            <Dropzone.Reject>
-              <IconX size={18} />
-            </Dropzone.Reject>
-            <Dropzone.Idle>
-              <IconUpload size={18} />
-            </Dropzone.Idle>
+            <Stack
+              className={classes.loadingIcon}
+              align="center"
+              justify="center"
+            >
+              <Loader size="xs" />
+            </Stack>
             <Text size="sm" c="dimmed">
-              Drop a file or click to select
+              Uploading…
             </Text>
           </Group>
-        </Dropzone>
-      )}
+        ) : (
+          <Dropzone
+            onDrop={handleDrop}
+            accept={accept}
+            maxFiles={1}
+            classNames={{ root: error ? classes.dropzoneError : undefined }}
+          >
+            <Group
+              justify="center"
+              gap="sm"
+              className={classes.dropzoneContent}
+            >
+              <Dropzone.Accept>
+                <IconUpload size={18} />
+              </Dropzone.Accept>
+              <Dropzone.Reject>
+                <IconX size={18} />
+              </Dropzone.Reject>
+              <Dropzone.Idle>
+                <IconUpload size={18} />
+              </Dropzone.Idle>
+              <Text size="sm" c="dimmed">
+                Drop a file or click to select
+              </Text>
+            </Group>
+          </Dropzone>
+        )}
       </Box>
     </Input.Wrapper>
   )

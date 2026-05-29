@@ -61,6 +61,8 @@ describe('RolesDetail', () => {
   it('renders the created at date', async () => {
     renderRolesDetail()
     await screen.findByText('Admin')
-    expect(screen.getAllByText(/\d+\/\d+\/\d+/).length).toBeGreaterThanOrEqual(1)
+    expect(screen.getAllByText(/\d+\/\d+\/\d+/).length).toBeGreaterThanOrEqual(
+      1
+    )
   })
 })

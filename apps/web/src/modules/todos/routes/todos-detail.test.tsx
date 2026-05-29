@@ -1,4 +1,8 @@
-import { createTodo, createUpload, getTodosIdHandler } from '@helix/api-client/mocks'
+import {
+  createTodo,
+  createUpload,
+  getTodosIdHandler,
+} from '@helix/api-client/mocks'
 import { MantineEmotionProvider, MantineProvider } from '@helix/ui'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen } from '@testing-library/react'
@@ -56,7 +60,9 @@ describe('TodoDetail', () => {
       await screen.findByText('Review quarterly report')
     ).toBeInTheDocument()
     expect(screen.getByText('Go through the Q1 report.')).toBeInTheDocument()
-    expect(screen.getAllByText(/\d+\/\d+\/\d+/).length).toBeGreaterThanOrEqual(1)
+    expect(screen.getAllByText(/\d+\/\d+\/\d+/).length).toBeGreaterThanOrEqual(
+      1
+    )
   })
 
   it('shows Completed badge for completed items', async () => {
@@ -80,7 +86,9 @@ describe('TodoDetail', () => {
       variants: null,
     })
     server.use(
-      getTodosIdHandler(createTodo({ ...completedTodo, attachments: [attachment] }))
+      getTodosIdHandler(
+        createTodo({ ...completedTodo, attachments: [attachment] })
+      )
     )
     renderTodoDetail()
     expect(await screen.findByText('design.pdf')).toBeInTheDocument()

@@ -33,7 +33,7 @@ const FILTER_COERCE = {
 
 async function getAttachmentsForTodos(
   database: Database,
-  todoIds: string[],
+  todoIds: string[]
 ): Promise<Record<string, (typeof uploads.$inferSelect)[]>> {
   if (todoIds.length === 0) return {}
   const rows = await database
@@ -56,21 +56,21 @@ async function getAttachmentsForTodos(
 async function syncAttachments(
   database: Database,
   todoId: string,
-  attachmentIds: string[],
+  attachmentIds: string[]
 ) {
   await database
     .delete(todoAttachments)
     .where(eq(todoAttachments.todoId, todoId))
   if (attachmentIds.length > 0) {
-    await database.insert(todoAttachments).values(
-      attachmentIds.map((uploadId) => ({ todoId, uploadId })),
-    )
+    await database
+      .insert(todoAttachments)
+      .values(attachmentIds.map((uploadId) => ({ todoId, uploadId })))
   }
 }
 
 async function getUploadsById(
   database: Database,
-  ids: string[],
+  ids: string[]
 ): Promise<Record<string, typeof uploads.$inferSelect>> {
   if (ids.length === 0) return {}
   const rows = await database
@@ -82,7 +82,7 @@ async function getUploadsById(
 
 function deleteUploadKeys(
   storage: StorageProvider,
-  uploadList: (typeof uploads.$inferSelect)[],
+  uploadList: (typeof uploads.$inferSelect)[]
 ) {
   const keys = uploadList.flatMap((u) => {
     const result = [u.storageKey]
@@ -91,7 +91,7 @@ function deleteUploadKeys(
         u.variants.thumbnail.key,
         u.variants.small.key,
         u.variants.medium.key,
-        u.variants.large.key,
+        u.variants.large.key
       )
     }
     return result
@@ -101,7 +101,7 @@ function deleteUploadKeys(
 
 export function createTodosService(
   database: Database,
-  storage: StorageProvider,
+  storage: StorageProvider
 ) {
   async function list(query: TodosListQuery) {
     const { limit, offset } = getPaginationParams(query.page, query.pageSize)
@@ -111,7 +111,7 @@ export function createTodosService(
       query.filters,
       query.filterLogic,
       FILTER_COLUMNS,
-      FILTER_COERCE,
+      FILTER_COERCE
     )
 
     const [data, [{ total }]] = await Promise.all([
@@ -128,7 +128,7 @@ export function createTodosService(
     const todoIds = data.map((t) => t.id)
     const singleUploadIds = [
       ...new Set(
-        data.flatMap((t) => [t.fileId, t.imageId].filter(Boolean) as string[]),
+        data.flatMap((t) => [t.fileId, t.imageId].filter(Boolean) as string[])
       ),
     ]
 
@@ -153,7 +153,7 @@ export function createTodosService(
     if (!todo) return null
 
     const singleUploadIds = [todo.fileId, todo.imageId].filter(
-      Boolean,
+      Boolean
     ) as string[]
 
     const [attachmentsMap, uploadsById] = await Promise.all([
@@ -175,7 +175,7 @@ export function createTodosService(
     await syncAttachments(database, todo.id, attachmentIds)
 
     const singleUploadIds = [todo.fileId, todo.imageId].filter(
-      Boolean,
+      Boolean
     ) as string[]
     const [attachmentsMap, uploadsById] = await Promise.all([
       getAttachmentsForTodos(database, [todo.id]),
@@ -217,7 +217,7 @@ export function createTodosService(
     }
 
     const singleUploadIds = [todo.fileId, todo.imageId].filter(
-      Boolean,
+      Boolean
     ) as string[]
     const [attachmentsMap, uploadsById] = await Promise.all([
       getAttachmentsForTodos(database, [id]),
@@ -237,13 +237,16 @@ export function createTodosService(
     if (!todo) return
 
     const singleUploadIds = [todo.fileId, todo.imageId].filter(
-      Boolean,
+      Boolean
     ) as string[]
 
     const [attachmentsMap, singleUploads] = await Promise.all([
       getAttachmentsForTodos(database, [id]),
       singleUploadIds.length > 0
-        ? database.select().from(uploads).where(inArray(uploads.id, singleUploadIds))
+        ? database
+            .select()
+            .from(uploads)
+            .where(inArray(uploads.id, singleUploadIds))
         : Promise.resolve([]),
     ])
 
@@ -266,7 +269,7 @@ export function createTodosService(
       query.filters,
       query.filterLogic,
       FILTER_COLUMNS,
-      FILTER_COERCE,
+      FILTER_COERCE
     )
 
     const data = await database

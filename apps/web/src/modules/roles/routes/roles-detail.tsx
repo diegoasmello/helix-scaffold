@@ -40,7 +40,9 @@ export function RolesDetail() {
         </Grid.Col>
         <Grid.Col span={{ base: 12, sm: 6 }}>
           <LabeledValue label="Created At">
-            <Text size="md">{formatDate(parseISO(item.createdAt), 'short')}</Text>
+            <Text size="md">
+              {formatDate(parseISO(item.createdAt), 'short')}
+            </Text>
           </LabeledValue>
         </Grid.Col>
       </Grid>

@@ -120,7 +120,10 @@ describe('RolesEdit', () => {
     renderRolesEdit()
     await screen.findByDisplayValue('Admin')
     await userEvent.clear(screen.getByPlaceholderText('Role name'))
-    await userEvent.type(screen.getByPlaceholderText('Role name'), 'Super Admin')
+    await userEvent.type(
+      screen.getByPlaceholderText('Role name'),
+      'Super Admin'
+    )
     await userEvent.click(screen.getByRole('button', { name: 'Save' }))
 
     await waitFor(() => {

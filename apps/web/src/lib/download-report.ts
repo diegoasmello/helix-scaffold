@@ -5,12 +5,12 @@ const TIMEOUT_MS = 60_000
 export async function downloadReport(
   path: string,
   filters: Record<string, string | undefined>,
-  filename: string,
+  filename: string
 ): Promise<void> {
   const params = new URLSearchParams(
     Object.fromEntries(
-      Object.entries(filters).filter(([, v]) => v != null),
-    ) as Record<string, string>,
+      Object.entries(filters).filter(([, v]) => v != null)
+    ) as Record<string, string>
   )
 
   const controller = new AbortController()
@@ -29,7 +29,7 @@ export async function downloadReport(
   if (!response.ok) {
     const detail = await response.text().catch(() => '')
     throw new Error(
-      `Failed to generate report (${response.status}${detail ? `: ${detail}` : ''})`,
+      `Failed to generate report (${response.status}${detail ? `: ${detail}` : ''})`
     )
   }
 

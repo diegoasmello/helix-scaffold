@@ -78,14 +78,23 @@ export function FilesInput<T extends UploadedFile>(
   }
 
   return (
-    <Input.Wrapper label={label} description={description} required={required} error={error}>
-      <Stack gap="xs" mt={description ? 4 : undefined} mb={error ? 4 : undefined}>
+    <Input.Wrapper
+      label={label}
+      description={description}
+      required={required}
+      error={error}
+    >
+      <Stack
+        gap="xs"
+        mt={description ? 4 : undefined}
+        mb={error ? 4 : undefined}
+      >
         {!isAtLimit && (
           <Dropzone
-          onDrop={handleDrop}
-          accept={accept}
-          classNames={{ root: error ? classes.dropzoneError : undefined }}
-        >
+            onDrop={handleDrop}
+            accept={accept}
+            classNames={{ root: error ? classes.dropzoneError : undefined }}
+          >
             <Group
               justify="center"
               gap="xl"
@@ -116,7 +125,11 @@ export function FilesInput<T extends UploadedFile>(
         {(value.length > 0 || uploadingCount > 0) && (
           <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="xs">
             {value.map((upload) => (
-              <FileCard key={upload.id} upload={upload} onRemove={handleRemove} />
+              <FileCard
+                key={upload.id}
+                upload={upload}
+                onRemove={handleRemove}
+              />
             ))}
             {Array.from({ length: uploadingCount }).map((_, i) => (
               <Group

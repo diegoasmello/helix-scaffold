@@ -7,16 +7,24 @@ import { registerUploadReference } from '@/lib/upload-references'
 // register them here so orphan cleanup knows which uploads are still in use.
 
 registerUploadReference(async (db) => {
-  const rows = await db.selectDistinct({ id: todoAttachments.uploadId }).from(todoAttachments)
+  const rows = await db
+    .selectDistinct({ id: todoAttachments.uploadId })
+    .from(todoAttachments)
   return rows.map((r) => r.id)
 })
 
 registerUploadReference(async (db) => {
-  const rows = await db.select({ id: todos.fileId }).from(todos).where(isNotNull(todos.fileId))
+  const rows = await db
+    .select({ id: todos.fileId })
+    .from(todos)
+    .where(isNotNull(todos.fileId))
   return rows.map((r) => r.id).filter((id): id is string => id !== null)
 })
 
 registerUploadReference(async (db) => {
-  const rows = await db.select({ id: todos.imageId }).from(todos).where(isNotNull(todos.imageId))
+  const rows = await db
+    .select({ id: todos.imageId })
+    .from(todos)
+    .where(isNotNull(todos.imageId))
   return rows.map((r) => r.id).filter((id): id is string => id !== null)
 })

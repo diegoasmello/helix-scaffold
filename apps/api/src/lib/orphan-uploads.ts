@@ -12,12 +12,14 @@ export async function deleteOrphanUploads(
   database: Database,
   storage: StorageProvider,
   referenceLoaders: readonly UploadReferenceLoader[],
-  options?: { graceHours?: number },
+  options?: { graceHours?: number }
 ): Promise<{ deleted: number }> {
   const graceMs = (options?.graceHours ?? DEFAULT_GRACE_HOURS) * 60 * 60 * 1000
   const cutoff = new Date(Date.now() - graceMs)
 
-  const batches = await Promise.all(referenceLoaders.map((loader) => loader(database)))
+  const batches = await Promise.all(
+    referenceLoaders.map((loader) => loader(database))
+  )
   const referencedIds = new Set(batches.flat())
 
   const orphans = await database
@@ -25,8 +27,11 @@ export async function deleteOrphanUploads(
     .from(uploads)
     .where(
       referencedIds.size > 0
-        ? and(lt(uploads.createdAt, cutoff), notInArray(uploads.id, [...referencedIds]))
-        : lt(uploads.createdAt, cutoff),
+        ? and(
+            lt(uploads.createdAt, cutoff),
+            notInArray(uploads.id, [...referencedIds])
+          )
+        : lt(uploads.createdAt, cutoff)
     )
 
   if (orphans.length === 0) return { deleted: 0 }
@@ -38,13 +43,18 @@ export async function deleteOrphanUploads(
         u.variants.thumbnail.key,
         u.variants.small.key,
         u.variants.medium.key,
-        u.variants.large.key,
+        u.variants.large.key
       )
     }
     return keys
   })
 
-  await database.delete(uploads).where(inArray(uploads.id, orphans.map((u) => u.id)))
+  await database.delete(uploads).where(
+    inArray(
+      uploads.id,
+      orphans.map((u) => u.id)
+    )
+  )
   await Promise.allSettled(storageKeys.map((k) => storage.delete(k)))
 
   return { deleted: orphans.length }

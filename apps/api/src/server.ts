@@ -18,7 +18,11 @@ app.listen({ port: 3333, host: '0.0.0.0' }).then(() => {
 
   setInterval(async () => {
     try {
-      const { deleted } = await deleteOrphanUploads(db, storage, getUploadReferenceLoaders())
+      const { deleted } = await deleteOrphanUploads(
+        db,
+        storage,
+        getUploadReferenceLoaders()
+      )
       if (deleted > 0) {
         app.log.info(`Orphan upload cleanup: deleted ${deleted} uploads`)
       }

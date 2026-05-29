@@ -29,7 +29,9 @@ describe('meFormValidate', () => {
     })
 
     it('returns error when invalid format', () => {
-      expect(meFormValidate.email('not-an-email', meBase)).toBe('Invalid email address')
+      expect(meFormValidate.email('not-an-email', meBase)).toBe(
+        'Invalid email address'
+      )
     })
 
     it('returns null when valid', () => {
@@ -47,21 +49,29 @@ const passwordBase: PasswordFormValues = {
 describe('passwordFormValidate', () => {
   describe('currentPassword', () => {
     it('returns error when empty', () => {
-      expect(passwordFormValidate.currentPassword('', passwordBase)).toBe('Required')
+      expect(passwordFormValidate.currentPassword('', passwordBase)).toBe(
+        'Required'
+      )
     })
 
     it('returns null when provided', () => {
-      expect(passwordFormValidate.currentPassword('anyvalue', passwordBase)).toBeNull()
+      expect(
+        passwordFormValidate.currentPassword('anyvalue', passwordBase)
+      ).toBeNull()
     })
   })
 
   describe('newPassword', () => {
     it('returns error when shorter than 8 chars', () => {
-      expect(passwordFormValidate.newPassword('short', passwordBase)).toBe('Min 8 characters')
+      expect(passwordFormValidate.newPassword('short', passwordBase)).toBe(
+        'Min 8 characters'
+      )
     })
 
     it('returns null when at least 8 chars', () => {
-      expect(passwordFormValidate.newPassword('validpass', passwordBase)).toBeNull()
+      expect(
+        passwordFormValidate.newPassword('validpass', passwordBase)
+      ).toBeNull()
     })
   })
 

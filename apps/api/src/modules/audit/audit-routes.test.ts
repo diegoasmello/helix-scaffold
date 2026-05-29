@@ -318,9 +318,39 @@ describe('GET /audit-logs/:id', () => {
 
 describe('Audit logging via onResponse hook', () => {
   it('creates an audit log entry when a todo is created', async () => {
-    const [attachment] = await testDb.insert(uploads).values({ originalName: 'att.pdf', mimeType: 'application/pdf', fileSize: 100, storageKey: 'test/att.pdf', url: 'http://localhost:3333/files/test/att.pdf', variants: null }).returning()
-    const [file] = await testDb.insert(uploads).values({ originalName: 'doc.pdf', mimeType: 'application/pdf', fileSize: 100, storageKey: 'test/doc.pdf', url: 'http://localhost:3333/files/test/doc.pdf', variants: null }).returning()
-    const [image] = await testDb.insert(uploads).values({ originalName: 'img.jpg', mimeType: 'image/jpeg', fileSize: 100, storageKey: 'test/img.jpg', url: 'http://localhost:3333/files/test/img.jpg', variants: null }).returning()
+    const [attachment] = await testDb
+      .insert(uploads)
+      .values({
+        originalName: 'att.pdf',
+        mimeType: 'application/pdf',
+        fileSize: 100,
+        storageKey: 'test/att.pdf',
+        url: 'http://localhost:3333/files/test/att.pdf',
+        variants: null,
+      })
+      .returning()
+    const [file] = await testDb
+      .insert(uploads)
+      .values({
+        originalName: 'doc.pdf',
+        mimeType: 'application/pdf',
+        fileSize: 100,
+        storageKey: 'test/doc.pdf',
+        url: 'http://localhost:3333/files/test/doc.pdf',
+        variants: null,
+      })
+      .returning()
+    const [image] = await testDb
+      .insert(uploads)
+      .values({
+        originalName: 'img.jpg',
+        mimeType: 'image/jpeg',
+        fileSize: 100,
+        storageKey: 'test/img.jpg',
+        url: 'http://localhost:3333/files/test/img.jpg',
+        variants: null,
+      })
+      .returning()
 
     await app.inject({
       method: 'POST',

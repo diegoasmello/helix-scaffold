@@ -1,4 +1,10 @@
-import { createValidator, email, maxLength, minLength, required } from '@helix/ui'
+import {
+  createValidator,
+  email,
+  maxLength,
+  minLength,
+  required,
+} from '@helix/ui'
 
 import type { UserFormValues } from './types'
 

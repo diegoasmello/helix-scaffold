@@ -5,7 +5,7 @@ import type { StorageProvider } from './types'
 
 export function createLocalStorageProvider(
   uploadDir: string,
-  baseUrl: string,
+  baseUrl: string
 ): StorageProvider {
   async function save(key: string, buffer: Buffer): Promise<void> {
     const filePath = path.join(uploadDir, key)
