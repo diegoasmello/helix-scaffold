@@ -59,8 +59,8 @@ export function TodoEdit() {
           date: values.date!,
           status: values.status,
           attachmentIds: values.attachments.map((a) => a.id),
-          fileId: values.file?.id ?? null,
-          imageId: values.image?.id ?? null,
+          fileId: values.file!.id,
+          imageId: values.image!.id,
         },
       },
       {

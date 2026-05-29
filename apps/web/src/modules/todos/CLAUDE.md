@@ -151,5 +151,5 @@ See `apps/web/CLAUDE.md` → _Filtering_ and `apps/api/CLAUDE.md` → _Filtering
 
 - Action buttons (Edit, Delete, Create) in `TodoList` are **not** wrapped in `<HasPermission>` — they are always rendered. If RBAC guards on action buttons are needed, wrap them per the workspace `CLAUDE.md` convention.
 - `content` is stored as an HTML string (rich text). Always use `RichTextEditor` for editing and `RichTextRenderer` for display.
-- `attachments`, `file`, and `image` are not validated — they are optional upload fields with no required constraint.
+- `attachments`, `file`, and `image` are all **required** upload fields. `attachments` uses `minFiles(1)`, `file` and `image` use `required`. All three have the `required` prop on their `FilesInput`/`FileInput` components to render the asterisk indicator.
 - The upload fields (`attachments`, `file`, `image`) in `TodoFormValues` hold full `UploadItem` objects for previewing during the session. On submit they are mapped to IDs (`attachmentIds`, `fileId`, `imageId`). See `apps/web/CLAUDE.md` → _File uploads_ for the full pattern.

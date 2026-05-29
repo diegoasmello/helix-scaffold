@@ -42,8 +42,8 @@ export const updateTodoSchema = z.object({
   status: z.enum(['pending', 'completed']).optional(),
   date: z.coerce.date().optional(),
   attachmentIds: z.array(z.string()).min(1).optional(),
-  fileId: z.string().nullable().optional(),
-  imageId: z.string().nullable().optional(),
+  fileId: z.string().optional(),
+  imageId: z.string().optional(),
 })
 
 export const paginatedTodosSchema = paginatedResponseSchema(todoSchema).meta({

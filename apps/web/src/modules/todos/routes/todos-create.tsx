@@ -42,8 +42,8 @@ export function TodoCreate() {
         content: values.content,
         date: values.date!,
         attachmentIds: values.attachments.map((a) => a.id),
-        fileId: values.file?.id,
-        imageId: values.image?.id,
+        fileId: values.file!.id,
+        imageId: values.image!.id,
       },
       {
         onSuccess: () => {

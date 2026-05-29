@@ -51,6 +51,24 @@ describe('TodoForm', () => {
     expect(screen.getByPlaceholderText('Todo description')).toBeRequired()
   })
 
+  it('marks image, attachments, and file as required', () => {
+    renderForm()
+    // FileInput and FilesInput are custom components — toBeRequired() does not work.
+    // Mantine sets data-required="true" on the label element when required is true.
+    expect(screen.getByText('Image').closest('label')).toHaveAttribute(
+      'data-required',
+      'true'
+    )
+    expect(screen.getByText('Attachments').closest('label')).toHaveAttribute(
+      'data-required',
+      'true'
+    )
+    expect(screen.getByText('File (PDF)').closest('label')).toHaveAttribute(
+      'data-required',
+      'true'
+    )
+  })
+
   it('date is not required when status is pending', () => {
     renderForm('pending')
     expect(screen.getByPlaceholderText('Pick a date')).not.toBeRequired()

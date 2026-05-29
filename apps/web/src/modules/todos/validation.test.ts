@@ -103,4 +103,26 @@ describe('todoFormValidate', () => {
       ).toBeNull()
     })
   })
+
+  describe('file', () => {
+    it('returns error when null', () => {
+      expect(todoFormValidate.file(null, base)).toBe('Required')
+    })
+
+    it('returns null when a file is provided', () => {
+      const upload = { id: 'file-1' } as import('./types').UploadItem
+      expect(todoFormValidate.file(upload, base)).toBeNull()
+    })
+  })
+
+  describe('image', () => {
+    it('returns error when null', () => {
+      expect(todoFormValidate.image(null, base)).toBe('Required')
+    })
+
+    it('returns null when an image is provided', () => {
+      const upload = { id: 'img-1' } as import('./types').UploadItem
+      expect(todoFormValidate.image(upload, base)).toBeNull()
+    })
+  })
 })
