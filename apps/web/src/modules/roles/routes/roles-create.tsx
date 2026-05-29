@@ -25,13 +25,18 @@ export function RolesCreate() {
     initialValues: {
       name: '',
       description: '',
+      isDefault: false,
     },
     validate: roleFormValidate,
   })
 
   const handleSubmit = (values: RoleFormValues) => {
     createRole(
-      { name: values.name, description: values.description },
+      {
+        name: values.name,
+        description: values.description,
+        isDefault: values.isDefault,
+      },
       {
         onSuccess: () => {
           notify({ status: 'success', message: 'Role created successfully' })

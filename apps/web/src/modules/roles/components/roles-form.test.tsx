@@ -8,6 +8,7 @@ import { RolesForm } from './roles-form'
 const base: RoleFormValues = {
   name: '',
   description: '',
+  isDefault: false,
 }
 
 function FormWrapper() {

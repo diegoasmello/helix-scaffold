@@ -12,4 +12,5 @@ export type UpdateRoleInput = PatchRolesIdMutationRequest
 export interface RoleFormValues {
   name: string
   description: string
+  isDefault: boolean
 }

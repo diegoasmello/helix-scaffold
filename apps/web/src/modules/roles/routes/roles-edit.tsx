@@ -37,6 +37,7 @@ export function RolesEdit() {
     initialValues: {
       name: item.name,
       description: item.description ?? '',
+      isDefault: item.isDefault,
     },
     validate: roleFormValidate,
   })
@@ -45,7 +46,11 @@ export function RolesEdit() {
     updateRole(
       {
         id,
-        data: { name: values.name, description: values.description },
+        data: {
+          name: values.name,
+          description: values.description,
+          isDefault: values.isDefault,
+        },
       },
       {
         onSuccess: () => {

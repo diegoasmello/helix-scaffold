@@ -27,7 +27,7 @@ export function RoleCreateDrawer(props: Readonly<RoleCreateDrawerProps>) {
   })
 
   const form = useForm<RoleFormValues>({
-    initialValues: { name: '', description: '' },
+    initialValues: { name: '', description: '', isDefault: false },
     validate: roleFormValidate,
   })
 
@@ -38,7 +38,11 @@ export function RoleCreateDrawer(props: Readonly<RoleCreateDrawerProps>) {
 
   const handleSubmit = (values: RoleFormValues) => {
     createRole(
-      { name: values.name, description: values.description },
+      {
+        name: values.name,
+        description: values.description,
+        isDefault: values.isDefault,
+      },
       {
         onSuccess: (created) => {
           notify({ status: 'success', message: 'Role created successfully' })

@@ -6,6 +6,7 @@ import { roleFormValidate } from './validation'
 const base: RoleFormValues = {
   name: '',
   description: '',
+  isDefault: false,
 }
 
 describe('roleFormValidate', () => {

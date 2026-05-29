@@ -1,5 +1,5 @@
 import type { UseFormReturnType } from '@helix/ui'
-import { Grid, Textarea, TextInput } from '@helix/ui'
+import { Grid, Switch, Text, Textarea, TextInput } from '@helix/ui'
 
 import type { RoleFormValues } from '../types'
 
@@ -27,6 +27,18 @@ export function RolesForm(props: Readonly<RolesFormProps>) {
           resize="vertical"
           required
           {...form.getInputProps('description')}
+        />
+      </Grid.Col>
+      <Grid.Col span={12}>
+        <Switch
+          label="Default role for self-registration"
+          description={
+            <Text size="xs" c="dimmed">
+              When open registration is enabled, new users are automatically
+              assigned this role. Only one role can be the default.
+            </Text>
+          }
+          {...form.getInputProps('isDefault', { type: 'checkbox' })}
         />
       </Grid.Col>
     </Grid>
