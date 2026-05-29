@@ -1,7 +1,9 @@
 import { betterAuth } from 'better-auth'
 import { drizzleAdapter } from 'better-auth/adapters/drizzle'
+import { eq } from 'drizzle-orm'
 
 import type { Database } from '@/db'
+import { roles, user as userTable } from '@/db/schema'
 import { env } from '@/env'
 import type { EmailProvider } from '@/lib/email'
 
@@ -10,6 +12,26 @@ export function createAuth(database: Database, emailProvider: EmailProvider) {
     database: drizzleAdapter(database, {
       provider: 'pg',
     }),
+    databaseHooks: {
+      user: {
+        create: {
+          after: async (user) => {
+            if (env.REGISTRATION_MODE !== 'open') return
+            const [defaultRole] = await database
+              .select()
+              .from(roles)
+              .where(eq(roles.isDefault, true))
+              .limit(1)
+            if (defaultRole) {
+              await database
+                .update(userTable)
+                .set({ roleId: defaultRole.id })
+                .where(eq(userTable.id, user.id))
+            }
+          },
+        },
+      },
+    },
     emailAndPassword: {
       enabled: true,
     },

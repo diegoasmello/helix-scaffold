@@ -28,6 +28,7 @@ import { createAuditService } from './modules/audit/audit-service'
 import { bootstrapRoutes } from './modules/bootstrap/bootstrap-routes'
 import { meRoutes } from './modules/me/me-routes'
 import { permissionsRoutes } from './modules/permissions/permissions-routes'
+import { registrationRoutes } from './modules/registration/registration-routes'
 import { rolesRoutes } from './modules/roles/roles-routes'
 import { todosRoutes } from './modules/todos/todos-routes'
 import { uploadsRoutes } from './modules/uploads/uploads-routes'
@@ -92,6 +93,15 @@ export function buildApp(database: Database) {
         done(null, body)
       }
     )
+    instance.addHook('onRequest', async (request, reply) => {
+      if (
+        request.method === 'POST' &&
+        request.url.split('?')[0] === '/api/auth/sign-up/email' &&
+        env.REGISTRATION_MODE !== 'open'
+      ) {
+        return reply.status(403).send({ message: 'Registration is closed' })
+      }
+    })
     instance.all('/api/auth/*', async (request, reply) => {
       const rawBody = request.body as string | null
       const webRequest = new Request(
@@ -120,6 +130,7 @@ export function buildApp(database: Database) {
   })
 
   app.register(bootstrapRoutes, { database, auth })
+  app.register(registrationRoutes)
 
   app.register(async (authenticated) => {
     authenticated.addHook('preHandler', createRequireAuth(auth))
