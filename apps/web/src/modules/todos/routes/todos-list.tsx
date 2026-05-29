@@ -27,7 +27,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { parseISO } from 'date-fns'
 import { useState } from 'react'
 
-import { downloadReport } from '@/lib/download-report'
+import { useExportPdf } from '@/lib/use-export-pdf'
 import { formatDate } from '@/utils/date'
 
 import type { TodoItem } from '../types'
@@ -55,7 +55,11 @@ export function TodoList() {
   const queryClient = useQueryClient()
 
   const [filtersOpen, setFiltersOpen] = useState<boolean>(!!filters)
-  const [isExporting, setIsExporting] = useState(false)
+  const { isExporting, handleExport } = useExportPdf(
+    '/todos/export',
+    { sortBy, sortOrder, filters, filterLogic },
+    'todos'
+  )
 
   const filterValue: LogicalFilterValue = {
     conditions: filters
@@ -105,28 +109,6 @@ export function TodoList() {
       confirmLabel: 'Delete',
       onConfirm: () => deleteTodo(id),
     })
-  }
-
-  const handleExport = async () => {
-    setIsExporting(true)
-    try {
-      const date = new Date().toISOString().split('T')[0]
-      await downloadReport(
-        '/todos/export',
-        {
-          sortBy,
-          sortOrder,
-          filters,
-          filterLogic,
-        },
-        `todos-${date}.pdf`
-      )
-      notify({ status: 'success', message: 'Report downloaded successfully' })
-    } catch {
-      notify({ status: 'danger', message: 'Failed to generate report' })
-    } finally {
-      setIsExporting(false)
-    }
   }
 
   const handleApplyFilters = (value: LogicalFilterValue) => {

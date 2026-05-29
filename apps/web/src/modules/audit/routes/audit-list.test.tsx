@@ -11,13 +11,15 @@ import userEvent from '@testing-library/user-event'
 import { Suspense } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { downloadReport } from '@/lib/download-report'
 import { server } from '../../../mocks/server'
 import { AuditList } from './audit-list'
 
-vi.mock('@/lib/download-report', () => ({
-  downloadReport: vi.fn().mockResolvedValue(undefined),
-}))
+const mockDownloadReport = vi.hoisted(() => vi.fn().mockResolvedValue(undefined))
+
+vi.mock('@/lib/download-report', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/lib/download-report')>()
+  return { ...actual, downloadReport: mockDownloadReport }
+})
 
 vi.mock('.', () => ({
   auditListRoute: {
@@ -177,7 +179,7 @@ describe('Export PDF', () => {
     await userEvent.click(screen.getByRole('button', { name: /export pdf/i }))
 
     await waitFor(() => {
-      expect(downloadReport).toHaveBeenCalledWith(
+      expect(mockDownloadReport).toHaveBeenCalledWith(
         '/audit-logs/export',
         expect.objectContaining({ sortOrder: 'desc' }),
         expect.stringMatching(/^audit-logs-\d{4}-\d{2}-\d{2}\.pdf$/)
@@ -186,7 +188,7 @@ describe('Export PDF', () => {
   })
 
   it('re-enables the button after export failure', async () => {
-    vi.mocked(downloadReport).mockRejectedValueOnce(new Error('Server error'))
+    mockDownloadReport.mockRejectedValueOnce(new Error('Server error'))
 
     renderAuditList()
     await screen.findAllByText('Alice Silva')

@@ -8,14 +8,12 @@ import {
   getDataTablePaginationProps,
   getDataTableSortingProps,
   Group,
-  notify,
   PageList,
 } from '@helix/ui'
 import { IconDownload } from '@helix/ui'
 import { parseISO } from 'date-fns'
-import { useState } from 'react'
 
-import { downloadReport } from '@/lib/download-report'
+import { useExportPdf } from '@/lib/use-export-pdf'
 import { formatDateTime } from '@/utils/date'
 
 import { auditListRoute } from '.'
@@ -31,24 +29,11 @@ export function AuditList() {
   const search = auditListRoute.useSearch()
   const { page, pageSize, sortBy, sortOrder } = search
 
-  const [isExporting, setIsExporting] = useState(false)
-
-  const handleExport = async () => {
-    setIsExporting(true)
-    try {
-      const date = new Date().toISOString().split('T')[0]
-      await downloadReport(
-        '/audit-logs/export',
-        { sortBy, sortOrder },
-        `audit-logs-${date}.pdf`
-      )
-      notify({ status: 'success', message: 'Report downloaded successfully' })
-    } catch {
-      notify({ status: 'danger', message: 'Failed to generate report' })
-    } finally {
-      setIsExporting(false)
-    }
-  }
+  const { isExporting, handleExport } = useExportPdf(
+    '/audit-logs/export',
+    { sortBy, sortOrder },
+    'audit-logs'
+  )
 
   const { data: auditLogsResponse } = useGetAuditLogsSuspense({
     page,

@@ -2,6 +2,11 @@ import { env } from '@/env'
 
 const TIMEOUT_MS = 60_000
 
+export function buildReportFilename(slug: string): string {
+  const date = new Date().toISOString().split('T')[0]
+  return `${slug}-${date}.pdf`
+}
+
 export async function downloadReport(
   path: string,
   filters: Record<string, string | undefined>,
