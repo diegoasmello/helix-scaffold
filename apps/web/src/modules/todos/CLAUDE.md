@@ -128,7 +128,7 @@ Inline in each component — no `hooks.ts`. Cache operations in `useMutation.onS
 
 `TodoList` has an Export PDF button that calls `GET /todos/export` with the current sort and filter state. The download is handled by the shared `downloadReport` helper (`src/lib/download-report.ts`).
 
-The button uses local `isExporting` state to show a loading spinner during the request. On success it shows a success notification; on any error it shows a danger notification. No permission guard wraps the button — `todoListRoute.beforeLoad` already requires `todos:view`, which is the same permission the export endpoint enforces.
+The button is wired via the `useExportPdf` hook (`src/lib/use-export-pdf.ts`), which handles loading state, the `downloadReport` call, and success/error notifications. No permission guard wraps the button — `todoListRoute.beforeLoad` already requires `todos:view`, which is the same permission the export endpoint enforces.
 
 See `apps/web/CLAUDE.md` → _PDF export_ for the full implementation guide and button wiring pattern.
 

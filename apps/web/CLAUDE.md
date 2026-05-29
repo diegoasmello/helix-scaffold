@@ -584,47 +584,49 @@ See `todos` as the reference implementation. The checklist:
 
 Modules with a list screen can expose an Export PDF button that downloads a report respecting the current filters and sort order.
 
-### `downloadReport` helper (`src/lib/download-report.ts`)
+### `downloadReport` and `buildReportFilename` (`src/lib/download-report.ts`)
 
-Generic fetch helper for binary downloads. Use it in any module — do not write raw `fetch` calls inline.
+`downloadReport` is a generic fetch helper for binary downloads — do not write raw `fetch` calls inline.
+
+`buildReportFilename(slug)` generates a consistent `{slug}-{YYYY-MM-DD}.pdf` filename. Always use it — never construct the filename inline.
 
 ```ts
-import { downloadReport } from '@/lib/download-report'
+import { downloadReport, buildReportFilename } from '@/lib/download-report'
 
-await downloadReport(
-  '/features/export',           // API path
-  { sortBy, sortOrder, filters, filterLogic },  // params — undefined values are omitted
-  'features-2025-01-01.pdf',    // suggested filename for the browser
-)
+// e.g. "features-2026-01-15.pdf" — date is computed at call time
+buildReportFilename('features')
 ```
 
-The helper:
+`downloadReport`:
 - Filters out `undefined` params before building the query string
 - Adds a 60-second `AbortController` timeout
 - Throws with a descriptive message (`status + response body`) on non-2xx responses
 - Creates an object URL, clicks a hidden `<a>` to trigger the download, then revokes the URL
 
+### `useExportPdf` hook (`src/lib/use-export-pdf.ts`)
+
+Encapsulates the loading state, `downloadReport` call, and success/error notifications. **Always use this hook — never inline the pattern manually.**
+
+```ts
+import { useExportPdf } from '@/lib/use-export-pdf'
+
+const { isExporting, handleExport } = useExportPdf(
+  '/features/export',                              // API path
+  { sortBy, sortOrder, filters, filterLogic },     // params — undefined values are omitted
+  'features',                                      // slug → buildReportFilename('features')
+)
+```
+
+Pass the same `sortBy`, `sortOrder`, `filters`, and `filterLogic` values the list hook already uses — this guarantees the exported PDF matches exactly what the user sees on screen.
+
 ### Wiring an Export button
 
 ```tsx
-const [isExporting, setIsExporting] = useState(false)
-
-const handleExport = async () => {
-  setIsExporting(true)
-  try {
-    const date = new Date().toISOString().split('T')[0]
-    await downloadReport(
-      '/features/export',
-      { sortBy, sortOrder, filters, filterLogic },
-      `features-${date}.pdf`,
-    )
-    notify({ status: 'success', message: 'Report downloaded successfully' })
-  } catch {
-    notify({ status: 'danger', message: 'Failed to generate report' })
-  } finally {
-    setIsExporting(false)
-  }
-}
+const { isExporting, handleExport } = useExportPdf(
+  '/features/export',
+  { sortBy, sortOrder, filters, filterLogic },
+  'features',
+)
 ```
 
 Place the button in `PageList`'s `actions` prop, between the Filters button and the Create button:
@@ -640,12 +642,34 @@ Place the button in `PageList`'s `actions` prop, between the Filters button and 
 </Button>
 ```
 
-Pass the same `sortBy`, `sortOrder`, `filters`, and `filterLogic` values the list hook already uses — this guarantees the exported PDF matches exactly what the user sees on screen.
+### Testing
+
+Mock `downloadReport` with `importOriginal` so `buildReportFilename` keeps its real implementation:
+
+```ts
+const mockDownloadReport = vi.hoisted(() => vi.fn().mockResolvedValue(undefined))
+
+vi.mock('@/lib/download-report', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/lib/download-report')>()
+  return { ...actual, downloadReport: mockDownloadReport }
+})
+```
+
+Assert the call with a regex for the filename so tests don't depend on today's date:
+
+```ts
+expect(mockDownloadReport).toHaveBeenCalledWith(
+  '/features/export',
+  expect.objectContaining({ sortOrder: 'desc' }),
+  expect.stringMatching(/^features-\d{4}-\d{2}-\d{2}\.pdf$/),
+)
+```
 
 ### Reference implementation
 
-`apps/web/src/modules/todos/routes/todos-list.tsx` — `handleExport` and the Export PDF button.  
-`apps/web/src/lib/download-report.ts` — the shared helper.
+`apps/web/src/modules/todos/routes/todos-list.tsx` — `useExportPdf` and the Export PDF button.  
+`apps/web/src/lib/download-report.ts` — `downloadReport` and `buildReportFilename`.  
+`apps/web/src/lib/use-export-pdf.ts` — `useExportPdf` hook.
 
 ---
 

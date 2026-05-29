@@ -53,7 +53,7 @@ Pure SQL, no business logic. Factory `createTodosService(database)` returns `{ l
 
 ## PDF template (`src/modules/todos/templates/todos-report.tsx`)
 
-Renders a single-page table with columns: Title, Status, Date. Uses `BaseDocument` from `src/lib/pdf/` for the shared page shell. Exported function:
+Renders a single-page table with columns: Title, Status, Date. Uses `BaseDocument` for the page shell and `PdfTable` for the table rows — both from `src/lib/pdf/`. Column styles are declared via `StyleSheet.create`; the shared table chrome (header style, row style, font sizes) lives in `PdfTable`. Exported function:
 
 ```ts
 export async function renderTodosReport(items: TodoRow[]): Promise<Buffer>

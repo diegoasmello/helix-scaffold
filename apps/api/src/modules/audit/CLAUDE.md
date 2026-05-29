@@ -38,14 +38,16 @@ User fields (`userId`, `userName`, `userEmail`) are snapshotted at write time �
 - `auditLogSchema` — full entity; `.meta({ id: 'AuditLog', title: 'AuditLog' })`.
 - No create/update schemas — entries are never written via the API.
 - Sort columns: `['createdAt', 'userName', 'action', 'resource']`. Default sort: `createdAt`.
+- `auditLogsExportQuerySchema` — sorting only (no pagination, no filters): `auditLogsSortingSchema`. Used by `GET /audit-logs/export`.
 
 ## Service (`audit-service.ts`)
 
-`createAuditService(database)` returns `{ log, list, getById }`:
+`createAuditService(database)` returns `{ log, list, getById, generateReport }`:
 
 - `log(input)` — inserts one row. Called by `registerAuditRequest` inside `.catch()` so failures are logged but never propagated.
 - `list(query)` — paginated + sorted, same pattern as other modules.
 - `getById(id)` — returns `null` when not found.
+- `generateReport(query)` — queries up to 5000 rows respecting sort order, delegates to `renderAuditReport` via dynamic import.
 
 `AuditLogInput` (internal, not exported) — `{ userId, userName, userEmail, action, resource, resourceId?, metadata?, ip?, userAgent? }`. All optional fields default to `null` in the insert.
 
@@ -53,12 +55,15 @@ User fields (`userId`, `userName`, `userEmail`) are snapshotted at write time �
 
 Receives `{ database, requirePermission }` — no `auth` parameter.
 
-| Method | Path              | Permission    | Audit call |
-| ------ | ----------------- | ------------- | ---------- |
-| `GET`  | `/audit-logs`     | `audit:view`  | —          |
-| `GET`  | `/audit-logs/:id` | `audit:view`  | —          |
+| Method | Path                    | Permission   | Audit call |
+| ------ | ----------------------- | ------------ | ---------- |
+| `GET`  | `/audit-logs/export`    | `audit:view` | — (no audit calls within the audit module itself) |
+| `GET`  | `/audit-logs`           | `audit:view` | —          |
+| `GET`  | `/audit-logs/:id`       | `audit:view` | —          |
 
-No mutation routes. No audit calls within the audit module itself.
+No mutation routes. No audit calls within the audit module itself — including the export endpoint.
+
+`GET /audit-logs/export` must be registered **before** `GET /audit-logs/:id` — Fastify matches routes in registration order.
 
 ## `registerAuditRequest` hook (`src/hooks/audit-request.ts`)
 
@@ -86,4 +91,6 @@ Only `view` is registered — there is no create/edit/delete permission.
 
 **Integration test** (`describe('Audit logging via onResponse hook')`): makes a real `POST /todos` request via `app.inject` and then queries `auditLogs` directly with `testDb.select()` to assert the entry was created. Also verifies that a failed request (400) does **not** create a log.
 
-**Permission enforcement**: both GET routes require `audit:view`. The permission block tests each with an empty grants session. Email pattern: `restricted-audit-${Date.now()}@test.com`.
+**Export tests** (`describe('GET /audit-logs/export')`): asserts 200 + `content-type: application/pdf` + `content-disposition` header with the expected filename pattern. A second test seeds logs and verifies the endpoint accepts `sortBy`/`sortOrder` params.
+
+**Permission enforcement**: all three GET routes require `audit:view`. The permission block tests each with an empty grants session. Email pattern: `restricted-audit-${Date.now()}@test.com`.
