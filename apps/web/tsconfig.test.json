@@ -3,7 +3,11 @@
   "compilerOptions": {
     "types": ["vite/client", "vitest/globals", "@testing-library/jest-dom"],
     "noUnusedLocals": false,
-    "noUnusedParameters": false
+    "noUnusedParameters": false,
+    "paths": {
+      "@/*": ["./src/*"],
+      "@helix/ui-real": ["../../packages/ui/src/index.ts"]
+    }
   },
   "include": [
     "src/**/*.test.ts",
