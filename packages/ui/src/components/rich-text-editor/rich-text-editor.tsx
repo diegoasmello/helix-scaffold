@@ -72,7 +72,10 @@ export function RichTextEditor(props: Readonly<RichTextEditorProps>) {
         const imageFiles = files.filter((f) => f.type.startsWith('image/'))
         if (imageFiles.length === 0) return false
 
-        const pos = view.posAtCoords({ left: event.clientX, top: event.clientY })
+        const pos = view.posAtCoords({
+          left: event.clientX,
+          top: event.clientY,
+        })
         if (!pos) return false
 
         for (const file of imageFiles) {
@@ -124,7 +127,7 @@ export function RichTextEditor(props: Readonly<RichTextEditorProps>) {
       description={description}
       error={error}
       onClick={(e) => {
-        if ((e.target as HTMLElement).id === `${id}-label`) {
+        if ((e.target as HTMLElement).id === `${id}-label` && editor) {
           editor.commands.focus()
         }
       }}
@@ -217,7 +220,11 @@ export function RichTextEditor(props: Readonly<RichTextEditorProps>) {
           id={id}
           data-path={dataPath}
           tabIndex={1}
-          onFocus={() => editor.commands.focus()}
+          onFocus={() => {
+            if (editor) {
+              editor.commands.focus()
+            }
+          }}
         />
       </TipTapEditor>
     </Input.Wrapper>
