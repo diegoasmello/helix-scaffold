@@ -33,7 +33,7 @@ declare module 'fastify' {
       roleId: string | null
     }
     audit: (
-      action: 'create' | 'edit' | 'delete',
+      action: 'create' | 'edit' | 'delete' | 'export',
       resource: string,
       resourceId?: string | null,
       metadata?: unknown
