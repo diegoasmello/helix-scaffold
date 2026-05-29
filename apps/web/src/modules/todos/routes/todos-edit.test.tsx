@@ -5,7 +5,11 @@ import {
   patchTodosIdHandler,
   patchTodosIdHandlerResponse200,
 } from '@helix/api-client/mocks'
-import { MantineEmotionProvider, MantineProvider } from '@helix/ui'
+import {
+  MantineEmotionProvider,
+  MantineProvider,
+  type UseFormReturnType,
+} from '@helix/ui'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -13,7 +17,7 @@ import { Suspense } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { server } from '../../../mocks/server'
-import type { UpdateTodoInput } from '../types'
+import type { TodoFormValues, UpdateTodoInput } from '../types'
 import { TodoEdit } from './todos-edit'
 
 const mockNavigate = vi.fn()
@@ -30,7 +34,58 @@ vi.mock('@tanstack/react-router', async (importOriginal) => {
   return { ...actual, useBlocker: vi.fn() }
 })
 
-const mockAttachment = createUpload({ id: 'attach-1', originalName: 'report.pdf', mimeType: 'application/pdf', variants: null })
+vi.mock('../components/todos-form', () => ({
+  TodoForm: ({ form }: { form: UseFormReturnType<TodoFormValues> }) => (
+    <div>
+      <input
+        aria-label="Title"
+        placeholder="Todo title"
+        value={form.values.title ?? ''}
+        onChange={(e) => form.setFieldValue('title', e.target.value)}
+      />
+      {form.errors.title && <span>{String(form.errors.title)}</span>}
+      <textarea
+        aria-label="Description"
+        placeholder="Todo description"
+        value={form.values.description}
+        onChange={(e) => form.setFieldValue('description', e.target.value)}
+      />
+      <textarea
+        aria-label="Content"
+        placeholder="Todo content"
+        value={form.values.content}
+        onChange={(e) => form.setFieldValue('content', e.target.value)}
+      />
+      <input
+        placeholder="Pick a date"
+        value={form.values.date ?? ''}
+        onChange={(e) => form.setFieldValue('date', e.target.value)}
+      />
+      {form.values.attachments.map((a) => (
+        <span key={a.originalName}>{a.originalName}</span>
+      ))}
+    </div>
+  ),
+}))
+
+const mockAttachment = createUpload({
+  id: 'attach-1',
+  originalName: 'report.pdf',
+  mimeType: 'application/pdf',
+  variants: null,
+})
+const mockFile = createUpload({
+  id: 'file-1',
+  originalName: 'document.pdf',
+  mimeType: 'application/pdf',
+  variants: null,
+})
+const mockImage = createUpload({
+  id: 'img-1',
+  originalName: 'photo.jpg',
+  mimeType: 'image/jpeg',
+  variants: null,
+})
 
 const mockTodo = createTodo({
   id: '1',
@@ -39,6 +94,8 @@ const mockTodo = createTodo({
   date: '2020-04-10',
   status: 'completed',
   attachments: [mockAttachment],
+  file: mockFile,
+  image: mockImage,
 })
 
 function renderTodoEdit() {
@@ -86,7 +143,7 @@ describe('TodoEdit', () => {
   it('shows validation errors when title is cleared and form is submitted', async () => {
     renderTodoEdit()
     await screen.findByDisplayValue('Review quarterly report')
-    await userEvent.clear(screen.getByLabelText('Title'))
+    await userEvent.clear(screen.getByPlaceholderText('Todo title'))
     await userEvent.click(screen.getByRole('button', { name: 'Save' }))
     expect(await screen.findByText('Required')).toBeInTheDocument()
   })
@@ -102,14 +159,19 @@ describe('TodoEdit', () => {
 
     renderTodoEdit()
     await screen.findByDisplayValue('Review quarterly report')
-    await userEvent.clear(screen.getByLabelText('Title'))
-    await userEvent.type(screen.getByLabelText('Title'), 'Updated title')
+    await userEvent.clear(screen.getByPlaceholderText('Todo title'))
+    await userEvent.type(
+      screen.getByPlaceholderText('Todo title'),
+      'Updated title'
+    )
     await userEvent.click(screen.getByRole('button', { name: 'Save' }))
 
     await waitFor(() => {
       expect(capturedBody).toMatchObject({
         title: 'Updated title',
         attachmentIds: ['attach-1'],
+        fileId: 'file-1',
+        imageId: 'img-1',
       })
       expect(mockNavigate).toHaveBeenCalledWith({ to: '/todos' })
     })

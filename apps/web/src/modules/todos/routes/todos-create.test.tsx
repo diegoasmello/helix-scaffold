@@ -1,9 +1,14 @@
 import {
   createTodo,
+  createUpload,
   postTodosHandler,
   postTodosHandlerResponse201,
 } from '@helix/api-client/mocks'
-import { MantineEmotionProvider, MantineProvider } from '@helix/ui'
+import {
+  MantineEmotionProvider,
+  MantineProvider,
+  type UseFormReturnType,
+} from '@helix/ui'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -11,7 +16,7 @@ import { Suspense } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { server } from '../../../mocks/server'
-import type { CreateTodoInput } from '../types'
+import type { CreateTodoInput, TodoFormValues } from '../types'
 import { TodoCreate } from './todos-create'
 
 const mockNavigate = vi.fn()
@@ -24,6 +29,68 @@ vi.mock('@tanstack/react-router', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@tanstack/react-router')>()
   return { ...actual, useBlocker: vi.fn() }
 })
+
+vi.mock('../components/todos-form', () => ({
+  TodoForm: ({ form }: { form: UseFormReturnType<TodoFormValues> }) => (
+    <div>
+      <input
+        aria-label="Title"
+        placeholder="Todo title"
+        value={form.values.title}
+        onChange={(e) => form.setFieldValue('title', e.target.value)}
+      />
+      {form.errors.title && <span>{String(form.errors.title)}</span>}
+      <textarea
+        aria-label="Description"
+        placeholder="Todo description"
+        value={form.values.description}
+        onChange={(e) => form.setFieldValue('description', e.target.value)}
+      />
+      {form.errors.description && (
+        <span>{String(form.errors.description)}</span>
+      )}
+      <textarea
+        aria-label="Content"
+        placeholder="Todo content"
+        value={form.values.content}
+        onChange={(e) => form.setFieldValue('content', e.target.value)}
+      />
+      {form.errors.content && <span>{String(form.errors.content)}</span>}
+      <input
+        placeholder="Pick a date"
+        value={form.values.date ?? ''}
+        onChange={(e) => form.setFieldValue('date', e.target.value)}
+      />
+      {/* Upload field controls — use in tests to satisfy required validators */}
+      <button
+        type="button"
+        data-testid="set-attachment"
+        onClick={() => form.setFieldValue('attachments', [createUpload({ id: 'att-1' })])}
+      >
+        Set Attachment
+      </button>
+      <button
+        type="button"
+        data-testid="set-file"
+        onClick={() => form.setFieldValue('file', createUpload({ id: 'file-1' }))}
+      >
+        Set File
+      </button>
+      <button
+        type="button"
+        data-testid="set-image"
+        onClick={() => form.setFieldValue('image', createUpload({ id: 'img-1' }))}
+      >
+        Set Image
+      </button>
+      {form.errors.attachments && (
+        <span>{String(form.errors.attachments)}</span>
+      )}
+      {form.errors.file && <span>{String(form.errors.file)}</span>}
+      {form.errors.image && <span>{String(form.errors.image)}</span>}
+    </div>
+  ),
+}))
 
 function renderTodoCreate() {
   const queryClient = new QueryClient({
@@ -58,21 +125,21 @@ afterEach(() => {
 })
 
 describe('TodoCreate', () => {
-  it('renders the create form', () => {
+  it('renders the create form', async () => {
     renderTodoCreate()
     expect(
-      screen.getByRole('heading', { name: 'Create Todo' })
+      await screen.findByRole('heading', { name: 'Create Todo' })
     ).toBeInTheDocument()
-    expect(screen.getByLabelText('Title')).toBeInTheDocument()
-    expect(screen.getByLabelText('Description')).toBeInTheDocument()
-    expect(screen.getByPlaceholderText('Pick a date')).toBeInTheDocument()
+    expect(screen.getByPlaceholderText('Todo title')).toBeInTheDocument()
+    expect(screen.getByPlaceholderText('Todo description')).toBeInTheDocument()
   })
 
   it('shows validation errors when submitting empty form', async () => {
     renderTodoCreate()
+    await screen.findByRole('heading', { name: 'Create Todo' })
     await userEvent.click(screen.getByRole('button', { name: 'Save' }))
     const errors = await screen.findAllByText('Required')
-    expect(errors.length).toBeGreaterThanOrEqual(2) // title + date
+    expect(errors.length).toBeGreaterThanOrEqual(2)
   })
 
   it('calls POST /todos with correct payload and navigates on success', async () => {
@@ -87,15 +154,28 @@ describe('TodoCreate', () => {
     )
 
     renderTodoCreate()
-    await userEvent.type(screen.getByLabelText('Title'), 'My new todo')
+    await screen.findByRole('heading', { name: 'Create Todo' })
+
+    // set required upload fields
+    await userEvent.click(screen.getByTestId('set-attachment'))
+    await userEvent.click(screen.getByTestId('set-file'))
+    await userEvent.click(screen.getByTestId('set-image'))
+
     await userEvent.type(
-      screen.getByLabelText('Description'),
+      screen.getByPlaceholderText('Todo title'),
+      'My new todo'
+    )
+    await userEvent.type(
+      screen.getByPlaceholderText('Todo description'),
       'Some description'
     )
-    await userEvent.type(screen.getByLabelText('Content'), 'Some content')
+    await userEvent.type(
+      screen.getByPlaceholderText('Todo content'),
+      'Some content'
+    )
     await userEvent.type(
       screen.getByPlaceholderText('Pick a date'),
-      '01/01/2020'
+      '2020-01-01'
     )
     await userEvent.click(screen.getByRole('button', { name: 'Save' }))
 
@@ -103,8 +183,9 @@ describe('TodoCreate', () => {
       expect(capturedBody).toMatchObject({
         title: 'My new todo',
         description: 'Some description',
-        content: 'Some content',
-        attachmentIds: [],
+        attachmentIds: ['att-1'],
+        fileId: 'file-1',
+        imageId: 'img-1',
       })
       expect(capturedBody).not.toHaveProperty('status')
       expect(mockNavigate).toHaveBeenCalledWith({ to: '/todos' })
@@ -122,15 +203,27 @@ describe('TodoCreate', () => {
     )
 
     renderTodoCreate()
-    await userEvent.type(screen.getByLabelText('Title'), 'My new todo')
+    await screen.findByRole('heading', { name: 'Create Todo' })
+
+    await userEvent.click(screen.getByTestId('set-attachment'))
+    await userEvent.click(screen.getByTestId('set-file'))
+    await userEvent.click(screen.getByTestId('set-image'))
+
     await userEvent.type(
-      screen.getByLabelText('Description'),
+      screen.getByPlaceholderText('Todo title'),
+      'My new todo'
+    )
+    await userEvent.type(
+      screen.getByPlaceholderText('Todo description'),
       'Some description'
     )
-    await userEvent.type(screen.getByLabelText('Content'), 'Some content')
+    await userEvent.type(
+      screen.getByPlaceholderText('Todo content'),
+      'Some content'
+    )
     await userEvent.type(
       screen.getByPlaceholderText('Pick a date'),
-      '01/01/2020'
+      '2020-01-01'
     )
     await userEvent.click(screen.getByRole('button', { name: 'Save' }))
 
