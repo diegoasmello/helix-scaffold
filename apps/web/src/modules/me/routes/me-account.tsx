@@ -53,7 +53,10 @@ export function MeAccount() {
         emailForm.reset()
       },
       onError: () => {
-        notify({ status: 'danger', message: 'Failed to send verification email' })
+        notify({
+          status: 'danger',
+          message: 'Failed to send verification email',
+        })
       },
     })
 
@@ -79,7 +82,11 @@ export function MeAccount() {
               Update your display name.
             </Text>
           </Stack>
-          <TextInput label="Name" required {...nameForm.getInputProps('name')} />
+          <TextInput
+            label="Name"
+            required
+            {...nameForm.getInputProps('name')}
+          />
           <Group justify="flex-end">
             <Button type="submit" loading={isUpdating}>
               Save

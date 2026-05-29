@@ -7,7 +7,11 @@ import type { Database } from '../../db'
 import type { EmailProvider } from '../../lib/email'
 import type { FastifyTypedInstance } from '../../types'
 import { userSchema } from '../users/users-schema'
-import { updateMeEmailSchema, updateMePasswordSchema, updateMeSchema } from './me-schema'
+import {
+  updateMeEmailSchema,
+  updateMePasswordSchema,
+  updateMeSchema,
+} from './me-schema'
 import { createMeService } from './me-service'
 
 export async function meRoutes(
@@ -55,7 +59,8 @@ export async function meRoutes(
       schema: {
         operationId: 'patchMeEmail',
         tags: ['me'],
-        description: 'Request an email address change (sends verification email)',
+        description:
+          'Request an email address change (sends verification email)',
         body: updateMeEmailSchema,
         response: {
           200: z.object({ message: z.string() }),
@@ -66,7 +71,10 @@ export async function meRoutes(
     },
     async (request, reply) => {
       try {
-        await service.changeEmail(request.body, fromNodeHeaders(request.headers))
+        await service.changeEmail(
+          request.body,
+          fromNodeHeaders(request.headers)
+        )
       } catch (error) {
         if (error instanceof APIError) {
           return reply.status(400).send({ message: error.message })

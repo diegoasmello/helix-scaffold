@@ -52,7 +52,9 @@ export function PdfTable<T>(props: Readonly<PdfTableProps<T>>) {
         {columns.map((col) => (
           <Text
             key={col.header}
-            style={col.style ? [col.style, styles.headerText] : styles.headerText}
+            style={
+              col.style ? [col.style, styles.headerText] : styles.headerText
+            }
           >
             {col.header}
           </Text>

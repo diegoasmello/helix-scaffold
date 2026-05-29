@@ -2,7 +2,10 @@ export interface EmailProvider {
   send(to: string, subject: string, html: string): Promise<void>
 }
 
-function createResendEmailProvider(apiKey: string, from: string): EmailProvider {
+function createResendEmailProvider(
+  apiKey: string,
+  from: string
+): EmailProvider {
   return {
     async send(to, subject, html) {
       const response = await fetch('https://api.resend.com/emails', {

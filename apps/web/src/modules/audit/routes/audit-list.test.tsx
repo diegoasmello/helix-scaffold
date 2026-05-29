@@ -14,7 +14,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { server } from '../../../mocks/server'
 import { AuditList } from './audit-list'
 
-const mockDownloadReport = vi.hoisted(() => vi.fn().mockResolvedValue(undefined))
+const mockDownloadReport = vi.hoisted(() =>
+  vi.fn().mockResolvedValue(undefined)
+)
 
 vi.mock('@/lib/download-report', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/lib/download-report')>()

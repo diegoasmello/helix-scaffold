@@ -83,7 +83,9 @@ describe('Profile display', () => {
   it('renders the name and email sections', async () => {
     renderMeAccount()
     await screen.findByRole('heading', { name: 'Name' })
-    expect(screen.getByRole('heading', { name: 'Email Address' })).toBeInTheDocument()
+    expect(
+      screen.getByRole('heading', { name: 'Email Address' })
+    ).toBeInTheDocument()
   })
 
   it('pre-populates form fields with user data', async () => {
