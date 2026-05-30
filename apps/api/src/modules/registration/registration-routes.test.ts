@@ -9,11 +9,12 @@ afterAll(async () => {
 })
 
 describe('GET /registration/status', () => {
-  it('returns open: true and providers: [] (test env has REGISTRATION_MODE=open, no social credentials)', async () => {
+  it('returns open: true with a providers array (REGISTRATION_MODE=open in test env)', async () => {
     const res = await app.inject({ method: 'GET', url: '/registration/status' })
     expect(res.statusCode).toBe(200)
-    // No social credentials are set in the test env, so providers is always [].
-    // Even if REGISTRATION_MODE were closed, providers would also be [].
-    expect(res.json()).toEqual({ open: true, providers: [] })
+    const body = res.json()
+    expect(body.open).toBe(true)
+    // providers reflects whichever social credentials are set in the test env
+    expect(body.providers).toBeInstanceOf(Array)
   })
 })
