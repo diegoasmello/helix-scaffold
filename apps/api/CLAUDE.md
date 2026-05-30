@@ -22,7 +22,16 @@ All variables are validated with Zod in `src/env.ts` at startup. If a required v
 | `FACEBOOK_CLIENT_ID` / `FACEBOOK_CLIENT_SECRET` | — | Optional. Enables Facebook social login when both are set and `REGISTRATION_MODE=open`. |
 | `APPLE_CLIENT_ID` / `APPLE_CLIENT_SECRET` / `APPLE_APP_BUNDLE_ID` | — | Optional. Enables Apple social login. `APPLE_CLIENT_SECRET` is a JWT signed with the `.p8` private key (max 6-month expiry). See `.env.example` for details. |
 
-The test env (`.env.test`) sets `REGISTRATION_MODE=open` so test helpers can create users via `POST /api/auth/sign-up/email` without hitting the closed-mode 403 guard. No social provider credentials are set in the test env — `GET /registration/status` always returns `providers: []` in tests.
+The test env (`.env.test`) sets `REGISTRATION_MODE=open` so test helpers can create users via `POST /api/auth/sign-up/email` without hitting the closed-mode 403 guard. Social provider credentials in the test env may or may not be set — `GET /registration/status` and `GET /me/providers` tests assert on the shape of the array, not its contents.
+
+## Shared social provider utility (`src/lib/social-providers.ts`)
+
+`getConfiguredSocialProviders(): string[]` — returns the names of social providers that have both `CLIENT_ID` and `CLIENT_SECRET` env vars set. Imported by two modules:
+
+- `registration-routes.ts` — for `GET /registration/status` (only when `REGISTRATION_MODE=open`)
+- `me-routes.ts` — for `GET /me/providers` (always, regardless of mode)
+
+**When adding a new social provider:** update `auth.ts` (socialProviders config), `.env.example`, `env.ts`, and **this function** — it is the single place that determines which providers surface in both API responses.
 
 ## Module structure
 
