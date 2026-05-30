@@ -15,6 +15,12 @@ Fastify + TypeScript — the REST API for this project.
 
 All variables are validated with Zod in `src/env.ts` at startup. If a required variable is missing or invalid, the process fails immediately with a clear message.
 
+| Variable | Default | Notes |
+| --- | --- | --- |
+| `REGISTRATION_MODE` | `closed` | `open` enables public self-registration. See `src/modules/registration/CLAUDE.md`. |
+
+The test env (`.env.test`) sets `REGISTRATION_MODE=open` so test helpers can create users via `POST /api/auth/sign-up/email` without hitting the closed-mode 403 guard.
+
 ## Module structure
 
 ```

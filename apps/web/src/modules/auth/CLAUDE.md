@@ -95,10 +95,27 @@ All three routes have `rootRoute` as parent (not `authenticatedRoute`) — they 
 | Constant | Path | Notes |
 | --- | --- | --- |
 | `bootstrapRoute` | `/bootstrap` | Redirects to `/login` if already bootstrapped |
-| `loginRoute` | `/login` | Redirects to `/bootstrap` if not yet bootstrapped |
-| `signUpRoute` | `/sign-up` | No redirect guard |
+| `loginRoute` | `/login` | Redirects to `/bootstrap` if not bootstrapped; returns `{ registrationOpen }` |
+| `signUpRoute` | `/sign-up` | Redirects to `/bootstrap` if not bootstrapped; redirects to `/login` if registration is closed |
 
 `bootstrapRoute` and `loginRoute` form a **mutual redirect guard**: each loader calls `getBootstrapStatus()` and redirects to the other if the system state doesn't match. This prevents accessing the bootstrap screen on a live system and prevents accessing login on a blank system.
+
+**Registration mode awareness:**
+
+`loginRoute.loader` parallelises two independent calls via `Promise.all` and returns `{ registrationOpen }`:
+
+```ts
+const [{ bootstrapped }, { open }] = await Promise.all([
+  getBootstrapStatus(),
+  getRegistrationStatus(),
+])
+if (!bootstrapped) throw redirect({ to: '/bootstrap' })
+return { registrationOpen: open }
+```
+
+`signUpRoute.loader` uses `getRegistrationStatus()` as an access guard — redirects to `/login` if registration is closed. This prevents direct URL access to `/sign-up` in closed-mode deployments (the backend also enforces this via a 403 on the sign-up endpoint).
+
+The `Login` component reads `registrationOpen` via `loginRoute.useLoaderData()` and conditionally renders a "Create one" link below the submit button when `true`.
 
 ## Screen conventions
 

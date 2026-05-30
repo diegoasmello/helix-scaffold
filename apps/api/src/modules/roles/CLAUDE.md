@@ -6,21 +6,31 @@ Full CRUD module. Used as a dependency by the users module (assigns `roleId` to 
 
 **Table**: `roles` (`src/db/schema/roles.ts`)
 
-| Column        | DB type              | Notes                                      |
-| ------------- | -------------------- | ------------------------------------------ |
-| `id`          | `text` PK            | UUIDv7                                     |
-| `name`        | `text NOT NULL`      | **Unique constraint** — no duplicate names |
-| `description` | `text` (nullable)    | No `.notNull()` — absence and `null` are valid |
-| `createdAt`   | `timestamp NOT NULL` | `defaultNow()`                             |
-| `updatedAt`   | `timestamp NOT NULL` | `$onUpdateFn(() => new Date())`            |
+| Column        | DB type              | Notes                                                        |
+| ------------- | -------------------- | ------------------------------------------------------------ |
+| `id`          | `text` PK            | UUIDv7                                                       |
+| `name`        | `text NOT NULL`      | **Unique constraint** — no duplicate names                   |
+| `description` | `text` (nullable)    | No `.notNull()` — absence and `null` are valid               |
+| `isDefault`   | `boolean NOT NULL`   | Default `false`. At most one row can have `true` (partial unique index). |
+| `createdAt`   | `timestamp NOT NULL` | `defaultNow()`                                               |
+| `updatedAt`   | `timestamp NOT NULL` | `$onUpdateFn(() => new Date())`                              |
 
 `name` has a unique index. Inserting a duplicate name causes a DB constraint error — currently not caught by the route handler (results in a 500). If deduplication feedback is needed, add a try/catch for the constraint violation.
 
+### `isDefault` invariant
+
+Only one role can have `isDefault = true` at a time. This is enforced at two layers:
+
+1. **DB**: partial unique index `roles_is_default_unique` on `(is_default) WHERE is_default = true` — the database rejects a second `true` row.
+2. **Service**: `create()` and `update()` wrap in a transaction that first sets all existing `isDefault = true` rows to `false`, then applies the new value. This prevents the unique index from rejecting the new row before the old one is cleared.
+
+When `REGISTRATION_MODE=open`, the User role created during bootstrap has `isDefault = true`. Self-registered users automatically receive this role via `databaseHooks.user.create.after` in `auth.ts`.
+
 ## Schema (`roles-schema.ts`)
 
-- `roleSchema` — `.meta({ id: 'Role', title: 'Role' })`. `description` is `z.string().nullable()`.
-- `createRoleSchema` — `{ name: z.string().min(1), description: z.string().min(1).optional() }`. Description is optional on create; if provided it must be non-empty.
-- `updateRoleSchema` — same fields, both optional.
+- `roleSchema` — `.meta({ id: 'Role', title: 'Role' })`. `description` is `z.string().nullable()`. `isDefault` is `z.boolean()`.
+- `createRoleSchema` — `{ name, description (optional), isDefault (optional, defaults to false) }`.
+- `updateRoleSchema` — same fields, all optional.
 - Sort columns: `['name', 'createdAt']`. Default sort: `createdAt`.
 
 ## Service (`roles-service.ts`)
@@ -44,7 +54,11 @@ Receives `{ database, requirePermission }` — no `auth` parameter.
 | `PATCH`  | `/roles/:id` | `roles:edit`    | Audit: `request.audit('edit', 'roles', id, body)`            |
 | `DELETE` | `/roles/:id` | `roles:delete`  | Returns **409** when role has assigned users; audit on success |
 
-**`DELETE` guard**: calls `service.hasUsers(id)` before deletion. If any user has this `roleId`, returns `409 { message: 'Cannot delete a role that has assigned users' }`. No audit call on 409 — audit only fires after `service.remove` succeeds. Returns 204 even when the role id does not exist (Drizzle delete is a no-op on missing rows).
+**`DELETE` guard**: two sequential 409 checks before `service.remove`:
+1. `role?.isDefault` → `409 { message: 'Cannot delete the default registration role' }` — prevents silently breaking open registration.
+2. `service.hasUsers(id)` → `409 { message: 'Cannot delete a role that has assigned users' }`.
+
+No audit call on 409 — audit only fires after `service.remove` succeeds. Returns 204 even when the role id does not exist (Drizzle delete is a no-op on missing rows).
 
 **`GET /roles/all`** — no pagination schema, no `buildPaginatedResponse`. Response is `z.array(roleSchema)`. The route handler is a one-liner: `async () => service.listAll()`.
 

@@ -59,6 +59,21 @@ pnpm --filter api test:watch
 
 See each workspace's `CLAUDE.md` for the full testing guide.
 
+## Registration mode
+
+The scaffold supports two account-creation strategies, configured via `REGISTRATION_MODE` in `apps/api/.env`:
+
+| Mode | Behaviour |
+| --- | --- |
+| `closed` (default) | Only admins create accounts. Bootstrap creates the first admin; subsequent users are created via `POST /users` by a permissioned admin. |
+| `open` | Anyone can self-register via `/sign-up`. Bootstrap also creates a "User" role (`isDefault = true`) with basic permissions (`me:view`, `me:edit`). New self-registered users receive this role automatically. |
+
+**Single source of truth:** the mode lives only in the backend env. The frontend reads `GET /registration/status → { open: boolean }` at route-load time — no `VITE_*` duplication.
+
+**Changing the default role for open registration:** set `isDefault = true` on the desired role via the Roles admin panel. Only one role can be the default at a time (DB-enforced partial unique index). The previous default is automatically unset by the service in a transaction.
+
+See `apps/api/src/modules/registration/CLAUDE.md` for the full backend documentation and `apps/web/src/modules/auth/CLAUDE.md` for the frontend guard/loader pattern.
+
 ## Creating a new module
 
 By default, a new module spans **both workspaces** — backend + frontend. Unless the prompt explicitly targets one side (e.g. "add a backend endpoint for X" or "add a frontend page for X"), always implement the full stack:

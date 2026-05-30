@@ -49,6 +49,23 @@ Idempotent — safe to call multiple times:
 
 The admin role is found by name (`'Admin'`); if it does not exist, it is created with all permissions before being assigned.
 
+## Open registration mode
+
+When `REGISTRATION_MODE=open`, `POST /bootstrap` creates a second role after the admin user is fully set up:
+
+```
+1. INSERT Admin role + ALL_PERMISSIONS
+2. auth.api.signUpEmail(admin)        ← hook fires, finds no isDefault role → no-op ✓
+3. UPDATE user SET roleId = adminRole.id
+4. INSERT User role (isDefault = true, me:view + me:edit permissions)
+```
+
+The User role is always created **after** the admin is assigned the Admin role. This is intentional — the `databaseHooks.user.create.after` in `auth.ts` fires during step 2, before the User role exists, so the admin never accidentally gets the User role.
+
+The admin can later customize the User role's permissions via the permissions panel.
+
+**Test environment:** `.env.test` sets `REGISTRATION_MODE=open` so test helpers can create users via `POST /api/auth/sign-up/email`. The bootstrap test accounts for both roles being created in this mode.
+
 ## `ALL_PERMISSIONS` and `src/config/permissions.ts`
 
 `ALL_PERMISSIONS` is a flat array of `{ resource, action }` objects derived from `RESOURCE_DEFINITIONS`. Both `POST /bootstrap` and `POST /bootstrap/e2e-user` insert one `rolePermissions` row per entry. When a new module is added to `RESOURCE_DEFINITIONS`, it is automatically included in the admin role on next bootstrap without any change to this file.
