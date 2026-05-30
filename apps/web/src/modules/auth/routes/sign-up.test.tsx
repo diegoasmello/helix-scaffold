@@ -5,20 +5,25 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { SignUp } from './sign-up'
 
-const { mockNavigate, mockSignUp } = vi.hoisted(() => ({
-  mockNavigate: vi.fn(),
-  mockSignUp: vi.fn(),
-}))
+const { mockNavigate, mockSignUp, mockSignInSocial, mockUseLoaderData } =
+  vi.hoisted(() => ({
+    mockNavigate: vi.fn(),
+    mockSignUp: vi.fn(),
+    mockSignInSocial: vi.fn(),
+    mockUseLoaderData: vi.fn().mockReturnValue({ providers: [] }),
+  }))
 
 vi.mock('.', () => ({
   signUpRoute: {
     useNavigate: () => mockNavigate,
+    useLoaderData: mockUseLoaderData,
   },
 }))
 
 vi.mock('../../../lib/authentication', () => ({
   authClient: {
     signUp: { email: mockSignUp },
+    signIn: { social: mockSignInSocial },
   },
 }))
 
@@ -34,6 +39,7 @@ function renderSignUp() {
 
 afterEach(() => {
   vi.clearAllMocks()
+  mockUseLoaderData.mockReturnValue({ providers: [] })
 })
 
 it('renders all form fields', () => {
@@ -86,6 +92,65 @@ describe('validation', () => {
       screen.getByRole('button', { name: 'Create account' })
     )
     expect(mockSignUp).not.toHaveBeenCalled()
+  })
+})
+
+describe('social login buttons', () => {
+  it('shows social buttons when providers are configured', () => {
+    mockUseLoaderData.mockReturnValue({ providers: ['google', 'apple'] })
+    renderSignUp()
+    expect(
+      screen.getByRole('button', { name: /continue with google/i })
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: /continue with apple/i })
+    ).toBeInTheDocument()
+  })
+
+  it('hides social buttons when no providers are configured', () => {
+    renderSignUp()
+    expect(
+      screen.queryByRole('button', { name: /continue with/i })
+    ).not.toBeInTheDocument()
+  })
+
+  it('calls signIn.social with correct provider on button click', async () => {
+    mockSignInSocial.mockResolvedValue({})
+    mockUseLoaderData.mockReturnValue({ providers: ['google'] })
+    renderSignUp()
+
+    await userEvent.click(
+      screen.getByRole('button', { name: /continue with google/i })
+    )
+
+    expect(mockSignInSocial).toHaveBeenCalledWith({
+      provider: 'google',
+      callbackURL: '/',
+    })
+  })
+
+  it('shows error message when signIn.social throws', async () => {
+    mockSignInSocial.mockRejectedValue(new Error('Network error'))
+    mockUseLoaderData.mockReturnValue({ providers: ['google'] })
+    renderSignUp()
+
+    await userEvent.click(
+      screen.getByRole('button', { name: /continue with google/i })
+    )
+
+    expect(
+      await screen.findByText(
+        'Could not sign in with this provider. Please try again.'
+      )
+    ).toBeInTheDocument()
+  })
+
+  it('ignores unknown provider strings from the backend', () => {
+    mockUseLoaderData.mockReturnValue({ providers: ['github'] })
+    renderSignUp()
+    expect(
+      screen.queryByRole('button', { name: /continue with/i })
+    ).not.toBeInTheDocument()
   })
 })
 

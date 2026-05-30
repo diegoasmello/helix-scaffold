@@ -5,11 +5,15 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { Login } from './login'
 
-const { mockNavigate, mockSignIn, mockUseLoaderData } = vi.hoisted(() => ({
-  mockNavigate: vi.fn(),
-  mockSignIn: vi.fn(),
-  mockUseLoaderData: vi.fn().mockReturnValue({ registrationOpen: false }),
-}))
+const { mockNavigate, mockSignIn, mockSignInSocial, mockUseLoaderData } =
+  vi.hoisted(() => ({
+    mockNavigate: vi.fn(),
+    mockSignIn: vi.fn(),
+    mockSignInSocial: vi.fn(),
+    mockUseLoaderData: vi
+      .fn()
+      .mockReturnValue({ registrationOpen: false, providers: [] }),
+  }))
 
 vi.mock('.', () => ({
   loginRoute: {
@@ -20,7 +24,7 @@ vi.mock('.', () => ({
 
 vi.mock('../../../lib/authentication', () => ({
   authClient: {
-    signIn: { email: mockSignIn },
+    signIn: { email: mockSignIn, social: mockSignInSocial },
   },
 }))
 
@@ -36,7 +40,7 @@ function renderLogin() {
 
 afterEach(() => {
   vi.clearAllMocks()
-  mockUseLoaderData.mockReturnValue({ registrationOpen: false })
+  mockUseLoaderData.mockReturnValue({ registrationOpen: false, providers: [] })
 })
 
 it('renders the sign-in form', () => {
@@ -48,7 +52,7 @@ it('renders the sign-in form', () => {
 
 describe('sign-up link', () => {
   it('shows link when registration is open', () => {
-    mockUseLoaderData.mockReturnValue({ registrationOpen: true })
+    mockUseLoaderData.mockReturnValue({ registrationOpen: true, providers: [] })
     renderLogin()
     expect(screen.getByText('Create one')).toBeInTheDocument()
   })
@@ -56,6 +60,92 @@ describe('sign-up link', () => {
   it('hides link when registration is closed', () => {
     renderLogin()
     expect(screen.queryByText('Create one')).not.toBeInTheDocument()
+  })
+})
+
+describe('social login buttons', () => {
+  it('shows social buttons when registration is open and providers are configured', () => {
+    mockUseLoaderData.mockReturnValue({
+      registrationOpen: true,
+      providers: ['google', 'facebook'],
+    })
+    renderLogin()
+    expect(
+      screen.getByRole('button', { name: /continue with google/i })
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: /continue with facebook/i })
+    ).toBeInTheDocument()
+  })
+
+  it('hides social buttons when registration is closed', () => {
+    mockUseLoaderData.mockReturnValue({
+      registrationOpen: false,
+      providers: ['google'],
+    })
+    renderLogin()
+    expect(
+      screen.queryByRole('button', { name: /continue with google/i })
+    ).not.toBeInTheDocument()
+  })
+
+  it('hides social buttons when registration is open but no providers are configured', () => {
+    mockUseLoaderData.mockReturnValue({
+      registrationOpen: true,
+      providers: [],
+    })
+    renderLogin()
+    expect(
+      screen.queryByRole('button', { name: /continue with/i })
+    ).not.toBeInTheDocument()
+  })
+
+  it('calls signIn.social with correct provider on button click', async () => {
+    mockSignInSocial.mockResolvedValue({})
+    mockUseLoaderData.mockReturnValue({
+      registrationOpen: true,
+      providers: ['google'],
+    })
+    renderLogin()
+
+    await userEvent.click(
+      screen.getByRole('button', { name: /continue with google/i })
+    )
+
+    expect(mockSignInSocial).toHaveBeenCalledWith({
+      provider: 'google',
+      callbackURL: '/',
+    })
+  })
+
+  it('shows error message when signIn.social throws', async () => {
+    mockSignInSocial.mockRejectedValue(new Error('Network error'))
+    mockUseLoaderData.mockReturnValue({
+      registrationOpen: true,
+      providers: ['google'],
+    })
+    renderLogin()
+
+    await userEvent.click(
+      screen.getByRole('button', { name: /continue with google/i })
+    )
+
+    expect(
+      await screen.findByText(
+        'Could not sign in with this provider. Please try again.'
+      )
+    ).toBeInTheDocument()
+  })
+
+  it('ignores unknown provider strings from the backend', () => {
+    mockUseLoaderData.mockReturnValue({
+      registrationOpen: true,
+      providers: ['github', 'twitter'],
+    })
+    renderLogin()
+    expect(
+      screen.queryByRole('button', { name: /continue with/i })
+    ).not.toBeInTheDocument()
   })
 })
 
