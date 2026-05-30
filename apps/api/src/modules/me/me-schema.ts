@@ -13,6 +13,11 @@ export const updateMePasswordSchema = z.object({
   newPassword: z.string().min(8),
 })
 
+export const setPasswordSchema = z.object({
+  newPassword: z.string().min(8),
+})
+
 export type UpdateMeInput = z.infer<typeof updateMeSchema>
 export type UpdateMeEmailInput = z.infer<typeof updateMeEmailSchema>
 export type UpdateMePasswordInput = z.infer<typeof updateMePasswordSchema>
+export type SetPasswordInput = z.infer<typeof setPasswordSchema>

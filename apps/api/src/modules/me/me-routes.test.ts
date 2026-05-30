@@ -25,6 +25,11 @@ it('returns 401 on GET /me when not authenticated', async () => {
   expect(res.statusCode).toBe(401)
 })
 
+it('returns 401 on GET /me/providers when not authenticated', async () => {
+  const res = await app.inject({ method: 'GET', url: '/me/providers' })
+  expect(res.statusCode).toBe(401)
+})
+
 it('returns 401 on PATCH /me when not authenticated', async () => {
   const res = await app.inject({
     method: 'PATCH',
@@ -50,6 +55,27 @@ it('returns 401 on PATCH /me/password when not authenticated', async () => {
     payload: { currentPassword: 'Password123!', newPassword: 'NewPass456!' },
   })
   expect(res.statusCode).toBe(401)
+})
+
+it('returns 401 on POST /me/set-password when not authenticated', async () => {
+  const res = await app.inject({
+    method: 'POST',
+    url: '/me/set-password',
+    payload: { newPassword: 'NewPassword123!' },
+  })
+  expect(res.statusCode).toBe(401)
+})
+
+describe('GET /me/providers', () => {
+  it('returns 200 with a providers array', async () => {
+    const res = await app.inject({
+      method: 'GET',
+      url: '/me/providers',
+      headers: { cookie: authCookie },
+    })
+    expect(res.statusCode).toBe(200)
+    expect(res.json().providers).toBeInstanceOf(Array)
+  })
 })
 
 describe('GET /me', () => {
@@ -119,6 +145,33 @@ describe('PATCH /me/email', () => {
       method: 'PATCH',
       url: '/me/email',
       payload: { newEmail: 'not-an-email' },
+      headers: { cookie: authCookie },
+    })
+    expect(res.statusCode).toBe(400)
+  })
+})
+
+describe('POST /me/set-password', () => {
+  // The 204 success case requires a user without a credential account (social-only).
+  // The test admin is created via email/password so auth.api.setPassword rejects them.
+  // The happy path is covered by E2E tests with a real social login flow.
+
+  it('returns 400 for an authenticated user who already has a password', async () => {
+    const res = await app.inject({
+      method: 'POST',
+      url: '/me/set-password',
+      payload: { newPassword: 'BrandNew123!' },
+      headers: { cookie: authCookie },
+    })
+    // better-auth rejects setPassword when the user already has a credential account
+    expect(res.statusCode).toBe(400)
+  })
+
+  it('returns 400 for short password (Zod validation)', async () => {
+    const res = await app.inject({
+      method: 'POST',
+      url: '/me/set-password',
+      payload: { newPassword: 'short' },
       headers: { cookie: authCookie },
     })
     expect(res.statusCode).toBe(400)

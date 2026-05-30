@@ -7,6 +7,7 @@ import { env } from '@/env'
 import type { EmailProvider } from '@/lib/email'
 
 import type {
+  SetPasswordInput,
   UpdateMeEmailInput,
   UpdateMeInput,
   UpdateMePasswordInput,
@@ -63,7 +64,27 @@ export function createMeService(
       .catch(() => {})
   }
 
-  return { getMe, updateMe, changeEmail, updatePassword }
+  async function setPassword(
+    data: SetPasswordInput,
+    headers: Headers,
+    userEmail: string
+  ) {
+    await auth.api.setPassword({
+      headers,
+      body: { newPassword: data.newPassword },
+    })
+
+    emailProvider
+      .send(
+        userEmail,
+        'A password was added to your account',
+        `<p>A password has been set on your account.</p>
+         <p>If you did not make this change, please contact your system administrator immediately.</p>`
+      )
+      .catch(() => {})
+  }
+
+  return { getMe, updateMe, changeEmail, updatePassword, setPassword }
 }
 
 export type MeService = ReturnType<typeof createMeService>
