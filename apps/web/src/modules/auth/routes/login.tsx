@@ -2,6 +2,7 @@ import {
   Anchor,
   Button,
   Center,
+  Divider,
   Paper,
   PasswordInput,
   Stack,
@@ -13,6 +14,7 @@ import {
 import { useState } from 'react'
 
 import { authClient } from '../../../lib/authentication'
+import { SocialLoginButtons } from '../components/social-login-buttons'
 import { loginRoute } from '.'
 
 interface LoginFormValues {
@@ -22,7 +24,7 @@ interface LoginFormValues {
 
 export function Login() {
   const navigate = loginRoute.useNavigate()
-  const { registrationOpen } = loginRoute.useLoaderData()
+  const { registrationOpen, providers } = loginRoute.useLoaderData()
   const [serverError, setServerError] = useState<string | null>(null)
 
   const form = useForm<LoginFormValues>({
@@ -76,6 +78,12 @@ export function Login() {
             <Button type="submit" fullWidth loading={form.submitting}>
               Sign in
             </Button>
+            {registrationOpen && providers.length > 0 && (
+              <>
+                <Divider label="or" labelPosition="center" />
+                <SocialLoginButtons providers={providers} />
+              </>
+            )}
             {registrationOpen && (
               <Text size="sm" ta="center">
                 Don't have an account?{' '}

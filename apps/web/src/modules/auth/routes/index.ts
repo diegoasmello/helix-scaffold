@@ -25,12 +25,12 @@ export const loginRoute = createRoute({
   path: '/login',
   component: Login,
   loader: async () => {
-    const [{ bootstrapped }, { open }] = await Promise.all([
+    const [{ bootstrapped }, { open, providers }] = await Promise.all([
       getBootstrapStatus(),
       getRegistrationStatus(),
     ])
     if (!bootstrapped) throw redirect({ to: '/bootstrap' })
-    return { registrationOpen: open }
+    return { registrationOpen: open, providers }
   },
 })
 
@@ -39,10 +39,13 @@ export const signUpRoute = createRoute({
   path: '/sign-up',
   component: SignUp,
   loader: async () => {
-    const { bootstrapped } = await getBootstrapStatus()
+    const [{ bootstrapped }, { open, providers }] = await Promise.all([
+      getBootstrapStatus(),
+      getRegistrationStatus(),
+    ])
     if (!bootstrapped) throw redirect({ to: '/bootstrap' })
-    const { open } = await getRegistrationStatus()
     if (!open) throw redirect({ to: '/login' })
+    return { providers }
   },
 })
 
