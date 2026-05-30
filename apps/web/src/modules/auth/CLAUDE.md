@@ -10,7 +10,8 @@ src/modules/auth/
 ├── use-auth.ts                     ← primary auth hook
 └── components/
 │   ├── auth-guard.tsx              ← authenticated route wrapper
-│   └── has-permission.tsx          ← conditional render by permission
+│   ├── has-permission.tsx          ← conditional render by permission
+│   └── social-login-buttons.tsx   ← OAuth provider buttons (Google, Facebook, Apple)
 └── routes/
     ├── index.ts                    ← bootstrapRoute, loginRoute, signUpRoute
     ├── bootstrap.tsx               ← first-run admin setup screen
@@ -18,7 +19,7 @@ src/modules/auth/
     └── sign-up.tsx                 ← self-registration screen
 ```
 
-No `validation.ts`, no `hooks.ts`, no `components/` form — each screen owns its own inline `useForm` and validators.
+No `validation.ts`, no `hooks.ts`, no shared form component — each screen owns its own inline `useForm` and validators.
 
 ## `authClient` (`src/lib/authentication.ts`)
 
@@ -32,6 +33,9 @@ Relevant methods used across the module:
 | `authClient.getSession()` | `authenticatedRoute.beforeLoad` in `routes.ts` — one-shot async check |
 | `authClient.signIn.email({ email, password })` | `Login` screen |
 | `authClient.signUp.email({ name, email, password })` | `SignUp` screen |
+| `authClient.signIn.social({ provider, callbackURL })` | `SocialLoginButtons` component |
+
+**`signIn.social` behaviour:** triggers a full browser redirect to the OAuth provider. The `await` resolves only if the call fails (e.g. network error) — in the happy path the page navigates away before the Promise settles. Always wrap it in `try/catch` to surface errors to the user; the `finally` block handles clearing the loading state.
 
 ## `useAuth` (`use-auth.ts`)
 
@@ -92,30 +96,78 @@ import { HasPermission } from '../../auth/components/has-permission'
 
 All three routes have `rootRoute` as parent (not `authenticatedRoute`) — they are public and render outside the app layout.
 
-| Constant | Path | Notes |
+| Constant | Path | Loader data |
 | --- | --- | --- |
-| `bootstrapRoute` | `/bootstrap` | Redirects to `/login` if already bootstrapped |
-| `loginRoute` | `/login` | Redirects to `/bootstrap` if not bootstrapped; returns `{ registrationOpen }` |
-| `signUpRoute` | `/sign-up` | Redirects to `/bootstrap` if not bootstrapped; redirects to `/login` if registration is closed |
+| `bootstrapRoute` | `/bootstrap` | none — redirects to `/login` if already bootstrapped |
+| `loginRoute` | `/login` | `{ registrationOpen: boolean, providers: string[] }` |
+| `signUpRoute` | `/sign-up` | `{ providers: string[] }` |
 
 `bootstrapRoute` and `loginRoute` form a **mutual redirect guard**: each loader calls `getBootstrapStatus()` and redirects to the other if the system state doesn't match. This prevents accessing the bootstrap screen on a live system and prevents accessing login on a blank system.
 
-**Registration mode awareness:**
+**Registration mode and social providers:**
 
-`loginRoute.loader` parallelises two independent calls via `Promise.all` and returns `{ registrationOpen }`:
+Both `loginRoute.loader` and `signUpRoute.loader` parallelise `getBootstrapStatus()` and `getRegistrationStatus()` via `Promise.all`:
 
 ```ts
-const [{ bootstrapped }, { open }] = await Promise.all([
+// loginRoute.loader
+const [{ bootstrapped }, { open, providers }] = await Promise.all([
   getBootstrapStatus(),
   getRegistrationStatus(),
 ])
 if (!bootstrapped) throw redirect({ to: '/bootstrap' })
-return { registrationOpen: open }
+return { registrationOpen: open, providers }
+
+// signUpRoute.loader
+const [{ bootstrapped }, { open, providers }] = await Promise.all([
+  getBootstrapStatus(),
+  getRegistrationStatus(),
+])
+if (!bootstrapped) throw redirect({ to: '/bootstrap' })
+if (!open) throw redirect({ to: '/login' })
+return { providers }
 ```
 
-`signUpRoute.loader` uses `getRegistrationStatus()` as an access guard — redirects to `/login` if registration is closed. This prevents direct URL access to `/sign-up` in closed-mode deployments (the backend also enforces this via a 403 on the sign-up endpoint).
+`signUpRoute.loader` redirects to `/login` if registration is closed — so the `SignUp` component is only reachable in open mode. The backend also enforces this via a 403 on `POST /api/auth/sign-up/email` and `disableSignUp` on each social provider.
 
-The `Login` component reads `registrationOpen` via `loginRoute.useLoaderData()` and conditionally renders a "Create one" link below the submit button when `true`.
+The `Login` component reads `{ registrationOpen, providers }` via `loginRoute.useLoaderData()`:
+- Shows "Create one" link only when `registrationOpen` is true.
+- Shows `<SocialLoginButtons>` only when `registrationOpen && providers.length > 0`.
+
+The `SignUp` component reads `{ providers }` via `signUpRoute.useLoaderData()`:
+- Shows `<SocialLoginButtons>` whenever `providers.length > 0` (no `registrationOpen` check — the page is only reachable when open).
+
+## `SocialLoginButtons` (`components/social-login-buttons.tsx`)
+
+Renders OAuth provider buttons driven by a `providers: string[]` prop. Only renders buttons for providers listed in the internal `PROVIDER_CONFIG` map — unknown provider strings from the backend are silently ignored (forward-compatibility).
+
+```tsx
+<SocialLoginButtons providers={providers} />
+```
+
+**`PROVIDER_CONFIG`** — the supported providers and their labels/icons:
+
+| Key | Label | Icon |
+| --- | --- | --- |
+| `"google"` | Continue with Google | `IconBrandGoogle` |
+| `"facebook"` | Continue with Facebook | `IconBrandFacebook` |
+| `"apple"` | Continue with Apple | `IconBrandApple` |
+
+**Behaviour:**
+- Returns `null` when `providers` has no known entries — renders nothing, no DOM output.
+- One loading state per button; other buttons are `disabled` while one is in flight.
+- `callbackURL: window.location.origin + '/'` — absolute URL so Better Auth redirects to the frontend, not the API server, after the OAuth flow completes. **Never use a relative path like `'/'` here.**
+- Errors from `signIn.social` (network failures, provider errors) are caught and shown as a red error message below the buttons. The loading spinner is always cleared via `finally`.
+
+**Adding a new provider:**
+1. Add it to `PROVIDER_CONFIG` in `social-login-buttons.tsx`.
+2. Add its env vars to `apps/api/src/env.ts`.
+3. Add its entry to `socialProviders` in `apps/api/src/auth.ts`.
+4. Add it to `getConfiguredProviders()` in `apps/api/src/modules/registration/registration-routes.ts`.
+5. Add it to `.env.example`.
+
+**Placement on screens:**
+- **Login** — below the submit button, separated by `<Divider label="or" labelPosition="center" />`. Guarded by `registrationOpen && providers.length > 0`.
+- **Sign-up** — below the submit button, same Divider pattern. Guarded by `providers.length > 0` only (the route itself is the open-mode guard).
 
 ## Screen conventions
 
@@ -128,7 +180,41 @@ All three screens (`Bootstrap`, `Login`, `SignUp`) share the same pattern:
 
 `SignUp` is the only screen with a cross-field validator (`confirmPassword` checks against `values.password`).
 
-## How auth is mocked in integration tests
+## How auth screens are mocked in integration tests
+
+Auth screen tests mock `loginRoute` and `signUpRoute` via `vi.mock('.')` (the local route index). The mock must include `useLoaderData` since both screens now read loader data:
+
+```ts
+// login.test.tsx
+const { mockUseLoaderData } = vi.hoisted(() => ({
+  mockUseLoaderData: vi.fn().mockReturnValue({ registrationOpen: false, providers: [] }),
+}))
+
+vi.mock('.', () => ({
+  loginRoute: {
+    useNavigate: () => mockNavigate,
+    useLoaderData: mockUseLoaderData,
+  },
+}))
+
+// sign-up.test.tsx
+const { mockUseLoaderData } = vi.hoisted(() => ({
+  mockUseLoaderData: vi.fn().mockReturnValue({ providers: [] }),
+}))
+
+vi.mock('.', () => ({
+  signUpRoute: {
+    useNavigate: () => mockNavigate,
+    useLoaderData: mockUseLoaderData,
+  },
+}))
+```
+
+**`afterEach` reset is required:** `vi.clearAllMocks()` resets call counts but not return values. Without the explicit `mockReturnValue` reset in `afterEach`, subsequent tests receive `undefined` from `useLoaderData()` and crash. Always reset to the safe default after each test.
+
+**Social button tests:** override `mockUseLoaderData` inside the test and include `signIn: { social: mockSignInSocial }` in the `authClient` mock. Since `SocialLoginButtons` returns `null` when `providers: []`, the default mock is safe for all non-social tests — `signIn.social` is never called.
+
+## How auth components are mocked in integration tests
 
 Two mocks are required in every route test file that renders a component behind `useAuth`:
 

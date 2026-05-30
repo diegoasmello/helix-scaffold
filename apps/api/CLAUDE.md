@@ -18,8 +18,11 @@ All variables are validated with Zod in `src/env.ts` at startup. If a required v
 | Variable | Default | Notes |
 | --- | --- | --- |
 | `REGISTRATION_MODE` | `closed` | `open` enables public self-registration. See `src/modules/registration/CLAUDE.md`. |
+| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | — | Optional. Enables Google social login when both are set and `REGISTRATION_MODE=open`. |
+| `FACEBOOK_CLIENT_ID` / `FACEBOOK_CLIENT_SECRET` | — | Optional. Enables Facebook social login when both are set and `REGISTRATION_MODE=open`. |
+| `APPLE_CLIENT_ID` / `APPLE_CLIENT_SECRET` / `APPLE_APP_BUNDLE_ID` | — | Optional. Enables Apple social login. `APPLE_CLIENT_SECRET` is a JWT signed with the `.p8` private key (max 6-month expiry). See `.env.example` for details. |
 
-The test env (`.env.test`) sets `REGISTRATION_MODE=open` so test helpers can create users via `POST /api/auth/sign-up/email` without hitting the closed-mode 403 guard.
+The test env (`.env.test`) sets `REGISTRATION_MODE=open` so test helpers can create users via `POST /api/auth/sign-up/email` without hitting the closed-mode 403 guard. No social provider credentials are set in the test env — `GET /registration/status` always returns `providers: []` in tests.
 
 ## Module structure
 
