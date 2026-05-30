@@ -1,6 +1,6 @@
 import { Grid, GridCol, NavigationItem, Title } from '@helix/ui'
 import { Paper, Stack, Text } from '@helix/ui'
-import { IconLock, IconUser } from '@helix/ui'
+import { IconKey, IconLock, IconUser } from '@helix/ui'
 import { Outlet } from '@tanstack/react-router'
 
 export function MePage() {
@@ -23,6 +23,11 @@ export function MePage() {
                 label="Account"
                 icon={IconUser}
                 to="/me/account"
+              />
+              <NavigationItem
+                label="Sign-in methods"
+                icon={IconKey}
+                to="/me/sign-in"
               />
               <NavigationItem
                 label="Security"

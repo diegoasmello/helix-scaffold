@@ -4,6 +4,7 @@ import type {
   EmailChangeFormValues,
   MeFormValues,
   PasswordFormValues,
+  SetPasswordFormValues,
 } from './types'
 
 export const meFormValidate = createValidator<MeFormValues>()({
@@ -27,3 +28,11 @@ export const passwordFormValidate = createValidator<PasswordFormValues>()({
   confirmPassword: (v, values) =>
     v !== values.newPassword ? 'Passwords do not match' : null,
 })
+
+export const setPasswordFormValidate = createValidator<SetPasswordFormValues>()(
+  {
+    newPassword: [minLength(8)],
+    confirmPassword: (v, values) =>
+      v !== values.newPassword ? 'Passwords do not match' : null,
+  }
+)

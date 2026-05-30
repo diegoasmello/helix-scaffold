@@ -24,6 +24,8 @@ import {
   getMeHandler,
   getMeHandlerResponse200,
   getMePermissionsHandler,
+  getMeProvidersHandler,
+  getMeProvidersHandlerResponse200,
   getPermissionsResourcesHandler,
   getRegistrationStatusHandler,
   getRegistrationStatusHandlerResponse200,
@@ -52,6 +54,8 @@ import {
   patchUsersIdHandler,
   patchUsersIdHandlerResponse404,
   postBootstrapHandler,
+  postMeSetPasswordHandler,
+  postMeSetPasswordHandlerResponse204,
   postRolesHandler,
   postRolesHandlerResponse201,
   postTodosHandler,
@@ -66,8 +70,12 @@ import {
 export const handlers = [
   // Me (profile)
   getMeHandler(() => getMeHandlerResponse200(createGetMe200())),
+  getMeProvidersHandler(() =>
+    getMeProvidersHandlerResponse200({ providers: [] })
+  ),
   patchMeHandler(() => patchMeHandlerResponse200(createGetMe200())),
   patchMePasswordHandler(() => patchMePasswordHandlerResponse204()),
+  postMeSetPasswordHandler(() => postMeSetPasswordHandlerResponse204()),
 
   // Todos
   getTodosHandler(
