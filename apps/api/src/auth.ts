@@ -60,6 +60,38 @@ export function createAuth(database: Database, emailProvider: EmailProvider) {
         },
       },
     },
+    socialProviders: {
+      ...(env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET
+        ? {
+            google: {
+              clientId: env.GOOGLE_CLIENT_ID,
+              clientSecret: env.GOOGLE_CLIENT_SECRET,
+              disableSignUp: env.REGISTRATION_MODE !== 'open',
+            },
+          }
+        : {}),
+      ...(env.FACEBOOK_CLIENT_ID && env.FACEBOOK_CLIENT_SECRET
+        ? {
+            facebook: {
+              clientId: env.FACEBOOK_CLIENT_ID,
+              clientSecret: env.FACEBOOK_CLIENT_SECRET,
+              disableSignUp: env.REGISTRATION_MODE !== 'open',
+            },
+          }
+        : {}),
+      ...(env.APPLE_CLIENT_ID && env.APPLE_CLIENT_SECRET
+        ? {
+            apple: {
+              clientId: env.APPLE_CLIENT_ID,
+              clientSecret: env.APPLE_CLIENT_SECRET,
+              ...(env.APPLE_APP_BUNDLE_ID
+                ? { appBundleIdentifier: env.APPLE_APP_BUNDLE_ID }
+                : {}),
+              disableSignUp: env.REGISTRATION_MODE !== 'open',
+            },
+          }
+        : {}),
+    },
     secret: env.AUTH_SECRET,
     baseURL: env.BASE_URL,
     trustedOrigins: [env.CLIENT_URL],

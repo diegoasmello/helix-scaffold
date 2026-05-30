@@ -15,6 +15,13 @@ const envSchema = z.object({
   RESEND_API_KEY: z.string().optional(),
   EMAIL_FROM: z.string().default('noreply@localhost'),
   REGISTRATION_MODE: z.enum(['open', 'closed']).default('closed'),
+  GOOGLE_CLIENT_ID: z.string().optional(),
+  GOOGLE_CLIENT_SECRET: z.string().optional(),
+  FACEBOOK_CLIENT_ID: z.string().optional(),
+  FACEBOOK_CLIENT_SECRET: z.string().optional(),
+  APPLE_CLIENT_ID: z.string().optional(),
+  APPLE_CLIENT_SECRET: z.string().optional(),
+  APPLE_APP_BUNDLE_ID: z.string().optional(),
 })
 
 export const env = envSchema.parse(process.env)
