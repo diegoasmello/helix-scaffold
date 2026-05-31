@@ -13,6 +13,7 @@ import {
   useForm,
 } from '@helix/ui'
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 
 import { authClient } from '../../../lib/authentication'
 import { SocialLoginButtons } from '../components/social-login-buttons'
@@ -27,12 +28,14 @@ export function Login() {
   const navigate = loginRoute.useNavigate()
   const { registrationOpen, providers } = loginRoute.useLoaderData()
   const [serverError, setServerError] = useState<string | null>(null)
+  const { t } = useTranslation('auth')
 
   const form = useForm<LoginFormValues>({
     initialValues: { email: '', password: '' },
     validate: {
-      email: (v) => (!v.trim() ? 'Email is required' : null),
-      password: (v) => (!v.trim() ? 'Password is required' : null),
+      email: (v) => (!v.trim() ? t('login.validation.emailRequired') : null),
+      password: (v) =>
+        !v.trim() ? t('login.validation.passwordRequired') : null,
     },
   })
 
@@ -45,7 +48,7 @@ export function Login() {
     })
 
     if (error) {
-      setServerError(error.message ?? 'Invalid credentials')
+      setServerError(t('login.errors.invalidCredentials'))
       return
     }
 
@@ -57,23 +60,23 @@ export function Login() {
       <Paper withBorder shadow="md" p="xl" w={400} radius="md">
         <form onSubmit={form.onSubmit(handleSubmit)}>
           <Stack gap="md">
-            <Title order={3}>Sign in</Title>
+            <Title order={3}>{t('login.title')}</Title>
             <TextInput
-              label="Email"
+              label={t('login.emailLabel')}
               type="email"
-              placeholder="you@example.com"
+              placeholder={t('login.emailPlaceholder')}
               required
               {...form.getInputProps('email')}
             />
             <PasswordInput
-              label="Password"
-              placeholder="Your password"
+              label={t('login.passwordLabel')}
+              placeholder={t('login.passwordPlaceholder')}
               required
               {...form.getInputProps('password')}
             />
             <Group justify="flex-end" mt={-8}>
               <Anchor href="/forgot-password" size="xs">
-                Forgot password?
+                {t('login.forgotPassword')}
               </Anchor>
             </Group>
             {serverError && (
@@ -82,18 +85,18 @@ export function Login() {
               </Text>
             )}
             <Button type="submit" fullWidth loading={form.submitting}>
-              Sign in
+              {t('login.submitButton')}
             </Button>
             {registrationOpen && providers.length > 0 && (
               <>
-                <Divider label="or" labelPosition="center" />
+                <Divider label={t('login.orDivider')} labelPosition="center" />
                 <SocialLoginButtons providers={providers} />
               </>
             )}
             {registrationOpen && (
               <Text size="sm" ta="center">
-                Don't have an account?{' '}
-                <Anchor href="/sign-up">Create one</Anchor>
+                {t('login.noAccount')}{' '}
+                <Anchor href="/sign-up">{t('login.createOne')}</Anchor>
               </Text>
             )}
           </Stack>

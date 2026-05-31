@@ -13,6 +13,7 @@ import {
 } from '@helix/ui'
 import { IconInfoCircle } from '@helix/ui'
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 
 import { bootstrapRoute } from '.'
 
@@ -25,13 +26,15 @@ interface BootstrapFormValues {
 export function Bootstrap() {
   const navigate = bootstrapRoute.useNavigate()
   const [serverError, setServerError] = useState<string | null>(null)
+  const { t } = useTranslation('auth')
 
   const form = useForm<BootstrapFormValues>({
     initialValues: { name: '', email: '', password: '' },
     validate: {
-      name: (v) => (!v.trim() ? 'Required' : null),
-      email: (v) => (!v.trim() ? 'Required' : null),
-      password: (v) => (v.length < 8 ? 'Min 8 characters' : null),
+      name: (v) => (!v.trim() ? t('bootstrap.validation.required') : null),
+      email: (v) => (!v.trim() ? t('bootstrap.validation.required') : null),
+      password: (v) =>
+        v.length < 8 ? t('bootstrap.validation.minPassword') : null,
     },
   })
 
@@ -41,7 +44,9 @@ export function Bootstrap() {
       await postBootstrap(values)
       await navigate({ to: '/login' })
     } catch (err) {
-      setServerError(err instanceof Error ? err.message : 'Setup failed')
+      setServerError(
+        err instanceof Error ? err.message : t('bootstrap.errors.setupFailed')
+      )
     }
   }
 
@@ -51,9 +56,9 @@ export function Bootstrap() {
         <form onSubmit={form.onSubmit(handleSubmit)}>
           <Stack gap="md">
             <div>
-              <Title order={3}>System Setup</Title>
+              <Title order={3}>{t('bootstrap.title')}</Title>
               <Text size="sm" c="dimmed" mt={4}>
-                Create the first admin account to get started.
+                {t('bootstrap.description')}
               </Text>
             </div>
             <Alert
@@ -61,24 +66,24 @@ export function Bootstrap() {
               color="blue"
               variant="light"
             >
-              This account will have full access to all system resources.
+              {t('bootstrap.alertMessage')}
             </Alert>
             <TextInput
-              label="Name"
-              placeholder="Admin name"
+              label={t('bootstrap.nameLabel')}
+              placeholder={t('bootstrap.namePlaceholder')}
               required
               {...form.getInputProps('name')}
             />
             <TextInput
-              label="Email"
+              label={t('bootstrap.emailLabel')}
               type="email"
-              placeholder="admin@example.com"
+              placeholder={t('bootstrap.emailPlaceholder')}
               required
               {...form.getInputProps('email')}
             />
             <PasswordInput
-              label="Password"
-              placeholder="Min 8 characters"
+              label={t('bootstrap.passwordLabel')}
+              placeholder={t('bootstrap.passwordPlaceholder')}
               required
               {...form.getInputProps('password')}
             />
@@ -88,7 +93,7 @@ export function Bootstrap() {
               </Text>
             )}
             <Button type="submit" fullWidth loading={form.submitting}>
-              Create admin account
+              {t('bootstrap.submitButton')}
             </Button>
           </Stack>
         </form>

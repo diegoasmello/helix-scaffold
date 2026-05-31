@@ -12,6 +12,7 @@ import {
   useForm,
 } from '@helix/ui'
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 
 import { authClient } from '../../../lib/authentication'
 import { SocialLoginButtons } from '../components/social-login-buttons'
@@ -28,16 +29,17 @@ export function SignUp() {
   const navigate = signUpRoute.useNavigate()
   const { providers } = signUpRoute.useLoaderData()
   const [serverError, setServerError] = useState<string | null>(null)
+  const { t } = useTranslation('auth')
 
   const form = useForm<SignUpFormValues>({
     initialValues: { name: '', email: '', password: '', confirmPassword: '' },
     validate: {
-      name: (v) => (!v.trim() ? 'Name is required' : null),
-      email: (v) => (!v.trim() ? 'Email is required' : null),
+      name: (v) => (!v.trim() ? t('signUp.validation.nameRequired') : null),
+      email: (v) => (!v.trim() ? t('signUp.validation.emailRequired') : null),
       password: (v) =>
-        v.length < 8 ? 'Password must be at least 8 characters' : null,
+        v.length < 8 ? t('signUp.validation.passwordLength') : null,
       confirmPassword: (v, values) =>
-        v !== values.password ? 'Passwords do not match' : null,
+        v !== values.password ? t('signUp.validation.passwordsNoMatch') : null,
     },
   })
 
@@ -51,7 +53,7 @@ export function SignUp() {
     })
 
     if (error) {
-      setServerError(error.message ?? 'Could not create account')
+      setServerError(error.message ?? t('signUp.errors.couldNotCreate'))
       return
     }
 
@@ -63,29 +65,29 @@ export function SignUp() {
       <Paper withBorder shadow="md" p="xl" w={400} radius="md">
         <form onSubmit={form.onSubmit(handleSubmit)}>
           <Stack gap="md">
-            <Title order={3}>Create account</Title>
+            <Title order={3}>{t('signUp.title')}</Title>
             <TextInput
-              label="Name"
-              placeholder="Your name"
+              label={t('signUp.nameLabel')}
+              placeholder={t('signUp.namePlaceholder')}
               required
               {...form.getInputProps('name')}
             />
             <TextInput
-              label="Email"
+              label={t('signUp.emailLabel')}
               type="email"
-              placeholder="you@example.com"
+              placeholder={t('signUp.emailPlaceholder')}
               required
               {...form.getInputProps('email')}
             />
             <PasswordInput
-              label="Password"
-              placeholder="At least 8 characters"
+              label={t('signUp.passwordLabel')}
+              placeholder={t('signUp.passwordPlaceholder')}
               required
               {...form.getInputProps('password')}
             />
             <PasswordInput
-              label="Confirm password"
-              placeholder="Repeat your password"
+              label={t('signUp.confirmPasswordLabel')}
+              placeholder={t('signUp.confirmPasswordPlaceholder')}
               required
               {...form.getInputProps('confirmPassword')}
             />
@@ -95,16 +97,17 @@ export function SignUp() {
               </Text>
             )}
             <Button type="submit" fullWidth loading={form.submitting}>
-              Create account
+              {t('signUp.submitButton')}
             </Button>
             {providers.length > 0 && (
               <>
-                <Divider label="or" labelPosition="center" />
+                <Divider label={t('login.orDivider')} labelPosition="center" />
                 <SocialLoginButtons providers={providers} />
               </>
             )}
             <Text size="sm" ta="center">
-              Already have an account? <Anchor href="/login">Sign in</Anchor>
+              {t('signUp.haveAccount')}{' '}
+              <Anchor href="/login">{t('signUp.signIn')}</Anchor>
             </Text>
           </Stack>
         </form>

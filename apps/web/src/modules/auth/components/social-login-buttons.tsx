@@ -7,6 +7,7 @@ import {
   Text,
 } from '@helix/ui'
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 
 import { authClient } from '../../../lib/authentication'
 
@@ -15,18 +16,9 @@ interface SocialLoginButtonsProps {
 }
 
 const PROVIDER_CONFIG = {
-  google: {
-    label: 'Continue with Google',
-    icon: IconBrandGoogle,
-  },
-  facebook: {
-    label: 'Continue with Facebook',
-    icon: IconBrandFacebook,
-  },
-  apple: {
-    label: 'Continue with Apple',
-    icon: IconBrandApple,
-  },
+  google: { icon: IconBrandGoogle },
+  facebook: { icon: IconBrandFacebook },
+  apple: { icon: IconBrandApple },
 } as const
 
 type KnownProvider = keyof typeof PROVIDER_CONFIG
@@ -40,6 +32,7 @@ export function SocialLoginButtons(props: Readonly<SocialLoginButtonsProps>) {
 
   const [loadingProvider, setLoadingProvider] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const { t } = useTranslation('auth')
 
   async function handleSocialLogin(provider: KnownProvider) {
     setError(null)
@@ -51,7 +44,7 @@ export function SocialLoginButtons(props: Readonly<SocialLoginButtonsProps>) {
         callbackURL: window.location.origin + '/',
       })
     } catch {
-      setError('Could not sign in with this provider. Please try again.')
+      setError(t('social.errors.providerError'))
     } finally {
       setLoadingProvider(null)
     }
@@ -61,11 +54,16 @@ export function SocialLoginButtons(props: Readonly<SocialLoginButtonsProps>) {
 
   if (knownProviders.length === 0) return null
 
+  const providerLabels: Record<KnownProvider, string> = {
+    google: t('social.continueWithGoogle'),
+    facebook: t('social.continueWithFacebook'),
+    apple: t('social.continueWithApple'),
+  }
+
   return (
     <Stack gap="xs">
       {knownProviders.map((provider) => {
-        const config = PROVIDER_CONFIG[provider]
-        const Icon = config.icon
+        const { icon: Icon } = PROVIDER_CONFIG[provider]
         return (
           <Button
             key={provider}
@@ -76,7 +74,7 @@ export function SocialLoginButtons(props: Readonly<SocialLoginButtonsProps>) {
             disabled={loadingProvider !== null && loadingProvider !== provider}
             onClick={() => handleSocialLogin(provider)}
           >
-            {config.label}
+            {providerLabels[provider]}
           </Button>
         )
       })}

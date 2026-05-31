@@ -10,6 +10,7 @@ import {
   useForm,
 } from '@helix/ui'
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 
 import { authClient } from '../../../lib/authentication'
 
@@ -20,11 +21,13 @@ interface ForgotPasswordFormValues {
 export function ForgotPassword() {
   const [submitted, setSubmitted] = useState(false)
   const [serverError, setServerError] = useState<string | null>(null)
+  const { t } = useTranslation('auth')
 
   const form = useForm<ForgotPasswordFormValues>({
     initialValues: { email: '' },
     validate: {
-      email: (v) => (!v.trim() ? 'Email is required' : null),
+      email: (v) =>
+        !v.trim() ? t('forgotPassword.validation.emailRequired') : null,
     },
   })
 
@@ -37,7 +40,7 @@ export function ForgotPassword() {
     })
 
     if (error) {
-      setServerError('Something went wrong. Please try again.')
+      setServerError(t('forgotPassword.errors.genericError'))
       return
     }
 
@@ -49,27 +52,25 @@ export function ForgotPassword() {
       <Paper withBorder shadow="md" p="xl" w={400} radius="md">
         {submitted ? (
           <Stack gap="md">
-            <Title order={3}>Check your inbox</Title>
+            <Title order={3}>{t('forgotPassword.successTitle')}</Title>
             <Text size="sm" c="dimmed">
-              If an account with that email exists, you'll receive a password
-              reset link shortly.
+              {t('forgotPassword.successDescription')}
             </Text>
             <Anchor href="/login" size="sm" ta="center">
-              Back to sign in
+              {t('forgotPassword.backToSignIn')}
             </Anchor>
           </Stack>
         ) : (
           <form onSubmit={form.onSubmit(handleSubmit)}>
             <Stack gap="md">
-              <Title order={3}>Forgot password?</Title>
+              <Title order={3}>{t('forgotPassword.title')}</Title>
               <Text size="sm" c="dimmed">
-                Enter your email and we'll send you a link to reset your
-                password.
+                {t('forgotPassword.description')}
               </Text>
               <TextInput
-                label="Email"
+                label={t('forgotPassword.emailLabel')}
                 type="email"
-                placeholder="you@example.com"
+                placeholder={t('forgotPassword.emailPlaceholder')}
                 required
                 {...form.getInputProps('email')}
               />
@@ -79,10 +80,10 @@ export function ForgotPassword() {
                 </Text>
               )}
               <Button type="submit" fullWidth loading={form.submitting}>
-                Send reset link
+                {t('forgotPassword.submitButton')}
               </Button>
               <Anchor href="/login" size="sm" ta="center">
-                Back to sign in
+                {t('forgotPassword.backToSignIn')}
               </Anchor>
             </Stack>
           </form>

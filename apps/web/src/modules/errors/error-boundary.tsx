@@ -1,5 +1,6 @@
 import { Button, Center, Code, Group, Stack, Text, Title } from '@helix/ui'
 import { useRouter } from '@tanstack/react-router'
+import { useTranslation } from 'react-i18next'
 
 interface ErrorBoundaryProps {
   error: Error
@@ -10,16 +11,17 @@ export function ErrorBoundary(props: Readonly<ErrorBoundaryProps>) {
   const { error, reset } = props
 
   const router = useRouter()
+  const { t } = useTranslation('errors')
 
   return (
     <Center h="100vh">
       <Stack align="center" gap="md" maw={500}>
         <Text fz={80} fw={900} lh={1} c="dimmed">
-          500
+          {t('boundary.code')}
         </Text>
-        <Title order={2}>Something went wrong</Title>
+        <Title order={2}>{t('boundary.title')}</Title>
         <Text c="dimmed" ta="center">
-          An unexpected error occurred. Try refreshing the page or going back.
+          {t('boundary.description')}
         </Text>
         {error.message && (
           <Code block w="100%" style={{ wordBreak: 'break-word' }}>
@@ -28,9 +30,9 @@ export function ErrorBoundary(props: Readonly<ErrorBoundaryProps>) {
         )}
         <Group mt="md">
           <Button variant="default" onClick={() => router.history.back()}>
-            Go back
+            {t('boundary.goBack')}
           </Button>
-          <Button onClick={reset}>Try again</Button>
+          <Button onClick={reset}>{t('boundary.tryAgain')}</Button>
         </Group>
       </Stack>
     </Center>

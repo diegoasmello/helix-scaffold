@@ -1,26 +1,27 @@
 import { Button, Center, Group, Stack, Text, Title } from '@helix/ui'
 import { useRouter } from '@tanstack/react-router'
+import { useTranslation } from 'react-i18next'
 
 export function Forbidden() {
   const router = useRouter()
+  const { t } = useTranslation('errors')
 
   return (
     <Center h="100%">
       <Stack align="center" gap="md">
         <Text fz={80} fw={900} lh={1} c="dimmed">
-          403
+          {t('forbidden.code')}
         </Text>
-        <Title order={2}>Access denied</Title>
+        <Title order={2}>{t('forbidden.title')}</Title>
         <Text c="dimmed" ta="center" maw={400}>
-          You do not have permission to access this page. Contact an
-          administrator if you think this is a mistake.
+          {t('forbidden.description')}
         </Text>
         <Group mt="md">
           <Button variant="default" onClick={() => router.history.back()}>
-            Go back
+            {t('forbidden.goBack')}
           </Button>
           <Button onClick={() => router.navigate({ to: '/' })}>
-            Take me home
+            {t('forbidden.goHome')}
           </Button>
         </Group>
       </Stack>
