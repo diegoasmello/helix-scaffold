@@ -1,3 +1,5 @@
+import type ui from '@helix/ui/locales/en'
+
 import type audit from './locales/en/audit.json'
 import type auth from './locales/en/auth.json'
 import type common from './locales/en/common.json'
@@ -12,6 +14,7 @@ declare module 'i18next' {
   interface CustomTypeOptions {
     defaultNS: 'common'
     resources: {
+      ui: typeof ui
       common: typeof common
       auth: typeof auth
       todos: typeof todos

@@ -1,3 +1,5 @@
+import uiLocaleEn from '@helix/ui/locales/en'
+import uiLocalePtBR from '@helix/ui/locales/pt-BR'
 import i18n from 'i18next'
 import LanguageDetector from 'i18next-browser-languagedetector'
 import { initReactI18next } from 'react-i18next'
@@ -27,6 +29,7 @@ i18n
   .init({
     resources: {
       en: {
+        ui: uiLocaleEn,
         common: commonEn,
         auth: authEn,
         todos: todosEn,
@@ -38,6 +41,7 @@ i18n
         errors: errorsEn,
       },
       'pt-BR': {
+        ui: uiLocalePtBR,
         common: commonPtBR,
         auth: authPtBR,
         todos: todosPtBR,

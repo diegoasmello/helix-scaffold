@@ -20,14 +20,6 @@
     "exportPdf": "Exportar PDF",
     "requestChange": "Solicitar alteração"
   },
-  "validation": {
-    "required": "Obrigatório",
-    "maxLength": "Máximo de {{max}} caracteres",
-    "minLength": "Mínimo de {{min}} caracteres",
-    "minFiles_one": "Pelo menos um arquivo é obrigatório",
-    "minFiles_other": "Pelo menos {{count}} arquivos são obrigatórios",
-    "email": "Endereço de e-mail inválido"
-  },
   "report": {
     "downloaded": "Relatório baixado com sucesso",
     "failed": "Falha ao gerar relatório"

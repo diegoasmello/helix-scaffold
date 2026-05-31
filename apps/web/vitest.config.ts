@@ -9,6 +9,14 @@ export default mergeConfig(
   defineConfig({
     resolve: {
       alias: {
+        '@helix/ui/locales/en': resolve(
+          __dirname,
+          '../../packages/ui/src/i18n/locales/en.json'
+        ),
+        '@helix/ui/locales/pt-BR': resolve(
+          __dirname,
+          '../../packages/ui/src/i18n/locales/pt-BR.json'
+        ),
         '@helix/ui': resolve(__dirname, '__mocks__/@helix/ui.tsx'),
         '@helix/ui-real': resolve(__dirname, '../../packages/ui/src/index.ts'),
       },
