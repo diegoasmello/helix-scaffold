@@ -114,6 +114,17 @@ Every mutation route (POST, PATCH, DELETE) must emit an audit log entry after th
 
 - **Backend**: call `await request.audit(action, resource, resourceId?, metadata?)` after each successful mutation in the route handler. `request.audit` is injected globally in the authenticated scope via `registerAuditRequest` — route modules receive no extra parameter for this. See `apps/api/CLAUDE.md` → _Creating a new module_ → _Step 4_ for the exact pattern.
 
+### i18n checklist
+
+The frontend is fully internationalised. Every new module that adds UI strings must ship its translations as part of the same PR — never leave hardcoded strings in components.
+
+- **Create locale file**: add `apps/web/src/i18n/locales/en/<module>.json` with all UI strings for the module (titles, column headers, form labels, placeholders, notifications, delete confirmations, empty state, status labels). Mirror the same keys in `apps/web/src/i18n/locales/pt-BR/<module>.json` with Portuguese translations.
+- **Register in i18n init**: import both locale files in `apps/web/src/i18n/index.ts` and add them to the `resources.en` and `resources['pt-BR']` objects.
+- **Use in components**: call `useTranslation('<module>')` at the top of every route/component and replace all hardcoded strings with `t('key')`.
+- **Cross-namespace keys** (e.g. common actions "Save", "Cancel", "Delete"): use `t('actions.save', { ns: 'common' })` — do not duplicate those strings in the module namespace.
+
+A module is only complete when its locale files exist and no hardcoded UI string remains in its components. See `apps/web/CLAUDE.md` → _Internationalization (i18n)_ for the full guide, patterns, and testing requirements.
+
 ## React conventions
 
 These apply to every workspace that contains React components (`packages/ui`, `apps/web`, and any future workspace).

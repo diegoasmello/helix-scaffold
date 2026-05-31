@@ -126,17 +126,54 @@ Three files under `src/utils/` provide a shared validation API consumed by every
 
 ### Error messages (`validator-messages.ts`)
 
-Exports `msg` — the single place where all error strings live. When i18n is needed, replace the values here with `t(...)` calls; no validator logic changes.
+Exports `msg` — the single place where all validation error strings are produced. The module uses an **injection pattern** so that `packages/ui` never imports the app's i18n library directly, keeping the package decoupled.
 
 ```ts
+// packages/ui/src/utils/validator-messages.ts
+type TranslationFn = (key: string, options?: Record<string, unknown>) => string
+
+let _t: TranslationFn = (key) => key  // fallback: returns raw key until configured
+
+export function configureValidatorMessages(t: TranslationFn) { _t = t }
+
 export const msg = {
-  required: 'Required',
-  maxLength: (max: number) => `Max ${max} characters`,
-  minLength: (min: number) => `Min ${min} characters`,
-  minFiles: (min: number) => min === 1 ? 'At least one file is required' : `At least ${min} files are required`,
-  email: 'Invalid email address',
+  required:  () => _t('validation.required'),
+  maxLength: (max: number) => _t('validation.maxLength', { max }),
+  minLength: (min: number) => _t('validation.minLength', { min }),
+  minFiles:  (min: number) => _t('validation.minFiles',  { count: min }),
+  email:     () => _t('validation.email'),
 }
 ```
+
+**How the app wires it** (`apps/web/src/main.tsx`):
+
+```ts
+import i18n from './i18n'
+import { configureValidatorMessages } from '@helix/ui'
+
+configureValidatorMessages(
+  i18n.t.bind(i18n) as (key: string, opts?: Record<string, unknown>) => string
+)
+// No languageChanged listener needed — i18n.t.bind(i18n) is a live reference
+// that already uses the current language each time it is called.
+```
+
+**Translation strings** live in `apps/web/src/i18n/locales/*/common.json` under the `validation.*` key. Adding a new validator primitive requires:
+1. Adding a `msg.xxx()` entry in this file
+2. Adding `validation.xxx` keys to `locales/en/common.json` and `locales/pt-BR/common.json`
+
+**Test setup** (`apps/web/vitest.setup.ts`) imports `configureValidatorMessages` directly from its source file — **not** from the `@helix/ui-real` barrel — to avoid a Vitest module mocking issue:
+
+```ts
+// ✅ correct — does not load use-form-blocker.ts before vi.mock() runs
+import { configureValidatorMessages } from '../../packages/ui/src/utils/validator-messages'
+
+// ❌ wrong — loading the full barrel captures useBlocker from @tanstack/react-router
+//    before test vi.mock() calls can intercept it, breaking all useBlocker mocks
+import { configureValidatorMessages } from '@helix/ui-real'
+```
+
+The fallback `(key) => key` means that in environments where `configureValidatorMessages` was never called (e.g. a standalone `packages/ui` Storybook), validators return the raw key string (`"validation.required"`) instead of crashing.
 
 ### Validator primitives (`validators.ts`)
 

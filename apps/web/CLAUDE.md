@@ -673,6 +673,255 @@ expect(mockDownloadReport).toHaveBeenCalledWith(
 
 ---
 
+## Internationalization (i18n)
+
+The app uses **react-i18next** with all translations bundled (no lazy loading). TypeScript key safety is enforced via `CustomTypeOptions` declaration merging in `src/i18n/types.d.ts`. The active language is persisted by `i18next-browser-languagedetector` (localStorage + `navigator.language`).
+
+### Architecture
+
+```
+src/i18n/
+  index.ts          # i18next init — imports all locale files and registers them
+  types.d.ts        # CustomTypeOptions — gives TypeScript literal key unions per namespace
+  locales/
+    en/             # English (source of truth for types.d.ts)
+      common.json   # shared: nav labels, action buttons, validation messages, report toasts
+      auth.json     # login, sign-up, forgot/reset-password, bootstrap, social providers
+      todos.json
+      users.json
+      roles.json
+      permissions.json
+      audit.json
+      me.json
+      errors.json   # 403, 404, error boundary
+    pt-BR/          # Portuguese — must have identical key structure to en/
+      (same files)
+```
+
+**One namespace per module.** The `common` namespace owns strings shared across all modules: action button labels (`actions.save`, `actions.delete`, …), validation messages (`validation.required`, …), nav labels (`nav.todos`, …), and report toasts (`report.downloaded`, …).
+
+### Using translations in components
+
+```tsx
+import { useTranslation } from 'react-i18next'
+
+export function TodoList() {
+  const { t } = useTranslation('todos')   // ← module namespace
+
+  return <PageList title={t('title')} ... />
+}
+```
+
+When a module screen needs a string from `common` (e.g. an action button label), pass `{ ns: 'common' }` explicitly — never duplicate those strings in the module namespace:
+
+```tsx
+// ✅ correct — reuse common strings
+t('actions.delete', { ns: 'common' })
+t('actions.save', { ns: 'common' })
+
+// ❌ wrong — duplicating in module namespace
+t('deleteLabel')  // with "deleteLabel": "Delete" in todos.json
+```
+
+If a single component needs strings from two namespaces, call `useTranslation` twice with different aliases:
+
+```tsx
+const { t } = useTranslation('todos')
+const { t: tc } = useTranslation('common')
+```
+
+### Validator messages (injection pattern)
+
+`packages/ui` validator primitives (`required`, `email`, `maxLength`, etc.) produce translated strings via an injection pattern — they never import i18next directly. The app calls `configureValidatorMessages(tFn)` once at startup in `src/main.tsx`:
+
+```ts
+// src/main.tsx
+configureValidatorMessages(
+  i18n.t.bind(i18n) as (key: string, opts?: Record<string, unknown>) => string
+)
+```
+
+Because `i18n.t.bind(i18n)` is a live reference, language changes are reflected automatically on the next validation run — no re-registration needed. All validation error strings live in `common.json` under the `validation.*` namespace:
+
+```json
+{
+  "validation": {
+    "required": "Required",
+    "maxLength": "Max {{max}} characters",
+    "minLength": "Min {{min}} characters",
+    "minFiles_one": "At least one file is required",
+    "minFiles_other": "At least {{count}} files are required",
+    "email": "Invalid email address"
+  }
+}
+```
+
+### Cross-field validators with singleton i18n.t
+
+Form-level cross-field validators (e.g. "passwords must match") cannot use `useTranslation` because they run outside React. Use the singleton `i18n.t()` directly, importing from the configured instance — not from bare `'i18next'`:
+
+```ts
+// ✅ correct — imports the configured, initialised instance
+import i18n from '../../i18n'
+
+export const passwordFormValidate = createValidator<PasswordFormValues>()({
+  confirmPassword: (v, values) =>
+    v !== values.newPassword
+      ? i18n.t('security.validation.passwordsNoMatch', { ns: 'me' })
+      : null,
+})
+
+// ❌ wrong — bare i18next singleton is the same object at runtime but the import
+//    is opaque: it doesn't make the initialisation dependency explicit
+import i18n from 'i18next'
+```
+
+### Sidebar labels
+
+`src/config/sidebar.ts` stores sidebar item labels as i18n **keys** (e.g. `'nav.todos'`), not translated strings. `app.tsx` resolves them at render time via `useTranslation('common')`. When adding a sidebar entry for a new module:
+
+1. Add the key to `common.json` (and `pt-BR/common.json`) under `nav.*`
+2. Use the key string as the `label` in `sidebar.ts` — it will be translated automatically
+
+### Adding translations for a new module
+
+Follow these steps every time a new module is created:
+
+**Step 1 — Create locale files**
+
+`apps/web/src/i18n/locales/en/<module>.json`:
+
+```json
+{
+  "title": "Features",
+  "create": { "title": "Create Feature" },
+  "edit":   { "title": "Edit Feature" },
+  "detail": { "title": "View Feature" },
+  "empty": {
+    "title": "No features yet",
+    "description": "Get started by creating your first feature.",
+    "createButton": "Create first feature"
+  },
+  "columns": { "name": "Name", "status": "Status", "actions": "Actions" },
+  "filters": { "name": "Name", "status": "Status" },
+  "form": {
+    "name": { "label": "Name", "placeholder": "Feature name" }
+  },
+  "labels": { "name": "Name", "createdAt": "Created At" },
+  "status": { "active": "Active", "archived": "Archived" },
+  "delete": {
+    "title": "Delete feature",
+    "message": "Are you sure you want to delete \"{{name}}\"? This action cannot be undone."
+  },
+  "notifications": {
+    "created": "Feature created successfully",
+    "createFailed": "Failed to create feature",
+    "updated": "Feature updated successfully",
+    "updateFailed": "Failed to update feature",
+    "deleted": "Feature deleted successfully",
+    "deleteFailed": "Failed to delete feature"
+  }
+}
+```
+
+Mirror the exact same key structure in `apps/web/src/i18n/locales/pt-BR/<module>.json` with Portuguese translations. **Key parity is mandatory** — a key present in `en` but absent in `pt-BR` will silently fall back to English; a key absent in both will render the raw key string.
+
+**Step 2 — Register in i18n/index.ts**
+
+```ts
+// import
+import featureEn   from './locales/en/feature.json'
+import featurePtBR from './locales/pt-BR/feature.json'
+
+// register under resources
+resources: {
+  en:    { ..., feature: featureEn   },
+  'pt-BR': { ..., feature: featurePtBR },
+}
+```
+
+**Step 3 — Add to types.d.ts**
+
+```ts
+import type feature from './locales/en/feature.json'
+
+declare module 'i18next' {
+  interface CustomTypeOptions {
+    resources: {
+      // ...existing
+      feature: typeof feature
+    }
+  }
+}
+```
+
+**Step 4 — Use in components**
+
+```tsx
+const { t } = useTranslation('feature')
+```
+
+**Step 5 — Add sidebar nav key**
+
+In `common.json` and `pt-BR/common.json`, add under `nav`:
+
+```json
+{ "nav": { "features": "Features" } }
+```
+
+In `sidebar.ts`, set `label: 'nav.features'`.
+
+### TypeScript key safety
+
+`types.d.ts` makes `t('nonExistentKey')` a compile error. When you use dynamic string keys (e.g. translating an array of labels built at runtime), TypeScript cannot verify them statically. The workaround is a local cast:
+
+```ts
+const { t: tRaw } = useTranslation('common')
+const t = tRaw as (key: string) => string   // use only for truly dynamic keys
+```
+
+Never apply this cast globally — only where unavoidable (e.g. `app.tsx` sidebar translation, filter field labels).
+
+### i18n in tests
+
+`vitest.setup.ts` initialises i18n before every test file runs and configures validator messages with `i18n.t`. Tests assert against the English translations (since `fallbackLng: 'en'` is always active in jsdom). No extra setup is needed in individual test files.
+
+**Critical**: `configureValidatorMessages` is imported directly from its source file — not from the `@helix/ui-real` barrel — to avoid loading `use-form-blocker.ts` before `vi.mock('@tanstack/react-router', ...)` can intercept it:
+
+```ts
+// ✅ correct — avoids premature loading of use-form-blocker.ts
+import { configureValidatorMessages } from '../../packages/ui/src/utils/validator-messages'
+
+// ❌ wrong — loads full packages/ui barrel, which captures the real useBlocker
+//    before test vi.mock() calls can replace it, breaking all useBlocker mocks
+import { configureValidatorMessages } from '@helix/ui-real'
+```
+
+When a test file mocks `@tanstack/react-router` (required for Create/Edit screens that render `<Form>`), always use `importOriginal` to preserve all other exports:
+
+```ts
+vi.mock('@tanstack/react-router', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@tanstack/react-router')>()
+  return { ...actual, useBlocker: vi.fn() }
+})
+```
+
+### New module i18n delivery checklist
+
+Before marking any new module as complete, verify:
+
+- [ ] `locales/en/<module>.json` exists with all keys (titles, columns, filters, form labels, placeholders, status labels, delete confirmation, notifications — including `deleteFailed`)
+- [ ] `locales/pt-BR/<module>.json` exists with identical key structure
+- [ ] Both files registered in `i18n/index.ts` (`resources.en` and `resources['pt-BR']`)
+- [ ] Namespace added to `types.d.ts` (`CustomTypeOptions.resources`)
+- [ ] Nav label key added to `common.json` and `pt-BR/common.json` under `nav.*`
+- [ ] All route/component files use `useTranslation('<module>')` — no hardcoded strings remain
+- [ ] Common action strings (`actions.save`, `actions.delete`, etc.) use `{ ns: 'common' }` — not duplicated in the module namespace
+- [ ] `pnpm --filter web type-check` passes (catches missing/misspelled keys)
+- [ ] `pnpm --filter web test` passes (validator messages resolve to English strings via `fallbackLng`)
+
+---
+
 ## Creating a new module (CRUD)
 
 When asked to create a new feature module, follow this pattern exactly. Use the `todos` module as reference implementation.
