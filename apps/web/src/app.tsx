@@ -1,9 +1,10 @@
-import { Center, Layout, Loader } from '@helix/ui'
+import { Center, Layout, Loader, usePersistedSidebar } from '@helix/ui'
 import { useNavigate } from '@tanstack/react-router'
 import { useTranslation } from 'react-i18next'
 
 import { sidebarGroups } from './config/sidebar'
 import { authClient } from './lib/authentication'
+import { SidebarPreferenceContext } from './lib/sidebar-preference'
 import { useAuth } from './modules/auth/use-auth'
 
 export function App() {
@@ -11,6 +12,7 @@ export function App() {
   const navigate = useNavigate()
   const { t: tRaw } = useTranslation('common')
   const t = tRaw as (key: string) => string
+  const [sidebarCollapsed, toggleSidebar] = usePersistedSidebar(user?.id)
 
   if (isPending) {
     return (
@@ -43,11 +45,17 @@ export function App() {
   }
 
   return (
-    <Layout
-      sidebarGroups={visibleGroups}
-      user={user ?? { name: 'Guest' }}
-      onAccountSettings={handleAccountSettings}
-      onLogout={handleLogout}
-    />
+    <SidebarPreferenceContext.Provider
+      value={{ sidebarCollapsed, toggleSidebar }}
+    >
+      <Layout
+        sidebarGroups={visibleGroups}
+        user={user ?? { name: 'Guest' }}
+        onAccountSettings={handleAccountSettings}
+        onLogout={handleLogout}
+        sidebarCollapsed={sidebarCollapsed}
+        onToggleSidebar={toggleSidebar}
+      />
+    </SidebarPreferenceContext.Provider>
   )
 }

@@ -7,6 +7,7 @@ import { queryClient } from '../../../lib/query-client'
 import { MeAccount } from './me-account'
 import { MePage } from './me-page'
 import { MePending } from './me-pending'
+import { MePreferences } from './me-preferences'
 import { MeSecurity } from './me-security'
 import { MeSignIn } from './me-sign-in'
 
@@ -47,11 +48,18 @@ const meSecurityRoute = createRoute({
   component: MeSecurity,
 })
 
+const mePreferencesRoute = createRoute({
+  getParentRoute: () => meRoute,
+  path: '/preferences',
+  component: MePreferences,
+})
+
 export const meRoutes = [
   meRoute.addChildren([
     meIndexRoute,
     meAccountRoute,
     meSignInRoute,
     meSecurityRoute,
+    mePreferencesRoute,
   ]),
 ]

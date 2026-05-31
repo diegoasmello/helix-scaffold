@@ -5,7 +5,19 @@
     "nav": {
       "account": "Account",
       "signIn": "Sign-in methods",
-      "security": "Security"
+      "security": "Security",
+      "preferences": "Preferences"
+    }
+  },
+  "preferences": {
+    "language": {
+      "sectionTitle": "Language",
+      "sectionDescription": "Choose your preferred display language."
+    },
+    "navigation": {
+      "sectionTitle": "Navigation",
+      "sectionDescription": "Customize how the navigation panel behaves.",
+      "hideSidebar": "Hide left navigation"
     }
   },
   "account": {

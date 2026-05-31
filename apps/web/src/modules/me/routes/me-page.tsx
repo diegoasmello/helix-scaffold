@@ -1,6 +1,6 @@
 import { Grid, GridCol, NavigationItem, Title } from '@helix/ui'
 import { Paper, Stack, Text } from '@helix/ui'
-import { IconKey, IconLock, IconUser } from '@helix/ui'
+import { IconKey, IconLock, IconSettings, IconUser } from '@helix/ui'
 import { Outlet } from '@tanstack/react-router'
 import { useTranslation } from 'react-i18next'
 
@@ -36,6 +36,11 @@ export function MePage() {
                 label={t('page.nav.security')}
                 icon={IconLock}
                 to="/me/security"
+              />
+              <NavigationItem
+                label={t('page.nav.preferences')}
+                icon={IconSettings}
+                to="/me/preferences"
               />
             </Stack>
           </Stack>
