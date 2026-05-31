@@ -16,7 +16,7 @@ const meRoute = createRoute({
   component: MePage,
   pendingComponent: MePending,
   staticData: {
-    breadcrumbs: [{ label: 'Profile' }],
+    breadcrumbs: [{ label: 'nav.profile' }],
   },
   loader: () => queryClient.ensureQueryData(getMeSuspenseQueryOptions()),
 })

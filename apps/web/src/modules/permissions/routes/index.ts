@@ -18,7 +18,7 @@ export const permissionsRoute = createRoute({
   component: Permissions,
   pendingComponent: PermissionsPending,
   staticData: {
-    breadcrumbs: [{ label: 'Permissions' }],
+    breadcrumbs: [{ label: 'nav.permissions' }],
   },
   beforeLoad: ({ context }) => {
     if (!context.hasPermission('permissions', 'view'))
@@ -37,8 +37,8 @@ export const permissionsEditRoute = createRoute({
   pendingComponent: PermissionsPending,
   staticData: {
     breadcrumbs: [
-      { label: 'Permissions', to: '/permissions' },
-      { label: 'Edit' },
+      { label: 'nav.permissions', to: '/permissions' },
+      { label: 'actions.edit' },
     ],
   },
   beforeLoad: ({ context }) => {

@@ -21,7 +21,7 @@ export const todoListRoute = createRoute({
   component: TodoList,
   pendingComponent: TodoPending,
   staticData: {
-    breadcrumbs: [{ label: 'Todos' }],
+    breadcrumbs: [{ label: 'nav.todos' }],
   },
   beforeLoad: ({ context }) => {
     if (!context.hasPermission('todos', 'view')) throw redirect({ to: '/403' })
@@ -54,7 +54,10 @@ export const todoCreateRoute = createRoute({
   component: TodoCreate,
   pendingComponent: TodoPending,
   staticData: {
-    breadcrumbs: [{ label: 'Todos', to: '/todos' }, { label: 'Create' }],
+    breadcrumbs: [
+      { label: 'nav.todos', to: '/todos' },
+      { label: 'actions.create' },
+    ],
   },
   beforeLoad: ({ context }) => {
     if (!context.hasPermission('todos', 'create'))
@@ -69,8 +72,8 @@ export const todoDetailRoute = createRoute({
   pendingComponent: TodoPending,
   staticData: {
     breadcrumbs: [
-      { label: 'Todos', to: '/todos' },
-      { label: 'View' },
+      { label: 'nav.todos', to: '/todos' },
+      { label: 'actions.view' },
       (data) => ({ label: `#${(data as TodoItem).id}` }),
     ],
   },
@@ -88,8 +91,8 @@ export const todoEditRoute = createRoute({
   pendingComponent: TodoPending,
   staticData: {
     breadcrumbs: [
-      { label: 'Todos', to: '/todos' },
-      { label: 'Edit' },
+      { label: 'nav.todos', to: '/todos' },
+      { label: 'actions.edit' },
       (data) => ({ label: `#${(data as TodoItem).id}` }),
     ],
   },

@@ -19,7 +19,7 @@ export const auditListRoute = createRoute({
   component: AuditList,
   pendingComponent: AuditPending,
   staticData: {
-    breadcrumbs: [{ label: 'Audit Log' }],
+    breadcrumbs: [{ label: 'nav.auditLog' }],
   },
   beforeLoad: ({ context }) => {
     if (!context.hasPermission('audit', 'view')) throw redirect({ to: '/403' })
@@ -47,8 +47,8 @@ export const auditDetailRoute = createRoute({
   pendingComponent: AuditPending,
   staticData: {
     breadcrumbs: [
-      { label: 'Audit Log', to: '/audit' },
-      { label: 'View' },
+      { label: 'nav.auditLog', to: '/audit' },
+      { label: 'actions.view' },
       (data) => ({ label: `#${(data as AuditLog).id}` }),
     ],
   },

@@ -5,7 +5,8 @@
     "roles": "Perfis",
     "permissions": "Permissões",
     "auditLog": "Log de Auditoria",
-    "settings": "Configurações"
+    "settings": "Configurações",
+    "profile": "Perfil"
   },
   "actions": {
     "save": "Salvar",

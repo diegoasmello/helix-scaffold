@@ -5,7 +5,8 @@
     "roles": "Roles",
     "permissions": "Permissions",
     "auditLog": "Audit Log",
-    "settings": "Settings"
+    "settings": "Settings",
+    "profile": "Profile"
   },
   "actions": {
     "save": "Save",

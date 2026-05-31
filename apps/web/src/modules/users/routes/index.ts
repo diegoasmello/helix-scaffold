@@ -22,7 +22,7 @@ export const usersListRoute = createRoute({
   component: UsersList,
   pendingComponent: UsersPending,
   staticData: {
-    breadcrumbs: [{ label: 'Users' }],
+    breadcrumbs: [{ label: 'nav.users' }],
   },
   beforeLoad: ({ context }) => {
     if (!context.hasPermission('users', 'view')) throw redirect({ to: '/403' })
@@ -49,7 +49,10 @@ export const usersCreateRoute = createRoute({
   component: UsersCreate,
   pendingComponent: UsersPending,
   staticData: {
-    breadcrumbs: [{ label: 'Users', to: '/users' }, { label: 'Create' }],
+    breadcrumbs: [
+      { label: 'nav.users', to: '/users' },
+      { label: 'actions.create' },
+    ],
   },
   beforeLoad: ({ context }) => {
     if (!context.hasPermission('users', 'create'))
@@ -67,8 +70,8 @@ export const usersDetailRoute = createRoute({
   pendingComponent: UsersPending,
   staticData: {
     breadcrumbs: [
-      { label: 'Users', to: '/users' },
-      { label: 'View' },
+      { label: 'nav.users', to: '/users' },
+      { label: 'actions.view' },
       (data) => ({ label: `#${(data as UserItem).id}` }),
     ],
   },
@@ -86,8 +89,8 @@ export const usersEditRoute = createRoute({
   pendingComponent: UsersPending,
   staticData: {
     breadcrumbs: [
-      { label: 'Users', to: '/users' },
-      { label: 'Edit' },
+      { label: 'nav.users', to: '/users' },
+      { label: 'actions.edit' },
       (data) => ({ label: `#${(data as UserItem).id}` }),
     ],
   },

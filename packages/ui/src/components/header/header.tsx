@@ -1,5 +1,6 @@
 import { AppShell, Group } from '@mantine/core'
 import { useMatches } from '@tanstack/react-router'
+import { useTranslation } from 'react-i18next'
 
 import type { BreadcrumbItem } from '../../router'
 import { Breadcrumb } from '../breadcrumb/breadcrumb'
@@ -14,15 +15,22 @@ export interface HeaderProps {
 export function Header(props: Readonly<HeaderProps>) {
   const { user, onAccountSettings, onLogout } = props
   const matches = useMatches()
+  const { t: tRaw } = useTranslation('common')
+  const t = tRaw as (key: string, opts?: object) => string
 
   const activeMatch = [...matches]
     .reverse()
     .find((m) => m.staticData.breadcrumbs?.length)
 
   const crumbs: BreadcrumbItem[] = activeMatch
-    ? activeMatch.staticData.breadcrumbs!.map((def) =>
-        typeof def === 'function' ? def(activeMatch.loaderData) : def
-      )
+    ? activeMatch.staticData.breadcrumbs!.map((def) => {
+        const crumb =
+          typeof def === 'function' ? def(activeMatch.loaderData) : def
+        return {
+          ...crumb,
+          label: t(crumb.label, { defaultValue: crumb.label }),
+        }
+      })
     : []
 
   return (

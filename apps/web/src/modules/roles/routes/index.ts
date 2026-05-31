@@ -21,7 +21,7 @@ export const rolesListRoute = createRoute({
   component: RolesList,
   pendingComponent: RolesPending,
   staticData: {
-    breadcrumbs: [{ label: 'Roles' }],
+    breadcrumbs: [{ label: 'nav.roles' }],
   },
   beforeLoad: ({ context }) => {
     if (!context.hasPermission('roles', 'view')) throw redirect({ to: '/403' })
@@ -48,7 +48,10 @@ export const rolesCreateRoute = createRoute({
   component: RolesCreate,
   pendingComponent: RolesPending,
   staticData: {
-    breadcrumbs: [{ label: 'Roles', to: '/roles' }, { label: 'Create' }],
+    breadcrumbs: [
+      { label: 'nav.roles', to: '/roles' },
+      { label: 'actions.create' },
+    ],
   },
   beforeLoad: ({ context }) => {
     if (!context.hasPermission('roles', 'create'))
@@ -63,8 +66,8 @@ export const rolesDetailRoute = createRoute({
   pendingComponent: RolesPending,
   staticData: {
     breadcrumbs: [
-      { label: 'Roles', to: '/roles' },
-      { label: 'View' },
+      { label: 'nav.roles', to: '/roles' },
+      { label: 'actions.view' },
       (data) => ({ label: `#${(data as RoleItem).id}` }),
     ],
   },
@@ -82,8 +85,8 @@ export const rolesEditRoute = createRoute({
   pendingComponent: RolesPending,
   staticData: {
     breadcrumbs: [
-      { label: 'Roles', to: '/roles' },
-      { label: 'Edit' },
+      { label: 'nav.roles', to: '/roles' },
+      { label: 'actions.edit' },
       (data) => ({ label: `#${(data as RoleItem).id}` }),
     ],
   },
