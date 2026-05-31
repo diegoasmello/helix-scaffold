@@ -1,6 +1,7 @@
 import { getRolesAllSuspenseQueryKey, postRoles } from '@helix/api-client/hooks'
 import { Button, Drawer, Group, notify, Stack, useForm } from '@helix/ui'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useTranslation } from 'react-i18next'
 
 import type { CreateRoleInput, RoleFormValues } from '../types'
 import { roleFormValidate } from '../validation'
@@ -16,6 +17,8 @@ export function RoleCreateDrawer(props: Readonly<RoleCreateDrawerProps>) {
   const { opened, onClose, onSuccess } = props
 
   const queryClient = useQueryClient()
+  const { t } = useTranslation('roles')
+  const { t: tc } = useTranslation('common')
 
   const { mutate: createRole, isPending } = useMutation({
     mutationFn: (data: CreateRoleInput) => postRoles(data),
@@ -45,12 +48,12 @@ export function RoleCreateDrawer(props: Readonly<RoleCreateDrawerProps>) {
       },
       {
         onSuccess: (created) => {
-          notify({ status: 'success', message: 'Role created successfully' })
+          notify({ status: 'success', message: t('notifications.created') })
           handleClose()
           onSuccess(created.id)
         },
         onError: () => {
-          notify({ status: 'danger', message: 'Failed to create role' })
+          notify({ status: 'danger', message: t('notifications.createFailed') })
         },
       }
     )
@@ -60,7 +63,7 @@ export function RoleCreateDrawer(props: Readonly<RoleCreateDrawerProps>) {
     <Drawer
       opened={opened}
       onClose={handleClose}
-      title="Create Role"
+      title={t('create.drawerTitle')}
       position="right"
     >
       <form onSubmit={form.onSubmit(handleSubmit)}>
@@ -74,10 +77,10 @@ export function RoleCreateDrawer(props: Readonly<RoleCreateDrawerProps>) {
               disabled={isPending}
               onClick={handleClose}
             >
-              Cancel
+              {tc('actions.cancel')}
             </Button>
             <Button size="md" type="submit" loading={isPending}>
-              Save
+              {tc('actions.save')}
             </Button>
           </Group>
         </Stack>

@@ -12,6 +12,7 @@ import {
   Text,
 } from '@helix/ui'
 import { parseISO } from 'date-fns'
+import { useTranslation } from 'react-i18next'
 
 import { formatDate } from '@/utils/date'
 
@@ -20,12 +21,14 @@ import { todoDetailRoute } from '.'
 export function TodoDetail() {
   const { id } = todoDetailRoute.useParams()
   const navigate = todoDetailRoute.useNavigate()
+  const { t } = useTranslation('todos')
+  const { t: tc } = useTranslation('common')
 
   const { data: item } = useGetTodosIdSuspense(id)
 
   return (
     <PageView
-      title="View Todo"
+      title={t('detail.title')}
       footerActions={
         <Group justify="flex-end">
           <Button
@@ -33,44 +36,46 @@ export function TodoDetail() {
             variant="secondary"
             onClick={() => navigate({ to: '/todos' })}
           >
-            Back
+            {tc('actions.back')}
           </Button>
         </Group>
       }
     >
       <Grid>
         <Grid.Col span={12}>
-          <LabeledValue label="Title">
+          <LabeledValue label={t('labels.title')}>
             <Text size="md">{item.title}</Text>
           </LabeledValue>
         </Grid.Col>
         <Grid.Col span={12}>
-          <LabeledValue label="Description">
+          <LabeledValue label={t('labels.description')}>
             <Text size="md">{item.description}</Text>
           </LabeledValue>
         </Grid.Col>
         <Grid.Col span={12}>
-          <LabeledValue label="Content">
+          <LabeledValue label={t('labels.content')}>
             <RichTextRenderer value={item.content} />
           </LabeledValue>
         </Grid.Col>
         <Grid.Col span={{ base: 12, sm: 6 }}>
-          <LabeledValue label="Date">
+          <LabeledValue label={t('labels.date')}>
             <Text size="md">{formatDate(parseISO(item.date), 'short')}</Text>
           </LabeledValue>
         </Grid.Col>
         <Grid.Col span={{ base: 12, sm: 6 }}>
-          <LabeledValue label="Status">
+          <LabeledValue label={t('labels.status')}>
             <Badge
               color={item.status === 'completed' ? 'green' : 'gray'}
               variant="light"
             >
-              {item.status === 'completed' ? 'Completed' : 'Pending'}
+              {item.status === 'completed'
+                ? t('status.completed')
+                : t('status.pending')}
             </Badge>
           </LabeledValue>
         </Grid.Col>
         <Grid.Col span={{ base: 12, sm: 6 }}>
-          <LabeledValue label="Created At">
+          <LabeledValue label={t('labels.createdAt')}>
             <Text size="md">
               {formatDate(parseISO(item.createdAt), 'short')}
             </Text>
@@ -78,21 +83,21 @@ export function TodoDetail() {
         </Grid.Col>
         {item.file && (
           <Grid.Col span={{ base: 12, sm: 6 }}>
-            <LabeledValue label="File">
+            <LabeledValue label={t('labels.file')}>
               <FilePreview upload={item.file} />
             </LabeledValue>
           </Grid.Col>
         )}
         {item.image && (
           <Grid.Col span={{ base: 12, sm: 6 }}>
-            <LabeledValue label="Image">
+            <LabeledValue label={t('labels.image')}>
               <FilePreview upload={item.image} />
             </LabeledValue>
           </Grid.Col>
         )}
         {item.attachments && item.attachments.length > 0 && (
           <Grid.Col span={12}>
-            <LabeledValue label="Attachments">
+            <LabeledValue label={t('labels.attachments')}>
               <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="xs">
                 {item.attachments.map((attachment) => (
                   <FilePreview key={attachment.id} upload={attachment} />

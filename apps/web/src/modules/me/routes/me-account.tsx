@@ -18,6 +18,7 @@ import {
 import { IconInfoCircle } from '@helix/ui'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 
 import type {
   EmailChangeFormValues,
@@ -30,6 +31,8 @@ import { createEmailChangeFormValidate, meFormValidate } from '../validation'
 export function MeAccount() {
   const { data: profile } = useGetMeSuspense()
   const queryClient = useQueryClient()
+  const { t } = useTranslation('me')
+  const { t: tc } = useTranslation('common')
   const [emailChangePending, setEmailChangePending] = useState(false)
   const [pendingEmail, setPendingEmail] = useState('')
 
@@ -37,10 +40,16 @@ export function MeAccount() {
     mutationFn: (data: UpdateMeInput) => patchMe(data),
     onSuccess: (updated) => {
       queryClient.setQueryData(getMeSuspenseQueryKey(), updated)
-      notify({ status: 'success', message: 'Name updated successfully' })
+      notify({
+        status: 'success',
+        message: t('account.email.notifications.updated'),
+      })
     },
     onError: () => {
-      notify({ status: 'danger', message: 'Failed to update profile' })
+      notify({
+        status: 'danger',
+        message: t('account.email.notifications.updateFailed'),
+      })
     },
   })
 
@@ -55,7 +64,7 @@ export function MeAccount() {
       onError: () => {
         notify({
           status: 'danger',
-          message: 'Failed to send verification email',
+          message: t('account.email.notifications.emailFailed'),
         })
       },
     })
@@ -76,20 +85,20 @@ export function MeAccount() {
         <Stack gap="md">
           <Stack gap={4}>
             <Title order={4} lh={1.2}>
-              Name
+              {t('account.name.sectionTitle')}
             </Title>
             <Text c="dimmed" size="xs">
-              Update your display name.
+              {t('account.name.sectionDescription')}
             </Text>
           </Stack>
           <TextInput
-            label="Name"
+            label={t('account.name.label')}
             required
             {...nameForm.getInputProps('name')}
           />
           <Group justify="flex-end">
             <Button type="submit" loading={isUpdating}>
-              Save
+              {tc('actions.save')}
             </Button>
           </Group>
         </Stack>
@@ -98,22 +107,25 @@ export function MeAccount() {
       <Stack gap="md">
         <Stack gap={4}>
           <Title order={4} lh={1.2}>
-            Email Address
+            {t('account.email.sectionTitle')}
           </Title>
           <Text c="dimmed" size="xs">
-            A verification link will be sent to your new address.
+            {t('account.email.sectionDescription')}
           </Text>
         </Stack>
-        <TextInput label="Current email" value={profile.email} disabled />
+        <TextInput
+          label={t('account.email.currentLabel')}
+          value={profile.email}
+          disabled
+        />
         {emailChangePending ? (
           <Stack gap="xs">
             <Alert
               color="blue"
               icon={<IconInfoCircle size={16} />}
-              title="Check your inbox"
+              title={t('account.email.alertTitle')}
             >
-              We sent a verification link to <strong>{pendingEmail}</strong>.
-              Click it to confirm your new email address.
+              {t('account.email.alertMessage', { email: pendingEmail })}
             </Alert>
             <Group justify="flex-end">
               <Button
@@ -121,7 +133,7 @@ export function MeAccount() {
                 size="xs"
                 onClick={() => setEmailChangePending(false)}
               >
-                Use a different email
+                {t('account.email.changeDifferent')}
               </Button>
             </Group>
           </Stack>
@@ -133,14 +145,14 @@ export function MeAccount() {
           >
             <Stack gap="md">
               <TextInput
-                label="New email"
+                label={t('account.email.newLabel')}
                 type="email"
                 required
                 {...emailForm.getInputProps('newEmail')}
               />
               <Group justify="flex-end">
                 <Button type="submit" loading={isRequestingEmail}>
-                  Request change
+                  {tc('actions.requestChange')}
                 </Button>
               </Group>
             </Stack>

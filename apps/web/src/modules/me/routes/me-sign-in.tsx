@@ -23,19 +23,17 @@ import {
 } from '@helix/ui'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 
 import { authClient } from '../../../lib/authentication'
 import type { LinkedAccount, SetPasswordFormValues } from '../types'
 import { setPasswordFormValidate } from '../validation'
 
-const PROVIDER_DISPLAY: Record<
-  string,
-  { label: string; icon: React.ElementType }
-> = {
-  google: { label: 'Google', icon: IconBrandGoogle },
-  facebook: { label: 'Facebook', icon: IconBrandFacebook },
-  apple: { label: 'Apple', icon: IconBrandApple },
-  credential: { label: 'Email & Password', icon: IconLock },
+const PROVIDER_ICONS: Record<string, React.ElementType> = {
+  google: IconBrandGoogle,
+  facebook: IconBrandFacebook,
+  apple: IconBrandApple,
+  credential: IconLock,
 }
 
 const ME_ACCOUNTS_QUERY_KEY = ['me', 'accounts'] as const
@@ -57,6 +55,7 @@ const useStyles = createStyles(() => ({
 export function MeSignIn() {
   const { classes } = useStyles()
   const queryClient = useQueryClient()
+  const { t } = useTranslation('me')
   const [linkingProvider, setLinkingProvider] = useState<string | null>(null)
 
   const {
@@ -91,11 +90,17 @@ export function MeSignIn() {
     mutationFn: (data: { newPassword: string }) => postMeSetPassword(data),
     onSuccess: () => {
       form.reset()
-      notify({ status: 'success', message: 'Password set successfully' })
+      notify({
+        status: 'success',
+        message: t('signIn.errors.setPasswordSuccess'),
+      })
       queryClient.invalidateQueries({ queryKey: ME_ACCOUNTS_QUERY_KEY })
     },
     onError: () => {
-      notify({ status: 'danger', message: 'Failed to set password' })
+      notify({
+        status: 'danger',
+        message: t('signIn.errors.setPasswordFailed'),
+      })
     },
   })
 
@@ -119,7 +124,7 @@ export function MeSignIn() {
     } catch {
       notify({
         status: 'danger',
-        message: 'Could not link this account. Please try again.',
+        message: t('signIn.errors.couldNotLink'),
       })
     } finally {
       setLinkingProvider(null)
@@ -130,50 +135,49 @@ export function MeSignIn() {
     <Stack gap="xl">
       <Stack gap={4}>
         <Title order={4} lh={1.2}>
-          Sign-in methods
+          {t('signIn.sectionTitle')}
         </Title>
         <Text c="dimmed" size="xs">
-          Manage how you sign in to your account.
+          {t('signIn.sectionDescription')}
         </Text>
       </Stack>
 
       <Stack gap="md">
-        <Title order={5}>Connected accounts</Title>
+        <Title order={5}>{t('signIn.connectedAccountsTitle')}</Title>
         {accountsError ? (
           <Alert icon={<IconInfoCircle size={16} />} color="red">
-            Could not load your connected accounts. Please refresh the page.
+            {t('signIn.errors.loadFailed')}
           </Alert>
         ) : accountsLoading ? (
           <Text size="sm" c="dimmed">
-            Loading…
+            {t('signIn.loadingLabel')}
           </Text>
         ) : accounts.length === 0 ? (
           <Text size="sm" c="dimmed">
-            No accounts found.
+            {t('signIn.noAccountsLabel')}
           </Text>
         ) : (
           <Stack gap="xs">
             {accounts.map((account) => {
-              const display =
-                PROVIDER_DISPLAY[account.providerId] ??
-                ({ label: account.providerId, icon: IconKey } as {
-                  label: string
-                  icon: React.ElementType
-                })
-              const Icon = display.icon
+              const Icon = PROVIDER_ICONS[account.providerId] ?? IconKey
+              const providerLabel = t(
+                `signIn.providers.${account.providerId as 'google' | 'facebook' | 'apple' | 'credential'}`,
+                { defaultValue: account.providerId }
+              )
               return (
                 <Group key={account.id} gap="sm">
                   <Icon size={20} />
                   <Stack gap={0} className={classes.flex}>
                     <Text size="sm" fw={500}>
-                      {display.label}
+                      {providerLabel}
                     </Text>
                     <Text size="xs" c="dimmed">
-                      Connected {formatDate(account.createdAt)}
+                      {t('signIn.connectedLabel')}{' '}
+                      {formatDate(account.createdAt)}
                     </Text>
                   </Stack>
                   <Badge variant="light" color="green" size="sm">
-                    Active
+                    {t('signIn.activeLabel')}
                   </Badge>
                 </Group>
               )
@@ -184,22 +188,22 @@ export function MeSignIn() {
 
       {!providersError && unlinkableProviders.length > 0 && (
         <Stack gap="md">
-          <Title order={5}>Link another account</Title>
+          <Title order={5}>{t('signIn.linkAnotherTitle')}</Title>
           <Text size="sm" c="dimmed">
-            Connect a social provider so you can sign in with it in the future.
+            {t('signIn.linkAnotherDescription')}
           </Text>
           <Stack gap="xs">
             {unlinkableProviders.map((provider) => {
-              const display = PROVIDER_DISPLAY[provider] ?? {
-                label: provider,
-                icon: IconKey,
-              }
-              const Icon = display.icon
+              const Icon = PROVIDER_ICONS[provider] ?? IconKey
+              const providerLabel = t(
+                `signIn.providers.${provider as 'google' | 'facebook' | 'apple' | 'credential'}`,
+                { defaultValue: provider }
+              )
               return (
                 <Group key={provider} gap="sm">
                   <Icon size={20} />
                   <Text size="sm" fw={500} className={classes.flex}>
-                    {display.label}
+                    {providerLabel}
                   </Text>
                   <Button
                     size="xs"
@@ -210,7 +214,7 @@ export function MeSignIn() {
                     }
                     onClick={() => handleLink(provider)}
                   >
-                    Connect
+                    {t('signIn.connectButton')}
                   </Button>
                 </Group>
               )
@@ -222,39 +226,38 @@ export function MeSignIn() {
       <Divider />
 
       <Stack gap="md">
-        <Title order={5}>Password</Title>
+        <Title order={5}>{t('signIn.passwordTitle')}</Title>
         {!accountsLoading &&
           !accountsError &&
           (hasPassword ? (
             <Alert icon={<IconInfoCircle size={16} />} color="blue">
-              Your account has a password set.{' '}
+              {t('signIn.passwordSetMessage')}{' '}
               <Anchor href="/me/security" size="sm">
-                Change password
+                {t('signIn.changePasswordLink')}
               </Anchor>
             </Alert>
           ) : (
             <Stack gap="md">
               <Text size="sm" c="dimmed">
-                You signed up via a social provider and have no password yet.
-                Set one to also be able to sign in with your email address.
+                {t('signIn.passwordNotSetDescription')}
               </Text>
               <form onSubmit={handleSubmit}>
                 <Stack gap="md">
                   <PasswordInput
-                    label="New Password"
-                    placeholder="At least 8 characters"
+                    label={t('signIn.newPasswordLabel')}
+                    placeholder={t('signIn.newPasswordPlaceholder')}
                     required
                     {...form.getInputProps('newPassword')}
                   />
                   <PasswordInput
-                    label="Confirm Password"
-                    placeholder="Repeat your password"
+                    label={t('signIn.confirmPasswordLabel')}
+                    placeholder={t('signIn.confirmPasswordPlaceholder')}
                     required
                     {...form.getInputProps('confirmPassword')}
                   />
                   <Group justify="flex-end">
                     <Button type="submit" loading={settingPassword}>
-                      Set password
+                      {t('signIn.setPasswordButton')}
                     </Button>
                   </Group>
                 </Stack>

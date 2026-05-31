@@ -1,5 +1,6 @@
 import { createValidator, email, minLength, required } from '@helix/ui'
 
+import i18n from '../../i18n'
 import type {
   EmailChangeFormValues,
   MeFormValues,
@@ -17,7 +18,9 @@ export function createEmailChangeFormValidate(currentEmail: string) {
       required,
       email,
       (v) =>
-        v === currentEmail ? 'New email must differ from current email' : null,
+        v === currentEmail
+          ? i18n.t('account.email.validation.newEmailDiffers', { ns: 'me' })
+          : null,
     ],
   })
 }
@@ -26,13 +29,17 @@ export const passwordFormValidate = createValidator<PasswordFormValues>()({
   currentPassword: [required],
   newPassword: [minLength(8)],
   confirmPassword: (v, values) =>
-    v !== values.newPassword ? 'Passwords do not match' : null,
+    v !== values.newPassword
+      ? i18n.t('security.validation.passwordsNoMatch', { ns: 'me' })
+      : null,
 })
 
 export const setPasswordFormValidate = createValidator<SetPasswordFormValues>()(
   {
     newPassword: [minLength(8)],
     confirmPassword: (v, values) =>
-      v !== values.newPassword ? 'Passwords do not match' : null,
+      v !== values.newPassword
+        ? i18n.t('signIn.validation.passwordsNoMatch', { ns: 'me' })
+        : null,
   }
 )

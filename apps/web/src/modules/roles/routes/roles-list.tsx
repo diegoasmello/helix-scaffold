@@ -17,6 +17,7 @@ import {
 } from '@helix/ui'
 import { IconPlus } from '@helix/ui'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useTranslation } from 'react-i18next'
 
 import { HasPermission } from '../../auth/components/has-permission'
 import type { RoleItem } from '../types'
@@ -27,6 +28,8 @@ export function RolesList() {
   const navigate = rolesListRoute.useNavigate()
   const search = rolesListRoute.useSearch()
   const { page, pageSize, sortBy, sortOrder } = search
+  const { t } = useTranslation('roles')
+  const { t: tc } = useTranslation('common')
 
   const { data: rolesResponse } = useGetRolesSuspense({
     page,
@@ -50,29 +53,29 @@ export function RolesList() {
         exact: true,
       })
       queryClient.removeQueries({ queryKey: getRolesIdSuspenseQueryKey(id) })
-      notify({ status: 'success', message: 'Role deleted successfully' })
+      notify({ status: 'success', message: t('notifications.deleted') })
     },
     onError: () => {
-      notify({ status: 'danger', message: 'Failed to delete role' })
+      notify({ status: 'danger', message: t('notifications.deleteFailed') })
     },
   })
 
   const handleDelete = (id: string, name: string) => {
     confirm({
       status: 'danger',
-      title: 'Delete role',
-      message: `Are you sure you want to delete "${name}"? This action cannot be undone.`,
-      confirmLabel: 'Delete',
+      title: t('delete.title'),
+      message: t('delete.message', { name }),
+      confirmLabel: tc('actions.delete'),
       onConfirm: () => deleteRole(id),
     })
   }
 
   const columns: DataTableColumn<RoleItem>[] = [
-    { accessor: 'name', title: 'Name', sortable: true },
-    { accessor: 'description', title: 'Description' },
+    { accessor: 'name', title: t('columns.name'), sortable: true },
+    { accessor: 'description', title: t('columns.description') },
     {
       accessor: 'actions',
-      title: 'Actions',
+      title: t('columns.actions'),
       textAlign: 'center',
       width: 240,
       render: (item) => (
@@ -85,7 +88,7 @@ export function RolesList() {
               navigate({ to: '/roles/$id', params: { id: item.id } })
             }
           >
-            View
+            {tc('actions.view')}
           </Button>
           <HasPermission resource="roles" action="edit">
             <Button
@@ -96,7 +99,7 @@ export function RolesList() {
                 navigate({ to: '/roles/$id/edit', params: { id: item.id } })
               }
             >
-              Edit
+              {tc('actions.edit')}
             </Button>
           </HasPermission>
           <HasPermission resource="roles" action="delete">
@@ -106,7 +109,7 @@ export function RolesList() {
               aria-label="Delete"
               onClick={() => handleDelete(item.id, item.name)}
             >
-              Delete
+              {tc('actions.delete')}
             </Button>
           </HasPermission>
         </Group>
@@ -116,14 +119,14 @@ export function RolesList() {
 
   return (
     <PageList
-      title="Roles"
+      title={t('title')}
       actions={
         <HasPermission resource="roles" action="create">
           <Button
             leftSection={<IconPlus size={16} />}
             onClick={() => navigate({ to: '/roles/create' })}
           >
-            Create
+            {tc('actions.create')}
           </Button>
         </HasPermission>
       }

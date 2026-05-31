@@ -26,6 +26,7 @@ import { PageList } from '@helix/ui'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { parseISO } from 'date-fns'
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 
 import { useExportPdf } from '@/lib/use-export-pdf'
 import { formatDate } from '@/utils/date'
@@ -33,22 +34,9 @@ import { formatDate } from '@/utils/date'
 import type { TodoItem } from '../types'
 import { todoListRoute } from '.'
 
-const TODO_FILTER_FIELDS: FilterFieldDef[] = [
-  { name: 'title', label: 'Title', type: 'text' },
-  { name: 'description', label: 'Description', type: 'text' },
-  {
-    name: 'status',
-    label: 'Status',
-    type: 'select',
-    options: [
-      { value: 'pending', label: 'Pending' },
-      { value: 'completed', label: 'Completed' },
-    ],
-  },
-  { name: 'date', label: 'Date', type: 'date' },
-]
-
 export function TodoList() {
+  const { t } = useTranslation('todos')
+
   const navigate = todoListRoute.useNavigate()
   const search = todoListRoute.useSearch()
   const { page, pageSize, sortBy, sortOrder, filters, filterLogic } = search
@@ -60,6 +48,21 @@ export function TodoList() {
     { sortBy, sortOrder, filters, filterLogic },
     'todos'
   )
+
+  const TODO_FILTER_FIELDS: FilterFieldDef[] = [
+    { name: 'title', label: t('filters.title'), type: 'text' },
+    { name: 'description', label: t('filters.description'), type: 'text' },
+    {
+      name: 'status',
+      label: t('filters.status'),
+      type: 'select',
+      options: [
+        { value: 'pending', label: t('filters.statusPending') },
+        { value: 'completed', label: t('filters.statusCompleted') },
+      ],
+    },
+    { name: 'date', label: t('filters.date'), type: 'date' },
+  ]
 
   const filterValue: LogicalFilterValue = {
     conditions: filters
@@ -95,18 +98,20 @@ export function TodoList() {
       queryClient.removeQueries({ queryKey: getTodosIdSuspenseQueryKey(id) })
       notify({
         status: 'success',
-        message: 'Todo deleted successfully',
+        message: t('notifications.deleted'),
       })
+    },
+    onError: () => {
+      notify({ status: 'danger', message: t('notifications.deleteFailed') })
     },
   })
 
   const handleConfirmDelete = (id: string) => {
     confirm({
       status: 'danger',
-      title: 'Delete todo',
-      message:
-        'Are you sure you want to delete this todo? This action cannot be undone.',
-      confirmLabel: 'Delete',
+      title: t('delete.title'),
+      message: t('delete.message'),
+      confirmLabel: t('actions.delete', { ns: 'common' }),
       onConfirm: () => deleteTodo(id),
     })
   }
@@ -127,14 +132,14 @@ export function TodoList() {
   const columns: DataTableColumn<TodoItem>[] = [
     {
       accessor: 'title',
-      title: 'Title',
+      title: t('columns.title'),
       width: '60%',
       sortable: true,
       ellipsis: true,
     },
     {
       accessor: 'date',
-      title: 'Date',
+      title: t('columns.date'),
       width: '20%',
       sortable: true,
       textAlign: 'center',
@@ -142,7 +147,7 @@ export function TodoList() {
     },
     {
       accessor: 'status',
-      title: 'Status',
+      title: t('columns.status'),
       width: '20%',
       sortable: true,
       textAlign: 'center',
@@ -151,13 +156,15 @@ export function TodoList() {
           color={item.status === 'completed' ? 'green' : 'gray'}
           variant="light"
         >
-          {item.status === 'completed' ? 'Completed' : 'Pending'}
+          {item.status === 'completed'
+            ? t('status.completed')
+            : t('status.pending')}
         </Badge>
       ),
     },
     {
       accessor: 'actions',
-      title: 'Actions',
+      title: t('columns.actions'),
       textAlign: 'center',
       width: 240,
       render: (item) => (
@@ -170,7 +177,7 @@ export function TodoList() {
               navigate({ to: '/todos/$id', params: { id: item.id } })
             }
           >
-            View
+            {t('actions.view', { ns: 'common' })}
           </Button>
           <Button
             size="xs"
@@ -183,7 +190,7 @@ export function TodoList() {
               })
             }
           >
-            Edit
+            {t('actions.edit', { ns: 'common' })}
           </Button>
           <Button
             size="xs"
@@ -191,7 +198,7 @@ export function TodoList() {
             aria-label="Delete"
             onClick={() => handleConfirmDelete(item.id)}
           >
-            Delete
+            {t('actions.delete', { ns: 'common' })}
           </Button>
         </Group>
       ),
@@ -200,16 +207,13 @@ export function TodoList() {
 
   if (todosResponse.data.length === 0 && !filters) {
     return (
-      <EmptyState
-        title="No todos yet"
-        description="Get started by creating your first todo."
-      >
+      <EmptyState title={t('empty.title')} description={t('empty.description')}>
         <Button
           size="lg"
           leftSection={<IconPlus size={16} />}
           onClick={() => navigate({ to: '/todos/create' })}
         >
-          Create first todo
+          {t('empty.createButton')}
         </Button>
       </EmptyState>
     )
@@ -217,8 +221,8 @@ export function TodoList() {
 
   return (
     <PageList
-      title="Todos"
-      description="Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua."
+      title={t('title')}
+      description={t('description')}
       actions={
         <Group gap="xs">
           <Button
@@ -233,7 +237,7 @@ export function TodoList() {
               ) : undefined
             }
           >
-            Filters
+            {t('actions.filters', { ns: 'common' })}
           </Button>
           <Button
             variant="default"
@@ -241,13 +245,13 @@ export function TodoList() {
             loading={isExporting}
             onClick={handleExport}
           >
-            Export PDF
+            {t('actions.exportPdf', { ns: 'common' })}
           </Button>
           <Button
             leftSection={<IconPlus size={16} />}
             onClick={() => navigate({ to: '/todos/create' })}
           >
-            Create
+            {t('actions.create', { ns: 'common' })}
           </Button>
         </Group>
       }

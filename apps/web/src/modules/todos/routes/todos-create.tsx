@@ -1,6 +1,7 @@
 import { getTodosSuspenseQueryKey, postTodos } from '@helix/api-client/hooks'
 import { Button, Form, Group, notify, PageCreate, useForm } from '@helix/ui'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useTranslation } from 'react-i18next'
 
 import { TodoForm } from '../components/todos-form'
 import type { CreateTodoInput, TodoFormValues } from '../types'
@@ -10,6 +11,8 @@ import { todoCreateRoute } from '.'
 export function TodoCreate() {
   const navigate = todoCreateRoute.useNavigate()
   const queryClient = useQueryClient()
+  const { t } = useTranslation('todos')
+  const { t: tc } = useTranslation('common')
 
   const { mutate: createTodo, isPending } = useMutation({
     mutationFn: (data: CreateTodoInput) => postTodos(data),
@@ -49,14 +52,14 @@ export function TodoCreate() {
         onSuccess: () => {
           notify({
             status: 'success',
-            message: 'Todo created successfully',
+            message: t('notifications.created'),
           })
           navigate({ to: '/todos' })
         },
         onError: () => {
           notify({
             status: 'danger',
-            message: 'Failed to create todo',
+            message: t('notifications.createFailed'),
           })
         },
       }
@@ -66,7 +69,7 @@ export function TodoCreate() {
   return (
     <Form<TodoFormValues> form={form} onSubmit={handleSubmit}>
       <PageCreate
-        title="Create Todo"
+        title={t('create.title')}
         footerActions={
           <Group justify="flex-end">
             <Button
@@ -75,14 +78,14 @@ export function TodoCreate() {
               disabled={isPending || form.submitting}
               onClick={() => navigate({ to: '/todos' })}
             >
-              Cancel
+              {tc('actions.cancel')}
             </Button>
             <Button
               size="md"
               type="submit"
               loading={isPending || form.submitting}
             >
-              Save
+              {tc('actions.save')}
             </Button>
           </Group>
         }

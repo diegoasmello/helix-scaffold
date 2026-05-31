@@ -17,6 +17,7 @@ import {
 } from '@helix/ui'
 import { IconPlus } from '@helix/ui'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useTranslation } from 'react-i18next'
 
 import { HasPermission } from '../../auth/components/has-permission'
 import type { UserItem } from '../types'
@@ -27,6 +28,8 @@ export function UsersList() {
   const navigate = usersListRoute.useNavigate()
   const search = usersListRoute.useSearch()
   const { page, pageSize, sortBy, sortOrder } = search
+  const { t } = useTranslation('users')
+  const { t: tc } = useTranslation('common')
 
   const { data: usersResponse } = useGetUsersSuspense({
     page,
@@ -50,35 +53,40 @@ export function UsersList() {
         exact: true,
       })
       queryClient.removeQueries({ queryKey: getUsersIdSuspenseQueryKey(id) })
-      notify({ status: 'success', message: 'User deleted successfully' })
+      notify({ status: 'success', message: t('notifications.deleted') })
     },
     onError: () => {
-      notify({ status: 'danger', message: 'Failed to delete user' })
+      notify({ status: 'danger', message: t('notifications.deleteFailed') })
     },
   })
 
   const handleDelete = (id: string, name: string) => {
     confirm({
       status: 'danger',
-      title: 'Delete user',
-      message: `Are you sure you want to delete "${name}"? This action cannot be undone.`,
-      confirmLabel: 'Delete',
+      title: t('delete.title'),
+      message: t('delete.message', { name }),
+      confirmLabel: tc('actions.delete'),
       onConfirm: () => deleteUser(id),
     })
   }
 
   const columns: DataTableColumn<UserItem>[] = [
-    { accessor: 'name', title: 'Name', sortable: true, width: '30%' },
+    {
+      accessor: 'name',
+      title: t('columns.name'),
+      sortable: true,
+      width: '30%',
+    },
     {
       accessor: 'role',
-      title: 'Role',
+      title: t('columns.role'),
       render: (item) => item.role?.name ?? '—',
       width: '30%',
     },
-    { accessor: 'email', title: 'Email', sortable: true },
+    { accessor: 'email', title: t('columns.email'), sortable: true },
     {
       accessor: 'actions',
-      title: 'Actions',
+      title: t('columns.actions'),
       textAlign: 'center',
       width: 240,
       render: (item) => (
@@ -91,7 +99,7 @@ export function UsersList() {
               navigate({ to: '/users/$id', params: { id: item.id } })
             }
           >
-            View
+            {tc('actions.view')}
           </Button>
           <HasPermission resource="users" action="edit">
             <Button
@@ -102,7 +110,7 @@ export function UsersList() {
                 navigate({ to: '/users/$id/edit', params: { id: item.id } })
               }
             >
-              Edit
+              {tc('actions.edit')}
             </Button>
           </HasPermission>
           <HasPermission resource="users" action="delete">
@@ -112,7 +120,7 @@ export function UsersList() {
               aria-label="Delete"
               onClick={() => handleDelete(item.id, item.name)}
             >
-              Delete
+              {tc('actions.delete')}
             </Button>
           </HasPermission>
         </Group>
@@ -122,14 +130,14 @@ export function UsersList() {
 
   return (
     <PageList
-      title="Users"
+      title={t('title')}
       actions={
         <HasPermission resource="users" action="create">
           <Button
             leftSection={<IconPlus size={16} />}
             onClick={() => navigate({ to: '/users/create' })}
           >
-            Create
+            {tc('actions.create')}
           </Button>
         </HasPermission>
       }

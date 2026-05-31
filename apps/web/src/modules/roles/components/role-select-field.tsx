@@ -10,6 +10,7 @@ import {
   Tooltip,
   useDisclosure,
 } from '@helix/ui'
+import { useTranslation } from 'react-i18next'
 
 import { RoleCreateDrawer } from './role-create-drawer'
 
@@ -23,12 +24,13 @@ export function RoleSelectField(props: Readonly<RoleSelectFieldProps>) {
   const { data: roles } = useGetRolesAllSuspense()
   const { classes, cx } = useStyles()
   const [opened, { open, close }] = useDisclosure(false)
+  const { t } = useTranslation('roles')
 
   const select = (
     <Select
       data={roles.map((role) => ({ value: String(role.id), label: role.name }))}
-      label="Role"
-      placeholder="Pick one"
+      label={t('form.roleSelect.label')}
+      placeholder={t('form.roleSelect.placeholder')}
       searchable
       clearable
       onChange={onChange}
@@ -43,14 +45,14 @@ export function RoleSelectField(props: Readonly<RoleSelectFieldProps>) {
     <>
       <Stack align="flex-start" gap="xs">
         {select}
-        <Tooltip label="Create role">
+        <Tooltip label={t('form.roleSelect.createTooltip')}>
           <Button
             variant="default"
             leftSection={<IconPlus size={16} />}
             aria-label="Create role"
             onClick={open}
           >
-            Create related role
+            {t('form.roleSelect.createLabel')}
           </Button>
         </Tooltip>
       </Stack>

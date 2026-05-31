@@ -6,6 +6,7 @@ import {
 } from '@helix/api-client/hooks'
 import { Button, Form, Group, notify, PageEdit, useForm } from '@helix/ui'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useTranslation } from 'react-i18next'
 
 import { TodoForm } from '../components/todos-form'
 import type { TodoFormValues, UpdateTodoInput } from '../types'
@@ -15,6 +16,8 @@ import { todoEditRoute } from '.'
 export function TodoEdit() {
   const { id } = todoEditRoute.useParams()
   const navigate = todoEditRoute.useNavigate()
+  const { t } = useTranslation('todos')
+  const { t: tc } = useTranslation('common')
 
   const queryClient = useQueryClient()
 
@@ -67,12 +70,12 @@ export function TodoEdit() {
         onSuccess: () => {
           notify({
             status: 'success',
-            message: 'Todo updated successfully',
+            message: t('notifications.updated'),
           })
           navigate({ to: '/todos' })
         },
         onError: () => {
-          notify({ status: 'danger', message: 'Failed to update todo' })
+          notify({ status: 'danger', message: t('notifications.updateFailed') })
         },
       }
     )
@@ -81,7 +84,7 @@ export function TodoEdit() {
   return (
     <Form<TodoFormValues> form={form} onSubmit={handleSubmit}>
       <PageEdit
-        title="Edit Todo"
+        title={t('edit.title')}
         footerActions={
           <Group justify="flex-end">
             <Button
@@ -90,10 +93,10 @@ export function TodoEdit() {
               disabled={isPending}
               onClick={() => navigate({ to: '/todos' })}
             >
-              Cancel
+              {tc('actions.cancel')}
             </Button>
             <Button size="md" type="submit" loading={isPending}>
-              Save
+              {tc('actions.save')}
             </Button>
           </Group>
         }

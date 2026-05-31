@@ -1,5 +1,6 @@
 import type { UseFormReturnType } from '@helix/ui'
 import { Grid, Switch, Text, Textarea, TextInput } from '@helix/ui'
+import { useTranslation } from 'react-i18next'
 
 import type { RoleFormValues } from '../types'
 
@@ -9,21 +10,22 @@ export interface RolesFormProps {
 
 export function RolesForm(props: Readonly<RolesFormProps>) {
   const { form } = props
+  const { t } = useTranslation('roles')
 
   return (
     <Grid>
       <Grid.Col span={12}>
         <TextInput
-          label="Name"
-          placeholder="Role name"
+          label={t('form.name.label')}
+          placeholder={t('form.name.placeholder')}
           required
           {...form.getInputProps('name')}
         />
       </Grid.Col>
       <Grid.Col span={12}>
         <Textarea
-          label="Description"
-          placeholder="Role description"
+          label={t('form.description.label')}
+          placeholder={t('form.description.placeholder')}
           resize="vertical"
           required
           {...form.getInputProps('description')}
@@ -31,11 +33,10 @@ export function RolesForm(props: Readonly<RolesFormProps>) {
       </Grid.Col>
       <Grid.Col span={12}>
         <Switch
-          label="Default role for self-registration"
+          label={t('form.isDefault.label')}
           description={
             <Text size="xs" c="dimmed">
-              When open registration is enabled, new users are automatically
-              assigned this role. Only one role can be the default.
+              {t('form.isDefault.description')}
             </Text>
           }
           {...form.getInputProps('isDefault', { type: 'checkbox' })}

@@ -12,6 +12,7 @@ import {
 } from '@helix/ui'
 import { IconDownload } from '@helix/ui'
 import { parseISO } from 'date-fns'
+import { useTranslation } from 'react-i18next'
 
 import { useExportPdf } from '@/lib/use-export-pdf'
 import { formatDateTime } from '@/utils/date'
@@ -28,6 +29,8 @@ export function AuditList() {
   const navigate = auditListRoute.useNavigate()
   const search = auditListRoute.useSearch()
   const { page, pageSize, sortBy, sortOrder } = search
+  const { t } = useTranslation('audit')
+  const { t: tc } = useTranslation('common')
 
   const { isExporting, handleExport } = useExportPdf(
     '/audit-logs/export',
@@ -52,14 +55,14 @@ export function AuditList() {
   const columns: DataTableColumn<AuditLog>[] = [
     {
       accessor: 'createdAt',
-      title: 'Date',
+      title: t('columns.date'),
       sortable: true,
       render: (log) => formatDateTime(parseISO(log.createdAt)),
     },
-    { accessor: 'userName', title: 'User', sortable: true },
+    { accessor: 'userName', title: t('columns.user'), sortable: true },
     {
       accessor: 'action',
-      title: 'Action',
+      title: t('columns.action'),
       sortable: true,
       render: (log) => (
         <Badge color={ACTION_COLORS[log.action] ?? 'gray'} variant="light">
@@ -67,20 +70,20 @@ export function AuditList() {
         </Badge>
       ),
     },
-    { accessor: 'resource', title: 'Resource', sortable: true },
+    { accessor: 'resource', title: t('columns.resource'), sortable: true },
     {
       accessor: 'resourceId',
-      title: 'Resource ID',
+      title: t('columns.resourceId'),
       render: (log) => log.resourceId ?? '—',
     },
     {
       accessor: 'ip',
-      title: 'IP',
+      title: t('columns.ip'),
       render: (log) => log.ip ?? '—',
     },
     {
       accessor: 'actions',
-      title: 'Actions',
+      title: t('columns.actions'),
       textAlign: 'center',
       width: 96,
       render: (log) => (
@@ -90,7 +93,7 @@ export function AuditList() {
           aria-label="View"
           onClick={() => navigate({ to: '/audit/$id', params: { id: log.id } })}
         >
-          View
+          {tc('actions.view')}
         </Button>
       ),
     },
@@ -98,7 +101,7 @@ export function AuditList() {
 
   return (
     <PageList
-      title="Audit Log"
+      title={t('title')}
       actions={
         <Group gap="xs">
           <Button
@@ -107,7 +110,7 @@ export function AuditList() {
             loading={isExporting}
             onClick={handleExport}
           >
-            Export PDF
+            {tc('actions.exportPdf')}
           </Button>
         </Group>
       }

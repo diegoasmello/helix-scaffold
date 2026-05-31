@@ -6,6 +6,7 @@ import {
 } from '@helix/api-client/hooks'
 import { Button, Form, Group, notify, PageEdit, useForm } from '@helix/ui'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useTranslation } from 'react-i18next'
 
 import { UsersForm } from '../components/users-form'
 import type { UpdateUserInput, UserFormValues } from '../types'
@@ -16,6 +17,8 @@ export function UsersEdit() {
   const { id } = usersEditRoute.useParams()
   const navigate = usersEditRoute.useNavigate()
   const queryClient = useQueryClient()
+  const { t } = useTranslation('users')
+  const { t: tc } = useTranslation('common')
 
   const { data: item } = useGetUsersIdSuspense(id)
 
@@ -56,11 +59,11 @@ export function UsersEdit() {
       },
       {
         onSuccess: () => {
-          notify({ status: 'success', message: 'User updated successfully' })
+          notify({ status: 'success', message: t('notifications.updated') })
           navigate({ to: '/users' })
         },
         onError: () => {
-          notify({ status: 'danger', message: 'Failed to update user' })
+          notify({ status: 'danger', message: t('notifications.updateFailed') })
         },
       }
     )
@@ -69,7 +72,7 @@ export function UsersEdit() {
   return (
     <Form<UserFormValues> form={form} onSubmit={handleSubmit}>
       <PageEdit
-        title="Edit User"
+        title={t('edit.title')}
         footerActions={
           <Group justify="flex-end">
             <Button
@@ -78,10 +81,10 @@ export function UsersEdit() {
               disabled={isPending}
               onClick={() => navigate({ to: '/users' })}
             >
-              Cancel
+              {tc('actions.cancel')}
             </Button>
             <Button size="md" type="submit" loading={isPending}>
-              Save
+              {tc('actions.save')}
             </Button>
           </Group>
         }

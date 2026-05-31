@@ -1,6 +1,7 @@
 import { getUsersSuspenseQueryKey, postUsers } from '@helix/api-client/hooks'
 import { Button, Form, Group, notify, PageCreate, useForm } from '@helix/ui'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useTranslation } from 'react-i18next'
 
 import { UsersForm } from '../components/users-form'
 import type { CreateUserInput, UserFormValues } from '../types'
@@ -10,6 +11,8 @@ import { usersCreateRoute } from '.'
 export function UsersCreate() {
   const queryClient = useQueryClient()
   const navigate = usersCreateRoute.useNavigate()
+  const { t } = useTranslation('users')
+  const { t: tc } = useTranslation('common')
 
   const { mutate: createUser, isPending } = useMutation({
     mutationFn: (data: CreateUserInput) => postUsers(data),
@@ -41,11 +44,11 @@ export function UsersCreate() {
       },
       {
         onSuccess: () => {
-          notify({ status: 'success', message: 'User created successfully' })
+          notify({ status: 'success', message: t('notifications.created') })
           navigate({ to: '/users' })
         },
         onError: () => {
-          notify({ status: 'danger', message: 'Failed to create user' })
+          notify({ status: 'danger', message: t('notifications.createFailed') })
         },
       }
     )
@@ -54,7 +57,7 @@ export function UsersCreate() {
   return (
     <Form<UserFormValues> form={form} onSubmit={handleSubmit}>
       <PageCreate
-        title="Create User"
+        title={t('create.title')}
         footerActions={
           <Group justify="flex-end">
             <Button
@@ -63,10 +66,10 @@ export function UsersCreate() {
               disabled={isPending}
               onClick={() => navigate({ to: '/users' })}
             >
-              Cancel
+              {tc('actions.cancel')}
             </Button>
             <Button size="md" type="submit" loading={isPending}>
-              Save
+              {tc('actions.save')}
             </Button>
           </Group>
         }

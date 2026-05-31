@@ -12,6 +12,7 @@ import {
   Textarea,
   TextInput,
 } from '@helix/ui'
+import { useTranslation } from 'react-i18next'
 
 import { uploadFile } from '@/modules/uploads/service'
 
@@ -23,6 +24,7 @@ interface TodoFormProps {
 
 export function TodoForm(props: Readonly<TodoFormProps>) {
   const { form } = props
+  const { t } = useTranslation('todos')
 
   return (
     <Grid>
@@ -38,8 +40,8 @@ export function TodoForm(props: Readonly<TodoFormProps>) {
           />
         )}
         <FileInput
-          label="Image"
-          description="JPEG, PNG, WebP or GIF"
+          label={t('form.image.label')}
+          description={t('form.image.description')}
           required
           value={form.values.image}
           onChange={(upload) => form.setFieldValue('image', upload)}
@@ -50,17 +52,17 @@ export function TodoForm(props: Readonly<TodoFormProps>) {
       </Grid.Col>
       <Grid.Col span={12}>
         <TextInput
-          label="Title"
-          placeholder="Todo title"
+          label={t('form.title.label')}
+          placeholder={t('form.title.placeholder')}
           required
           {...form.getInputProps('title')}
         />
       </Grid.Col>
       <Grid.Col span={12}>
         <Textarea
-          label="Description"
-          description="Write a large content"
-          placeholder="Todo description"
+          label={t('form.description.label')}
+          description={t('form.description.description')}
+          placeholder={t('form.description.placeholder')}
           resize="vertical"
           required
           {...form.getInputProps('description')}
@@ -68,9 +70,9 @@ export function TodoForm(props: Readonly<TodoFormProps>) {
       </Grid.Col>
       <Grid.Col span={12}>
         <RichTextEditor
-          label="Content"
-          description="Write a large content"
-          placeholder="Todo content"
+          label={t('form.content.label')}
+          description={t('form.content.description')}
+          placeholder={t('form.content.placeholder')}
           required
           onUploadImage={uploadFile}
           {...form.getInputProps('content')}
@@ -78,8 +80,8 @@ export function TodoForm(props: Readonly<TodoFormProps>) {
       </Grid.Col>
       <Grid.Col span={{ base: 12, sm: 6 }}>
         <DateInput
-          label="Date"
-          placeholder="Pick a date"
+          label={t('form.date.label')}
+          placeholder={t('form.date.placeholder')}
           required={form.values.status !== 'pending'}
           {...form.getInputProps('date')}
         />
@@ -87,7 +89,7 @@ export function TodoForm(props: Readonly<TodoFormProps>) {
       <Grid.Col span={{ base: 12, sm: 6 }}>
         <Switch
           mt="xl"
-          label="Completed"
+          label={t('form.status.label')}
           checked={form.values.status === 'completed'}
           onChange={(e) =>
             form.setFieldValue(
@@ -99,8 +101,8 @@ export function TodoForm(props: Readonly<TodoFormProps>) {
       </Grid.Col>
       <Grid.Col span={12}>
         <FilesInput
-          label="Attachments"
-          description="Upload up to 10 files of any type"
+          label={t('form.attachments.label')}
+          description={t('form.attachments.description')}
           required
           value={form.values.attachments}
           onChange={(uploads) => form.setFieldValue('attachments', uploads)}
@@ -111,8 +113,8 @@ export function TodoForm(props: Readonly<TodoFormProps>) {
       </Grid.Col>
       <Grid.Col span={12}>
         <FileInput
-          label="File (PDF)"
-          description="Only PDF documents are accepted"
+          label={t('form.file.label')}
+          description={t('form.file.description')}
           required
           value={form.values.file}
           onChange={(upload) => form.setFieldValue('file', upload)}

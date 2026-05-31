@@ -6,6 +6,7 @@ import {
 } from '@helix/api-client/hooks'
 import { Button, Form, Group, notify, PageEdit, useForm } from '@helix/ui'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useTranslation } from 'react-i18next'
 
 import { RolesForm } from '../components/roles-form'
 import type { RoleFormValues, UpdateRoleInput } from '../types'
@@ -16,6 +17,8 @@ export function RolesEdit() {
   const { id } = rolesEditRoute.useParams()
   const navigate = rolesEditRoute.useNavigate()
   const queryClient = useQueryClient()
+  const { t } = useTranslation('roles')
+  const { t: tc } = useTranslation('common')
 
   const { data: item } = useGetRolesIdSuspense(id)
   const { mutate: updateRole, isPending } = useMutation({
@@ -54,11 +57,11 @@ export function RolesEdit() {
       },
       {
         onSuccess: () => {
-          notify({ status: 'success', message: 'Role updated successfully' })
+          notify({ status: 'success', message: t('notifications.updated') })
           navigate({ to: '/roles' })
         },
         onError: () => {
-          notify({ status: 'danger', message: 'Failed to update role' })
+          notify({ status: 'danger', message: t('notifications.updateFailed') })
         },
       }
     )
@@ -67,7 +70,7 @@ export function RolesEdit() {
   return (
     <Form<RoleFormValues> form={form} onSubmit={handleSubmit}>
       <PageEdit
-        title="Edit Role"
+        title={t('edit.title')}
         footerActions={
           <Group justify="flex-end">
             <Button
@@ -76,10 +79,10 @@ export function RolesEdit() {
               disabled={isPending}
               onClick={() => navigate({ to: '/roles' })}
             >
-              Cancel
+              {tc('actions.cancel')}
             </Button>
             <Button size="md" type="submit" loading={isPending}>
-              Save
+              {tc('actions.save')}
             </Button>
           </Group>
         }
