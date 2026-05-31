@@ -88,8 +88,8 @@ describe('Connected accounts section', () => {
     })
     renderMeSignIn()
     expect(await screen.findByText('Google')).toBeInTheDocument()
-    // "Connected {date}" is shown below each provider name
-    expect(screen.getByText(/connected january/i)).toBeInTheDocument()
+    // "Connected on {date}" is shown below each provider name
+    expect(screen.getByText(/connected on january/i)).toBeInTheDocument()
   })
 
   it('renders credential account as "Email & Password"', async () => {

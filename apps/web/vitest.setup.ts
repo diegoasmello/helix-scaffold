@@ -2,8 +2,14 @@ import '@testing-library/jest-dom'
 
 import { configure } from '@helix/api-client'
 
+import { configureValidatorMessages } from '../../packages/ui/src/utils/validator-messages'
 import { env } from './src/env'
+import i18n from './src/i18n'
 import { server } from './src/mocks/server'
+
+configureValidatorMessages((key, opts) =>
+  i18n.t(key as Parameters<typeof i18n.t>[0], opts ?? {})
+)
 
 configure({ baseUrl: env.VITE_API_URL })
 
