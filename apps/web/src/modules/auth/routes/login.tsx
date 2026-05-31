@@ -3,6 +3,7 @@ import {
   Button,
   Center,
   Divider,
+  Group,
   Paper,
   PasswordInput,
   Stack,
@@ -70,6 +71,11 @@ export function Login() {
               required
               {...form.getInputProps('password')}
             />
+            <Group justify="flex-end" mt={-8}>
+              <Anchor href="/forgot-password" size="xs">
+                Forgot password?
+              </Anchor>
+            </Group>
             {serverError && (
               <Text c="red" size="sm">
                 {serverError}
