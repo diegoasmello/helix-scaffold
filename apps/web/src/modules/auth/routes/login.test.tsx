@@ -50,6 +50,13 @@ it('renders the sign-in form', () => {
   expect(screen.getByPlaceholderText('Your password')).toBeInTheDocument()
 })
 
+it('renders forgot password link regardless of registration mode', () => {
+  renderLogin()
+  expect(
+    screen.getByRole('link', { name: 'Forgot password?' })
+  ).toBeInTheDocument()
+})
+
 describe('sign-up link', () => {
   it('shows link when registration is open', () => {
     mockUseLoaderData.mockReturnValue({ registrationOpen: true, providers: [] })
