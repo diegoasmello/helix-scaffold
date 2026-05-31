@@ -249,6 +249,7 @@ In `NODE_ENV=test` the console provider is always used, regardless of `RESEND_AP
 |---|---|
 | Email is the purpose of the request (verification, invite) | Let `send` throw; catch in route; return 400/500 |
 | Email is a notification after a successful action | `.catch(() => {})` — best-effort, never blocks |
+| Better Auth lifecycle email (password reset, email verification) | Implement via the corresponding Better Auth config callback in `src/auth.ts` — `emailAndPassword.sendResetPassword` for password reset, `emailVerification.sendVerificationEmail` for email change. Better Auth handles the token lifecycle; the callback only calls `emailProvider.send`. |
 
 ### Wiring a new module that needs email
 

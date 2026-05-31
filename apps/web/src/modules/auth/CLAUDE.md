@@ -13,10 +13,12 @@ src/modules/auth/
 │   ├── has-permission.tsx          ← conditional render by permission
 │   └── social-login-buttons.tsx   ← OAuth provider buttons (Google, Facebook, Apple)
 └── routes/
-    ├── index.ts                    ← bootstrapRoute, loginRoute, signUpRoute
+    ├── index.ts                    ← bootstrapRoute, loginRoute, signUpRoute, forgotPasswordRoute, resetPasswordRoute
     ├── bootstrap.tsx               ← first-run admin setup screen
     ├── login.tsx                   ← sign-in screen
-    └── sign-up.tsx                 ← self-registration screen
+    ├── sign-up.tsx                 ← self-registration screen
+    ├── forgot-password.tsx         ← request password reset by email
+    └── reset-password.tsx          ← set new password via token from email link
 ```
 
 No `validation.ts`, no `hooks.ts`, no shared form component — each screen owns its own inline `useForm` and validators.
@@ -34,6 +36,8 @@ Relevant methods used across the module:
 | `authClient.signIn.email({ email, password })` | `Login` screen |
 | `authClient.signUp.email({ name, email, password })` | `SignUp` screen |
 | `authClient.signIn.social({ provider, callbackURL })` | `SocialLoginButtons` component |
+| `authClient.requestPasswordReset({ email, redirectTo })` | `ForgotPassword` screen |
+| `authClient.resetPassword({ newPassword, token })` | `ResetPassword` screen |
 
 **`signIn.social` behaviour:** triggers a full browser redirect to the OAuth provider. The `await` resolves only if the call fails (e.g. network error) — in the happy path the page navigates away before the Promise settles. Always wrap it in `try/catch` to surface errors to the user; the `finally` block handles clearing the loading state.
 
@@ -101,6 +105,8 @@ All three routes have `rootRoute` as parent (not `authenticatedRoute`) — they 
 | `bootstrapRoute` | `/bootstrap` | none — redirects to `/login` if already bootstrapped |
 | `loginRoute` | `/login` | `{ registrationOpen: boolean, providers: string[] }` |
 | `signUpRoute` | `/sign-up` | `{ providers: string[] }` |
+| `forgotPasswordRoute` | `/forgot-password` | none — redirects to `/bootstrap` if not bootstrapped |
+| `resetPasswordRoute` | `/reset-password` | none — reads `{ token?, error? }` from `validateSearch` |
 
 `bootstrapRoute` and `loginRoute` form a **mutual redirect guard**: each loader calls `getBootstrapStatus()` and redirects to the other if the system state doesn't match. This prevents accessing the bootstrap screen on a live system and prevents accessing login on a blank system.
 
@@ -135,6 +141,22 @@ The `Login` component reads `{ registrationOpen, providers }` via `loginRoute.us
 
 The `SignUp` component reads `{ providers }` via `signUpRoute.useLoaderData()`:
 - Shows `<SocialLoginButtons>` whenever `providers.length > 0` (no `registrationOpen` check — the page is only reachable when open).
+
+## Password reset flow
+
+The reset flow is a **two-hop redirect** handled by Better Auth:
+
+1. `ForgotPassword` calls `authClient.requestPasswordReset({ email, redirectTo: window.location.origin + '/reset-password' })`
+2. Better Auth sends an email with a link that points to the **backend**: `${API_BASE}/reset-password/${token}?callbackURL=${encodedRedirectTo}`
+3. The user clicks the link → backend validates the token and redirects to `${redirectTo}?token=${token}` (the frontend)
+4. `ResetPassword` reads `token` from `validateSearch` and calls `authClient.resetPassword({ newPassword, token })`
+
+**Key details:**
+
+- The `url` in `sendResetPassword` (backend) is the API callback URL, not the frontend URL — this is by design. Never send it directly to the user as the "reset link"; Better Auth's email already embeds it.
+- `validateSearch` on `resetPasswordRoute` declares `{ token?: string, error?: string }`. Better Auth redirects with `?error=INVALID_TOKEN` when a token is expired/invalid — the component renders a differentiated message for this case.
+- `resetPasswordRoute` is accessible regardless of `REGISTRATION_MODE` (password reset works in both open and closed modes).
+- Error messages on the reset form are always generic — never reflect `error.message` from the API verbatim (avoids leaking internal Better Auth error codes).
 
 ## `SocialLoginButtons` (`components/social-login-buttons.tsx`)
 
@@ -171,14 +193,17 @@ Renders OAuth provider buttons driven by a `providers: string[]` prop. Only rend
 
 ## Screen conventions
 
-All three screens (`Bootstrap`, `Login`, `SignUp`) share the same pattern:
+All public auth screens share the same pattern:
 - Full-screen `<Center h="100vh">` with a `<Paper>` card.
 - Native `<form onSubmit={form.onSubmit(handleSubmit)}>` — **not** the `<Form>` component from `@helix/ui` (no `useBlocker` needed on public screens).
 - Server errors shown via `useState<string | null>` inline below the last field — no `notify()`.
 - Navigation via `route.useNavigate()` on success.
 - Auth calls go directly to `authClient` or `postBootstrap` — not via `useMutation`.
 
-`SignUp` is the only screen with a cross-field validator (`confirmPassword` checks against `values.password`).
+Notable per-screen exceptions:
+- `SignUp` — cross-field validator (`confirmPassword` checks against `values.password`).
+- `ForgotPassword` — no navigation on success; instead sets `submitted` state and renders a success message inside the same `<Paper>` card (never reveals whether the email exists).
+- `ResetPassword` — `handleSubmit` is declared as a `const` arrow function **after** the `if (!token)` early return so TypeScript narrows `token` to `string` in its body. Do not convert it to a `function` declaration (which would be hoisted and lose the narrowing).
 
 ## How auth screens are mocked in integration tests
 
