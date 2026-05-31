@@ -1,0 +1,53 @@
+{
+  "title": "Users",
+  "create": {
+    "title": "Create User"
+  },
+  "edit": {
+    "title": "Edit User"
+  },
+  "detail": {
+    "title": "View User"
+  },
+  "columns": {
+    "name": "Name",
+    "role": "Role",
+    "email": "Email",
+    "actions": "Actions"
+  },
+  "form": {
+    "name": {
+      "label": "Name",
+      "placeholder": "Full name"
+    },
+    "email": {
+      "label": "Email",
+      "placeholder": "email@example.com"
+    },
+    "password": {
+      "label": "Password",
+      "placeholder": "Min 8 characters"
+    }
+  },
+  "labels": {
+    "name": "Name",
+    "email": "Email",
+    "role": "Role",
+    "emailVerified": "Email Verified",
+    "createdAt": "Created At",
+    "yes": "Yes",
+    "no": "No"
+  },
+  "delete": {
+    "title": "Delete user",
+    "message": "Are you sure you want to delete \"{{name}}\"? This action cannot be undone."
+  },
+  "notifications": {
+    "created": "User created successfully",
+    "createFailed": "Failed to create user",
+    "updated": "User updated successfully",
+    "updateFailed": "Failed to update user",
+    "deleted": "User deleted successfully",
+    "deleteFailed": "Failed to delete user"
+  }
+}

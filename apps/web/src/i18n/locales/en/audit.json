@@ -1,0 +1,25 @@
+{
+  "title": "Audit Log",
+  "detail": {
+    "title": "View Audit Log"
+  },
+  "columns": {
+    "date": "Date",
+    "user": "User",
+    "action": "Action",
+    "resource": "Resource",
+    "resourceId": "Resource ID",
+    "ip": "IP",
+    "actions": "Actions"
+  },
+  "labels": {
+    "date": "Date",
+    "action": "Action",
+    "user": "User",
+    "resource": "Resource",
+    "resourceId": "Resource ID",
+    "ip": "IP",
+    "userAgent": "User Agent",
+    "metadata": "Metadata"
+  }
+}

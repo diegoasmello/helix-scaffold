@@ -1,0 +1,94 @@
+{
+  "title": "Todos",
+  "description": "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.",
+  "empty": {
+    "title": "No todos yet",
+    "description": "Get started by creating your first todo.",
+    "createButton": "Create first todo"
+  },
+  "create": {
+    "title": "Create Todo"
+  },
+  "edit": {
+    "title": "Edit Todo"
+  },
+  "detail": {
+    "title": "View Todo"
+  },
+  "columns": {
+    "title": "Title",
+    "date": "Date",
+    "status": "Status",
+    "actions": "Actions"
+  },
+  "filters": {
+    "title": "Title",
+    "description": "Description",
+    "status": "Status",
+    "statusPending": "Pending",
+    "statusCompleted": "Completed",
+    "date": "Date"
+  },
+  "form": {
+    "image": {
+      "label": "Image",
+      "description": "JPEG, PNG, WebP or GIF"
+    },
+    "title": {
+      "label": "Title",
+      "placeholder": "Todo title"
+    },
+    "description": {
+      "label": "Description",
+      "description": "Write a large content",
+      "placeholder": "Todo description"
+    },
+    "content": {
+      "label": "Content",
+      "description": "Write a large content",
+      "placeholder": "Todo content"
+    },
+    "date": {
+      "label": "Date",
+      "placeholder": "Pick a date"
+    },
+    "status": {
+      "label": "Completed"
+    },
+    "attachments": {
+      "label": "Attachments",
+      "description": "Upload up to 10 files of any type"
+    },
+    "file": {
+      "label": "File (PDF)",
+      "description": "Only PDF documents are accepted"
+    }
+  },
+  "labels": {
+    "title": "Title",
+    "description": "Description",
+    "content": "Content",
+    "date": "Date",
+    "status": "Status",
+    "createdAt": "Created At",
+    "file": "File",
+    "image": "Image",
+    "attachments": "Attachments"
+  },
+  "status": {
+    "pending": "Pending",
+    "completed": "Completed"
+  },
+  "delete": {
+    "title": "Delete todo",
+    "message": "Are you sure you want to delete this todo? This action cannot be undone."
+  },
+  "notifications": {
+    "created": "Todo created successfully",
+    "createFailed": "Failed to create todo",
+    "updated": "Todo updated successfully",
+    "updateFailed": "Failed to update todo",
+    "deleted": "Todo deleted successfully",
+    "deleteFailed": "Failed to delete todo"
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "title": "Log de Auditoria",
+  "detail": {
+    "title": "Visualizar Registro de Auditoria"
+  },
+  "columns": {
+    "date": "Data",
+    "user": "Usuário",
+    "action": "Ação",
+    "resource": "Recurso",
+    "resourceId": "ID do Recurso",
+    "ip": "IP",
+    "actions": "Ações"
+  },
+  "labels": {
+    "date": "Data",
+    "action": "Ação",
+    "user": "Usuário",
+    "resource": "Recurso",
+    "resourceId": "ID do Recurso",
+    "ip": "IP",
+    "userAgent": "Agente do Usuário",
+    "metadata": "Metadados"
+  }
+}

@@ -1,0 +1,26 @@
+import type audit from './locales/en/audit.json'
+import type auth from './locales/en/auth.json'
+import type common from './locales/en/common.json'
+import type errors from './locales/en/errors.json'
+import type me from './locales/en/me.json'
+import type permissions from './locales/en/permissions.json'
+import type roles from './locales/en/roles.json'
+import type todos from './locales/en/todos.json'
+import type users from './locales/en/users.json'
+
+declare module 'i18next' {
+  interface CustomTypeOptions {
+    defaultNS: 'common'
+    resources: {
+      common: typeof common
+      auth: typeof auth
+      todos: typeof todos
+      users: typeof users
+      roles: typeof roles
+      permissions: typeof permissions
+      audit: typeof audit
+      me: typeof me
+      errors: typeof errors
+    }
+  }
+}

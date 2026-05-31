@@ -1,0 +1,86 @@
+{
+  "page": {
+    "title": "Account settings",
+    "description": "Update your name and email address.",
+    "nav": {
+      "account": "Account",
+      "signIn": "Sign-in methods",
+      "security": "Security"
+    }
+  },
+  "account": {
+    "name": {
+      "sectionTitle": "Name",
+      "sectionDescription": "Update your display name.",
+      "label": "Name"
+    },
+    "email": {
+      "sectionTitle": "Email Address",
+      "sectionDescription": "A verification link will be sent to your new address.",
+      "currentLabel": "Current email",
+      "newLabel": "New email",
+      "alertTitle": "Check your inbox",
+      "alertMessage": "We sent a verification link to {{email}}. Click it to confirm your new email address.",
+      "changeDifferent": "Use a different email",
+      "validation": {
+        "newEmailDiffers": "New email must differ from current email"
+      },
+      "notifications": {
+        "updated": "Name updated successfully",
+        "updateFailed": "Failed to update profile",
+        "emailFailed": "Failed to send verification email"
+      }
+    }
+  },
+  "security": {
+    "sectionTitle": "Security",
+    "sectionDescription": "Choose a strong password with at least 8 characters.",
+    "currentPassword": "Current Password",
+    "newPassword": "New Password",
+    "confirmNewPassword": "Confirm New Password",
+    "changeButton": "Change Password",
+    "validation": {
+      "passwordsNoMatch": "Passwords do not match"
+    },
+    "notifications": {
+      "changed": "Password changed successfully",
+      "incorrectCurrent": "Current password is incorrect"
+    }
+  },
+  "signIn": {
+    "sectionTitle": "Sign-in methods",
+    "sectionDescription": "Manage how you sign in to your account.",
+    "connectedAccountsTitle": "Connected accounts",
+    "linkAnotherTitle": "Link another account",
+    "linkAnotherDescription": "Connect a social provider so you can sign in with it in the future.",
+    "connectButton": "Connect",
+    "passwordTitle": "Password",
+    "passwordSetMessage": "Your account has a password set.",
+    "changePasswordLink": "Change password",
+    "passwordNotSetDescription": "You signed up via a social provider and have no password yet. Set one to also be able to sign in with your email address.",
+    "newPasswordLabel": "New Password",
+    "newPasswordPlaceholder": "At least 8 characters",
+    "confirmPasswordLabel": "Confirm Password",
+    "confirmPasswordPlaceholder": "Repeat your password",
+    "setPasswordButton": "Set password",
+    "activeLabel": "Active",
+    "loadingLabel": "Loading…",
+    "noAccountsLabel": "No accounts found.",
+    "connectedLabel": "Connected on",
+    "providers": {
+      "google": "Google",
+      "facebook": "Facebook",
+      "apple": "Apple",
+      "credential": "Email & Password"
+    },
+    "validation": {
+      "passwordsNoMatch": "Passwords do not match"
+    },
+    "errors": {
+      "loadFailed": "Could not load your connected accounts. Please refresh the page.",
+      "couldNotLink": "Could not link this account. Please try again.",
+      "setPasswordSuccess": "Password set successfully",
+      "setPasswordFailed": "Failed to set password"
+    }
+  }
+}

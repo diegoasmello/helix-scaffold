@@ -1,0 +1,55 @@
+{
+  "title": "Roles",
+  "create": {
+    "title": "Create Role",
+    "drawerTitle": "Create Role"
+  },
+  "edit": {
+    "title": "Edit Role"
+  },
+  "detail": {
+    "title": "View Role"
+  },
+  "columns": {
+    "name": "Name",
+    "description": "Description",
+    "actions": "Actions"
+  },
+  "form": {
+    "name": {
+      "label": "Name",
+      "placeholder": "Role name"
+    },
+    "description": {
+      "label": "Description",
+      "placeholder": "Role description"
+    },
+    "isDefault": {
+      "label": "Default role for self-registration",
+      "description": "When open registration is enabled, new users are automatically assigned this role. Only one role can be the default."
+    },
+    "roleSelect": {
+      "label": "Role",
+      "placeholder": "Pick one",
+      "createTooltip": "Create role",
+      "createLabel": "Create related role"
+    }
+  },
+  "labels": {
+    "name": "Name",
+    "description": "Description",
+    "createdAt": "Created At"
+  },
+  "delete": {
+    "title": "Delete role",
+    "message": "Are you sure you want to delete \"{{name}}\"? This action cannot be undone."
+  },
+  "notifications": {
+    "created": "Role created successfully",
+    "createFailed": "Failed to create role",
+    "updated": "Role updated successfully",
+    "updateFailed": "Failed to update role",
+    "deleted": "Role deleted successfully",
+    "deleteFailed": "Failed to delete role"
+  }
+}

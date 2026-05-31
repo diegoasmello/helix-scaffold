@@ -1,0 +1,23 @@
+{
+  "forbidden": {
+    "code": "403",
+    "title": "Acesso negado",
+    "description": "Você não tem permissão para acessar esta página. Entre em contato com um administrador se achar que isso é um erro.",
+    "goBack": "Voltar",
+    "goHome": "Ir para o início"
+  },
+  "notFound": {
+    "code": "404",
+    "title": "Página não encontrada",
+    "description": "A página que você está procurando não existe ou foi movida.",
+    "goBack": "Voltar",
+    "goHome": "Ir para o início"
+  },
+  "boundary": {
+    "code": "500",
+    "title": "Algo deu errado",
+    "description": "Ocorreu um erro inesperado. Tente atualizar a página ou voltar.",
+    "goBack": "Voltar",
+    "tryAgain": "Tentar novamente"
+  }
+}

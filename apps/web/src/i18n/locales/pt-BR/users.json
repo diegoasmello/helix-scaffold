@@ -1,0 +1,53 @@
+{
+  "title": "Usuários",
+  "create": {
+    "title": "Criar Usuário"
+  },
+  "edit": {
+    "title": "Editar Usuário"
+  },
+  "detail": {
+    "title": "Visualizar Usuário"
+  },
+  "columns": {
+    "name": "Nome",
+    "role": "Perfil",
+    "email": "E-mail",
+    "actions": "Ações"
+  },
+  "form": {
+    "name": {
+      "label": "Nome",
+      "placeholder": "Nome completo"
+    },
+    "email": {
+      "label": "E-mail",
+      "placeholder": "email@exemplo.com"
+    },
+    "password": {
+      "label": "Senha",
+      "placeholder": "Mínimo de 8 caracteres"
+    }
+  },
+  "labels": {
+    "name": "Nome",
+    "email": "E-mail",
+    "role": "Perfil",
+    "emailVerified": "E-mail Verificado",
+    "createdAt": "Criado em",
+    "yes": "Sim",
+    "no": "Não"
+  },
+  "delete": {
+    "title": "Excluir usuário",
+    "message": "Tem certeza que deseja excluir \"{{name}}\"? Esta ação não pode ser desfeita."
+  },
+  "notifications": {
+    "created": "Usuário criado com sucesso",
+    "createFailed": "Falha ao criar usuário",
+    "updated": "Usuário atualizado com sucesso",
+    "updateFailed": "Falha ao atualizar usuário",
+    "deleted": "Usuário excluído com sucesso",
+    "deleteFailed": "Falha ao excluir usuário"
+  }
+}

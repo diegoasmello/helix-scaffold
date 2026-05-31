@@ -1,0 +1,94 @@
+{
+  "title": "Tarefas",
+  "description": "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.",
+  "empty": {
+    "title": "Nenhuma tarefa ainda",
+    "description": "Comece criando sua primeira tarefa.",
+    "createButton": "Criar primeira tarefa"
+  },
+  "create": {
+    "title": "Criar Tarefa"
+  },
+  "edit": {
+    "title": "Editar Tarefa"
+  },
+  "detail": {
+    "title": "Visualizar Tarefa"
+  },
+  "columns": {
+    "title": "Título",
+    "date": "Data",
+    "status": "Status",
+    "actions": "Ações"
+  },
+  "filters": {
+    "title": "Título",
+    "description": "Descrição",
+    "status": "Status",
+    "statusPending": "Pendente",
+    "statusCompleted": "Concluída",
+    "date": "Data"
+  },
+  "form": {
+    "image": {
+      "label": "Imagem",
+      "description": "JPEG, PNG, WebP ou GIF"
+    },
+    "title": {
+      "label": "Título",
+      "placeholder": "Título da tarefa"
+    },
+    "description": {
+      "label": "Descrição",
+      "description": "Escreva um conteúdo extenso",
+      "placeholder": "Descrição da tarefa"
+    },
+    "content": {
+      "label": "Conteúdo",
+      "description": "Escreva um conteúdo extenso",
+      "placeholder": "Conteúdo da tarefa"
+    },
+    "date": {
+      "label": "Data",
+      "placeholder": "Selecione uma data"
+    },
+    "status": {
+      "label": "Concluída"
+    },
+    "attachments": {
+      "label": "Anexos",
+      "description": "Envie até 10 arquivos de qualquer tipo"
+    },
+    "file": {
+      "label": "Arquivo (PDF)",
+      "description": "Apenas documentos PDF são aceitos"
+    }
+  },
+  "labels": {
+    "title": "Título",
+    "description": "Descrição",
+    "content": "Conteúdo",
+    "date": "Data",
+    "status": "Status",
+    "createdAt": "Criado em",
+    "file": "Arquivo",
+    "image": "Imagem",
+    "attachments": "Anexos"
+  },
+  "status": {
+    "pending": "Pendente",
+    "completed": "Concluída"
+  },
+  "delete": {
+    "title": "Excluir tarefa",
+    "message": "Tem certeza que deseja excluir esta tarefa? Esta ação não pode ser desfeita."
+  },
+  "notifications": {
+    "created": "Tarefa criada com sucesso",
+    "createFailed": "Falha ao criar tarefa",
+    "updated": "Tarefa atualizada com sucesso",
+    "updateFailed": "Falha ao atualizar tarefa",
+    "deleted": "Tarefa excluída com sucesso",
+    "deleteFailed": "Falha ao excluir tarefa"
+  }
+}

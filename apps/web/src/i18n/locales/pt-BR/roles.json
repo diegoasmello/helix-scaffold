@@ -1,0 +1,55 @@
+{
+  "title": "Perfis",
+  "create": {
+    "title": "Criar Perfil",
+    "drawerTitle": "Criar Perfil"
+  },
+  "edit": {
+    "title": "Editar Perfil"
+  },
+  "detail": {
+    "title": "Visualizar Perfil"
+  },
+  "columns": {
+    "name": "Nome",
+    "description": "Descrição",
+    "actions": "Ações"
+  },
+  "form": {
+    "name": {
+      "label": "Nome",
+      "placeholder": "Nome do perfil"
+    },
+    "description": {
+      "label": "Descrição",
+      "placeholder": "Descrição do perfil"
+    },
+    "isDefault": {
+      "label": "Perfil padrão para auto-cadastro",
+      "description": "Quando o cadastro aberto estiver habilitado, novos usuários receberão este perfil automaticamente. Apenas um perfil pode ser o padrão."
+    },
+    "roleSelect": {
+      "label": "Perfil",
+      "placeholder": "Selecione um",
+      "createTooltip": "Criar perfil",
+      "createLabel": "Criar perfil relacionado"
+    }
+  },
+  "labels": {
+    "name": "Nome",
+    "description": "Descrição",
+    "createdAt": "Criado em"
+  },
+  "delete": {
+    "title": "Excluir perfil",
+    "message": "Tem certeza que deseja excluir \"{{name}}\"? Esta ação não pode ser desfeita."
+  },
+  "notifications": {
+    "created": "Perfil criado com sucesso",
+    "createFailed": "Falha ao criar perfil",
+    "updated": "Perfil atualizado com sucesso",
+    "updateFailed": "Falha ao atualizar perfil",
+    "deleted": "Perfil excluído com sucesso",
+    "deleteFailed": "Falha ao excluir perfil"
+  }
+}

@@ -1,0 +1,34 @@
+{
+  "nav": {
+    "todos": "Todos",
+    "users": "Users",
+    "roles": "Roles",
+    "permissions": "Permissions",
+    "auditLog": "Audit Log",
+    "settings": "Settings"
+  },
+  "actions": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "back": "Back",
+    "create": "Create",
+    "edit": "Edit",
+    "delete": "Delete",
+    "view": "View",
+    "filters": "Filters",
+    "exportPdf": "Export PDF",
+    "requestChange": "Request change"
+  },
+  "validation": {
+    "required": "Required",
+    "maxLength": "Max {{max}} characters",
+    "minLength": "Min {{min}} characters",
+    "minFiles_one": "At least one file is required",
+    "minFiles_other": "At least {{count}} files are required",
+    "email": "Invalid email address"
+  },
+  "report": {
+    "downloaded": "Report downloaded successfully",
+    "failed": "Failed to generate report"
+  }
+}
