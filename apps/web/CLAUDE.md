@@ -730,31 +730,30 @@ const { t } = useTranslation('todos')
 const { t: tc } = useTranslation('common')
 ```
 
-### Validator messages (injection pattern)
+### packages/ui translations ('ui' namespace)
 
-`packages/ui` validator primitives (`required`, `email`, `maxLength`, etc.) produce translated strings via an injection pattern — they never import i18next directly. The app calls `configureValidatorMessages(tFn)` once at startup in `src/main.tsx`:
+`packages/ui` components — filters, file upload, user menu, sidebar, confirm modal, rich text editor — are fully translated via a dedicated `'ui'` namespace that lives inside the package itself:
+
+```
+packages/ui/src/i18n/locales/
+  en.json      # English — source of truth
+  pt-BR.json   # Portuguese
+```
+
+These files are exposed as **subpath exports** (`@helix/ui/locales/en`, `@helix/ui/locales/pt-BR`) and registered by `apps/web/src/i18n/index.ts` at init time:
 
 ```ts
-// src/main.tsx
-configureValidatorMessages(
-  i18n.t.bind(i18n) as (key: string, opts?: Record<string, unknown>) => string
-)
+import uiLocaleEn   from '@helix/ui/locales/en'
+import uiLocalePtBR from '@helix/ui/locales/pt-BR'
+
+// registered as resources.en.ui and resources['pt-BR'].ui
 ```
 
-Because `i18n.t.bind(i18n)` is a live reference, language changes are reflected automatically on the next validation run — no re-registration needed. All validation error strings live in `common.json` under the `validation.*` namespace:
+`packages/ui` components call `useTranslation('ui')` on the shared singleton — no provider or sync needed. Language changes propagate automatically because both packages share the same i18next instance via `peerDependency`.
 
-```json
-{
-  "validation": {
-    "required": "Required",
-    "maxLength": "Max {{max}} characters",
-    "minLength": "Min {{min}} characters",
-    "minFiles_one": "At least one file is required",
-    "minFiles_other": "At least {{count}} files are required",
-    "email": "Invalid email address"
-  }
-}
-```
+### Validator messages
+
+`packages/ui` validator primitives (`required`, `email`, `maxLength`, etc.) call `i18n.t()` directly on the shared singleton with `{ ns: 'ui' }`. Their strings live in `packages/ui/src/i18n/locales/*/en.json` under `validation.*` — **not** in `common.json`. No setup is required in `apps/web`: registering the `'ui'` namespace in `i18n/index.ts` is sufficient.
 
 ### Cross-field validators with singleton i18n.t
 
@@ -888,18 +887,19 @@ Never apply this cast globally — only where unavoidable (e.g. `app.tsx` sideba
 
 ### i18n in tests
 
-`vitest.setup.ts` initialises i18n before every test file runs and configures validator messages with `i18n.t`. Tests assert against the English translations (since `fallbackLng: 'en'` is always active in jsdom). No extra setup is needed in individual test files.
+`vitest.setup.ts` initialises i18n with a single side-effect import before every test file runs. All namespaces — including `'ui'` — are registered automatically. Tests assert against English strings (`fallbackLng: 'en'` is always active in jsdom). No per-test setup is needed.
 
-**Critical**: `configureValidatorMessages` is imported directly from its source file — not from the `@helix/ui-real` barrel — to avoid loading `use-form-blocker.ts` before `vi.mock('@tanstack/react-router', ...)` can intercept it:
+**Critical — subpath alias ordering in `vitest.config.ts`**: the `@helix/ui/locales/*` aliases must appear **before** the catch-all `@helix/ui` alias, or the resolver will match the wrong entry:
 
 ```ts
-// ✅ correct — avoids premature loading of use-form-blocker.ts
-import { configureValidatorMessages } from '../../packages/ui/src/utils/validator-messages'
-
-// ❌ wrong — loads full packages/ui barrel, which captures the real useBlocker
-//    before test vi.mock() calls can replace it, breaking all useBlocker mocks
-import { configureValidatorMessages } from '@helix/ui-real'
+alias: {
+  '@helix/ui/locales/en':    resolve(__dirname, '../../packages/ui/src/i18n/locales/en.json'),
+  '@helix/ui/locales/pt-BR': resolve(__dirname, '../../packages/ui/src/i18n/locales/pt-BR.json'),
+  '@helix/ui':               resolve(__dirname, '__mocks__/@helix/ui.tsx'),  // catch-all last
+}
 ```
+
+**Why the subpath import matters**: `i18n/index.ts` imports `@helix/ui/locales/en` (just the JSON) rather than `@helix/ui` (the full barrel). Loading the full barrel in the test setup would transitively load `use-form-blocker.ts`, which captures `useBlocker` from `@tanstack/react-router` before `vi.mock()` in test files can intercept it — breaking all Create/Edit screen tests. The subpath avoids this entirely.
 
 When a test file mocks `@tanstack/react-router` (required for Create/Edit screens that render `<Form>`), always use `importOriginal` to preserve all other exports:
 
