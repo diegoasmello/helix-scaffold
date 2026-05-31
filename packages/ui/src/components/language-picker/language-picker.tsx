@@ -2,38 +2,36 @@ import { css } from '@emotion/react'
 import { Group, Menu, UnstyledButton } from '@mantine/core'
 import { createStyles } from '@mantine/emotion'
 import { IconChevronDown } from '@tabler/icons-react'
-import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
+
+const data = [
+  { label: 'English', value: 'en' },
+  { label: 'Português (Brasil)', value: 'pt-BR' },
+]
 
 export function LanguagePicker() {
   const { classes } = useStyles()
+  const { i18n } = useTranslation()
 
-  const [opened, setOpened] = useState(false)
-  const [selected, setSelected] = useState(data[0])
+  const selected = data.find((d) => d.value === i18n.language) ?? data[0]
+
   const items = data.map((item) => (
-    <Menu.Item
-      // leftSection={<Image src={item.image} width={18} height={18} alt="" />}
-      onClick={() => setSelected(item)}
-      key={item.label}
-    >
+    <Menu.Item onClick={() => i18n.changeLanguage(item.value)} key={item.value}>
       {item.label}
     </Menu.Item>
   ))
 
   return (
     <Menu
-      onOpen={() => setOpened(true)}
-      onClose={() => setOpened(false)}
+      onOpen={() => {}}
+      onClose={() => {}}
       radius="md"
       width="target"
       withinPortal
     >
       <Menu.Target>
-        <UnstyledButton
-          className={classes.control}
-          data-expanded={opened || undefined}
-        >
+        <UnstyledButton className={classes.control}>
           <Group gap="xs">
-            {/* <Image src={selected.image} w={22} h={22} alt="" /> */}
             <span className={classes.label}>{selected.label}</span>
           </Group>
           <IconChevronDown size={16} className={classes.icon} stroke={1.5} />
@@ -63,15 +61,6 @@ const useStyles = createStyles((theme, _, u) => ({
       background-color: ${theme.colors.dark[6]};
     }
 
-    &[data-expanded] {
-      ${u.light} {
-        background-color: ${theme.colors.gray[0]};
-      }
-      ${u.dark} {
-        background-color: ${theme.colors.dark[5]};
-      }
-    }
-
     &:hover {
       ${u.light} {
         background-color: ${theme.colors.gray[0]};
@@ -88,25 +77,5 @@ const useStyles = createStyles((theme, _, u) => ({
   icon: css`
     transition: transform 150ms ease;
     transform: rotate(0deg);
-
-    [data-expanded] & {
-      transform: rotate(180deg);
-    }
   `,
 }))
-
-// const data = [
-//   { label: 'English', image: images.english },
-//   { label: 'German', image: images.german },
-//   { label: 'Italian', image: images.italian },
-//   { label: 'French', image: images.french },
-//   { label: 'Polish', image: images.polish },
-// ];
-
-const data = [
-  { label: 'English' },
-  { label: 'German' },
-  { label: 'Italian' },
-  { label: 'French' },
-  { label: 'Polish' },
-]

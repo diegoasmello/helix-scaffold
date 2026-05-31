@@ -38,7 +38,8 @@
     "@tiptap/starter-kit": "3.22.5",
     "clsx": "2.1.1",
     "dayjs": "1.11.20",
-    "mantine-datatable": "8.3.13"
+    "mantine-datatable": "8.3.13",
+    "react-i18next": "17.0.8"
   },
   "devDependencies": {
     "@eslint/js": "catalog:",

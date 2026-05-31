@@ -3,7 +3,7 @@ import { msg } from './validator-messages'
 export type Validator<T = string> = (value: T) => string | null
 
 export const required: Validator<unknown> = (v) =>
-  !v || (typeof v === 'string' && !v.trim()) ? msg.required : null
+  !v || (typeof v === 'string' && !v.trim()) ? msg.required() : null
 
 export const maxLength =
   (max: number): Validator<string> =>
@@ -16,7 +16,7 @@ export const minLength =
     v.length < min ? msg.minLength(min) : null
 
 export const requiredHtml: Validator<string> = (v) =>
-  !v.replace(/<[^>]*>/g, '').trim() ? msg.required : null
+  !v.replace(/<[^>]*>/g, '').trim() ? msg.required() : null
 
 export const minFiles =
   (min: number): Validator<unknown[]> =>
@@ -24,7 +24,7 @@ export const minFiles =
     v.length < min ? msg.minFiles(min) : null
 
 export const email: Validator<string> = (v) =>
-  v && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v) ? msg.email : null
+  v && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v) ? msg.email() : null
 
 export const rules =
   <T>(...validators: Validator<T>[]): Validator<T> =>
