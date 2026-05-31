@@ -13,7 +13,8 @@ export function LanguagePicker() {
   const { classes } = useStyles()
   const { i18n } = useTranslation()
 
-  const selected = data.find((d) => d.value === i18n.language) ?? data[0]
+  const selected =
+    data.find((d) => d.value === i18n.resolvedLanguage) ?? data[0]
 
   const items = data.map((item) => (
     <Menu.Item onClick={() => i18n.changeLanguage(item.value)} key={item.value}>
@@ -22,13 +23,7 @@ export function LanguagePicker() {
   ))
 
   return (
-    <Menu
-      onOpen={() => {}}
-      onClose={() => {}}
-      radius="md"
-      width="target"
-      withinPortal
-    >
+    <Menu radius="md" width="target" withinPortal>
       <Menu.Target>
         <UnstyledButton className={classes.control}>
           <Group gap="xs">
