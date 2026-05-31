@@ -13,7 +13,7 @@ interface SidebarItemWithPermission extends SidebarItem {
 }
 
 interface SidebarGroupWithPermission {
-  title?: string
+  titleKey?: string
   items: SidebarItemWithPermission[]
 }
 
@@ -21,7 +21,7 @@ export const sidebarGroups: SidebarGroupWithPermission[] = [
   {
     items: [
       {
-        label: 'Todos',
+        label: 'nav.todos',
         icon: IconChecklist,
         to: '/todos',
         permission: { resource: 'todos', action: 'view' },
@@ -29,28 +29,28 @@ export const sidebarGroups: SidebarGroupWithPermission[] = [
     ],
   },
   {
-    title: 'Settings',
+    titleKey: 'nav.settings',
     items: [
       {
-        label: 'Users',
+        label: 'nav.users',
         icon: IconUsers,
         to: '/users',
         permission: { resource: 'users', action: 'view' },
       },
       {
-        label: 'Roles',
+        label: 'nav.roles',
         icon: IconShield,
         to: '/roles',
         permission: { resource: 'roles', action: 'view' },
       },
       {
-        label: 'Permissions',
+        label: 'nav.permissions',
         icon: IconLock,
         to: '/permissions',
         permission: { resource: 'permissions', action: 'view' },
       },
       {
-        label: 'Audit Log',
+        label: 'nav.auditLog',
         icon: IconClipboardList,
         to: '/audit',
         permission: { resource: 'audit', action: 'view' },
