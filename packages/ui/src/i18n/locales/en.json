@@ -1,0 +1,72 @@
+{
+  "validation": {
+    "required": "Required",
+    "maxLength": "Max {{max}} characters",
+    "minLength": "Min {{min}} characters",
+    "minFiles_one": "At least one file is required",
+    "minFiles_other": "At least {{count}} files are required",
+    "email": "Invalid email address"
+  },
+  "filters": {
+    "operators": {
+      "contains": "contains",
+      "equals": "equals",
+      "notEquals": "not equals",
+      "startsWith": "starts with",
+      "endsWith": "ends with",
+      "isEmpty": "is empty",
+      "isNotEmpty": "is not empty",
+      "gt": ">",
+      "gte": ">=",
+      "lt": "<",
+      "lte": "<=",
+      "onOrAfter": "on or after",
+      "onOrBefore": "on or before",
+      "after": "after",
+      "before": "before",
+      "on": "on",
+      "is": "is",
+      "isNot": "is not"
+    },
+    "logic": {
+      "and": "all conditions (AND)",
+      "or": "any condition (OR)"
+    },
+    "matchLabel": "Match",
+    "fieldPlaceholder": "Field",
+    "operatorPlaceholder": "Operator",
+    "valuePlaceholder": "Value",
+    "booleanTrue": "Yes",
+    "booleanFalse": "No",
+    "addFilter": "Add filter",
+    "removeFilter": "Remove filter",
+    "apply": "Apply",
+    "clear": "Clear"
+  },
+  "fileUpload": {
+    "dropFile": "Drop a file or click to select",
+    "dropFiles": "Drop files here or click to select",
+    "uploading": "Uploading…",
+    "uploadFailed": "Failed to upload file",
+    "uploadFailedCount_one": "Failed to upload {{count}} file",
+    "uploadFailedCount_other": "Failed to upload {{count}} files",
+    "remainingCount_one": "{{count}} file remaining",
+    "remainingCount_other": "{{count}} files remaining",
+    "removeFile": "Remove {{name}}"
+  },
+  "userMenu": {
+    "accountSettings": "Account settings",
+    "logout": "Logout"
+  },
+  "sidebar": {
+    "expand": "Expand sidebar",
+    "collapse": "Collapse sidebar"
+  },
+  "confirm": {
+    "confirm": "Confirm",
+    "cancel": "Cancel"
+  },
+  "richText": {
+    "insertImage": "Insert image"
+  }
+}

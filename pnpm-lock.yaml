@@ -202,10 +202,10 @@ importers:
         specifier: 4.1.0
         version: 4.1.0
       i18next:
-        specifier: ^26.3.0
+        specifier: 26.3.0
         version: 26.3.0(typescript@6.0.3)
       i18next-browser-languagedetector:
-        specifier: ^8.2.1
+        specifier: 8.2.1
         version: 8.2.1
       react:
         specifier: 19.2.0
@@ -214,7 +214,7 @@ importers:
         specifier: 19.2.0
         version: 19.2.0(react@19.2.0)
       react-i18next:
-        specifier: ^17.0.8
+        specifier: 17.0.8
         version: 17.0.8(i18next@26.3.0(typescript@6.0.3))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(typescript@6.0.3)
       zod:
         specifier: 'catalog:'
@@ -452,9 +452,6 @@ importers:
       react:
         specifier: 19.2.0
         version: 19.2.0
-      react-i18next:
-        specifier: ^17.0.8
-        version: 17.0.8(i18next@26.3.0(typescript@6.0.3))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(typescript@6.0.3)
     devDependencies:
       '@eslint/js':
         specifier: 'catalog:'
@@ -483,9 +480,15 @@ importers:
       globals:
         specifier: 16.5.0
         version: 16.5.0
+      i18next:
+        specifier: 26.3.0
+        version: 26.3.0(typescript@6.0.3)
       prettier:
         specifier: 'catalog:'
         version: 3.8.3
+      react-i18next:
+        specifier: 17.0.8
+        version: 17.0.8(i18next@26.3.0(typescript@6.0.3))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(typescript@6.0.3)
       typescript:
         specifier: 'catalog:'
         version: 6.0.3

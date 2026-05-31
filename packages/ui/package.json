@@ -10,7 +10,9 @@
     "type-check": "tsc --noEmit"
   },
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./locales/en": "./src/i18n/locales/en.json",
+    "./locales/pt-BR": "./src/i18n/locales/pt-BR.json"
   },
   "dependencies": {
     "@emotion/react": "11.14.0",
@@ -41,6 +43,7 @@
     "mantine-datatable": "8.3.13"
   },
   "devDependencies": {
+    "i18next": "26.3.0",
     "react-i18next": "17.0.8",
     "@eslint/js": "catalog:",
     "@types/react": "19.2.7",
@@ -57,6 +60,7 @@
   },
   "peerDependencies": {
     "@tanstack/react-router": "1.168.23",
+    "i18next": ">=23.0.0",
     "react": "19.2.0",
     "react-i18next": ">=17.0.0"
   },

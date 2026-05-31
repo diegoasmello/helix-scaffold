@@ -1,0 +1,72 @@
+{
+  "validation": {
+    "required": "Obrigatório",
+    "maxLength": "Máximo de {{max}} caracteres",
+    "minLength": "Mínimo de {{min}} caracteres",
+    "minFiles_one": "Pelo menos um arquivo é obrigatório",
+    "minFiles_other": "Pelo menos {{count}} arquivos são obrigatórios",
+    "email": "Endereço de e-mail inválido"
+  },
+  "filters": {
+    "operators": {
+      "contains": "contém",
+      "equals": "igual a",
+      "notEquals": "diferente de",
+      "startsWith": "começa com",
+      "endsWith": "termina com",
+      "isEmpty": "está vazio",
+      "isNotEmpty": "não está vazio",
+      "gt": ">",
+      "gte": ">=",
+      "lt": "<",
+      "lte": "<=",
+      "onOrAfter": "em ou após",
+      "onOrBefore": "em ou antes de",
+      "after": "após",
+      "before": "antes de",
+      "on": "em",
+      "is": "é",
+      "isNot": "não é"
+    },
+    "logic": {
+      "and": "todas as condições (E)",
+      "or": "qualquer condição (OU)"
+    },
+    "matchLabel": "Corresponder",
+    "fieldPlaceholder": "Campo",
+    "operatorPlaceholder": "Operador",
+    "valuePlaceholder": "Valor",
+    "booleanTrue": "Sim",
+    "booleanFalse": "Não",
+    "addFilter": "Adicionar filtro",
+    "removeFilter": "Remover filtro",
+    "apply": "Aplicar",
+    "clear": "Limpar"
+  },
+  "fileUpload": {
+    "dropFile": "Solte um arquivo ou clique para selecionar",
+    "dropFiles": "Solte arquivos aqui ou clique para selecionar",
+    "uploading": "Enviando…",
+    "uploadFailed": "Falha ao enviar arquivo",
+    "uploadFailedCount_one": "Falha ao enviar {{count}} arquivo",
+    "uploadFailedCount_other": "Falha ao enviar {{count}} arquivos",
+    "remainingCount_one": "{{count}} arquivo restante",
+    "remainingCount_other": "{{count}} arquivos restantes",
+    "removeFile": "Remover {{name}}"
+  },
+  "userMenu": {
+    "accountSettings": "Configurações da conta",
+    "logout": "Sair"
+  },
+  "sidebar": {
+    "expand": "Expandir barra lateral",
+    "collapse": "Recolher barra lateral"
+  },
+  "confirm": {
+    "confirm": "Confirmar",
+    "cancel": "Cancelar"
+  },
+  "richText": {
+    "insertImage": "Inserir imagem"
+  }
+}
