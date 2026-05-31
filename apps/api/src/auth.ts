@@ -34,6 +34,16 @@ export function createAuth(database: Database, emailProvider: EmailProvider) {
     },
     emailAndPassword: {
       enabled: true,
+      sendResetPassword: async ({ user, url }) => {
+        await emailProvider.send(
+          user.email,
+          'Reset your password',
+          `<p>You requested a password reset.</p>
+           <p>Click the link below to reset your password:</p>
+           <p><a href="${url.replace(/"/g, '&quot;')}">Reset password</a></p>
+           <p>This link expires in 1 hour. If you did not request this change, you can safely ignore this email.</p>`
+        )
+      },
     },
     emailVerification: {
       sendOnSignUp: false,
