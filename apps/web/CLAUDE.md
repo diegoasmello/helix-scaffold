@@ -776,6 +776,10 @@ export const passwordFormValidate = createValidator<PasswordFormValues>()({
 import i18n from 'i18next'
 ```
 
+### Breadcrumb labels
+
+`staticData.breadcrumbs` in route definitions stores labels as i18n **keys** (e.g. `'nav.todos'`, `'actions.create'`). The `Header` component in `packages/ui` translates them reactively via `useTranslation('common')` at render time. Never call `t()` inside `staticData` — it is evaluated once at module load and the result would be frozen in the startup language. See _Step 5 — Breadcrumb convention_ in _Creating a new module_ for the full key reference.
+
 ### Sidebar labels
 
 `src/config/sidebar.ts` stores sidebar item labels as i18n **keys** (e.g. `'nav.todos'`), not translated strings. `app.tsx` resolves them at render time via `useTranslation('common')`. When adding a sidebar entry for a new module:
@@ -1194,35 +1198,43 @@ Use the same resource string registered in `apps/api/src/config/permissions.ts`.
 
 ### 5. Breadcrumb convention
 
+Breadcrumb `label` values are **i18n keys**, not translated strings. The `Header` component (`packages/ui`) calls `useTranslation('common')` and resolves each label at render time via `t(label, { defaultValue: label })`. This makes breadcrumbs reactive to language changes — switching language re-renders the Header with the correct translations.
+
+Do **not** call `t()` inside `staticData`. `staticData` is evaluated once at module load, outside React, so any string baked in there would be frozen in the language active at startup and would never update.
+
+Dynamic labels (e.g. `#${item.id}`) are passed through untranslated because `t()` falls back to `defaultValue` when no matching key is found.
+
 ```ts
 // List
 staticData: {
-  breadcrumbs: [{ label: 'Xxx' }]
+  breadcrumbs: [{ label: 'nav.xxx' }]
 }
 
 // Create
 staticData: {
-  breadcrumbs: [{ label: 'Xxx', to: '/xxx' }, { label: 'Create' }]
+  breadcrumbs: [{ label: 'nav.xxx', to: '/xxx' }, { label: 'actions.create' }]
 }
 
 // Detail
 staticData: {
   breadcrumbs: [
-    { label: 'Xxx', to: '/xxx' },
-    { label: 'View' },
-    (data) => ({ label: `#${(data as XxxItem).id}` }),
+    { label: 'nav.xxx', to: '/xxx' },
+    { label: 'actions.view' },
+    (data) => ({ label: `#${(data as XxxItem).id}` }),  // dynamic — not translated
   ]
 }
 
 // Edit
 staticData: {
   breadcrumbs: [
-    { label: 'Xxx', to: '/xxx' },
-    { label: 'Edit' },
-    (data) => ({ label: `#${(data as XxxItem).id}` }),
+    { label: 'nav.xxx', to: '/xxx' },
+    { label: 'actions.edit' },
+    (data) => ({ label: `#${(data as XxxItem).id}` }),  // dynamic — not translated
   ]
 }
 ```
+
+The keys `actions.create`, `actions.edit`, `actions.view` already exist in `common.json` — do not add module-specific duplicates. The module nav key (`nav.xxx`) must be added to `common.json` and `pt-BR/common.json` when the module is created (covered in the i18n checklist above).
 
 ### 6. Screen components
 
