@@ -11,6 +11,7 @@ import TextAlign from '@tiptap/extension-text-align'
 import { useEditor } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import { useId, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 
 import { clsx, Input, type InputWrapperProps, Loader } from '../..'
 
@@ -45,6 +46,7 @@ export function RichTextEditor(props: Readonly<RichTextEditorProps>) {
 
   const id = useId()
   const { classes } = useStyles()
+  const { t } = useTranslation('ui')
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [isUploadingImage, setIsUploadingImage] = useState(false)
 
@@ -188,8 +190,8 @@ export function RichTextEditor(props: Readonly<RichTextEditorProps>) {
             <TipTapEditor.ControlsGroup>
               <TipTapEditor.Control
                 onClick={() => fileInputRef.current?.click()}
-                aria-label="Insert image"
-                title="Insert image"
+                aria-label={t('richText.insertImage')}
+                title={t('richText.insertImage')}
                 disabled={isUploadingImage}
               >
                 {isUploadingImage ? (

@@ -2,6 +2,7 @@ import { css } from '@emotion/react'
 import { ActionIcon, Group, Image, Stack, Text } from '@mantine/core'
 import { createStyles } from '@mantine/emotion'
 import { IconTrash } from '@tabler/icons-react'
+import { useTranslation } from 'react-i18next'
 
 import type { UploadedFile } from './types'
 import { formatFileSize, getFileIcon } from './utils'
@@ -15,6 +16,7 @@ export function FileCard(props: Readonly<FileCardProps>) {
   const { upload, onRemove } = props
 
   const { classes } = useStyles()
+  const { t } = useTranslation('ui')
   const isImage =
     upload.mimeType.startsWith('image/') && upload.variants !== null
 
@@ -51,7 +53,7 @@ export function FileCard(props: Readonly<FileCardProps>) {
         variant="subtle"
         color="red"
         size="sm"
-        aria-label={`Remove ${upload.originalName}`}
+        aria-label={t('fileUpload.removeFile', { name: upload.originalName })}
         onClick={() => onRemove(upload.id)}
       >
         <IconTrash size={14} />

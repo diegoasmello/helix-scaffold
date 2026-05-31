@@ -15,6 +15,8 @@ import { DateInput } from '@mantine/dates'
 import { createStyles } from '@mantine/emotion'
 import { useForm, type UseFormReturnType } from '@mantine/form'
 import { IconPlus, IconX } from '@tabler/icons-react'
+import type { TFunction } from 'i18next'
+import { useTranslation } from 'react-i18next'
 
 import { Form } from '../form/form'
 import type {
@@ -24,49 +26,51 @@ import type {
   LogicalFilterValue,
 } from './types'
 
-const OPERATORS_BY_TYPE: Record<
-  FilterFieldType,
-  Array<{ value: string; label: string }>
-> = {
-  text: [
-    { value: 'contains', label: 'contains' },
-    { value: 'eq', label: 'equals' },
-    { value: 'neq', label: 'not equals' },
-    { value: 'startsWith', label: 'starts with' },
-    { value: 'endsWith', label: 'ends with' },
-    { value: 'isNull', label: 'is empty' },
-    { value: 'isNotNull', label: 'is not empty' },
-  ],
-  number: [
-    { value: 'eq', label: 'equals' },
-    { value: 'neq', label: 'not equals' },
-    { value: 'gt', label: '>' },
-    { value: 'gte', label: '>=' },
-    { value: 'lt', label: '<' },
-    { value: 'lte', label: '<=' },
-    { value: 'isNull', label: 'is empty' },
-    { value: 'isNotNull', label: 'is not empty' },
-  ],
-  date: [
-    { value: 'gte', label: 'on or after' },
-    { value: 'lte', label: 'on or before' },
-    { value: 'gt', label: 'after' },
-    { value: 'lt', label: 'before' },
-    { value: 'eq', label: 'on' },
-    { value: 'isNull', label: 'is empty' },
-    { value: 'isNotNull', label: 'is not empty' },
-  ],
-  select: [
-    { value: 'eq', label: 'is' },
-    { value: 'neq', label: 'is not' },
-    { value: 'isNull', label: 'is empty' },
-    { value: 'isNotNull', label: 'is not empty' },
-  ],
-  boolean: [
-    { value: 'eq', label: 'is' },
-    { value: 'isNull', label: 'is empty' },
-    { value: 'isNotNull', label: 'is not empty' },
-  ],
+type OperatorOption = { value: string; label: string }
+type OperatorsByType = Record<FilterFieldType, OperatorOption[]>
+
+function buildOperatorsByType(t: TFunction<'ui'>): OperatorsByType {
+  return {
+    text: [
+      { value: 'contains', label: t('filters.operators.contains') },
+      { value: 'eq', label: t('filters.operators.equals') },
+      { value: 'neq', label: t('filters.operators.notEquals') },
+      { value: 'startsWith', label: t('filters.operators.startsWith') },
+      { value: 'endsWith', label: t('filters.operators.endsWith') },
+      { value: 'isNull', label: t('filters.operators.isEmpty') },
+      { value: 'isNotNull', label: t('filters.operators.isNotEmpty') },
+    ],
+    number: [
+      { value: 'eq', label: t('filters.operators.equals') },
+      { value: 'neq', label: t('filters.operators.notEquals') },
+      { value: 'gt', label: t('filters.operators.gt') },
+      { value: 'gte', label: t('filters.operators.gte') },
+      { value: 'lt', label: t('filters.operators.lt') },
+      { value: 'lte', label: t('filters.operators.lte') },
+      { value: 'isNull', label: t('filters.operators.isEmpty') },
+      { value: 'isNotNull', label: t('filters.operators.isNotEmpty') },
+    ],
+    date: [
+      { value: 'gte', label: t('filters.operators.onOrAfter') },
+      { value: 'lte', label: t('filters.operators.onOrBefore') },
+      { value: 'gt', label: t('filters.operators.after') },
+      { value: 'lt', label: t('filters.operators.before') },
+      { value: 'eq', label: t('filters.operators.on') },
+      { value: 'isNull', label: t('filters.operators.isEmpty') },
+      { value: 'isNotNull', label: t('filters.operators.isNotEmpty') },
+    ],
+    select: [
+      { value: 'eq', label: t('filters.operators.is') },
+      { value: 'neq', label: t('filters.operators.isNot') },
+      { value: 'isNull', label: t('filters.operators.isEmpty') },
+      { value: 'isNotNull', label: t('filters.operators.isNotEmpty') },
+    ],
+    boolean: [
+      { value: 'eq', label: t('filters.operators.is') },
+      { value: 'isNull', label: t('filters.operators.isEmpty') },
+      { value: 'isNotNull', label: t('filters.operators.isNotEmpty') },
+    ],
+  }
 }
 
 const NO_VALUE_OPS = new Set(['isNull', 'isNotNull'])
@@ -87,23 +91,25 @@ interface ValueInputProps {
   index: number
   fields: FilterFieldDef<string>[]
   form: UseFormReturnType<FilterFormValues>
+  t: TFunction<'ui'>
 }
 
 function ValueInput(props: Readonly<ValueInputProps>) {
-  const { condition, index, fields, form } = props
+  const { condition, index, fields, form, t } = props
   const { classes } = useStyles()
 
   const fieldDef = fields.find((f) => f.name === condition.field)
   if (!fieldDef) return null
 
   const commonProps = { className: classes.valueInput }
+  const placeholder = t('filters.valuePlaceholder')
 
   switch (fieldDef.type) {
     case 'text':
       return (
         <TextInput
           {...commonProps}
-          placeholder="Value"
+          placeholder={placeholder}
           {...form.getInputProps(`conditions.${index}.value`)}
         />
       )
@@ -112,7 +118,7 @@ function ValueInput(props: Readonly<ValueInputProps>) {
       return (
         <NumberInput
           {...commonProps}
-          placeholder="Value"
+          placeholder={placeholder}
           value={condition.value ? Number(condition.value) : ''}
           onChange={(v) =>
             form.setFieldValue(`conditions.${index}.value`, String(v))
@@ -125,7 +131,7 @@ function ValueInput(props: Readonly<ValueInputProps>) {
       return (
         <DateInput
           {...commonProps}
-          placeholder="Value"
+          placeholder={placeholder}
           value={condition.value || null}
           onChange={(date) =>
             form.setFieldValue(`conditions.${index}.value`, date ?? '')
@@ -138,7 +144,7 @@ function ValueInput(props: Readonly<ValueInputProps>) {
       return (
         <Select
           {...commonProps}
-          placeholder="Value"
+          placeholder={placeholder}
           data={fieldDef.options ?? []}
           value={condition.value || null}
           onChange={(v) =>
@@ -153,10 +159,10 @@ function ValueInput(props: Readonly<ValueInputProps>) {
       return (
         <Select
           {...commonProps}
-          placeholder="Value"
+          placeholder={placeholder}
           data={[
-            { value: 'true', label: 'Yes' },
-            { value: 'false', label: 'No' },
+            { value: 'true', label: t('filters.booleanTrue') },
+            { value: 'false', label: t('filters.booleanFalse') },
           ]}
           value={condition.value || null}
           onChange={(v) =>
@@ -177,6 +183,9 @@ export function LogicalFilterForm<T extends string = string>(
 ) {
   const { fields, value, onApply } = props
   const { classes } = useStyles()
+  const { t } = useTranslation('ui')
+
+  const operatorsByType = buildOperatorsByType(t)
 
   const form = useForm<FilterFormValues>({
     initialValues: {
@@ -192,8 +201,7 @@ export function LogicalFilterForm<T extends string = string>(
   const getFieldType = (fieldName: string): FilterFieldType =>
     fields.find((f) => f.name === fieldName)?.type ?? 'text'
 
-  const getDefaultOp = (type: FilterFieldType) =>
-    OPERATORS_BY_TYPE[type][0].value
+  const getDefaultOp = (type: FilterFieldType) => operatorsByType[type][0].value
 
   const handleFieldChange = (index: number, fieldName: string) => {
     form.setFieldValue(`conditions.${index}.field`, fieldName)
@@ -259,13 +267,13 @@ export function LogicalFilterForm<T extends string = string>(
         <Group justify="space-between" align="center">
           <Group gap="xs" align="center">
             <Text size="sm" fw={500} c="dimmed">
-              Match
+              {t('filters.matchLabel')}
             </Text>
             <Select
               w={190}
               data={[
-                { value: 'AND', label: 'all conditions (AND)' },
-                { value: 'OR', label: 'any condition (OR)' },
+                { value: 'AND', label: t('filters.logic.and') },
+                { value: 'OR', label: t('filters.logic.or') },
               ]}
               value={form.values.logic}
               onChange={(v) =>
@@ -281,9 +289,9 @@ export function LogicalFilterForm<T extends string = string>(
               onClick={handleClear}
               type="button"
             >
-              Clear
+              {t('filters.clear')}
             </Button>
-            <Button type="submit">Apply</Button>
+            <Button type="submit">{t('filters.apply')}</Button>
           </Group>
         </Group>
 
@@ -294,7 +302,7 @@ export function LogicalFilterForm<T extends string = string>(
                 <Group gap="xs" align="center" wrap="nowrap">
                   <Select
                     w={140}
-                    placeholder="Field"
+                    placeholder={t('filters.fieldPlaceholder')}
                     data={fields.map((f) => ({
                       value: f.name,
                       label: f.label,
@@ -305,8 +313,8 @@ export function LogicalFilterForm<T extends string = string>(
                   />
                   <Select
                     w={140}
-                    placeholder="Operator"
-                    data={OPERATORS_BY_TYPE[getFieldType(condition.field)]}
+                    placeholder={t('filters.operatorPlaceholder')}
+                    data={operatorsByType[getFieldType(condition.field)]}
                     value={condition.op || null}
                     onChange={(v) => handleOpChange(index, v ?? '')}
                     allowDeselect={false}
@@ -317,6 +325,7 @@ export function LogicalFilterForm<T extends string = string>(
                       index={index}
                       fields={fields}
                       form={form}
+                      t={t}
                     />
                   )}
                   <ActionIcon
@@ -324,7 +333,7 @@ export function LogicalFilterForm<T extends string = string>(
                     color="secondary"
                     size="sm"
                     type="button"
-                    aria-label="Remove filter"
+                    aria-label={t('filters.removeFilter')}
                     onClick={() => form.removeListItem('conditions', index)}
                   >
                     <IconX size={14} />
@@ -342,7 +351,7 @@ export function LogicalFilterForm<T extends string = string>(
         >
           <Group gap={6}>
             <IconPlus size={14} />
-            <Text size="sm">Add filter</Text>
+            <Text size="sm">{t('filters.addFilter')}</Text>
           </Group>
         </UnstyledButton>
       </Stack>

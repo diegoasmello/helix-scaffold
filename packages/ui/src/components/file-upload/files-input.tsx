@@ -5,6 +5,7 @@ import { Dropzone } from '@mantine/dropzone'
 import { createStyles } from '@mantine/emotion'
 import { IconUpload, IconX } from '@tabler/icons-react'
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 
 import { notify } from '../notifications/notify'
 import { FileCard } from './file-card'
@@ -39,6 +40,7 @@ export function FilesInput<T extends UploadedFile>(
   } = props
 
   const { classes } = useStyles()
+  const { t } = useTranslation('ui')
   const [uploadingCount, setUploadingCount] = useState(0)
 
   const remaining = maxFiles - value.length
@@ -64,7 +66,7 @@ export function FilesInput<T extends UploadedFile>(
     if (failedCount > 0) {
       notify({
         status: 'danger',
-        message: `Failed to upload ${failedCount} file${failedCount > 1 ? 's' : ''}`,
+        message: t('fileUpload.uploadFailedCount', { count: failedCount }),
       })
     }
 
@@ -112,10 +114,10 @@ export function FilesInput<T extends UploadedFile>(
               </Dropzone.Idle>
               <Stack gap={4} align="center">
                 <Text size="sm" fw={500}>
-                  Drop files here or click to select
+                  {t('fileUpload.dropFiles')}
                 </Text>
                 <Text size="xs" c="dimmed">
-                  {remaining} file{remaining !== 1 ? 's' : ''} remaining
+                  {t('fileUpload.remainingCount', { count: remaining })}
                 </Text>
               </Stack>
             </Group>
@@ -146,7 +148,7 @@ export function FilesInput<T extends UploadedFile>(
                   <Loader size="xs" />
                 </Stack>
                 <Text size="sm" c="dimmed">
-                  Uploading…
+                  {t('fileUpload.uploading')}
                 </Text>
               </Group>
             ))}

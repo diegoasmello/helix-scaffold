@@ -4,6 +4,7 @@ import { createStyles } from '@mantine/emotion'
 import { IconChevronDown, IconLogout, IconSettings } from '@tabler/icons-react'
 import cx from 'clsx'
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 
 export interface UserMenuProps {
   user: {
@@ -17,6 +18,7 @@ export function UserMenu(props: Readonly<UserMenuProps>) {
   const { user, onAccountSettings, onLogout } = props
 
   const { classes } = useStyles()
+  const { t } = useTranslation('ui')
   const [userMenuOpened, setUserMenuOpened] = useState(false)
 
   return (
@@ -48,13 +50,13 @@ export function UserMenu(props: Readonly<UserMenuProps>) {
           leftSection={<IconSettings size={16} stroke={1.5} />}
           onClick={onAccountSettings}
         >
-          Account settings
+          {t('userMenu.accountSettings')}
         </Menu.Item>
         <Menu.Item
           leftSection={<IconLogout size={16} stroke={1.5} />}
           onClick={onLogout}
         >
-          Logout
+          {t('userMenu.logout')}
         </Menu.Item>
       </Menu.Dropdown>
     </Menu>

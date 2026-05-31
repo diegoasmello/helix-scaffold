@@ -1,15 +1,10 @@
-type TranslationFn = (key: string, options?: Record<string, unknown>) => string
-
-let _t: TranslationFn = (key) => key
-
-export function configureValidatorMessages(t: TranslationFn) {
-  _t = t
-}
+import i18n from 'i18next'
 
 export const msg = {
-  required: () => _t('validation.required'),
-  maxLength: (max: number) => _t('validation.maxLength', { max }),
-  minLength: (min: number) => _t('validation.minLength', { min }),
-  minFiles: (min: number) => _t('validation.minFiles', { count: min }),
-  email: () => _t('validation.email'),
+  required: () => i18n.t('validation.required', { ns: 'ui' }),
+  maxLength: (max: number) => i18n.t('validation.maxLength', { ns: 'ui', max }),
+  minLength: (min: number) => i18n.t('validation.minLength', { ns: 'ui', min }),
+  minFiles: (min: number) =>
+    i18n.t('validation.minFiles', { ns: 'ui', count: min }),
+  email: () => i18n.t('validation.email', { ns: 'ui' }),
 }

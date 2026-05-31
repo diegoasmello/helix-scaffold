@@ -5,6 +5,7 @@ import { IconChevronLeft } from '@tabler/icons-react'
 import { useRouterState } from '@tanstack/react-router'
 import type { ReactNode } from 'react'
 import { useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 
 import { SidebarContext } from './sidebar-context'
 import { SidebarLinksGroup } from './sidebar-links-group'
@@ -20,6 +21,7 @@ export interface SidebarProps {
 export function Sidebar(props: Readonly<SidebarProps>) {
   const { groups, logo, collapsed = false, onToggleCollapsed } = props
 
+  const { t } = useTranslation('ui')
   const [hovered, setHovered] = useState(false)
   const [focusedAt, setFocusedAt] = useState<string | null>(null)
   const pathname = useRouterState({ select: (s) => s.location.pathname })
@@ -78,7 +80,9 @@ export function Sidebar(props: Readonly<SidebarProps>) {
             <UnstyledButton
               onClick={onToggleCollapsed}
               className={classes.toggleButton}
-              aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+              aria-label={
+                collapsed ? t('sidebar.expand') : t('sidebar.collapse')
+              }
             >
               <IconChevronLeft
                 size={16}

@@ -6,6 +6,7 @@ import {
   IconCheck,
   IconInfoCircle,
 } from '@tabler/icons-react'
+import i18n from 'i18next'
 import type { ReactNode } from 'react'
 
 export type ConfirmDialogStatus = 'success' | 'warning' | 'info' | 'danger'
@@ -58,8 +59,10 @@ function buildModalProps(options: SharedOptions) {
     children: message,
     centered: true,
     labels: {
-      confirm: confirmLabel ?? 'Confirm',
-      cancel: cancelLabel ?? 'Cancel',
+      // i18n singleton is safe here: apps/web imports './i18n' before createRoot,
+      // so the 'ui' namespace is registered before any modal can open.
+      confirm: confirmLabel ?? i18n.t('confirm.confirm', { ns: 'ui' }),
+      cancel: cancelLabel ?? i18n.t('confirm.cancel', { ns: 'ui' }),
     },
     confirmProps: { color: computedColor },
     groupProps: { gap: 'xs' },

@@ -5,6 +5,7 @@ import { Dropzone } from '@mantine/dropzone'
 import { createStyles } from '@mantine/emotion'
 import { IconUpload, IconX } from '@tabler/icons-react'
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 
 import { notify } from '../notifications/notify'
 import { FileCard } from './file-card'
@@ -36,6 +37,7 @@ export function FileInput<T extends UploadedFile>(
   } = props
 
   const { classes, cx } = useStyles()
+  const { t } = useTranslation('ui')
   const [isUploading, setIsUploading] = useState(false)
 
   const handleDrop = async (files: FileWithPath[]) => {
@@ -47,7 +49,7 @@ export function FileInput<T extends UploadedFile>(
       const uploaded = await onUpload(file)
       onChange(uploaded)
     } catch {
-      notify({ status: 'danger', message: 'Failed to upload file' })
+      notify({ status: 'danger', message: t('fileUpload.uploadFailed') })
     } finally {
       setIsUploading(false)
     }
@@ -77,7 +79,7 @@ export function FileInput<T extends UploadedFile>(
               <Loader size="xs" />
             </Stack>
             <Text size="sm" c="dimmed">
-              Uploading…
+              {t('fileUpload.uploading')}
             </Text>
           </Group>
         ) : (
@@ -102,7 +104,7 @@ export function FileInput<T extends UploadedFile>(
                 <IconUpload size={18} />
               </Dropzone.Idle>
               <Text size="sm" c="dimmed">
-                Drop a file or click to select
+                {t('fileUpload.dropFile')}
               </Text>
             </Group>
           </Dropzone>
