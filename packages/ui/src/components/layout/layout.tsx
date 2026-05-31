@@ -2,9 +2,9 @@ import { css } from '@emotion/react'
 import { AppShell, Container } from '@mantine/core'
 import { createStyles } from '@mantine/emotion'
 import { Outlet } from '@tanstack/react-router'
-import { useState } from 'react'
 
 import Logo from '../../assets/helix.svg'
+import { usePersistedSidebar } from '../../hooks/use-persisted-sidebar'
 import { Header } from '../header/header'
 import { Sidebar } from '../sidebar/sidebar'
 import type { SidebarGroup } from '../sidebar/types'
@@ -14,45 +14,28 @@ export interface LayoutProps {
   user: { id?: string; name: string; avatar?: string }
   onAccountSettings: () => void
   onLogout: () => void
+  sidebarCollapsed?: boolean
+  onToggleSidebar?: () => void
 }
 
 const SIDEBAR_WIDTH = 256
 const SIDEBAR_COLLAPSED_WIDTH = 72
 
-function usePersistedSidebar(userId: string | undefined) {
-  const key = userId ? `sidebar:collapsed:${userId}` : null
-
-  const [collapsed, setCollapsed] = useState(() => {
-    if (!key) return false
-    try {
-      return localStorage.getItem(key) === 'true'
-    } catch {
-      return false
-    }
-  })
-
-  const toggle = () => {
-    setCollapsed((prev) => {
-      const next = !prev
-      if (key) {
-        try {
-          localStorage.setItem(key, String(next))
-        } catch {
-          // localStorage unavailable (e.g. private browsing)
-        }
-      }
-      return next
-    })
-  }
-
-  return [collapsed, toggle] as const
-}
-
 export function Layout(props: Readonly<LayoutProps>) {
-  const { sidebarGroups, user, onAccountSettings, onLogout } = props
+  const {
+    sidebarGroups,
+    user,
+    onAccountSettings,
+    onLogout,
+    sidebarCollapsed: externalCollapsed,
+    onToggleSidebar: externalToggle,
+  } = props
 
   const { classes } = useStyles()
-  const [sidebarCollapsed, toggleSidebar] = usePersistedSidebar(user.id)
+  const [internalCollapsed, internalToggle] = usePersistedSidebar(user.id)
+
+  const sidebarCollapsed = externalCollapsed ?? internalCollapsed
+  const toggleSidebar = externalToggle ?? internalToggle
 
   return (
     <AppShell
