@@ -2,7 +2,7 @@ import { css } from '@emotion/react'
 import { Box, Flex, ScrollArea, Text, UnstyledButton } from '@mantine/core'
 import { createStyles } from '@mantine/emotion'
 import { IconChevronLeft } from '@tabler/icons-react'
-import { useRouterState } from '@tanstack/react-router'
+import { Link, useRouterState } from '@tanstack/react-router'
 import type { ReactNode } from 'react'
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -13,13 +13,20 @@ import type { SidebarGroup } from './types'
 
 export interface SidebarProps {
   groups: SidebarGroup[]
-  logo?: ReactNode
+  expandedLogo: ReactNode
+  collapsedLogo: ReactNode
   collapsed?: boolean
   onToggleCollapsed?: () => void
 }
 
 export function Sidebar(props: Readonly<SidebarProps>) {
-  const { groups, logo, collapsed = false, onToggleCollapsed } = props
+  const {
+    groups,
+    expandedLogo,
+    collapsedLogo,
+    collapsed = false,
+    onToggleCollapsed,
+  } = props
 
   const { t } = useTranslation('ui')
   const [hovered, setHovered] = useState(false)
@@ -76,22 +83,26 @@ export function Sidebar(props: Readonly<SidebarProps>) {
             align="center"
             className={classes.header}
           >
-            {!visuallyCollapsed && logo}
-            <UnstyledButton
-              onClick={onToggleCollapsed}
-              className={classes.toggleButton}
-              aria-label={
-                collapsed ? t('sidebar.expand') : t('sidebar.collapse')
-              }
-            >
-              <IconChevronLeft
-                size={16}
-                stroke={1.5}
-                className={cx(classes.toggleIcon, {
-                  [classes.toggleIconCollapsed]: collapsed,
-                })}
-              />
-            </UnstyledButton>
+            <Link to="/">
+              {visuallyCollapsed ? collapsedLogo : expandedLogo}
+            </Link>
+            {!visuallyCollapsed && (
+              <UnstyledButton
+                onClick={onToggleCollapsed}
+                className={classes.toggleButton}
+                aria-label={
+                  collapsed ? t('sidebar.expand') : t('sidebar.collapse')
+                }
+              >
+                <IconChevronLeft
+                  size={16}
+                  stroke={1.5}
+                  className={cx(classes.toggleIcon, {
+                    [classes.toggleIconCollapsed]: collapsed,
+                  })}
+                />
+              </UnstyledButton>
+            )}
           </Flex>
 
           <ScrollArea className={classes.scrollArea}>

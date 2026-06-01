@@ -4,6 +4,7 @@ import { createStyles } from '@mantine/emotion'
 import { Outlet } from '@tanstack/react-router'
 
 import Logo from '../../assets/helix.svg'
+import LogoIcon from '../../assets/helix-icon.svg'
 import { usePersistedSidebar } from '../../hooks/use-persisted-sidebar'
 import { Header } from '../header/header'
 import { Sidebar } from '../sidebar/sidebar'
@@ -57,7 +58,22 @@ export function Layout(props: Readonly<LayoutProps>) {
       <AppShell.Navbar unstyled style={{ padding: 0, overflow: 'visible' }}>
         <Sidebar
           groups={sidebarGroups}
-          logo={<img src={Logo} alt="Logo" height={24} />}
+          expandedLogo={
+            <img
+              src={Logo}
+              alt="Logo"
+              height={26}
+              className={classes.logoImg}
+            />
+          }
+          collapsedLogo={
+            <img
+              src={LogoIcon}
+              alt="Logo"
+              height={26}
+              className={classes.logoImg}
+            />
+          }
           collapsed={sidebarCollapsed}
           onToggleCollapsed={toggleSidebar}
         />
@@ -75,6 +91,11 @@ export function Layout(props: Readonly<LayoutProps>) {
 }
 
 const useStyles = createStyles((theme, _, u) => ({
+  logoImg: css`
+    ${u.dark} {
+      filter: invert(1);
+    }
+  `,
   main: css`
     display: flex;
     flex-direction: column;
