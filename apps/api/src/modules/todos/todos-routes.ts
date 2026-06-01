@@ -4,7 +4,11 @@ import { buildPaginatedResponse } from '@/lib/pagination'
 import type { StorageProvider } from '@/lib/storage'
 
 import type { Database } from '../../db'
-import type { FastifyTypedInstance, RequirePermission } from '../../types'
+import type {
+  FastifyTypedInstance,
+  RequirePermission,
+  RequireSubscription,
+} from '../../types'
 import {
   createTodoSchema,
   paginatedTodosSchema,
@@ -20,10 +24,12 @@ export async function todosRoutes(
   {
     database,
     requirePermission,
+    requireSubscription,
     storage,
   }: {
     database: Database
     requirePermission: RequirePermission
+    requireSubscription: RequireSubscription
     storage: StorageProvider
   }
 ) {
@@ -37,7 +43,7 @@ export async function todosRoutes(
         description: 'Export todos as PDF',
         querystring: todosExportQuerySchema,
       },
-      preHandler: requirePermission('todos', 'view'),
+      preHandler: [requireSubscription(), requirePermission('todos', 'view')],
     },
     async (request, reply) => {
       let buffer: Buffer
@@ -72,7 +78,7 @@ export async function todosRoutes(
         querystring: todosListQuerySchema,
         response: { 200: paginatedTodosSchema },
       },
-      preHandler: requirePermission('todos', 'view'),
+      preHandler: [requireSubscription(), requirePermission('todos', 'view')],
     },
     async (request) => {
       const { data, total } = await service.list(request.query)
@@ -92,7 +98,7 @@ export async function todosRoutes(
           404: z.object({ message: z.string() }),
         },
       },
-      preHandler: requirePermission('todos', 'view'),
+      preHandler: [requireSubscription(), requirePermission('todos', 'view')],
     },
     async (request, reply) => {
       const todo = await service.getById(request.params.id)
@@ -110,7 +116,7 @@ export async function todosRoutes(
         body: createTodoSchema,
         response: { 201: todoSchema },
       },
-      preHandler: requirePermission('todos', 'create'),
+      preHandler: [requireSubscription(), requirePermission('todos', 'create')],
     },
     async (request, reply) => {
       const todo = await service.create(request.body)
@@ -132,7 +138,7 @@ export async function todosRoutes(
           404: z.object({ message: z.string() }),
         },
       },
-      preHandler: requirePermission('todos', 'edit'),
+      preHandler: [requireSubscription(), requirePermission('todos', 'edit')],
     },
     async (request, reply) => {
       const todo = await service.update(request.params.id, request.body)
@@ -151,7 +157,7 @@ export async function todosRoutes(
         params: z.object({ id: z.string() }),
         response: { 204: z.null().describe('Todo deleted') },
       },
-      preHandler: requirePermission('todos', 'delete'),
+      preHandler: [requireSubscription(), requirePermission('todos', 'delete')],
     },
     async (request, reply) => {
       await service.remove(request.params.id)
