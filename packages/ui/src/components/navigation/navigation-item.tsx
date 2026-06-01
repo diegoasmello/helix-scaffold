@@ -95,8 +95,14 @@ const useStyles = createStyles((theme, params: { px: string }, u) => ({
 
     &:focus div,
     &:focus-within div {
-      outline: 2px solid ${theme.colors.main[6]};
       outline-offset: 2px;
+
+      ${u.light} {
+        outline: 2px solid ${theme.colors.main[6]};
+      }
+      ${u.dark} {
+        outline: 2px solid ${theme.colors.main[3]};
+      }
     }
 
     &:hover > div {
@@ -139,7 +145,12 @@ const useStyles = createStyles((theme, params: { px: string }, u) => ({
     flex-shrink: 0;
   `,
   iconActive: css`
-    color: ${theme.colors.main[6]};
+    ${u.light} {
+      color: ${theme.colors.main[6]};
+    }
+    ${u.dark} {
+      color: ${theme.colors.main[3]};
+    }
   `,
   label: css`
     font-size: 14px;
@@ -149,7 +160,12 @@ const useStyles = createStyles((theme, params: { px: string }, u) => ({
     line-height: normal;
   `,
   labelActive: css`
-    color: ${theme.colors.main[6]};
+    ${u.light} {
+      color: ${theme.colors.main[6]};
+    }
+    ${u.dark} {
+      color: ${theme.colors.main[3]};
+    }
   `,
   chevron: css`
     transition:
@@ -162,6 +178,11 @@ const useStyles = createStyles((theme, params: { px: string }, u) => ({
     transform: rotate(-90deg);
   `,
   chevronActive: css`
-    color: ${theme.colors.main[6]};
+    ${u.light} {
+      color: ${theme.colors.main[6]};
+    }
+    ${u.dark} {
+      color: ${theme.colors.main[3]};
+    }
   `,
 }))

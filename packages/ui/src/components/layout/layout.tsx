@@ -74,18 +74,23 @@ export function Layout(props: Readonly<LayoutProps>) {
   )
 }
 
-const useStyles = createStyles((theme) => ({
+const useStyles = createStyles((theme, _, u) => ({
   main: css`
     display: flex;
     flex-direction: column;
   `,
   inner: css`
     flex: 1;
-    background-color: ${theme.colors.gray[1]};
     border-top-left-radius: ${theme.radius.lg};
     padding-top: ${theme.spacing.lg};
     padding-left: ${theme.spacing.xs};
     padding-right: ${theme.spacing.xs};
     padding-bottom: ${theme.spacing.lg};
+    ${u.light} {
+      background-color: ${theme.colors.gray[1]};
+    }
+    ${u.dark} {
+      background-color: ${theme.colors.dark[8]};
+    }
   `,
 }))

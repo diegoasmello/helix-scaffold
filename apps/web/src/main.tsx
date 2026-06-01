@@ -3,6 +3,7 @@ import './i18n'
 import { configure } from '@helix/api-client'
 import {
   emotionTransform,
+  localStorageColorSchemeManager,
   MantineEmotionProvider,
   MantineProvider,
   ModalsProvider,
@@ -20,10 +21,18 @@ import { router } from './routes.ts'
 
 configure({ baseUrl: env.VITE_API_URL })
 
+const colorSchemeManager = localStorageColorSchemeManager({
+  key: 'helix-color-scheme',
+})
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>
-      <MantineProvider theme={theme} stylesTransform={emotionTransform}>
+      <MantineProvider
+        theme={theme}
+        stylesTransform={emotionTransform}
+        colorSchemeManager={colorSchemeManager}
+      >
         <MantineEmotionProvider>
           <ModalsProvider
             modalProps={{

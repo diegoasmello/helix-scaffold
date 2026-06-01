@@ -134,7 +134,12 @@ const useStyles = createStyles((theme, _, u) => ({
     flex-shrink: 0;
   `,
   iconActive: css`
-    color: ${theme.colors.main[6]};
+    ${u.light} {
+      color: ${theme.colors.main[6]};
+    }
+    ${u.dark} {
+      color: ${theme.colors.main[4]};
+    }
   `,
   nestedOffset: css`
     padding-left: calc(56px - ${theme.spacing.md});

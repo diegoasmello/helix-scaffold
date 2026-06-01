@@ -14,6 +14,11 @@
       "sectionTitle": "Language",
       "sectionDescription": "Choose your preferred display language."
     },
+    "appearance": {
+      "sectionTitle": "Appearance",
+      "sectionDescription": "Choose how the application looks for you.",
+      "darkMode": "Dark mode"
+    },
     "navigation": {
       "sectionTitle": "Navigation",
       "sectionDescription": "Customize how the navigation panel behaves.",

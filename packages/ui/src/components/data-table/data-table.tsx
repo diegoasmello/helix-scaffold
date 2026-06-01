@@ -38,7 +38,7 @@ export function DataTable<T>(
   )
 }
 
-const useStyles = createStyles((theme) => ({
+const useStyles = createStyles((theme, _, u) => ({
   paper: css`
     padding: 0.75rem;
     padding-top: 0.125rem;
@@ -60,8 +60,13 @@ const useStyles = createStyles((theme) => ({
 
         th {
           height: 3rem;
-          background: ${theme.colors.gray[0]};
           border-bottom: 0;
+          ${u.light} {
+            background: ${theme.colors.gray[0]};
+          }
+          ${u.dark} {
+            background: ${theme.colors.dark[6]};
+          }
 
           &:first-child {
             border-top-left-radius: ${theme.radius['sm']};
@@ -79,7 +84,12 @@ const useStyles = createStyles((theme) => ({
             }
 
             &:hover:not(:has(button:hover)) {
-              background: ${theme.colors.gray[2]};
+              ${u.light} {
+                background: ${theme.colors.gray[2]};
+              }
+              ${u.dark} {
+                background: ${theme.colors.dark[5]};
+              }
             }
           }
         }
@@ -92,8 +102,13 @@ const useStyles = createStyles((theme) => ({
       &:not(:last-child):after {
         content: '';
         height: 1px;
-        background: ${theme.colors.gray[2]};
         display: block;
+        ${u.light} {
+          background: ${theme.colors.gray[2]};
+        }
+        ${u.dark} {
+          background: ${theme.colors.dark[5]};
+        }
         position: absolute;
         left: 0.25rem;
         right: 0.25rem;

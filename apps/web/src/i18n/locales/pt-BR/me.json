@@ -14,6 +14,11 @@
       "sectionTitle": "Idioma",
       "sectionDescription": "Escolha o idioma de exibição preferido."
     },
+    "appearance": {
+      "sectionTitle": "Aparência",
+      "sectionDescription": "Escolha como o aplicativo aparece para você.",
+      "darkMode": "Modo escuro"
+    },
     "navigation": {
       "sectionTitle": "Navegação",
       "sectionDescription": "Personalize o comportamento do painel de navegação.",

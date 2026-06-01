@@ -17,7 +17,7 @@ export function PageList(props: Readonly<PageListProps>) {
         <Flex direction="column" gap={8}>
           <Title order={2}>{title}</Title>
           {description && (
-            <Text maw="420" size="sm" c="gray.8">
+            <Text maw="420" size="sm" c="dimmed">
               {description}
             </Text>
           )}
