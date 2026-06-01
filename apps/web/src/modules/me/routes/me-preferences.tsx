@@ -1,4 +1,4 @@
-import { LanguagePicker, Stack, Switch, Text, Title } from '@helix/ui'
+import { Flex, LanguagePicker, Stack, Switch, Text, Title } from '@helix/ui'
 import { useTranslation } from 'react-i18next'
 
 import { useSidebarPreference } from '../../../lib/sidebar-preference'
@@ -21,7 +21,7 @@ export function MePreferences() {
         <LanguagePicker />
       </Stack>
 
-      <Stack gap="md">
+      <Flex gap="md" align="center" justify="space-between">
         <Stack gap={4}>
           <Title order={4} lh={1.2}>
             {t('preferences.navigation.sectionTitle')}
@@ -35,7 +35,7 @@ export function MePreferences() {
           checked={sidebarCollapsed}
           onChange={toggleSidebar}
         />
-      </Stack>
+      </Flex>
     </Stack>
   )
 }
