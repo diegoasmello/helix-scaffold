@@ -4,7 +4,6 @@
     "description": "Atualize seu nome e endereço de e-mail.",
     "nav": {
       "account": "Conta",
-      "signIn": "Métodos de login",
       "security": "Segurança",
       "preferences": "Preferências",
       "subscription": "Assinatura"
@@ -46,18 +45,24 @@
     }
   },
   "security": {
-    "sectionTitle": "Segurança",
+    "sectionTitle": "Senha",
     "sectionDescription": "Escolha uma senha forte com pelo menos 8 caracteres.",
+    "passwordNotSetDescription": "Você se cadastrou via um provedor social e ainda não possui senha. Defina uma para também poder entrar com seu e-mail.",
     "currentPassword": "Senha Atual",
     "newPassword": "Nova Senha",
+    "newPasswordPlaceholder": "Mínimo de 8 caracteres",
     "confirmNewPassword": "Confirmar Nova Senha",
+    "confirmPasswordPlaceholder": "Repita sua senha",
     "changeButton": "Alterar Senha",
+    "setPasswordButton": "Definir senha",
     "validation": {
       "passwordsNoMatch": "As senhas não coincidem"
     },
     "notifications": {
       "changed": "Senha alterada com sucesso",
-      "incorrectCurrent": "Senha atual incorreta"
+      "incorrectCurrent": "Senha atual incorreta",
+      "set": "Senha definida com sucesso",
+      "setFailed": "Falha ao definir senha"
     }
   },
   "signIn": {
@@ -67,15 +72,6 @@
     "linkAnotherTitle": "Vincular outra conta",
     "linkAnotherDescription": "Conecte um provedor social para poder entrar com ele no futuro.",
     "connectButton": "Conectar",
-    "passwordTitle": "Senha",
-    "passwordSetMessage": "Sua conta possui uma senha definida.",
-    "changePasswordLink": "Alterar senha",
-    "passwordNotSetDescription": "Você se cadastrou via um provedor social e ainda não possui senha. Defina uma para também poder entrar com seu e-mail.",
-    "newPasswordLabel": "Nova Senha",
-    "newPasswordPlaceholder": "Mínimo de 8 caracteres",
-    "confirmPasswordLabel": "Confirmar Senha",
-    "confirmPasswordPlaceholder": "Repita sua senha",
-    "setPasswordButton": "Definir senha",
     "activeLabel": "Ativo",
     "loadingLabel": "Carregando…",
     "noAccountsLabel": "Nenhuma conta encontrada.",
@@ -86,14 +82,9 @@
       "apple": "Apple",
       "credential": "E-mail e Senha"
     },
-    "validation": {
-      "passwordsNoMatch": "As senhas não coincidem"
-    },
     "errors": {
       "loadFailed": "Não foi possível carregar suas contas conectadas. Atualize a página.",
-      "couldNotLink": "Não foi possível vincular esta conta. Tente novamente.",
-      "setPasswordSuccess": "Senha definida com sucesso",
-      "setPasswordFailed": "Falha ao definir senha"
+      "couldNotLink": "Não foi possível vincular esta conta. Tente novamente."
     }
   }
 }

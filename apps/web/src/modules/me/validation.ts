@@ -39,7 +39,7 @@ export const setPasswordFormValidate = createValidator<SetPasswordFormValues>()(
     newPassword: [minLength(8)],
     confirmPassword: (v, values) =>
       v !== values.newPassword
-        ? i18n.t('signIn.validation.passwordsNoMatch', { ns: 'me' })
+        ? i18n.t('security.validation.passwordsNoMatch', { ns: 'me' })
         : null,
   }
 )

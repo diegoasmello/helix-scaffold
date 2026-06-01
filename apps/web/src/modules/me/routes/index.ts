@@ -12,7 +12,6 @@ import { MePage } from './me-page'
 import { MePending } from './me-pending'
 import { MePreferences } from './me-preferences'
 import { MeSecurity } from './me-security'
-import { MeSignIn } from './me-sign-in'
 import { MeSubscription } from './me-subscription'
 
 const meRoute = createRoute({
@@ -38,12 +37,6 @@ const meAccountRoute = createRoute({
   getParentRoute: () => meRoute,
   path: '/account',
   component: MeAccount,
-})
-
-const meSignInRoute = createRoute({
-  getParentRoute: () => meRoute,
-  path: '/sign-in',
-  component: MeSignIn,
 })
 
 const meSecurityRoute = createRoute({
@@ -74,7 +67,6 @@ export const meRoutes = [
   meRoute.addChildren([
     meIndexRoute,
     meAccountRoute,
-    meSignInRoute,
     meSecurityRoute,
     mePreferencesRoute,
     meSubscriptionRoute,

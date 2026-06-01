@@ -6,8 +6,14 @@ import {
   patchMePasswordHandler,
   patchMePasswordHandlerResponse204,
   patchMePasswordHandlerResponse400,
+  postMeSetPasswordHandler,
+  postMeSetPasswordHandlerResponse204,
 } from '@helix/api-client/mocks'
-import { MantineProvider, Notifications } from '@helix/ui'
+import {
+  MantineEmotionProvider,
+  MantineProvider,
+  Notifications,
+} from '@helix/ui'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -15,8 +21,13 @@ import { Suspense } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { server } from '../../../mocks/server'
+import type { LinkedAccount } from '../types'
 import { MeAccount } from './me-account'
 import { MeSecurity } from './me-security'
+
+const { mockListAccounts } = vi.hoisted(() => ({
+  mockListAccounts: vi.fn(),
+}))
 
 vi.mock('../../../lib/authentication', () => ({
   authClient: {
@@ -32,8 +43,23 @@ vi.mock('../../../lib/authentication', () => ({
       },
       isPending: false,
     }),
+    listAccounts: mockListAccounts,
   },
 }))
+
+const credentialAccount: LinkedAccount = {
+  id: 'acc-cred',
+  providerId: 'credential',
+  accountId: 'test@example.com',
+  createdAt: new Date('2026-01-10'),
+}
+
+const googleAccount: LinkedAccount = {
+  id: 'acc-google',
+  providerId: 'google',
+  accountId: 'google-123',
+  createdAt: new Date('2026-01-15'),
+}
 
 const mockProfile = createGetMe200({
   id: 'test-user',
@@ -65,16 +91,19 @@ function renderMeSecurity() {
   })
   return render(
     <MantineProvider>
-      <Notifications />
-      <QueryClientProvider client={queryClient}>
-        <MeSecurity />
-      </QueryClientProvider>
+      <MantineEmotionProvider>
+        <Notifications />
+        <QueryClientProvider client={queryClient}>
+          <MeSecurity />
+        </QueryClientProvider>
+      </MantineEmotionProvider>
     </MantineProvider>
   )
 }
 
 beforeEach(() => {
   server.use(getMeHandler(mockProfile))
+  mockListAccounts.mockResolvedValue({ data: [credentialAccount], error: null })
 })
 
 afterEach(() => vi.clearAllMocks())
@@ -125,7 +154,7 @@ describe('Profile update', () => {
   })
 })
 
-describe('Password change', () => {
+describe('Password change — user with existing password', () => {
   it('submits password change and shows success', async () => {
     const user = userEvent.setup()
 
@@ -134,6 +163,7 @@ describe('Password change', () => {
     )
 
     renderMeSecurity()
+    await screen.findByRole('button', { name: 'Change Password' })
     const [currentPwdInput, newPwdInput, confirmPwdInput] =
       document.querySelectorAll('input[type="password"]')
 
@@ -157,6 +187,7 @@ describe('Password change', () => {
     )
 
     renderMeSecurity()
+    await screen.findByRole('button', { name: 'Change Password' })
     const [currentPwdInput, newPwdInput, confirmPwdInput] =
       document.querySelectorAll('input[type="password"]')
 
@@ -171,6 +202,7 @@ describe('Password change', () => {
   it('shows validation error when passwords do not match', async () => {
     const user = userEvent.setup()
     renderMeSecurity()
+    await screen.findByRole('button', { name: 'Change Password' })
     const [currentPwdInput, newPwdInput, confirmPwdInput] =
       document.querySelectorAll('input[type="password"]')
 
@@ -185,6 +217,7 @@ describe('Password change', () => {
   it('shows validation error when new password is too short', async () => {
     const user = userEvent.setup()
     renderMeSecurity()
+    await screen.findByRole('button', { name: 'Change Password' })
     const [currentPwdInput, newPwdInput, confirmPwdInput] =
       document.querySelectorAll('input[type="password"]')
 
@@ -194,5 +227,88 @@ describe('Password change', () => {
     await user.click(screen.getByRole('button', { name: 'Change Password' }))
 
     await screen.findByText('Min 8 characters')
+  })
+})
+
+describe('Password setup — social-only user', () => {
+  beforeEach(() => {
+    mockListAccounts.mockResolvedValue({ data: [googleAccount], error: null })
+  })
+
+  it('shows set-password form instead of change-password form', async () => {
+    renderMeSecurity()
+    expect(
+      await screen.findByRole('button', { name: /set password/i })
+    ).toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'Change Password' })
+    ).not.toBeInTheDocument()
+  })
+
+  it('blocks submission when passwords do not match', async () => {
+    const user = userEvent.setup()
+    renderMeSecurity()
+    await screen.findByRole('button', { name: /set password/i })
+    const [newPwdInput, confirmPwdInput] = document.querySelectorAll(
+      'input[type="password"]'
+    )
+
+    await user.type(newPwdInput, 'Password123!')
+    await user.type(confirmPwdInput, 'Different456!')
+    await user.click(screen.getByRole('button', { name: /set password/i }))
+
+    expect(
+      await screen.findByText('Passwords do not match')
+    ).toBeInTheDocument()
+  })
+
+  it('submits with correct newPassword and shows success notification', async () => {
+    const user = userEvent.setup()
+    let capturedBody: unknown
+
+    server.use(
+      postMeSetPasswordHandler(async (info) => {
+        capturedBody = await info.request.json()
+        return postMeSetPasswordHandlerResponse204()
+      })
+    )
+
+    renderMeSecurity()
+    await screen.findByRole('button', { name: /set password/i })
+    const [newPwdInput, confirmPwdInput] = document.querySelectorAll(
+      'input[type="password"]'
+    )
+
+    await user.type(newPwdInput, 'Password123!')
+    await user.type(confirmPwdInput, 'Password123!')
+    await user.click(screen.getByRole('button', { name: /set password/i }))
+
+    await screen.findByText('Password set successfully')
+    expect(capturedBody).toEqual({ newPassword: 'Password123!' })
+  })
+
+  it('shows error notification when set-password fails', async () => {
+    const user = userEvent.setup()
+
+    server.use(
+      postMeSetPasswordHandler(
+        () =>
+          new Response(JSON.stringify({ message: 'Server error' }), {
+            status: 500,
+          })
+      )
+    )
+
+    renderMeSecurity()
+    await screen.findByRole('button', { name: /set password/i })
+    const [newPwdInput, confirmPwdInput] = document.querySelectorAll(
+      'input[type="password"]'
+    )
+
+    await user.type(newPwdInput, 'Password123!')
+    await user.type(confirmPwdInput, 'Password123!')
+    await user.click(screen.getByRole('button', { name: /set password/i }))
+
+    await screen.findByText('Failed to set password')
   })
 })

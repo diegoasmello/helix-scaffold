@@ -4,7 +4,6 @@
     "description": "Update your name and email address.",
     "nav": {
       "account": "Account",
-      "signIn": "Sign-in methods",
       "security": "Security",
       "preferences": "Preferences",
       "subscription": "Subscription"
@@ -46,18 +45,24 @@
     }
   },
   "security": {
-    "sectionTitle": "Security",
+    "sectionTitle": "Password",
     "sectionDescription": "Choose a strong password with at least 8 characters.",
+    "passwordNotSetDescription": "You signed up via a social provider and have no password yet. Set one to also be able to sign in with your email address.",
     "currentPassword": "Current Password",
     "newPassword": "New Password",
+    "newPasswordPlaceholder": "At least 8 characters",
     "confirmNewPassword": "Confirm New Password",
+    "confirmPasswordPlaceholder": "Repeat your password",
     "changeButton": "Change Password",
+    "setPasswordButton": "Set password",
     "validation": {
       "passwordsNoMatch": "Passwords do not match"
     },
     "notifications": {
       "changed": "Password changed successfully",
-      "incorrectCurrent": "Current password is incorrect"
+      "incorrectCurrent": "Current password is incorrect",
+      "set": "Password set successfully",
+      "setFailed": "Failed to set password"
     }
   },
   "signIn": {
@@ -67,15 +72,6 @@
     "linkAnotherTitle": "Link another account",
     "linkAnotherDescription": "Connect a social provider so you can sign in with it in the future.",
     "connectButton": "Connect",
-    "passwordTitle": "Password",
-    "passwordSetMessage": "Your account has a password set.",
-    "changePasswordLink": "Change password",
-    "passwordNotSetDescription": "You signed up via a social provider and have no password yet. Set one to also be able to sign in with your email address.",
-    "newPasswordLabel": "New Password",
-    "newPasswordPlaceholder": "At least 8 characters",
-    "confirmPasswordLabel": "Confirm Password",
-    "confirmPasswordPlaceholder": "Repeat your password",
-    "setPasswordButton": "Set password",
     "activeLabel": "Active",
     "loadingLabel": "Loading…",
     "noAccountsLabel": "No accounts found.",
@@ -86,14 +82,9 @@
       "apple": "Apple",
       "credential": "Email & Password"
     },
-    "validation": {
-      "passwordsNoMatch": "Passwords do not match"
-    },
     "errors": {
       "loadFailed": "Could not load your connected accounts. Please refresh the page.",
-      "couldNotLink": "Could not link this account. Please try again.",
-      "setPasswordSuccess": "Password set successfully",
-      "setPasswordFailed": "Failed to set password"
+      "couldNotLink": "Could not link this account. Please try again."
     }
   }
 }

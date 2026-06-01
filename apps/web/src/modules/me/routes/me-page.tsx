@@ -2,7 +2,6 @@ import {
   Grid,
   GridCol,
   IconCreditCard,
-  IconKey,
   IconLock,
   IconSettings,
   IconUser,
@@ -40,11 +39,6 @@ export function MePage() {
                 label={t('page.nav.account')}
                 icon={IconUser}
                 to="/me/account"
-              />
-              <NavigationItem
-                label={t('page.nav.signIn')}
-                icon={IconKey}
-                to="/me/sign-in"
               />
               <NavigationItem
                 label={t('page.nav.security')}

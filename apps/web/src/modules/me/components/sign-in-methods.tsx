@@ -1,12 +1,10 @@
-import { getMeProviders, postMeSetPassword } from '@helix/api-client/hooks'
+import { getMeProviders } from '@helix/api-client/hooks'
 import {
   Alert,
-  Anchor,
   Badge,
   Button,
   createStyles,
   css,
-  Divider,
   Group,
   IconBrandApple,
   IconBrandFacebook,
@@ -15,19 +13,16 @@ import {
   IconKey,
   IconLock,
   notify,
-  PasswordInput,
   Stack,
   Text,
   Title,
-  useForm,
 } from '@helix/ui'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { authClient } from '../../../lib/authentication'
-import type { LinkedAccount, SetPasswordFormValues } from '../types'
-import { setPasswordFormValidate } from '../validation'
+import type { LinkedAccount } from '../types'
 
 const PROVIDER_ICONS: Record<string, React.ElementType> = {
   google: IconBrandGoogle,
@@ -52,9 +47,8 @@ const useStyles = createStyles(() => ({
   `,
 }))
 
-export function MeSignIn() {
+export function SignInMethods() {
   const { classes } = useStyles()
-  const queryClient = useQueryClient()
   const { t } = useTranslation('me')
   const [linkingProvider, setLinkingProvider] = useState<string | null>(null)
 
@@ -84,41 +78,12 @@ export function MeSignIn() {
     (p) => !linkedProviderIds.has(p)
   )
 
-  const hasPassword = accounts.some((a) => a.providerId === 'credential')
-
-  const { mutate: setPassword, isPending: settingPassword } = useMutation({
-    mutationFn: (data: { newPassword: string }) => postMeSetPassword(data),
-    onSuccess: () => {
-      form.reset()
-      notify({
-        status: 'success',
-        message: t('signIn.errors.setPasswordSuccess'),
-      })
-      queryClient.invalidateQueries({ queryKey: ME_ACCOUNTS_QUERY_KEY })
-    },
-    onError: () => {
-      notify({
-        status: 'danger',
-        message: t('signIn.errors.setPasswordFailed'),
-      })
-    },
-  })
-
-  const form = useForm<SetPasswordFormValues>({
-    initialValues: { newPassword: '', confirmPassword: '' },
-    validate: setPasswordFormValidate,
-  })
-
-  const handleSubmit = form.onSubmit((values) => {
-    setPassword({ newPassword: values.newPassword })
-  })
-
   async function handleLink(provider: string) {
     setLinkingProvider(provider)
     try {
       const { error } = await authClient.linkSocial({
         provider: provider as 'google' | 'facebook' | 'apple',
-        callbackURL: window.location.origin + '/me/sign-in',
+        callbackURL: window.location.origin + '/me/security',
       })
       if (error) throw error
     } catch {
@@ -132,7 +97,7 @@ export function MeSignIn() {
   }
 
   return (
-    <Stack gap="xl">
+    <Stack gap="md">
       <Stack gap={4}>
         <Title order={4} lh={1.2}>
           {t('signIn.sectionTitle')}
@@ -142,7 +107,7 @@ export function MeSignIn() {
         </Text>
       </Stack>
 
-      <Stack gap="md">
+      <Stack gap="xs">
         <Title order={5}>{t('signIn.connectedAccountsTitle')}</Title>
         {accountsError ? (
           <Alert icon={<IconInfoCircle size={16} />} color="red">
@@ -188,10 +153,12 @@ export function MeSignIn() {
 
       {!providersError && unlinkableProviders.length > 0 && (
         <Stack gap="md">
-          <Title order={5}>{t('signIn.linkAnotherTitle')}</Title>
-          <Text size="sm" c="dimmed">
-            {t('signIn.linkAnotherDescription')}
-          </Text>
+          <Stack gap={0}>
+            <Title order={5}>{t('signIn.linkAnotherTitle')}</Title>
+            <Text size="sm" c="dimmed">
+              {t('signIn.linkAnotherDescription')}
+            </Text>
+          </Stack>
           <Stack gap="xs">
             {unlinkableProviders.map((provider) => {
               const Icon = PROVIDER_ICONS[provider] ?? IconKey
@@ -222,49 +189,6 @@ export function MeSignIn() {
           </Stack>
         </Stack>
       )}
-
-      <Divider />
-
-      <Stack gap="md">
-        <Title order={5}>{t('signIn.passwordTitle')}</Title>
-        {!accountsLoading &&
-          !accountsError &&
-          (hasPassword ? (
-            <Alert icon={<IconInfoCircle size={16} />} color="blue">
-              {t('signIn.passwordSetMessage')}{' '}
-              <Anchor href="/me/security" size="sm">
-                {t('signIn.changePasswordLink')}
-              </Anchor>
-            </Alert>
-          ) : (
-            <Stack gap="md">
-              <Text size="sm" c="dimmed">
-                {t('signIn.passwordNotSetDescription')}
-              </Text>
-              <form onSubmit={handleSubmit}>
-                <Stack gap="md">
-                  <PasswordInput
-                    label={t('signIn.newPasswordLabel')}
-                    placeholder={t('signIn.newPasswordPlaceholder')}
-                    required
-                    {...form.getInputProps('newPassword')}
-                  />
-                  <PasswordInput
-                    label={t('signIn.confirmPasswordLabel')}
-                    placeholder={t('signIn.confirmPasswordPlaceholder')}
-                    required
-                    {...form.getInputProps('confirmPassword')}
-                  />
-                  <Group justify="flex-end">
-                    <Button type="submit" loading={settingPassword}>
-                      {t('signIn.setPasswordButton')}
-                    </Button>
-                  </Group>
-                </Stack>
-              </form>
-            </Stack>
-          ))}
-      </Stack>
     </Stack>
   )
 }
