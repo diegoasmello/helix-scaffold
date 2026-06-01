@@ -1,4 +1,10 @@
-import { Center, Layout, Loader, usePersistedSidebar } from '@helix/ui'
+import {
+  Center,
+  DatesProvider,
+  Layout,
+  Loader,
+  usePersistedSidebar,
+} from '@helix/ui'
 import { useNavigate } from '@tanstack/react-router'
 import { useTranslation } from 'react-i18next'
 
@@ -12,7 +18,7 @@ export function App() {
   const { user, hasPermission, isAuthenticated, isPending } = useAuth()
   const { enabled: subscriptionEnabled } = useSubscription()
   const navigate = useNavigate()
-  const { t: tRaw } = useTranslation('common')
+  const { t: tRaw, i18n } = useTranslation('common')
   const t = tRaw as (key: string) => string
   const [sidebarCollapsed, toggleSidebar] = usePersistedSidebar(user?.id)
 
@@ -50,17 +56,19 @@ export function App() {
   }
 
   return (
-    <SidebarPreferenceContext.Provider
-      value={{ sidebarCollapsed, toggleSidebar }}
-    >
-      <Layout
-        sidebarGroups={visibleGroups}
-        user={user ?? { name: 'Guest' }}
-        onAccountSettings={handleAccountSettings}
-        onLogout={handleLogout}
-        sidebarCollapsed={sidebarCollapsed}
-        onToggleSidebar={toggleSidebar}
-      />
-    </SidebarPreferenceContext.Provider>
+    <DatesProvider settings={{ locale: i18n.language.toLowerCase() }}>
+      <SidebarPreferenceContext.Provider
+        value={{ sidebarCollapsed, toggleSidebar }}
+      >
+        <Layout
+          sidebarGroups={visibleGroups}
+          user={user ?? { name: 'Guest' }}
+          onAccountSettings={handleAccountSettings}
+          onLogout={handleLogout}
+          sidebarCollapsed={sidebarCollapsed}
+          onToggleSidebar={toggleSidebar}
+        />
+      </SidebarPreferenceContext.Provider>
+    </DatesProvider>
   )
 }
