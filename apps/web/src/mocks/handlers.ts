@@ -2,15 +2,19 @@ import {
   createGetMe200,
   createPaginatedAuditLogs,
   createPaginatedRoles,
+  createPaginatedSubscriptions,
   createPaginatedTodos,
   createPaginatedUploads,
   createPaginatedUsers,
   createRole,
+  createSubscription,
   createTodo,
   createUpload,
   createUserWithRole,
   deleteRolesIdHandler,
   deleteRolesIdHandlerResponse204,
+  deleteSubscriptionsIdHandler,
+  deleteSubscriptionsIdHandlerResponse204,
   deleteTodosIdHandler,
   deleteTodosIdHandlerResponse204,
   deleteUploadsIdHandler,
@@ -26,6 +30,8 @@ import {
   getMePermissionsHandler,
   getMeProvidersHandler,
   getMeProvidersHandlerResponse200,
+  getMeSubscriptionHandler,
+  getMeSubscriptionHandlerResponse204,
   getPermissionsResourcesHandler,
   getRegistrationStatusHandler,
   getRegistrationStatusHandlerResponse200,
@@ -34,6 +40,11 @@ import {
   getRolesIdHandler,
   getRolesIdHandlerResponse404,
   getRolesIdPermissionsHandler,
+  getSubscriptionsHandler,
+  getSubscriptionsIdHandler,
+  getSubscriptionsIdHandlerResponse404,
+  getSubscriptionStatusHandler,
+  getSubscriptionStatusHandlerResponse200,
   getTodosHandler,
   getTodosIdHandler,
   getTodosIdHandlerResponse404,
@@ -49,6 +60,8 @@ import {
   patchMePasswordHandlerResponse204,
   patchRolesIdHandler,
   patchRolesIdHandlerResponse404,
+  patchSubscriptionsIdHandler,
+  patchSubscriptionsIdHandlerResponse404,
   patchTodosIdHandler,
   patchTodosIdHandlerResponse404,
   patchUsersIdHandler,
@@ -58,6 +71,8 @@ import {
   postMeSetPasswordHandlerResponse204,
   postRolesHandler,
   postRolesHandlerResponse201,
+  postSubscriptionsHandler,
+  postSubscriptionsHandlerResponse201,
   postTodosHandler,
   postTodosHandlerResponse201,
   postUploadsHandler,
@@ -156,6 +171,31 @@ export const handlers = [
   ),
   postUploadsHandler(() => postUploadsHandlerResponse201(createUpload())),
   deleteUploadsIdHandler(() => deleteUploadsIdHandlerResponse204()),
+
+  // Subscriptions
+  getSubscriptionStatusHandler(() =>
+    getSubscriptionStatusHandlerResponse200({ enabled: false })
+  ),
+  getMeSubscriptionHandler(() => getMeSubscriptionHandlerResponse204()),
+  getSubscriptionsHandler(
+    createPaginatedSubscriptions({
+      data: [],
+      total: 0,
+      page: 1,
+      pageSize: 10,
+      totalPages: 0,
+    })
+  ),
+  getSubscriptionsIdHandler(() =>
+    getSubscriptionsIdHandlerResponse404({ message: 'Not found' })
+  ),
+  postSubscriptionsHandler(() =>
+    postSubscriptionsHandlerResponse201(createSubscription())
+  ),
+  patchSubscriptionsIdHandler(() =>
+    patchSubscriptionsIdHandlerResponse404({ message: 'Not found' })
+  ),
+  deleteSubscriptionsIdHandler(() => deleteSubscriptionsIdHandlerResponse204()),
 
   // Bootstrap / Registration
   getBootstrapStatusHandler({ bootstrapped: true }),

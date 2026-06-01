@@ -1,0 +1,73 @@
+{
+  "title": "Assinaturas",
+  "create": { "title": "Criar Assinatura" },
+  "edit": { "title": "Editar Assinatura" },
+  "detail": { "title": "Ver Assinatura" },
+  "empty": {
+    "title": "Nenhuma assinatura ainda",
+    "description": "Crie uma assinatura para conceder acesso a um usuário.",
+    "createButton": "Criar primeira assinatura"
+  },
+  "me": {
+    "title": "Assinatura",
+    "description": "Seu plano atual e detalhes de cobrança.",
+    "noSubscription": {
+      "title": "Sem assinatura ativa",
+      "description": "Você não possui uma assinatura ativa."
+    },
+    "labels": {
+      "plan": "Plano",
+      "status": "Status",
+      "trialEnds": "Período de teste termina em",
+      "periodStart": "Início do período",
+      "periodEnd": "Fim do período"
+    }
+  },
+  "columns": {
+    "userId": "ID do Usuário",
+    "planId": "Plano",
+    "status": "Status",
+    "currentPeriodEnd": "Fim do período",
+    "createdAt": "Criado em",
+    "actions": "Ações"
+  },
+  "form": {
+    "userId": { "label": "ID do Usuário", "placeholder": "ID do usuário" },
+    "planId": { "label": "ID do Plano", "placeholder": "Ex: pro, starter, enterprise" },
+    "status": { "label": "Status" },
+    "currentPeriodStart": { "label": "Início do período" },
+    "currentPeriodEnd": { "label": "Fim do período" },
+    "trialEndsAt": { "label": "Período de teste termina em" },
+    "externalId": { "label": "ID Externo", "placeholder": "ID da assinatura no processador de pagamento" }
+  },
+  "labels": {
+    "userId": "ID do Usuário",
+    "planId": "Plano",
+    "status": "Status",
+    "trialEndsAt": "Período de teste termina em",
+    "currentPeriodStart": "Início do período",
+    "currentPeriodEnd": "Fim do período",
+    "canceledAt": "Cancelado em",
+    "externalId": "ID Externo",
+    "createdAt": "Criado em"
+  },
+  "status": {
+    "active": "Ativo",
+    "trialing": "Em avaliação",
+    "canceled": "Cancelado",
+    "past_due": "Pagamento atrasado",
+    "expired": "Expirado"
+  },
+  "delete": {
+    "title": "Excluir assinatura",
+    "message": "Tem certeza que deseja excluir esta assinatura? Esta ação não pode ser desfeita."
+  },
+  "notifications": {
+    "created": "Assinatura criada com sucesso",
+    "createFailed": "Falha ao criar assinatura",
+    "updated": "Assinatura atualizada com sucesso",
+    "updateFailed": "Falha ao atualizar assinatura",
+    "deleted": "Assinatura excluída com sucesso",
+    "deleteFailed": "Falha ao excluir assinatura"
+  }
+}

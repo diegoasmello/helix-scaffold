@@ -7,6 +7,7 @@ import type errors from './locales/en/errors.json'
 import type me from './locales/en/me.json'
 import type permissions from './locales/en/permissions.json'
 import type roles from './locales/en/roles.json'
+import type subscription from './locales/en/subscription.json'
 import type todos from './locales/en/todos.json'
 import type users from './locales/en/users.json'
 
@@ -23,6 +24,7 @@ declare module 'i18next' {
       permissions: typeof permissions
       audit: typeof audit
       me: typeof me
+      subscription: typeof subscription
       errors: typeof errors
     }
   }

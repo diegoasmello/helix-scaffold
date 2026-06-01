@@ -1,11 +1,20 @@
 import { Grid, GridCol, NavigationItem, Title } from '@helix/ui'
+import {
+  IconCreditCard,
+  IconKey,
+  IconLock,
+  IconSettings,
+  IconUser,
+} from '@helix/ui'
 import { Paper, Stack, Text } from '@helix/ui'
-import { IconKey, IconLock, IconSettings, IconUser } from '@helix/ui'
 import { Outlet } from '@tanstack/react-router'
 import { useTranslation } from 'react-i18next'
 
+import { useSubscriptionMode } from '../../subscription/use-subscription-mode'
+
 export function MePage() {
   const { t } = useTranslation('me')
+  const { enabled: subscriptionEnabled } = useSubscriptionMode()
 
   return (
     <Grid>
@@ -42,6 +51,13 @@ export function MePage() {
                 icon={IconSettings}
                 to="/me/preferences"
               />
+              {subscriptionEnabled && (
+                <NavigationItem
+                  label={t('page.nav.subscription')}
+                  icon={IconCreditCard}
+                  to="/me/subscription"
+                />
+              )}
             </Stack>
           </Stack>
         </Paper>

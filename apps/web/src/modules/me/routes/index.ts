@@ -10,6 +10,7 @@ import { MePending } from './me-pending'
 import { MePreferences } from './me-preferences'
 import { MeSecurity } from './me-security'
 import { MeSignIn } from './me-sign-in'
+import { MeSubscription } from './me-subscription'
 
 const meRoute = createRoute({
   getParentRoute: () => authenticatedRoute,
@@ -54,6 +55,12 @@ const mePreferencesRoute = createRoute({
   component: MePreferences,
 })
 
+const meSubscriptionRoute = createRoute({
+  getParentRoute: () => meRoute,
+  path: '/subscription',
+  component: MeSubscription,
+})
+
 export const meRoutes = [
   meRoute.addChildren([
     meIndexRoute,
@@ -61,5 +68,6 @@ export const meRoutes = [
     meSignInRoute,
     meSecurityRoute,
     mePreferencesRoute,
+    meSubscriptionRoute,
   ]),
 ]

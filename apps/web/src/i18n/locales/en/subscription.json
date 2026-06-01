@@ -1,0 +1,73 @@
+{
+  "title": "Subscriptions",
+  "create": { "title": "Create Subscription" },
+  "edit": { "title": "Edit Subscription" },
+  "detail": { "title": "View Subscription" },
+  "empty": {
+    "title": "No subscriptions yet",
+    "description": "Create a subscription to grant a user access.",
+    "createButton": "Create first subscription"
+  },
+  "me": {
+    "title": "Subscription",
+    "description": "Your current plan and billing details.",
+    "noSubscription": {
+      "title": "No active subscription",
+      "description": "You don't have an active subscription."
+    },
+    "labels": {
+      "plan": "Plan",
+      "status": "Status",
+      "trialEnds": "Trial ends",
+      "periodStart": "Period start",
+      "periodEnd": "Period end"
+    }
+  },
+  "columns": {
+    "userId": "User ID",
+    "planId": "Plan",
+    "status": "Status",
+    "currentPeriodEnd": "Period end",
+    "createdAt": "Created",
+    "actions": "Actions"
+  },
+  "form": {
+    "userId": { "label": "User ID", "placeholder": "User ID" },
+    "planId": { "label": "Plan ID", "placeholder": "e.g. pro, starter, enterprise" },
+    "status": { "label": "Status" },
+    "currentPeriodStart": { "label": "Period start" },
+    "currentPeriodEnd": { "label": "Period end" },
+    "trialEndsAt": { "label": "Trial ends at" },
+    "externalId": { "label": "External ID", "placeholder": "Payment processor subscription ID" }
+  },
+  "labels": {
+    "userId": "User ID",
+    "planId": "Plan",
+    "status": "Status",
+    "trialEndsAt": "Trial ends",
+    "currentPeriodStart": "Period start",
+    "currentPeriodEnd": "Period end",
+    "canceledAt": "Canceled at",
+    "externalId": "External ID",
+    "createdAt": "Created"
+  },
+  "status": {
+    "active": "Active",
+    "trialing": "Trialing",
+    "canceled": "Canceled",
+    "past_due": "Past due",
+    "expired": "Expired"
+  },
+  "delete": {
+    "title": "Delete subscription",
+    "message": "Are you sure you want to delete this subscription? This action cannot be undone."
+  },
+  "notifications": {
+    "created": "Subscription created successfully",
+    "createFailed": "Failed to create subscription",
+    "updated": "Subscription updated successfully",
+    "updateFailed": "Failed to update subscription",
+    "deleted": "Subscription deleted successfully",
+    "deleteFailed": "Failed to delete subscription"
+  }
+}

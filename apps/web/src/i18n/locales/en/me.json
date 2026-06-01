@@ -6,7 +6,8 @@
       "account": "Account",
       "signIn": "Sign-in methods",
       "security": "Security",
-      "preferences": "Preferences"
+      "preferences": "Preferences",
+      "subscription": "Subscription"
     }
   },
   "preferences": {
