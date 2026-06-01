@@ -19,6 +19,7 @@ import { NotFound } from './modules/errors/not-found'
 import { meRoutes } from './modules/me/routes'
 import { permissionsRoutes } from './modules/permissions/routes'
 import { rolesRoutes } from './modules/roles/routes'
+import { subscriptionsRoutes } from './modules/subscriptions/routes'
 import { todosRoutes } from './modules/todos/routes'
 import { usersRoutes } from './modules/users/routes'
 
@@ -80,6 +81,7 @@ const routeTree = rootRoute.addChildren([
       ...auditRoutes,
       ...meRoutes,
       ...todosRoutes,
+      ...subscriptionsRoutes,
     ]),
   ]),
 ])

@@ -5,6 +5,7 @@
     "roles": "Roles",
     "permissions": "Permissions",
     "auditLog": "Audit Log",
+    "subscriptions": "Subscriptions",
     "settings": "Settings",
     "profile": "Profile"
   },

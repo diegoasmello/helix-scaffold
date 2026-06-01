@@ -6,9 +6,11 @@ import { sidebarGroups } from './config/sidebar'
 import { authClient } from './lib/authentication'
 import { SidebarPreferenceContext } from './lib/sidebar-preference'
 import { useAuth } from './modules/auth/use-auth'
+import { useSubscriptionMode } from './modules/subscription/use-subscription-mode'
 
 export function App() {
   const { user, hasPermission, isAuthenticated, isPending } = useAuth()
+  const { enabled: subscriptionEnabled } = useSubscriptionMode()
   const navigate = useNavigate()
   const { t: tRaw } = useTranslation('common')
   const t = tRaw as (key: string) => string
@@ -26,11 +28,14 @@ export function App() {
     .map((group) => ({
       title: group.titleKey ? t(group.titleKey) : undefined,
       items: group.items
-        .filter((item) =>
-          item.permission
+        .filter((item) => {
+          if (item.requiresSubscriptionEnabled && !subscriptionEnabled) {
+            return false
+          }
+          return item.permission
             ? hasPermission(item.permission.resource, item.permission.action)
             : isAuthenticated
-        )
+        })
         .map((item) => ({
           ...item,
           label: t(item.label),

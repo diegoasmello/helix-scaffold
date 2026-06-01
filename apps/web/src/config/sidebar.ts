@@ -3,6 +3,7 @@ import type { SidebarItem } from '@helix/ui'
 import {
   IconChecklist,
   IconClipboardList,
+  IconCreditCard,
   IconLock,
   IconShield,
   IconUsers,
@@ -10,6 +11,7 @@ import {
 
 interface SidebarItemWithPermission extends SidebarItem {
   permission?: { resource: string; action: PermissionAction }
+  requiresSubscriptionEnabled?: true
 }
 
 interface SidebarGroupWithPermission {
@@ -54,6 +56,13 @@ export const sidebarGroups: SidebarGroupWithPermission[] = [
         icon: IconClipboardList,
         to: '/audit',
         permission: { resource: 'audit', action: 'view' },
+      },
+      {
+        label: 'nav.subscriptions',
+        icon: IconCreditCard,
+        to: '/subscriptions',
+        permission: { resource: 'subscriptions', action: 'view' },
+        requiresSubscriptionEnabled: true,
       },
     ],
   },
