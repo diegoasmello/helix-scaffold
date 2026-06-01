@@ -54,7 +54,7 @@ export function PermissionsEditor(props: Readonly<PermissionsEditorProps>) {
       <Group justify="flex-end">
         <Button
           size="md"
-          variant="secondary"
+          variant="default"
           disabled={isPending}
           onClick={onCancel}
         >

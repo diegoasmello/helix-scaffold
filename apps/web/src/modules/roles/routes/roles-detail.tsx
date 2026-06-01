@@ -22,7 +22,7 @@ export function RolesDetail() {
         <Group justify="flex-end">
           <Button
             size="md"
-            variant="secondary"
+            variant="default"
             onClick={() => navigate({ to: '/roles' })}
           >
             {tc('actions.back')}

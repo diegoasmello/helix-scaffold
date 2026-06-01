@@ -22,7 +22,7 @@ export function UsersDetail() {
         <Group justify="flex-end">
           <Button
             size="md"
-            variant="secondary"
+            variant="default"
             onClick={() => navigate({ to: '/users' })}
           >
             {tc('actions.back')}

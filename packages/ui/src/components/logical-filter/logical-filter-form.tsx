@@ -330,7 +330,7 @@ export function LogicalFilterForm<T extends string = string>(
                   )}
                   <ActionIcon
                     variant="subtle"
-                    color="secondary"
+                    color="default"
                     size="sm"
                     type="button"
                     aria-label={t('filters.removeFilter')}

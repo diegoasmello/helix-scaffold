@@ -93,7 +93,7 @@ export function UsersList() {
         <Group gap="xs">
           <Button
             size="xs"
-            variant="secondary"
+            variant="default"
             aria-label="View"
             onClick={() =>
               navigate({ to: '/users/$id', params: { id: item.id } })
@@ -104,7 +104,7 @@ export function UsersList() {
           <HasPermission resource="users" action="edit">
             <Button
               size="xs"
-              variant="secondary"
+              variant="default"
               aria-label="Edit"
               onClick={() =>
                 navigate({ to: '/users/$id/edit', params: { id: item.id } })
@@ -116,7 +116,7 @@ export function UsersList() {
           <HasPermission resource="users" action="delete">
             <Button
               size="xs"
-              variant="secondary"
+              variant="default"
               aria-label="Delete"
               onClick={() => handleDelete(item.id, item.name)}
             >

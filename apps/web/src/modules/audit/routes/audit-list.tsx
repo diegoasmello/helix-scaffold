@@ -89,7 +89,7 @@ export function AuditList() {
       render: (log) => (
         <Button
           size="xs"
-          variant="secondary"
+          variant="default"
           aria-label="View"
           onClick={() => navigate({ to: '/audit/$id', params: { id: log.id } })}
         >

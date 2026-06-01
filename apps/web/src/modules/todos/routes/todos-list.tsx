@@ -171,7 +171,7 @@ export function TodoList() {
         <Group gap="xs">
           <Button
             size="xs"
-            variant="secondary"
+            variant="default"
             aria-label="View"
             onClick={() =>
               navigate({ to: '/todos/$id', params: { id: item.id } })
@@ -181,7 +181,7 @@ export function TodoList() {
           </Button>
           <Button
             size="xs"
-            variant="secondary"
+            variant="default"
             aria-label="Edit"
             onClick={() =>
               navigate({
@@ -194,7 +194,7 @@ export function TodoList() {
           </Button>
           <Button
             size="xs"
-            variant="secondary"
+            variant="default"
             aria-label="Delete"
             onClick={() => handleConfirmDelete(item.id)}
           >

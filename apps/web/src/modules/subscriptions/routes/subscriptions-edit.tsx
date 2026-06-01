@@ -74,7 +74,7 @@ export function SubscriptionsEdit() {
           <Group justify="flex-end">
             <Button
               size="md"
-              variant="secondary"
+              variant="default"
               type="button"
               disabled={isPending}
               onClick={() => navigate({ to: '/subscriptions' })}

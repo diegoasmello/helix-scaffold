@@ -72,7 +72,7 @@ export function RoleCreateDrawer(props: Readonly<RoleCreateDrawerProps>) {
           <Group justify="flex-end">
             <Button
               size="md"
-              variant="secondary"
+              variant="default"
               type="button"
               disabled={isPending}
               onClick={handleClose}

@@ -23,7 +23,7 @@ export function SubscriptionsDetail() {
         <Group>
           <Button
             size="md"
-            variant="secondary"
+            variant="default"
             onClick={() => navigate({ to: '/subscriptions' })}
           >
             {tc('actions.back')}

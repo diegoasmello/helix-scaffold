@@ -41,15 +41,6 @@ export function createTheme(
           root: {
             fontSize: '14px',
             ...(props.size === 'xs' && { fontWeight: 500 }),
-            ...(props.variant === 'secondary' && {
-              color: theme.colors.gray[8],
-              backgroundColor: 'transparent',
-              border: `1px solid ${theme.colors.gray[4]}`,
-              '&:hover': {
-                color: theme.colors.gray[8],
-                backgroundColor: theme.colors.gray[2],
-              },
-            }),
           },
         }),
       },

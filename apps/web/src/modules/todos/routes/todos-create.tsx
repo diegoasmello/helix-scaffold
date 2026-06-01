@@ -74,7 +74,7 @@ export function TodoCreate() {
           <Group justify="flex-end">
             <Button
               size="md"
-              variant="secondary"
+              variant="default"
               disabled={isPending || form.submitting}
               onClick={() => navigate({ to: '/todos' })}
             >

@@ -82,7 +82,7 @@ export function RolesList() {
         <Group gap="xs">
           <Button
             size="xs"
-            variant="secondary"
+            variant="default"
             aria-label="View"
             onClick={() =>
               navigate({ to: '/roles/$id', params: { id: item.id } })
@@ -93,7 +93,7 @@ export function RolesList() {
           <HasPermission resource="roles" action="edit">
             <Button
               size="xs"
-              variant="secondary"
+              variant="default"
               aria-label="Edit"
               onClick={() =>
                 navigate({ to: '/roles/$id/edit', params: { id: item.id } })
@@ -105,7 +105,7 @@ export function RolesList() {
           <HasPermission resource="roles" action="delete">
             <Button
               size="xs"
-              variant="secondary"
+              variant="default"
               aria-label="Delete"
               onClick={() => handleDelete(item.id, item.name)}
             >

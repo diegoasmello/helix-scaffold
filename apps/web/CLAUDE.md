@@ -401,7 +401,7 @@ export function XxxCreateDrawer(props: Readonly<XxxCreateDrawerProps>) {
         <Stack>
           <XxxForm form={form} />
           <Group justify="flex-end">
-            <Button size="md" variant="secondary" type="button" disabled={isPending} onClick={handleClose}>
+            <Button size="md" variant="default" type="button" disabled={isPending} onClick={handleClose}>
               Cancel
             </Button>
             <Button size="md" type="submit" loading={isPending}>
@@ -1249,7 +1249,7 @@ Use the page wrapper components from `@helix/ui`:
 
 **Footer button conventions** — apply to every Create, Edit, and Detail screen:
 
-- **Cancel / Back**: `size="md" variant="secondary"` — neutral action, never draws attention
+- **Cancel / Back**: `size="md" variant="default"` — neutral action, never draws attention
 - **Save / Submit**: `size="md"` with default variant — primary action, uses the app's primary color
 - Always wrap footer buttons in `<Group justify="flex-end">` so they align to the right
 
@@ -1318,20 +1318,20 @@ When active filters are present and the result is empty, skip the `EmptyState` �
 
 Form screens use the `<Form>` component from `@helix/ui` wrapping `PageCreate`/`PageEdit`. `Form` receives `form` (the `useForm` instance) and `onSubmit` (a plain function that receives the validated values — not `form.onSubmit(...)`). It handles validation and submission internally.
 
-**Per-row action buttons** — always use `Button size="xs" variant="secondary"` with a text label. Never use `ActionIcon` with an icon in the actions column:
+**Per-row action buttons** — always use `Button size="xs" variant="default"` with a text label. Never use `ActionIcon` with an icon in the actions column:
 
 ```tsx
 // View is always visible — reading the list already requires `features:view`
-<Button size="xs" variant="secondary" aria-label="View" onClick={() => navigate({ to: "/features/$id", params: { id: item.id } })}>
+<Button size="xs" variant="default" aria-label="View" onClick={() => navigate({ to: "/features/$id", params: { id: item.id } })}>
   View
 </Button>
 <HasPermission resource="features" action="edit">
-  <Button size="xs" variant="secondary" aria-label="Edit" onClick={() => navigate({ to: "/features/$id/edit", params: { id: item.id } })}>
+  <Button size="xs" variant="default" aria-label="Edit" onClick={() => navigate({ to: "/features/$id/edit", params: { id: item.id } })}>
     Edit
   </Button>
 </HasPermission>
 <HasPermission resource="features" action="delete">
-  <Button size="xs" variant="secondary" aria-label="Delete" onClick={() => handleDelete(item.id)}>
+  <Button size="xs" variant="default" aria-label="Delete" onClick={() => handleDelete(item.id)}>
     Delete
   </Button>
 </HasPermission>

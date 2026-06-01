@@ -77,7 +77,7 @@ export function UsersEdit() {
           <Group justify="flex-end">
             <Button
               size="md"
-              variant="secondary"
+              variant="default"
               disabled={isPending}
               onClick={() => navigate({ to: '/users' })}
             >

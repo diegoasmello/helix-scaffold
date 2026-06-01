@@ -33,7 +33,7 @@ export function TodoDetail() {
         <Group justify="flex-end">
           <Button
             size="md"
-            variant="secondary"
+            variant="default"
             onClick={() => navigate({ to: '/todos' })}
           >
             {tc('actions.back')}

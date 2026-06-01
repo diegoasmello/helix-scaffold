@@ -106,7 +106,7 @@ export function SubscriptionsList() {
         <Group justify="center" gap="xs">
           <Button
             size="xs"
-            variant="secondary"
+            variant="default"
             aria-label="View"
             onClick={() =>
               navigate({
@@ -120,7 +120,7 @@ export function SubscriptionsList() {
           <HasPermission resource="subscriptions" action="edit">
             <Button
               size="xs"
-              variant="secondary"
+              variant="default"
               aria-label="Edit"
               onClick={() =>
                 navigate({
@@ -135,7 +135,7 @@ export function SubscriptionsList() {
           <HasPermission resource="subscriptions" action="delete">
             <Button
               size="xs"
-              variant="secondary"
+              variant="default"
               aria-label="Delete"
               onClick={() => handleDelete(item.id)}
             >
