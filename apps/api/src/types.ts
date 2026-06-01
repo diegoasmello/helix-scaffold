@@ -23,6 +23,7 @@ export type PreHandler = (
 ) => Promise<void>
 
 export type RequirePermission = (resource: string, action: string) => PreHandler
+export type RequireSubscription = () => PreHandler
 
 declare module 'fastify' {
   interface FastifyRequest {

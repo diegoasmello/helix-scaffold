@@ -2,8 +2,9 @@ import { betterAuth } from 'better-auth'
 import { drizzleAdapter } from 'better-auth/adapters/drizzle'
 import { eq } from 'drizzle-orm'
 
+import { TRIAL_PLAN_ID } from '@/config/subscription'
 import type { Database } from '@/db'
-import { roles, user as userTable } from '@/db/schema'
+import { roles, subscriptions, user as userTable } from '@/db/schema'
 import { env } from '@/env'
 import type { EmailProvider } from '@/lib/email'
 
@@ -17,6 +18,7 @@ export function createAuth(database: Database, emailProvider: EmailProvider) {
         create: {
           after: async (user) => {
             if (env.REGISTRATION_MODE !== 'open') return
+
             const [defaultRole] = await database
               .select()
               .from(roles)
@@ -27,6 +29,28 @@ export function createAuth(database: Database, emailProvider: EmailProvider) {
                 .update(userTable)
                 .set({ roleId: defaultRole.id })
                 .where(eq(userTable.id, user.id))
+            }
+
+            if (
+              env.SUBSCRIPTION_MODE === 'enabled' &&
+              env.SUBSCRIPTION_TRIAL_DAYS
+            ) {
+              const now = new Date()
+              const trialEndsAt = new Date(now)
+              trialEndsAt.setDate(
+                trialEndsAt.getDate() + env.SUBSCRIPTION_TRIAL_DAYS
+              )
+              await database
+                .insert(subscriptions)
+                .values({
+                  userId: user.id,
+                  planId: TRIAL_PLAN_ID,
+                  status: 'trialing',
+                  trialEndsAt,
+                  currentPeriodStart: now,
+                  currentPeriodEnd: trialEndsAt,
+                })
+                .catch(() => {})
             }
           },
         },

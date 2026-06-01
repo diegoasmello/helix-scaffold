@@ -10,6 +10,7 @@ import {
   rolePermissions,
   roles,
   session,
+  subscriptions,
   todos,
   uploads,
   user,
@@ -48,6 +49,10 @@ export async function cleanupAuth() {
   await testDb.delete(user)
   // roles deleted via FK cascade on rolePermissions; delete manually in right order
   await testDb.delete(roles)
+}
+
+export async function cleanupSubscriptions() {
+  await testDb.delete(subscriptions)
 }
 
 export async function cleanupTodos() {
@@ -98,6 +103,26 @@ export async function createTestSession(
     .update(user)
     .set({ roleId: testRole.id })
     .where(eq(user.email, TEST_USER_EMAIL))
+
+  // When subscription mode is enabled, give the test user an active subscription
+  // so routes protected by requireSubscription() pass without extra setup per test.
+  if (env.SUBSCRIPTION_MODE === 'enabled') {
+    const [testUser] = await testDb
+      .select()
+      .from(user)
+      .where(eq(user.email, TEST_USER_EMAIL))
+    if (testUser) {
+      const now = new Date()
+      const far = new Date('2099-01-01')
+      await testDb.insert(subscriptions).values({
+        userId: testUser.id,
+        planId: 'test',
+        status: 'active',
+        currentPeriodStart: now,
+        currentPeriodEnd: far,
+      })
+    }
+  }
 
   const setCookie = res.headers['set-cookie']
   const cookies = Array.isArray(setCookie) ? setCookie : [setCookie ?? '']

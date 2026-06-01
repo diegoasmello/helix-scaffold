@@ -15,6 +15,8 @@ const envSchema = z.object({
   RESEND_API_KEY: z.string().optional(),
   EMAIL_FROM: z.string().default('noreply@localhost'),
   REGISTRATION_MODE: z.enum(['open', 'closed']).default('closed'),
+  SUBSCRIPTION_MODE: z.enum(['disabled', 'enabled']).default('disabled'),
+  SUBSCRIPTION_TRIAL_DAYS: z.coerce.number().int().positive().optional(),
   GOOGLE_CLIENT_ID: z.string().optional(),
   GOOGLE_CLIENT_SECRET: z.string().optional(),
   FACEBOOK_CLIENT_ID: z.string().optional(),

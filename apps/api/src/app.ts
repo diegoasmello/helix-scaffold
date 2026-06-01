@@ -21,6 +21,7 @@ import { env } from './env'
 import { registerAuditRequest } from './hooks/audit-request'
 import { createRequireAuth } from './hooks/require-auth'
 import { createRequirePermission } from './hooks/require-permission'
+import { createRequireSubscription } from './hooks/require-subscription'
 import { createEmailProvider } from './lib/email'
 import { createStorageProvider } from './lib/storage'
 import { auditRoutes } from './modules/audit/audit-routes'
@@ -30,6 +31,8 @@ import { meRoutes } from './modules/me/me-routes'
 import { permissionsRoutes } from './modules/permissions/permissions-routes'
 import { registrationRoutes } from './modules/registration/registration-routes'
 import { rolesRoutes } from './modules/roles/roles-routes'
+import { subscriptionStatusRoutes } from './modules/subscriptions/subscription-status-routes'
+import { subscriptionsRoutes } from './modules/subscriptions/subscriptions-routes'
 import { todosRoutes } from './modules/todos/todos-routes'
 import { uploadsRoutes } from './modules/uploads/uploads-routes'
 import { usersRoutes } from './modules/users/users-routes'
@@ -131,12 +134,14 @@ export function buildApp(database: Database) {
 
   app.register(bootstrapRoutes, { database, auth })
   app.register(registrationRoutes)
+  app.register(subscriptionStatusRoutes)
 
   app.register(async (authenticated) => {
     authenticated.addHook('preHandler', createRequireAuth(auth))
     registerAuditRequest(authenticated, createAuditService(database))
 
     const requirePermission = createRequirePermission(database)
+    const requireSubscription = createRequireSubscription(database)
 
     authenticated.register(permissionsRoutes, { database, requirePermission })
     authenticated.register(auditRoutes, { database, requirePermission })
@@ -147,6 +152,7 @@ export function buildApp(database: Database) {
     authenticated.register(todosRoutes, {
       database,
       requirePermission,
+      requireSubscription,
       storage,
     })
     authenticated.register(uploadsRoutes, {
@@ -154,6 +160,13 @@ export function buildApp(database: Database) {
       requirePermission,
       storage,
     })
+
+    if (env.SUBSCRIPTION_MODE === 'enabled') {
+      authenticated.register(subscriptionsRoutes, {
+        database,
+        requirePermission,
+      })
+    }
   })
 
   return app
