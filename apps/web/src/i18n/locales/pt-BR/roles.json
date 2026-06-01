@@ -44,6 +44,15 @@
     "title": "Excluir perfil",
     "message": "Tem certeza que deseja excluir \"{{name}}\"? Esta ação não pode ser desfeita."
   },
+  "permissions": {
+    "title": "Permissões",
+    "editTitle": "Editar Permissões",
+    "editButton": "Editar Permissões",
+    "notifications": {
+      "saved": "Permissões salvas com sucesso",
+      "saveFailed": "Falha ao salvar permissões"
+    }
+  },
   "notifications": {
     "created": "Perfil criado com sucesso",
     "createFailed": "Falha ao criar perfil",

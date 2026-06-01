@@ -5,9 +5,10 @@ import {
   useGetRolesIdPermissionsSuspense,
 } from '@helix/api-client/hooks'
 import type { Grants, PermissionAction } from '@helix/api-client/types'
-import { Button, Divider, Group, notify, Paper } from '@helix/ui'
+import { Button, Divider, Group, notify } from '@helix/ui'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 
 import { PermissionsTree } from './permissions-tree'
 
@@ -20,6 +21,8 @@ export function PermissionsEditor(props: Readonly<PermissionsEditorProps>) {
   const { roleId, onCancel } = props
 
   const queryClient = useQueryClient()
+  const { t } = useTranslation('roles')
+  const { t: tc } = useTranslation('common')
   const { data: saved } = useGetRolesIdPermissionsSuspense(roleId)
   const { data: definitions } = useGetPermissionsResourcesSuspense()
 
@@ -31,10 +34,16 @@ export function PermissionsEditor(props: Readonly<PermissionsEditorProps>) {
         getRolesIdPermissionsSuspenseQueryKey(roleId),
         updated
       )
-      notify({ status: 'success', message: 'Permissions saved successfully' })
+      notify({
+        status: 'success',
+        message: t('permissions.notifications.saved'),
+      })
     },
     onError: () => {
-      notify({ status: 'danger', message: 'Failed to save permissions' })
+      notify({
+        status: 'danger',
+        message: t('permissions.notifications.saveFailed'),
+      })
     },
   })
   const [grants, setGrants] = useState<Grants>(saved.grants)
@@ -44,7 +53,7 @@ export function PermissionsEditor(props: Readonly<PermissionsEditorProps>) {
   }
 
   return (
-    <Paper p="24">
+    <>
       <PermissionsTree
         definitions={definitions}
         grants={grants as Record<string, PermissionAction[]>}
@@ -58,17 +67,12 @@ export function PermissionsEditor(props: Readonly<PermissionsEditorProps>) {
           disabled={isPending}
           onClick={onCancel}
         >
-          Cancel
+          {tc('actions.cancel')}
         </Button>
-        <Button
-          size="md"
-          type="submit"
-          loading={isPending}
-          onClick={handleSave}
-        >
-          Save
+        <Button size="md" loading={isPending} onClick={handleSave}>
+          {tc('actions.save')}
         </Button>
       </Group>
-    </Paper>
+    </>
   )
 }

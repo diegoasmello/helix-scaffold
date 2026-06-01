@@ -84,7 +84,10 @@ beforeEach(() => {
       })
     ),
     getMePermissionsHandler({
-      grants: { roles: ['view', 'create', 'edit', 'delete'] },
+      grants: {
+        roles: ['view', 'create', 'edit', 'delete'],
+        permissions: ['edit'],
+      },
     })
   )
 })
@@ -98,10 +101,25 @@ describe('RolesList', () => {
     expect(screen.getByText('Viewer')).toBeInTheDocument()
   })
 
-  it('opens delete modal when delete button is clicked', async () => {
+  it('opens the actions menu showing all items', async () => {
     renderRolesList()
-    const deleteButtons = await screen.findAllByLabelText('Delete')
-    await userEvent.click(deleteButtons[0])
+    const menuButtons = await screen.findAllByLabelText('Actions')
+    await userEvent.click(menuButtons[0])
+    const items = await screen.findAllByRole('menuitem')
+    const labels = items.map((item) => item.textContent)
+    expect(labels).toContain('View')
+    expect(labels).toContain('Edit')
+    expect(labels).toContain('Edit Permissions')
+    expect(labels).toContain('Delete')
+  })
+
+  it('opens delete modal when delete menu item is clicked', async () => {
+    renderRolesList()
+    const menuButtons = await screen.findAllByLabelText('Actions')
+    await userEvent.click(menuButtons[0])
+    await userEvent.click(
+      await screen.findByRole('menuitem', { name: 'Delete' })
+    )
     const dialog = await screen.findByRole('dialog')
     expect(within(dialog).getByText('Delete role')).toBeInTheDocument()
     expect(
@@ -120,8 +138,11 @@ describe('RolesList', () => {
       })
     )
     renderRolesList()
-    const deleteButtons = await screen.findAllByLabelText('Delete')
-    await userEvent.click(deleteButtons[0])
+    const menuButtons = await screen.findAllByLabelText('Actions')
+    await userEvent.click(menuButtons[0])
+    await userEvent.click(
+      await screen.findByRole('menuitem', { name: 'Delete' })
+    )
     const dialog = await screen.findByRole('dialog')
     await userEvent.click(
       within(dialog).getByRole('button', { name: 'Delete' })
@@ -131,8 +152,11 @@ describe('RolesList', () => {
 
   it('closes delete modal on cancel', async () => {
     renderRolesList()
-    const deleteButtons = await screen.findAllByLabelText('Delete')
-    await userEvent.click(deleteButtons[0])
+    const menuButtons = await screen.findAllByLabelText('Actions')
+    await userEvent.click(menuButtons[0])
+    await userEvent.click(
+      await screen.findByRole('menuitem', { name: 'Delete' })
+    )
     const dialog = await screen.findByRole('dialog')
     await userEvent.click(
       within(dialog).getByRole('button', { name: 'Cancel' })
@@ -142,11 +166,33 @@ describe('RolesList', () => {
     )
   })
 
-  it('hides edit and delete buttons when user lacks permissions', async () => {
+  it('hides edit, delete, and permissions items when user lacks those permissions', async () => {
     server.use(getMePermissionsHandler({ grants: { roles: ['view'] } }))
     renderRolesList()
     await screen.findByText('Admin')
-    expect(screen.queryByLabelText('Edit')).not.toBeInTheDocument()
-    expect(screen.queryByLabelText('Delete')).not.toBeInTheDocument()
+    const menuButtons = await screen.findAllByLabelText('Actions')
+    await userEvent.click(menuButtons[0])
+    const items = await screen.findAllByRole('menuitem')
+    const labels = items.map((item) => item.textContent)
+    expect(labels).toContain('View')
+    expect(labels).not.toContain('Edit')
+    expect(labels).not.toContain('Edit Permissions')
+    expect(labels).not.toContain('Delete')
+  })
+
+  it('hides Edit Permissions item when user lacks permissions:edit', async () => {
+    server.use(
+      getMePermissionsHandler({
+        grants: { roles: ['view', 'edit', 'delete'] },
+      })
+    )
+    renderRolesList()
+    await screen.findByText('Admin')
+    const menuButtons = await screen.findAllByLabelText('Actions')
+    await userEvent.click(menuButtons[0])
+    const items = await screen.findAllByRole('menuitem')
+    const labels = items.map((item) => item.textContent)
+    expect(labels).toContain('Edit')
+    expect(labels).not.toContain('Edit Permissions')
   })
 })

@@ -4,7 +4,6 @@ import {
   IconChecklist,
   IconClipboardList,
   IconCreditCard,
-  IconLock,
   IconShield,
   IconUsers,
 } from '@helix/ui'
@@ -44,12 +43,6 @@ export const sidebarGroups: SidebarGroupWithPermission[] = [
         icon: IconShield,
         to: '/roles',
         permission: { resource: 'roles', action: 'view' },
-      },
-      {
-        label: 'nav.permissions',
-        icon: IconLock,
-        to: '/permissions',
-        permission: { resource: 'permissions', action: 'view' },
       },
       {
         label: 'nav.auditLog',

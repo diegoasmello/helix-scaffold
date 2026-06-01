@@ -9,7 +9,6 @@ import authEn from './locales/en/auth.json'
 import commonEn from './locales/en/common.json'
 import errorsEn from './locales/en/errors.json'
 import meEn from './locales/en/me.json'
-import permissionsEn from './locales/en/permissions.json'
 import rolesEn from './locales/en/roles.json'
 import subscriptionEn from './locales/en/subscription.json'
 import todosEn from './locales/en/todos.json'
@@ -19,7 +18,6 @@ import authPtBR from './locales/pt-BR/auth.json'
 import commonPtBR from './locales/pt-BR/common.json'
 import errorsPtBR from './locales/pt-BR/errors.json'
 import mePtBR from './locales/pt-BR/me.json'
-import permissionsPtBR from './locales/pt-BR/permissions.json'
 import rolesPtBR from './locales/pt-BR/roles.json'
 import subscriptionPtBR from './locales/pt-BR/subscription.json'
 import todosPtBR from './locales/pt-BR/todos.json'
@@ -37,7 +35,6 @@ i18n
         todos: todosEn,
         users: usersEn,
         roles: rolesEn,
-        permissions: permissionsEn,
         audit: auditEn,
         me: meEn,
         subscription: subscriptionEn,
@@ -50,7 +47,6 @@ i18n
         todos: todosPtBR,
         users: usersPtBR,
         roles: rolesPtBR,
-        permissions: permissionsPtBR,
         audit: auditPtBR,
         me: mePtBR,
         subscription: subscriptionPtBR,

@@ -1318,7 +1318,9 @@ When active filters are present and the result is empty, skip the `EmptyState` �
 
 Form screens use the `<Form>` component from `@helix/ui` wrapping `PageCreate`/`PageEdit`. `Form` receives `form` (the `useForm` instance) and `onSubmit` (a plain function that receives the validated values — not `form.onSubmit(...)`). It handles validation and submission internally.
 
-**Per-row action buttons** — always use `Button size="xs" variant="default"` with a text label. Never use `ActionIcon` with an icon in the actions column. Wrap all buttons in `<Group gap="xs" wrap="nowrap">` so they stay on one line regardless of language:
+**Per-row action buttons** — use inline `Button size="xs" variant="default"` when a row has **≤ 3 actions**. When a row can have **> 3 actions**, use `<ActionsMenu>` from `@helix/ui` instead — it renders a dots trigger (`IconDots`) that opens a dropdown `Menu`.
+
+**≤ 3 actions — inline buttons:**
 
 ```tsx
 <Group gap="xs" wrap="nowrap">
@@ -1338,6 +1340,24 @@ Form screens use the `<Form>` component from `@helix/ui` wrapping `PageCreate`/`
   </HasPermission>
 </Group>
 ```
+
+**> 3 actions — dropdown menu:**
+
+Use `hasPermission()` (from `useAuth()`) to filter the items array before passing it to `<ActionsMenu>` — do not pass hidden items. Destructive actions (e.g. Delete) get `color: 'red'`:
+
+```tsx
+const { hasPermission } = useAuth()
+
+// Inside the column render:
+const items: ActionsMenuItemConfig[] = [
+  { label: tc('actions.view'), onClick: () => navigate({ to: '/features/$id', params: { id: item.id } }) },
+  ...(hasPermission('features', 'edit') ? [{ label: tc('actions.edit'), onClick: () => navigate({ to: '/features/$id/edit', params: { id: item.id } }) }] : []),
+  ...(hasPermission('features', 'delete') ? [{ label: tc('actions.delete'), color: 'red' as const, onClick: () => handleDelete(item.id) }] : []),
+]
+return <ActionsMenu items={items} />
+```
+
+`HasPermission` (the wrapper component) is replaced by `hasPermission()` (from `useAuth()`) in this pattern so the array can be filtered before passing to the component. The RBAC behaviour is identical — use `useAuth()` for both and import it from `../../auth/use-auth`.
 
 **Create button** (in `PageList` `actions` prop) — wrap with `<HasPermission>`:
 

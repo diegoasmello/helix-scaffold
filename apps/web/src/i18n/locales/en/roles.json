@@ -44,6 +44,15 @@
     "title": "Delete role",
     "message": "Are you sure you want to delete \"{{name}}\"? This action cannot be undone."
   },
+  "permissions": {
+    "title": "Permissions",
+    "editTitle": "Edit Permissions",
+    "editButton": "Edit Permissions",
+    "notifications": {
+      "saved": "Permissions saved successfully",
+      "saveFailed": "Failed to save permissions"
+    }
+  },
   "notifications": {
     "created": "Role created successfully",
     "createFailed": "Failed to create role",

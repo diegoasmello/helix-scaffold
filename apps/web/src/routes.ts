@@ -17,7 +17,6 @@ import { ErrorBoundary } from './modules/errors/error-boundary'
 import { Forbidden } from './modules/errors/forbidden'
 import { NotFound } from './modules/errors/not-found'
 import { meRoutes } from './modules/me/routes'
-import { permissionsRoutes } from './modules/permissions/routes'
 import { rolesRoutes } from './modules/roles/routes'
 import { subscriptionsRoutes } from './modules/subscriptions/routes'
 import { todosRoutes } from './modules/todos/routes'
@@ -77,7 +76,6 @@ const routeTree = rootRoute.addChildren([
     authenticatedRoute.addChildren([
       ...usersRoutes,
       ...rolesRoutes,
-      ...permissionsRoutes,
       ...auditRoutes,
       ...meRoutes,
       ...todosRoutes,

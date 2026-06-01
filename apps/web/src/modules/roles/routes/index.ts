@@ -1,4 +1,6 @@
 import {
+  getPermissionsResourcesSuspenseQueryOptions,
+  getRolesIdPermissionsSuspenseQueryOptions,
   getRolesIdSuspenseQueryOptions,
   getRolesSuspenseQueryOptions,
 } from '@helix/api-client/hooks'
@@ -14,6 +16,7 @@ import { RolesDetail } from './roles-detail'
 import { RolesEdit } from './roles-edit'
 import { RolesList } from './roles-list'
 import { RolesPending } from './roles-pending'
+import { RolesPermissions } from './roles-permissions'
 
 export const rolesListRoute = createRoute({
   getParentRoute: () => authenticatedRoute,
@@ -74,8 +77,15 @@ export const rolesDetailRoute = createRoute({
   beforeLoad: ({ context }) => {
     if (!context.hasPermission('roles', 'view')) throw redirect({ to: '/403' })
   },
-  loader: ({ params }) =>
-    queryClient.ensureQueryData(getRolesIdSuspenseQueryOptions(params.id)),
+  loader: ({ params }) => {
+    queryClient.ensureQueryData(getPermissionsResourcesSuspenseQueryOptions())
+    queryClient.ensureQueryData(
+      getRolesIdPermissionsSuspenseQueryOptions(params.id)
+    )
+    return queryClient.ensureQueryData(
+      getRolesIdSuspenseQueryOptions(params.id)
+    )
+  },
 })
 
 export const rolesEditRoute = createRoute({
@@ -97,9 +107,40 @@ export const rolesEditRoute = createRoute({
     queryClient.ensureQueryData(getRolesIdSuspenseQueryOptions(params.id)),
 })
 
+export const rolesPermissionsRoute = createRoute({
+  getParentRoute: () => authenticatedRoute,
+  path: '/roles/$id/permissions',
+  component: RolesPermissions,
+  pendingComponent: RolesPending,
+  staticData: {
+    breadcrumbs: [
+      { label: 'nav.roles', to: '/roles' },
+      (data) => ({
+        label: (data as RoleItem).name,
+        to: `/roles/${(data as RoleItem).id}`,
+      }),
+      { label: 'nav.permissions' },
+    ],
+  },
+  beforeLoad: ({ context }) => {
+    if (!context.hasPermission('permissions', 'edit'))
+      throw redirect({ to: '/403' })
+  },
+  loader: ({ params }) => {
+    queryClient.ensureQueryData(getPermissionsResourcesSuspenseQueryOptions())
+    queryClient.ensureQueryData(
+      getRolesIdPermissionsSuspenseQueryOptions(params.id)
+    )
+    return queryClient.ensureQueryData(
+      getRolesIdSuspenseQueryOptions(params.id)
+    )
+  },
+})
+
 export const rolesRoutes = [
   rolesListRoute,
   rolesCreateRoute,
   rolesDetailRoute,
   rolesEditRoute,
+  rolesPermissionsRoute,
 ]

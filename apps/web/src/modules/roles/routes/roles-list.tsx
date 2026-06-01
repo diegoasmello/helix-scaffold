@@ -5,13 +5,14 @@ import {
   useGetRolesSuspense,
 } from '@helix/api-client/hooks'
 import {
+  ActionsMenu,
+  type ActionsMenuItemConfig,
   Button,
   confirm,
   DataTable,
   type DataTableColumn,
   getDataTablePaginationProps,
   getDataTableSortingProps,
-  Group,
   notify,
   PageList,
 } from '@helix/ui'
@@ -20,6 +21,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 
 import { HasPermission } from '../../auth/components/has-permission'
+import { useAuth } from '../../auth/use-auth'
 import type { RoleItem } from '../types'
 import { rolesListRoute } from '.'
 
@@ -30,6 +32,7 @@ export function RolesList() {
   const { page, pageSize, sortBy, sortOrder } = search
   const { t } = useTranslation('roles')
   const { t: tc } = useTranslation('common')
+  const { hasPermission } = useAuth()
 
   const { data: rolesResponse } = useGetRolesSuspense({
     page,
@@ -78,42 +81,49 @@ export function RolesList() {
       title: t('columns.actions'),
       textAlign: 'center',
       width: '1%',
-      render: (item) => (
-        <Group gap="xs" wrap="nowrap">
-          <Button
-            size="xs"
-            variant="default"
-            aria-label="View"
-            onClick={() =>
-              navigate({ to: '/roles/$id', params: { id: item.id } })
-            }
-          >
-            {tc('actions.view')}
-          </Button>
-          <HasPermission resource="roles" action="edit">
-            <Button
-              size="xs"
-              variant="default"
-              aria-label="Edit"
-              onClick={() =>
-                navigate({ to: '/roles/$id/edit', params: { id: item.id } })
-              }
-            >
-              {tc('actions.edit')}
-            </Button>
-          </HasPermission>
-          <HasPermission resource="roles" action="delete">
-            <Button
-              size="xs"
-              variant="default"
-              aria-label="Delete"
-              onClick={() => handleDelete(item.id, item.name)}
-            >
-              {tc('actions.delete')}
-            </Button>
-          </HasPermission>
-        </Group>
-      ),
+      render: (item) => {
+        const items: ActionsMenuItemConfig[] = [
+          {
+            label: tc('actions.view'),
+            onClick: () =>
+              navigate({ to: '/roles/$id', params: { id: item.id } }),
+          },
+          ...(hasPermission('roles', 'edit')
+            ? [
+                {
+                  label: tc('actions.edit'),
+                  onClick: () =>
+                    navigate({
+                      to: '/roles/$id/edit',
+                      params: { id: item.id },
+                    }),
+                },
+              ]
+            : []),
+          ...(hasPermission('permissions', 'edit')
+            ? [
+                {
+                  label: t('permissions.editButton'),
+                  onClick: () =>
+                    navigate({
+                      to: '/roles/$id/permissions',
+                      params: { id: item.id },
+                    }),
+                },
+              ]
+            : []),
+          ...(hasPermission('roles', 'delete')
+            ? [
+                {
+                  label: tc('actions.delete'),
+                  color: 'red' as const,
+                  onClick: () => handleDelete(item.id, item.name),
+                },
+              ]
+            : []),
+        ]
+        return <ActionsMenu items={items} />
+      },
     },
   ]
 

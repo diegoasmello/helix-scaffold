@@ -1,3 +1,4 @@
+export * from './actions-menu/actions-menu'
 export * from './breadcrumb/breadcrumb'
 export * from './data-table/data-table'
 export * from './empty-state/empty-state'
