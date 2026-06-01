@@ -22,10 +22,12 @@ export function SubscriptionsCreate() {
       userId: '',
       planId: '',
       status: 'active',
-      currentPeriodStart: new Date().toISOString(),
+      currentPeriodStart: new Date().toISOString().split('T')[0],
       currentPeriodEnd: new Date(
         new Date().getTime() + 30 * 24 * 60 * 60 * 1000
-      ).toISOString(),
+      )
+        .toISOString()
+        .split('T')[0],
       trialEndsAt: null,
       externalId: null,
     },

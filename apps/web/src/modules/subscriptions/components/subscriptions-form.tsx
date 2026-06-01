@@ -66,18 +66,7 @@ export function SubscriptionsForm(props: Readonly<SubscriptionsFormProps>) {
         <DateInput
           label={t('form.currentPeriodStart.label')}
           required
-          value={
-            form.values.currentPeriodStart
-              ? new Date(form.values.currentPeriodStart)
-              : null
-          }
-          onChange={(date) =>
-            form.setFieldValue(
-              'currentPeriodStart',
-              date ? new Date(date).toISOString() : ''
-            )
-          }
-          error={form.errors.currentPeriodStart}
+          {...form.getInputProps('currentPeriodStart')}
         />
       </GridCol>
 
@@ -85,35 +74,15 @@ export function SubscriptionsForm(props: Readonly<SubscriptionsFormProps>) {
         <DateInput
           label={t('form.currentPeriodEnd.label')}
           required
-          value={
-            form.values.currentPeriodEnd
-              ? new Date(form.values.currentPeriodEnd)
-              : null
-          }
-          onChange={(date) =>
-            form.setFieldValue(
-              'currentPeriodEnd',
-              date ? new Date(date).toISOString() : ''
-            )
-          }
-          error={form.errors.currentPeriodEnd}
+          {...form.getInputProps('currentPeriodEnd')}
         />
       </GridCol>
 
       <GridCol span={{ base: 12, sm: 6 }}>
         <DateInput
           label={t('form.trialEndsAt.label')}
-          value={
-            form.values.trialEndsAt ? new Date(form.values.trialEndsAt) : null
-          }
-          onChange={(date) =>
-            form.setFieldValue(
-              'trialEndsAt',
-              date ? new Date(date).toISOString() : null
-            )
-          }
-          error={form.errors.trialEndsAt}
           clearable
+          {...form.getInputProps('trialEndsAt')}
         />
       </GridCol>
 
