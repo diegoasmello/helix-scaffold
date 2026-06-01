@@ -1,7 +1,7 @@
 import { Badge, Center, Loader, Stack, Text, Title } from '@helix/ui'
 import { useTranslation } from 'react-i18next'
 
-import { useSubscription } from '../../subscription/use-subscription'
+import { useSubscription } from '../../subscriptions/hooks/use-subscription'
 import type { SubscriptionStatus } from '../../subscriptions/types'
 
 const STATUS_COLORS: Record<SubscriptionStatus, string> = {

@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 
-import { useSubscription } from './use-subscription'
+import { useSubscription } from '../hooks/use-subscription'
 
 interface RequiresSubscriptionProps {
   children: ReactNode

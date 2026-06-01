@@ -6,11 +6,11 @@ import { sidebarGroups } from './config/sidebar'
 import { authClient } from './lib/authentication'
 import { SidebarPreferenceContext } from './lib/sidebar-preference'
 import { useAuth } from './modules/auth/use-auth'
-import { useSubscriptionMode } from './modules/subscription/use-subscription-mode'
+import { useSubscription } from './modules/subscriptions/hooks/use-subscription'
 
 export function App() {
   const { user, hasPermission, isAuthenticated, isPending } = useAuth()
-  const { enabled: subscriptionEnabled } = useSubscriptionMode()
+  const { enabled: subscriptionEnabled } = useSubscription()
   const navigate = useNavigate()
   const { t: tRaw } = useTranslation('common')
   const t = tRaw as (key: string) => string

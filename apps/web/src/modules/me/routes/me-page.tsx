@@ -10,11 +10,11 @@ import { Paper, Stack, Text } from '@helix/ui'
 import { Outlet } from '@tanstack/react-router'
 import { useTranslation } from 'react-i18next'
 
-import { useSubscriptionMode } from '../../subscription/use-subscription-mode'
+import { useSubscription } from '../../subscriptions/hooks/use-subscription'
 
 export function MePage() {
   const { t } = useTranslation('me')
-  const { enabled: subscriptionEnabled } = useSubscriptionMode()
+  const { enabled: subscriptionEnabled } = useSubscription()
 
   return (
     <Grid>
