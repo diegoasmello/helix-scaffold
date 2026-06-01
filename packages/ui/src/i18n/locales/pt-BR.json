@@ -68,5 +68,11 @@
   },
   "richText": {
     "insertImage": "Inserir imagem"
+  },
+  "formBlocker": {
+    "title": "Alterações não salvas",
+    "message": "Você tem alterações não salvas. Tem certeza que deseja sair?",
+    "confirm": "Sair",
+    "cancel": "Ficar"
   }
 }

@@ -68,5 +68,11 @@
   },
   "richText": {
     "insertImage": "Insert image"
+  },
+  "formBlocker": {
+    "title": "Unsaved changes",
+    "message": "You have unsaved changes. Are you sure you want to leave?",
+    "confirm": "Leave",
+    "cancel": "Stay"
   }
 }

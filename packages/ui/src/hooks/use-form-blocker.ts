@@ -1,4 +1,5 @@
 import { useBlocker } from '@tanstack/react-router'
+import i18n from 'i18next'
 
 import { asyncConfirm } from '../components'
 
@@ -12,11 +13,11 @@ export function useFormBlocker(
 
       const shouldLeave = await asyncConfirm({
         status: 'info',
-        title: 'Unsaved changes',
-        message: 'You have unsaved changes. Are you sure you want to leave?',
+        title: i18n.t('formBlocker.title', { ns: 'ui' }),
+        message: i18n.t('formBlocker.message', { ns: 'ui' }),
         color: 'main',
-        confirmLabel: 'Leave',
-        cancelLabel: 'Stay',
+        confirmLabel: i18n.t('formBlocker.confirm', { ns: 'ui' }),
+        cancelLabel: i18n.t('formBlocker.cancel', { ns: 'ui' }),
       })
 
       return !shouldLeave
