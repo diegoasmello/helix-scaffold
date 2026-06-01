@@ -34,10 +34,7 @@ export function createTheme(
         }),
       },
       Button: {
-        styles: (
-          theme: MantineTheme,
-          props: { size?: string; variant?: string }
-        ) => ({
+        styles: (_theme: MantineTheme, props: { size?: string }) => ({
           root: {
             fontSize: '14px',
             ...(props.size === 'xs' && { fontWeight: 500 }),
@@ -77,21 +74,19 @@ export function createTheme(
         styles: (theme: MantineTheme, props: { color?: string }) => {
           const colorKey = (props.color ?? 'main') as keyof typeof theme.colors
           const palette = theme.colors[colorKey] ?? theme.colors.main
-          const accent = palette[6]
-          const accentLight = palette[1]
 
           return {
             root: {
               borderRadius: theme.radius.lg,
-              border: `1px solid ${theme.colors.gray[2]}`,
+              border: `1px solid light-dark(${theme.colors.gray[2]}, ${theme.colors.dark[4]})`,
               boxShadow:
-                '0 4px 16px rgba(0, 0, 0, 0.06), 0 1px 4px rgba(0, 0, 0, 0.04)',
-              backgroundColor: theme.white,
+                'light-dark(0 4px 16px rgba(0, 0, 0, 0.06), 0 4px 16px rgba(0, 0, 0, 0.3))',
+              backgroundColor: `light-dark(${theme.white}, ${theme.colors.dark[6]})`,
               padding: `${theme.spacing.sm} ${theme.spacing.md}`,
             },
             icon: {
-              backgroundColor: accentLight,
-              color: accent,
+              backgroundColor: `light-dark(${palette[1]}, ${palette[8]})`,
+              color: `light-dark(${palette[6]}, ${palette[3]})`,
               borderRadius: theme.radius.md,
               width: '32px',
               height: '32px',
@@ -100,21 +95,21 @@ export function createTheme(
             title: {
               fontWeight: 600,
               fontSize: '16px',
-              color: theme.colors.dark[9],
+              color: `light-dark(${theme.colors.dark[9]}, ${theme.colors.dark[0]})`,
               lineHeight: '1.4',
               marginBottom: '2px',
             },
             description: {
               fontSize: '14px',
-              color: theme.colors.dark[6],
+              color: `light-dark(${theme.colors.dark[6]}, ${theme.colors.dark[1]})`,
               lineHeight: '1.5',
             },
             closeButton: {
-              color: theme.colors.gray[7],
+              color: `light-dark(${theme.colors.gray[7]}, ${theme.colors.dark[2]})`,
               borderRadius: theme.radius.sm,
               '&:hover': {
-                backgroundColor: theme.colors.gray[1],
-                color: theme.colors.gray[9],
+                backgroundColor: `light-dark(${theme.colors.gray[1]}, ${theme.colors.dark[5]})`,
+                color: `light-dark(${theme.colors.gray[9]}, ${theme.white})`,
               },
             },
           }

@@ -43,10 +43,16 @@ export function RichTextRenderer(props: Readonly<RichTextRendererProps>) {
 
 const useStyles = createStyles((theme, _, u) => ({
   content: css`
-    border: 1px solid ${theme.colors.gray[3]};
     border-radius: ${theme.radius.md};
     padding: 0 ${theme.spacing.lg};
-    background-color: ${u.light ? theme.white : theme.colors.dark[7]};
+    ${u.light} {
+      border: 1px solid ${theme.colors.gray[3]};
+      background-color: ${theme.white};
+    }
+    ${u.dark} {
+      border: 1px solid ${theme.colors.dark[4]};
+      background-color: ${theme.colors.dark[7]};
+    }
 
     img {
       max-width: 100%;
