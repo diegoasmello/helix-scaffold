@@ -76,6 +76,40 @@ The scaffold supports two account-creation strategies, configured via `REGISTRAT
 
 See `apps/api/src/modules/registration/CLAUDE.md` for the full backend documentation and `apps/web/src/modules/auth/CLAUDE.md` for the frontend guard/loader pattern.
 
+## Subscription mode
+
+The scaffold supports optional subscription gating for products that require users to have an active plan to access features.
+
+| Variable | Default | Behaviour |
+| --- | --- | --- |
+| `SUBSCRIPTION_MODE` | `disabled` | `enabled` activates all subscription infrastructure. `disabled` means zero overhead — no routes, no DB queries, no UI. |
+| `SUBSCRIPTION_TRIAL_DAYS` | — | Optional integer. When set (and both registration and subscription modes are open/enabled), a trialing subscription is auto-created on user registration. |
+
+**Single source of truth:** the mode lives only in the backend env. The frontend reads `GET /subscription/status → { enabled: boolean }` once at startup and caches it for the session — no `VITE_*` duplication.
+
+**Admin bypass:** users whose role has the `subscriptions:view` permission are never blocked by `requireSubscription()`, regardless of whether they have an active subscription themselves. Operators can always access the product.
+
+**Subscription vs. RBAC:** these are two independent axes. RBAC controls what you're *permitted* to do (role-based). Subscription controls whether you have *paid access* (billing-based). A route can require both — subscription is checked first.
+
+**What the scaffold does not dictate:**
+- Which plan IDs exist (`planId` is a free-form string — apps define their catalog)
+- Pricing and billing cycles
+- Payment processor integration (webhook handlers are app-level; they call the subscription service to update status)
+- Which features are gated per plan (apps use `<RequiresSubscription>` and `requireSubscription()` as needed)
+- Trial duration (controlled by `SUBSCRIPTION_TRIAL_DAYS`) and trial plan ID (controlled by `TRIAL_PLAN_ID` in `apps/api/src/config/subscription.ts`)
+
+See `apps/api/src/modules/subscriptions/CLAUDE.md` for the full backend documentation.  
+See `apps/web/src/modules/subscriptions/CLAUDE.md` for all frontend subscription code (hooks, guard component, admin CRUD).
+
+### Subscription checklist (when building a product on this scaffold)
+
+When `SUBSCRIPTION_MODE=enabled`, the app is responsible for:
+
+- [ ] Setting `SUBSCRIPTION_TRIAL_DAYS` (if trials are offered) and updating `TRIAL_PLAN_ID` in `src/config/subscription.ts`
+- [ ] Implementing a webhook endpoint that calls `subscriptionsService` methods to update subscription status on billing events (renewal, cancellation, payment failure)
+- [ ] Adding `requireSubscription()` to routes that should be gated (inject it alongside `requirePermission` in route options, then add to the `preHandler` array)
+- [ ] Optionally rendering `<RequiresSubscription fallback={<UpgradePrompt />}>` around premium UI sections in the frontend
+
 ## Creating a new module
 
 By default, a new module spans **both workspaces** — backend + frontend. Unless the prompt explicitly targets one side (e.g. "add a backend endpoint for X" or "add a frontend page for X"), always implement the full stack:

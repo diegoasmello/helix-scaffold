@@ -12,11 +12,13 @@ src/modules/me/
 └── routes/
     ├── index.ts
     ├── me-pending.tsx
-    ├── me-page.tsx       ← layout with sidebar nav (Account / Sign-in methods / Security)
-    ├── me-account.tsx    ← name form + email change form
-    ├── me-sign-in.tsx    ← linked accounts + link provider + set password
-    ├── me-security.tsx   ← password change form (for users who already have a password)
-    ├── me-page.test.tsx  ← tests for MeAccount + MeSecurity
+    ├── me-page.tsx           ← layout with sidebar nav
+    ├── me-account.tsx        ← name form + email change form
+    ├── me-sign-in.tsx        ← linked accounts + link provider + set password
+    ├── me-security.tsx       ← password change form (for users who already have a password)
+    ├── me-preferences.tsx    ← language picker + sidebar toggle
+    ├── me-subscription.tsx   ← subscription status view (visible when SUBSCRIPTION_MODE=enabled)
+    ├── me-page.test.tsx      ← tests for MeAccount + MeSecurity
     └── me-sign-in.test.tsx
 ```
 
@@ -30,10 +32,18 @@ No `hooks.ts`, no `components/`.
 | `/me/account` | `MeAccount` | Name update + email change |
 | `/me/sign-in` | `MeSignIn` | Linked accounts, link new provider, set password for social-only users |
 | `/me/security` | `MeSecurity` | Password change (requires current password) |
+| `/me/preferences` | `MePreferences` | Language picker + sidebar toggle |
+| `/me/subscription` | `MeSubscription` | Subscription status view — always registered, tab shown only when `SUBSCRIPTION_MODE=enabled` |
 
-No `beforeLoad` permission check. No `loaderDeps`, no `validateSearch`.
+No `beforeLoad` permission check on any route. No `loaderDeps`, no `validateSearch`.
 
 Loader on `meRoute`: `queryClient.ensureQueryData(getMeSuspenseQueryOptions())`.
+
+### `/me/subscription` — subscription status tab
+
+`MeSubscription` imports `useSubscription` from `src/modules/subscriptions/hooks/use-subscription` and is a read-only view of the current user's subscription. No mutations — status changes are handled by payment webhooks, and plan management is in the admin `/subscriptions` section.
+
+`MePage` calls `useSubscription()` and renders the subscription `NavigationItem` only when `enabled: true`. The route itself is always in the tree — there is no mode guard on its `beforeLoad`, because a user navigating directly to `/me/subscription` with `enabled: false` will simply see an empty/loading state (the hook returns `subscription: null` immediately when mode is off). In practice, the nav item is hidden so users never reach it when disabled.
 
 ## Types (`types.ts`)
 

@@ -2,6 +2,8 @@
 
 Full CRUD module. Reference implementation for `apps/api` — the workspace `CLAUDE.md` uses this module as the canonical example.
 
+This module also serves as the **reference implementation for `requireSubscription`**. All todos routes require both an RBAC permission and an active subscription. When building a product on this scaffold, follow this module's route registration pattern for any feature that should be gated behind a subscription.
+
 ## Data model
 
 **Table**: `todos` (`src/db/schema/todos.ts`)  
@@ -38,16 +40,36 @@ Pure SQL, no business logic. Factory `createTodosService(database)` returns `{ l
 
 ## Routes (`todos-routes.ts`)
 
-| Method | Path            | Permission     | Audit call                                                              |
-| ------ | --------------- | -------------- | ----------------------------------------------------------------------- |
-| `GET`  | `/todos/export` | `todos:view`   | `request.audit('export', 'todos', undefined, { sortBy, sortOrder, filterLogic, filterCount })` |
-| `GET`  | `/todos`        | `todos:view`   | —                                                                       |
-| `GET`  | `/todos/:id`    | `todos:view`   | —                                                                       |
-| `POST` | `/todos`        | `todos:create` | `request.audit('create', 'todos', id, body)`                            |
-| `PATCH`  | `/todos/:id`  | `todos:edit`   | `request.audit('edit', 'todos', id, body)`                              |
-| `DELETE` | `/todos/:id`  | `todos:delete` | `request.audit('delete', 'todos', id)`                                  |
+All routes require **both** an active subscription (via `requireSubscription()`) **and** an RBAC permission. The `preHandler` arrays follow this order — subscription check first, then permission:
+
+```ts
+preHandler: [requireSubscription(), requirePermission('todos', 'view')]
+```
+
+| Method | Path | `preHandler` | Audit call |
+| --- | --- | --- | --- |
+| `GET` | `/todos/export` | `[requireSubscription(), requirePermission('todos', 'view')]` | `request.audit('export', ...)` |
+| `GET` | `/todos` | `[requireSubscription(), requirePermission('todos', 'view')]` | — |
+| `GET` | `/todos/:id` | `[requireSubscription(), requirePermission('todos', 'view')]` | — |
+| `POST` | `/todos` | `[requireSubscription(), requirePermission('todos', 'create')]` | `request.audit('create', 'todos', id, body)` |
+| `PATCH` | `/todos/:id` | `[requireSubscription(), requirePermission('todos', 'edit')]` | `request.audit('edit', 'todos', id, body)` |
+| `DELETE` | `/todos/:id` | `[requireSubscription(), requirePermission('todos', 'delete')]` | `request.audit('delete', 'todos', id)` |
 
 `GET /todos/export` must be registered **before** `GET /todos` — Fastify matches routes in registration order and `/todos/export` would otherwise be captured by `/todos/:id`.
+
+### Route options signature
+
+`todosRoutes` receives `requireSubscription` alongside `requirePermission`:
+
+```ts
+{ database, requirePermission, requireSubscription, storage }
+```
+
+When registering a new module that uses `requireSubscription`, mirror this pattern in `app.ts` and in the route module's options type.
+
+### Behavior with `SUBSCRIPTION_MODE=disabled`
+
+When subscription mode is disabled, `requireSubscription()` returns a no-op preHandler. Todos routes work exactly as before — the `[requireSubscription(), requirePermission(...)]` array simply runs the permission check only. No code changes are needed to toggle this behavior.
 
 `DELETE` returns `204` even when the id does not exist (Drizzle `delete().where()` is a no-op on missing rows).
 
@@ -79,3 +101,5 @@ Route integration tests against the real `api_test` database.
 - `POST /todos` test sends `date` as an ISO string (`'2025-03-20'`) — `z.coerce.date()` parses it.
 - `PATCH` test asserts that fields not sent in the body (`description`) remain unchanged.
 - `DELETE` asserts 204 both for existing and non-existing ids.
+
+**Subscription in tests:** `createTestSession()` in `src/test/helpers.ts` automatically creates an active subscription for the test admin user when `SUBSCRIPTION_MODE=enabled` (which is the case in `.env.test`). Individual todos tests never need to set up a subscription manually — it is always present for the test admin. Restricted-session users created with `createRoleWithPermissions` do not receive a subscription, so they return 403 from subscription-gated routes even if given the `todos:view` permission — this is expected and not tested here (it is tested in `subscriptions-routes.test.ts`).

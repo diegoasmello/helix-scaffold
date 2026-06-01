@@ -18,11 +18,13 @@ All variables are validated with Zod in `src/env.ts` at startup. If a required v
 | Variable | Default | Notes |
 | --- | --- | --- |
 | `REGISTRATION_MODE` | `closed` | `open` enables public self-registration. See `src/modules/registration/CLAUDE.md`. |
+| `SUBSCRIPTION_MODE` | `disabled` | `enabled` activates the subscription infrastructure (routes, hooks, trial auto-start). See `src/modules/subscriptions/CLAUDE.md`. |
+| `SUBSCRIPTION_TRIAL_DAYS` | — | Optional positive integer. When set with `REGISTRATION_MODE=open` and `SUBSCRIPTION_MODE=enabled`, auto-creates a trialing subscription on user registration. |
 | `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | — | Optional. Enables Google social login when both are set and `REGISTRATION_MODE=open`. |
 | `FACEBOOK_CLIENT_ID` / `FACEBOOK_CLIENT_SECRET` | — | Optional. Enables Facebook social login when both are set and `REGISTRATION_MODE=open`. |
 | `APPLE_CLIENT_ID` / `APPLE_CLIENT_SECRET` / `APPLE_APP_BUNDLE_ID` | — | Optional. Enables Apple social login. `APPLE_CLIENT_SECRET` is a JWT signed with the `.p8` private key (max 6-month expiry). See `.env.example` for details. |
 
-The test env (`.env.test`) sets `REGISTRATION_MODE=open` so test helpers can create users via `POST /api/auth/sign-up/email` without hitting the closed-mode 403 guard. Social provider credentials in the test env may or may not be set — `GET /registration/status` and `GET /me/providers` tests assert on the shape of the array, not its contents.
+The test env (`.env.test`) sets `REGISTRATION_MODE=open` and `SUBSCRIPTION_MODE=enabled`. `REGISTRATION_MODE=open` allows `createTestSession()` to sign up the test admin via `POST /api/auth/sign-up/email`. `SUBSCRIPTION_MODE=enabled` is required because `todos-routes` (the reference implementation for `requireSubscription`) gates all its endpoints behind a subscription check — the helper creates an active subscription for the test admin automatically. Social provider credentials may or may not be set in the test env — status endpoints assert on shape, not content.
 
 ## Shared social provider utility (`src/lib/social-providers.ts`)
 
@@ -43,6 +45,47 @@ src/modules/<feature>/
 ```
 
 The entry point is `src/app.ts`, which exports `buildApp(database: Database)`. Each route module is registered there via `app.register(featureRoutes, { database })`.
+
+## Hooks (`src/hooks/`)
+
+The `src/hooks/` directory contains request-lifecycle hooks injected into the authenticated scope in `app.ts`.
+
+| Hook | Factory | Purpose |
+| --- | --- | --- |
+| `require-auth.ts` | `createRequireAuth(auth)` | Validates the session cookie; attaches `request.sessionUser` |
+| `require-permission.ts` | `createRequirePermission(database)` | Returns `requirePermission(resource, action) → PreHandler`; enforces RBAC per route |
+| `require-subscription.ts` | `createRequireSubscription(database)` | Returns `requireSubscription() → PreHandler`; enforces active subscription per route |
+| `audit-request.ts` | `registerAuditRequest(app, auditService)` | Attaches `request.audit(action, resource, id?, metadata?)` globally |
+
+### `requireSubscription` — subscription gate
+
+`requireSubscription()` is a preHandler factory analogous to `requirePermission()`. Add it to any route that should require an active subscription:
+
+```ts
+// In app.ts — create alongside requirePermission
+const requireSubscription = createRequireSubscription(database)
+
+// Pass to route modules that need it
+authenticated.register(featureRoutes, { database, requirePermission, requireSubscription })
+
+// In feature-routes.ts — use as preHandler
+app.get('/feature', {
+  preHandler: [requireSubscription(), requirePermission('feature', 'view')],
+  // ...
+})
+```
+
+**Order matters:** put `requireSubscription()` before `requirePermission()` so users see the subscription error, not a permission error, when they lack both.
+
+**Admin bypass:** users whose role has `subscriptions:view` pass through `requireSubscription()` without a subscription check. This ensures operators are never blocked by billing status.
+
+**When `SUBSCRIPTION_MODE=disabled`:** `requireSubscription()` returns a no-op preHandler. Routes decorated with it work normally, so apps can add `requireSubscription()` to routes today and activate enforcement later by setting `SUBSCRIPTION_MODE=enabled`.
+
+The `todos` module uses `requireSubscription()` on all its routes as the reference implementation. See `src/modules/subscriptions/CLAUDE.md` for the full subscription documentation.
+
+### Subscription config (`src/config/subscription.ts`)
+
+Contains `TRIAL_PLAN_ID` — the `planId` assigned to auto-created trial subscriptions. Default is `'trial'`. Edit this constant to match your app's plan catalog before shipping.
 
 ---
 
