@@ -1,4 +1,7 @@
-import { getMeSuspenseQueryOptions } from '@helix/api-client/hooks'
+import {
+  getMeSuspenseQueryOptions,
+  getSubscriptionStatusQueryOptions,
+} from '@helix/api-client/hooks'
 import { createRoute, redirect } from '@tanstack/react-router'
 
 import { authenticatedRoute } from '@/routes'
@@ -59,6 +62,12 @@ const meSubscriptionRoute = createRoute({
   getParentRoute: () => meRoute,
   path: '/subscription',
   component: MeSubscription,
+  beforeLoad: async () => {
+    const { enabled } = await queryClient.ensureQueryData(
+      getSubscriptionStatusQueryOptions()
+    )
+    if (!enabled) throw redirect({ to: '/me/account' })
+  },
 })
 
 export const meRoutes = [

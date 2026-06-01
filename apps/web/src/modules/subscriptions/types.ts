@@ -7,6 +7,7 @@ import type {
 
 export type SubscriptionItem = Subscription
 export type SubscriptionStatus = SubscriptionStatusEnumKey
+
 export type CreateSubscriptionInput = PostSubscriptionsMutationRequest
 export type UpdateSubscriptionInput = PatchSubscriptionsIdMutationRequest
 

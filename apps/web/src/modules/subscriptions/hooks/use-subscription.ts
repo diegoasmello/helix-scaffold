@@ -18,15 +18,17 @@ export function useSubscription() {
     enabled,
   })
 
-  const isPending = statusPending || subscriptionPending
+  // Only count subscriptionPending when the query is actually enabled.
+  // React Query v5 reports isPending=true for disabled queries that never fetched.
+  const isPending = statusPending || (enabled && subscriptionPending)
 
-  const subscription = (data as Subscription | null | undefined) ?? null
+  const subscription = (data as Subscription | undefined) ?? null
 
   return {
     subscription,
     isActive: subscription?.status === 'active',
     isTrialing: subscription?.status === 'trialing',
-    isPending,   // true while status OR subscription query is in flight
+    isPending,
     enabled,
   }
 }

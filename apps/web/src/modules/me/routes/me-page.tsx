@@ -1,12 +1,17 @@
-import { Grid, GridCol, NavigationItem, Title } from '@helix/ui'
 import {
+  Grid,
+  GridCol,
   IconCreditCard,
   IconKey,
   IconLock,
   IconSettings,
   IconUser,
+  NavigationItem,
+  Paper,
+  Stack,
+  Text,
+  Title,
 } from '@helix/ui'
-import { Paper, Stack, Text } from '@helix/ui'
 import { Outlet } from '@tanstack/react-router'
 import { useTranslation } from 'react-i18next'
 

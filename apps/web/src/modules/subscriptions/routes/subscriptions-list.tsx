@@ -14,24 +14,17 @@ import {
   getDataTablePaginationProps,
   getDataTableSortingProps,
   Group,
+  IconPlus,
   notify,
   PageList,
 } from '@helix/ui'
-import { IconPlus } from '@helix/ui'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 
 import { HasPermission } from '../../auth/components/has-permission'
-import type { SubscriptionItem, SubscriptionStatus } from '../types'
+import { SUBSCRIPTION_STATUS_COLORS } from '../constants'
+import type { SubscriptionItem } from '../types'
 import { subscriptionsListRoute } from '.'
-
-const STATUS_COLORS: Record<SubscriptionStatus, string> = {
-  active: 'green',
-  trialing: 'blue',
-  canceled: 'gray',
-  past_due: 'orange',
-  expired: 'red',
-}
 
 export function SubscriptionsList() {
   const queryClient = useQueryClient()
@@ -93,7 +86,7 @@ export function SubscriptionsList() {
       title: t('columns.status'),
       sortable: true,
       render: (item) => (
-        <Badge color={STATUS_COLORS[item.status] ?? 'gray'} variant="light">
+        <Badge color={SUBSCRIPTION_STATUS_COLORS[item.status]} variant="light">
           {t(`status.${item.status}`)}
         </Badge>
       ),

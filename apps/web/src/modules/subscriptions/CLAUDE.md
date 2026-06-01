@@ -240,7 +240,7 @@ The `/me/subscription` route lives in the `me` module but consumes `useSubscript
 - Shows "No active subscription" when `subscription: null`
 - Shows plan ID, status badge (colored by `STATUS_COLORS`), trial end date (when `trialEndsAt` is set), period start/end when a subscription exists
 
-**Navigation:** the tab only appears in `MePage`'s sidebar when `enabled: true`. `MePage` calls `useSubscription()` and conditionally renders the `NavigationItem` based on the `enabled` flag. The route itself (`meSubscriptionRoute`) is always registered — there is no mode guard on `beforeLoad`, because the tab simply shows "no subscription" when the feature is enabled but the user has no subscription. If the feature is disabled the tab is hidden from navigation via `enabled: false`.
+**Navigation:** the tab only appears in `MePage`'s sidebar when `enabled: true`. `MePage` calls `useSubscription()` and conditionally renders the `NavigationItem` based on the `enabled` flag. The `meSubscriptionRoute` `beforeLoad` also checks the subscription mode and redirects to `/me/account` when `SUBSCRIPTION_MODE=disabled`, so direct URL navigation is blocked when the feature is off.
 
 **i18n:** uses the `subscription` namespace under `me.*` keys — the same namespace as the admin module.
 

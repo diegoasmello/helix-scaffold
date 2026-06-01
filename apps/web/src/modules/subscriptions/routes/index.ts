@@ -10,6 +10,13 @@ import { authenticatedRoute } from '@/routes'
 
 import { queryClient } from '../../../lib/query-client'
 import type { SubscriptionItem } from '../types'
+
+async function assertSubscriptionEnabled() {
+  const { enabled } = await queryClient.ensureQueryData(
+    getSubscriptionStatusQueryOptions()
+  )
+  if (!enabled) throw redirect({ to: '/' })
+}
 import { SubscriptionsCreate } from './subscriptions-create'
 import { SubscriptionsDetail } from './subscriptions-detail'
 import { SubscriptionsEdit } from './subscriptions-edit'
@@ -27,10 +34,7 @@ export const subscriptionsListRoute = createRoute({
   beforeLoad: async ({ context }) => {
     if (!context.hasPermission('subscriptions', 'view'))
       throw redirect({ to: '/403' })
-    const { enabled } = await queryClient.ensureQueryData(
-      getSubscriptionStatusQueryOptions()
-    )
-    if (!enabled) throw redirect({ to: '/' })
+    await assertSubscriptionEnabled()
   },
   validateSearch: z.object({
     page: z.number().int().min(1).default(1),
@@ -64,10 +68,7 @@ export const subscriptionsCreateRoute = createRoute({
   beforeLoad: async ({ context }) => {
     if (!context.hasPermission('subscriptions', 'create'))
       throw redirect({ to: '/403' })
-    const { enabled } = await queryClient.ensureQueryData(
-      getSubscriptionStatusQueryOptions()
-    )
-    if (!enabled) throw redirect({ to: '/' })
+    await assertSubscriptionEnabled()
   },
 })
 
@@ -86,10 +87,7 @@ export const subscriptionsDetailRoute = createRoute({
   beforeLoad: async ({ context }) => {
     if (!context.hasPermission('subscriptions', 'view'))
       throw redirect({ to: '/403' })
-    const { enabled } = await queryClient.ensureQueryData(
-      getSubscriptionStatusQueryOptions()
-    )
-    if (!enabled) throw redirect({ to: '/' })
+    await assertSubscriptionEnabled()
   },
   loader: ({ params }) =>
     queryClient.ensureQueryData(
@@ -112,10 +110,7 @@ export const subscriptionsEditRoute = createRoute({
   beforeLoad: async ({ context }) => {
     if (!context.hasPermission('subscriptions', 'edit'))
       throw redirect({ to: '/403' })
-    const { enabled } = await queryClient.ensureQueryData(
-      getSubscriptionStatusQueryOptions()
-    )
-    if (!enabled) throw redirect({ to: '/' })
+    await assertSubscriptionEnabled()
   },
   loader: ({ params }) =>
     queryClient.ensureQueryData(

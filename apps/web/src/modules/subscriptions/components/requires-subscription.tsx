@@ -11,8 +11,11 @@ export function RequiresSubscription(
   props: Readonly<RequiresSubscriptionProps>
 ) {
   const { children, fallback = null } = props
-  const { enabled, isActive, isTrialing } = useSubscription()
+  const { enabled, isActive, isTrialing, isPending } = useSubscription()
+
+  if (isPending) return null
 
   if (!enabled) return <>{children}</>
+
   return isActive || isTrialing ? <>{children}</> : <>{fallback}</>
 }

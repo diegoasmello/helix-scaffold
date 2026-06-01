@@ -1,16 +1,18 @@
-import { Badge, Center, Loader, Stack, Text, Title } from '@helix/ui'
+import {
+  Badge,
+  Center,
+  LabeledValue,
+  Loader,
+  Stack,
+  Text,
+  Title,
+} from '@helix/ui'
+import { formatDate, parseISO } from 'date-fns'
 import { useTranslation } from 'react-i18next'
 
-import { useSubscription } from '../../subscriptions/hooks/use-subscription'
-import type { SubscriptionStatus } from '../../subscriptions/types'
+import { SUBSCRIPTION_STATUS_COLORS } from '@/modules/subscriptions/constants'
 
-const STATUS_COLORS: Record<SubscriptionStatus, string> = {
-  active: 'green',
-  trialing: 'blue',
-  canceled: 'gray',
-  past_due: 'orange',
-  expired: 'red',
-}
+import { useSubscription } from '../../subscriptions/hooks/use-subscription'
 
 export function MeSubscription() {
   const { subscription, isPending } = useSubscription()
@@ -35,7 +37,7 @@ export function MeSubscription() {
     )
   }
 
-  const statusColor = STATUS_COLORS[subscription.status] ?? 'gray'
+  const statusColor = SUBSCRIPTION_STATUS_COLORS[subscription.status]
 
   return (
     <Stack gap="xl">
@@ -50,60 +52,31 @@ export function MeSubscription() {
         </Stack>
 
         <Stack gap="xs">
-          <LabeledValue
-            label={t('me.labels.plan')}
-            value={subscription.planId}
-          />
+          <LabeledValue label={t('me.labels.plan')}>
+            {subscription.planId}
+          </LabeledValue>
 
-          <Stack gap={4}>
-            <Text size="sm" fw={500}>
-              {t('me.labels.status')}
-            </Text>
+          <LabeledValue label={t('me.labels.status')}>
             <Badge color={statusColor} variant="light">
               {t(`status.${subscription.status}`)}
             </Badge>
-          </Stack>
+          </LabeledValue>
 
           {subscription.trialEndsAt && (
-            <LabeledValue
-              label={t('me.labels.trialEnds')}
-              value={new Date(subscription.trialEndsAt).toLocaleDateString()}
-            />
+            <LabeledValue label={t('me.labels.trialEnds')}>
+              {formatDate(parseISO(subscription.trialEndsAt), 'short')}
+            </LabeledValue>
           )}
 
-          <LabeledValue
-            label={t('me.labels.periodStart')}
-            value={new Date(
-              subscription.currentPeriodStart
-            ).toLocaleDateString()}
-          />
+          <LabeledValue label={t('me.labels.periodStart')}>
+            {formatDate(parseISO(subscription.currentPeriodStart), 'short')}
+          </LabeledValue>
 
-          <LabeledValue
-            label={t('me.labels.periodEnd')}
-            value={new Date(subscription.currentPeriodEnd).toLocaleDateString()}
-          />
+          <LabeledValue label={t('me.labels.periodEnd')}>
+            {formatDate(parseISO(subscription.currentPeriodEnd), 'short')}
+          </LabeledValue>
         </Stack>
       </Stack>
-    </Stack>
-  )
-}
-
-interface LabeledValueProps {
-  label: string
-  value: string
-}
-
-function LabeledValue(props: Readonly<LabeledValueProps>) {
-  const { label, value } = props
-
-  return (
-    <Stack gap={2}>
-      <Text size="sm" fw={500}>
-        {label}
-      </Text>
-      <Text size="sm" c="dimmed">
-        {value}
-      </Text>
     </Stack>
   )
 }

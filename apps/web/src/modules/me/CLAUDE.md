@@ -33,7 +33,7 @@ No `hooks.ts`, no `components/`.
 | `/me/sign-in` | `MeSignIn` | Linked accounts, link new provider, set password for social-only users |
 | `/me/security` | `MeSecurity` | Password change (requires current password) |
 | `/me/preferences` | `MePreferences` | Language picker + sidebar toggle |
-| `/me/subscription` | `MeSubscription` | Subscription status view — always registered, tab shown only when `SUBSCRIPTION_MODE=enabled` |
+| `/me/subscription` | `MeSubscription` | Subscription status view — registered only when `SUBSCRIPTION_MODE=enabled` (redirects to `/me/account` otherwise) |
 
 No `beforeLoad` permission check on any route. No `loaderDeps`, no `validateSearch`.
 
@@ -43,7 +43,7 @@ Loader on `meRoute`: `queryClient.ensureQueryData(getMeSuspenseQueryOptions())`.
 
 `MeSubscription` imports `useSubscription` from `src/modules/subscriptions/hooks/use-subscription` and is a read-only view of the current user's subscription. No mutations — status changes are handled by payment webhooks, and plan management is in the admin `/subscriptions` section.
 
-`MePage` calls `useSubscription()` and renders the subscription `NavigationItem` only when `enabled: true`. The route itself is always in the tree — there is no mode guard on its `beforeLoad`, because a user navigating directly to `/me/subscription` with `enabled: false` will simply see an empty/loading state (the hook returns `subscription: null` immediately when mode is off). In practice, the nav item is hidden so users never reach it when disabled.
+`MePage` calls `useSubscription()` and renders the subscription `NavigationItem` only when `enabled: true`. The `meSubscriptionRoute` `beforeLoad` checks the subscription mode and redirects to `/me/account` when `SUBSCRIPTION_MODE=disabled`, preventing direct URL access when the feature is off.
 
 ## Types (`types.ts`)
 
