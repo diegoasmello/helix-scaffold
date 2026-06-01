@@ -85,7 +85,7 @@ export function AuditList() {
       accessor: 'actions',
       title: t('columns.actions'),
       textAlign: 'center',
-      width: 96,
+      width: '1%',
       render: (log) => (
         <Button
           size="xs"

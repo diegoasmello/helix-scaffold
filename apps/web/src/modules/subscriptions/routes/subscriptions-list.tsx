@@ -101,9 +101,9 @@ export function SubscriptionsList() {
       accessor: 'actions',
       title: t('columns.actions'),
       textAlign: 'center',
-      width: 240,
+      width: '1%',
       render: (item) => (
-        <Group justify="center" gap="xs">
+        <Group justify="center" gap="xs" wrap="nowrap">
           <Button
             size="xs"
             variant="default"

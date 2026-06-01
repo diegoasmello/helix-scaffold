@@ -1271,7 +1271,7 @@ const sortingProps = getDataTableSortingProps(search, navigate);
 const columns: DataTableColumn<XxxItem>[] = [
   { accessor: "title", title: "Title", sortable: true, width: "60%" },
   { accessor: "createdAt", title: "Created", sortable: true },
-  { accessor: "actions", title: "Actions", textAlign: "center", width: 240, render: ... },
+  { accessor: "actions", title: "Actions", textAlign: "center", width: "1%", render: ... },
 ];
 
 <DataTable
@@ -1318,23 +1318,25 @@ When active filters are present and the result is empty, skip the `EmptyState` �
 
 Form screens use the `<Form>` component from `@helix/ui` wrapping `PageCreate`/`PageEdit`. `Form` receives `form` (the `useForm` instance) and `onSubmit` (a plain function that receives the validated values — not `form.onSubmit(...)`). It handles validation and submission internally.
 
-**Per-row action buttons** — always use `Button size="xs" variant="default"` with a text label. Never use `ActionIcon` with an icon in the actions column:
+**Per-row action buttons** — always use `Button size="xs" variant="default"` with a text label. Never use `ActionIcon` with an icon in the actions column. Wrap all buttons in `<Group gap="xs" wrap="nowrap">` so they stay on one line regardless of language:
 
 ```tsx
-// View is always visible — reading the list already requires `features:view`
-<Button size="xs" variant="default" aria-label="View" onClick={() => navigate({ to: "/features/$id", params: { id: item.id } })}>
-  View
-</Button>
-<HasPermission resource="features" action="edit">
-  <Button size="xs" variant="default" aria-label="Edit" onClick={() => navigate({ to: "/features/$id/edit", params: { id: item.id } })}>
-    Edit
+<Group gap="xs" wrap="nowrap">
+  {/* View is always visible — reading the list already requires `features:view` */}
+  <Button size="xs" variant="default" aria-label="View" onClick={() => navigate({ to: "/features/$id", params: { id: item.id } })}>
+    View
   </Button>
-</HasPermission>
-<HasPermission resource="features" action="delete">
-  <Button size="xs" variant="default" aria-label="Delete" onClick={() => handleDelete(item.id)}>
-    Delete
-  </Button>
-</HasPermission>
+  <HasPermission resource="features" action="edit">
+    <Button size="xs" variant="default" aria-label="Edit" onClick={() => navigate({ to: "/features/$id/edit", params: { id: item.id } })}>
+      Edit
+    </Button>
+  </HasPermission>
+  <HasPermission resource="features" action="delete">
+    <Button size="xs" variant="default" aria-label="Delete" onClick={() => handleDelete(item.id)}>
+      Delete
+    </Button>
+  </HasPermission>
+</Group>
 ```
 
 **Create button** (in `PageList` `actions` prop) — wrap with `<HasPermission>`:

@@ -88,9 +88,9 @@ export function UsersList() {
       accessor: 'actions',
       title: t('columns.actions'),
       textAlign: 'center',
-      width: 240,
+      width: '1%',
       render: (item) => (
-        <Group gap="xs">
+        <Group gap="xs" wrap="nowrap">
           <Button
             size="xs"
             variant="default"
