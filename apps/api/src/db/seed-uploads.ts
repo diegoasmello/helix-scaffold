@@ -40,7 +40,11 @@ export async function createSeedUploads(
 
       await Promise.all([
         storage.save(originalKey, imageBuffer, 'image/jpeg'),
-        storage.save(variantKeys.thumbnail, variantBuffers.thumbnail, 'image/webp'),
+        storage.save(
+          variantKeys.thumbnail,
+          variantBuffers.thumbnail,
+          'image/webp'
+        ),
         storage.save(variantKeys.small, variantBuffers.small, 'image/webp'),
         storage.save(variantKeys.medium, variantBuffers.medium, 'image/webp'),
         storage.save(variantKeys.large, variantBuffers.large, 'image/webp'),
@@ -55,10 +59,22 @@ export async function createSeedUploads(
           storageKey: originalKey,
           url: storage.getUrl(originalKey),
           variants: {
-            thumbnail: { key: variantKeys.thumbnail, url: storage.getUrl(variantKeys.thumbnail) },
-            small: { key: variantKeys.small, url: storage.getUrl(variantKeys.small) },
-            medium: { key: variantKeys.medium, url: storage.getUrl(variantKeys.medium) },
-            large: { key: variantKeys.large, url: storage.getUrl(variantKeys.large) },
+            thumbnail: {
+              key: variantKeys.thumbnail,
+              url: storage.getUrl(variantKeys.thumbnail),
+            },
+            small: {
+              key: variantKeys.small,
+              url: storage.getUrl(variantKeys.small),
+            },
+            medium: {
+              key: variantKeys.medium,
+              url: storage.getUrl(variantKeys.medium),
+            },
+            large: {
+              key: variantKeys.large,
+              url: storage.getUrl(variantKeys.large),
+            },
           },
         })
         .returning()

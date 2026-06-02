@@ -6,7 +6,13 @@ import { eq, sql } from 'drizzle-orm'
 import { createAuth } from '@/auth'
 import { ALL_PERMISSIONS } from '@/config/permissions'
 import { db } from '@/db'
-import { rolePermissions, roles, todoAttachments, todos, user } from '@/db/schema'
+import {
+  rolePermissions,
+  roles,
+  todoAttachments,
+  todos,
+  user,
+} from '@/db/schema'
 import { env } from '@/env'
 import { createEmailProvider } from '@/lib/email'
 import { createStorageProvider } from '@/lib/storage'
@@ -141,8 +147,12 @@ async function main() {
 
   console.log('Creating uploads...')
   const storage = createStorageProvider(env)
-  const imageUploads = await createSeedUploads(db, storage, { imageCount: TODO_COUNT })
-  const fileUploads = await createSeedUploads(db, storage, { fileCount: TODO_COUNT })
+  const imageUploads = await createSeedUploads(db, storage, {
+    imageCount: TODO_COUNT,
+  })
+  const fileUploads = await createSeedUploads(db, storage, {
+    fileCount: TODO_COUNT,
+  })
   const attachmentUploads = await createSeedUploads(db, storage, {
     fileCount: ATTACHMENT_TODO_COUNT * ATTACHMENTS_PER_TODO,
   })
@@ -154,7 +164,10 @@ async function main() {
     description: faker.lorem.sentences(2),
     content: faker.lorem.sentences(5),
     status: faker.helpers.arrayElement(['pending', 'completed'] as const),
-    date: faker.date.between({ from: new Date('2024-01-01'), to: new Date('2025-12-31') }),
+    date: faker.date.between({
+      from: new Date('2024-01-01'),
+      to: new Date('2025-12-31'),
+    }),
     imageId: imageUploads.imageIds[i],
     fileId: fileUploads.fileIds[i],
   }))
@@ -173,7 +186,7 @@ async function main() {
 
   console.log(
     `Seed complete: 3 roles, ${1 + EXTRA_USERS.length} users, ${TODO_COUNT} todos, ` +
-    `${imageUploads.imageIds.length + fileUploads.fileIds.length + attachmentUploads.fileIds.length} uploads.`
+      `${imageUploads.imageIds.length + fileUploads.fileIds.length + attachmentUploads.fileIds.length} uploads.`
   )
   process.exit(0)
 }
