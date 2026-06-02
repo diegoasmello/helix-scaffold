@@ -126,6 +126,9 @@ importers:
       '@eslint/js':
         specifier: 'catalog:'
         version: 9.39.1
+      '@faker-js/faker':
+        specifier: 10.4.0
+        version: 10.4.0
       '@types/node':
         specifier: 'catalog:'
         version: 24.12.0
