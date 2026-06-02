@@ -27,6 +27,10 @@
     "password": {
       "label": "Password",
       "placeholder": "Min 8 characters"
+    },
+    "userSelect": {
+      "label": "User",
+      "placeholder": "Search users"
     }
   },
   "labels": {

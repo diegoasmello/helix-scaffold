@@ -43,6 +43,19 @@ export async function usersRoutes(
   )
 
   app.get(
+    '/users/all',
+    {
+      schema: {
+        tags: ['users'],
+        description: 'List all users without pagination',
+        response: { 200: z.array(userWithRoleSchema) },
+      },
+      preHandler: requirePermission('users', 'view'),
+    },
+    async () => service.listAll()
+  )
+
+  app.get(
     '/users/:id',
     {
       schema: {

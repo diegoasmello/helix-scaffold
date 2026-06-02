@@ -2,6 +2,7 @@ import type { UseFormReturnType } from '@helix/ui'
 import { DateInput, Grid, GridCol, Select, TextInput } from '@helix/ui'
 import { useTranslation } from 'react-i18next'
 
+import { UserSelectField } from '../../users/components/user-select-field'
 import type { SubscriptionFormValues } from '../types'
 
 interface SubscriptionsFormProps {
@@ -25,12 +26,7 @@ export function SubscriptionsForm(props: Readonly<SubscriptionsFormProps>) {
     <Grid>
       {!isEditing && (
         <GridCol span={12}>
-          <TextInput
-            label={t('form.userId.label')}
-            placeholder={t('form.userId.placeholder')}
-            required
-            {...form.getInputProps('userId')}
-          />
+          <UserSelectField required {...form.getInputProps('userId')} />
         </GridCol>
       )}
 

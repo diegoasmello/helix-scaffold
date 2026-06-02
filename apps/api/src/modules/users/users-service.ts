@@ -135,7 +135,26 @@ export function createUsersService(database: Database, auth: Auth) {
     await database.delete(user).where(eq(user.id, id))
   }
 
-  return { list, getById, create, update, remove }
+  async function listAll() {
+    const rows = await database
+      .select({
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        emailVerified: user.emailVerified,
+        roleId: user.roleId,
+        createdAt: user.createdAt,
+        updatedAt: user.updatedAt,
+        roleRefId: roles.id,
+        roleName: roles.name,
+      })
+      .from(user)
+      .leftJoin(roles, eq(user.roleId, roles.id))
+      .orderBy(asc(user.name))
+    return rows.map(toUserWithRole)
+  }
+
+  return { list, getById, create, update, remove, listAll }
 }
 
 export type UsersService = ReturnType<typeof createUsersService>

@@ -2,6 +2,7 @@ import {
   getSubscriptionsIdSuspenseQueryOptions,
   getSubscriptionsSuspenseQueryOptions,
   getSubscriptionStatusQueryOptions,
+  getUsersAllSuspenseQueryOptions,
 } from '@helix/api-client/hooks'
 import { createRoute, redirect } from '@tanstack/react-router'
 import { z } from 'zod'
@@ -69,6 +70,9 @@ export const subscriptionsCreateRoute = createRoute({
     if (!context.hasPermission('subscriptions', 'create'))
       throw redirect({ to: '/403' })
     await assertSubscriptionEnabled()
+  },
+  loader: () => {
+    queryClient.ensureQueryData(getUsersAllSuspenseQueryOptions())
   },
 })
 

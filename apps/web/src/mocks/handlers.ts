@@ -51,6 +51,7 @@ import {
   getUploadsHandler,
   getUploadsIdHandler,
   getUploadsIdHandlerResponse404,
+  getUsersAllHandler,
   getUsersHandler,
   getUsersIdHandler,
   getUsersIdHandlerResponse404,
@@ -132,6 +133,7 @@ export const handlers = [
   deleteRolesIdHandler(() => deleteRolesIdHandlerResponse204()),
 
   // Users
+  getUsersAllHandler([]),
   getUsersHandler(
     createPaginatedUsers({
       data: [],

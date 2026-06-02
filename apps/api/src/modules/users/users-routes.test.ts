@@ -443,6 +443,73 @@ describe('PATCH /users/:id', () => {
   })
 })
 
+describe('GET /users/all', () => {
+  it('returns all users as a plain array', async () => {
+    const res = await app.inject({
+      method: 'GET',
+      url: '/users/all',
+      headers: { cookie: authCookie },
+    })
+    expect(res.statusCode).toBe(200)
+    const body = res.json()
+    expect(Array.isArray(body)).toBe(true)
+    expect(body.length).toBeGreaterThanOrEqual(1)
+    expect(body[0]).toHaveProperty('role')
+    expect(body[0].password).toBeUndefined()
+  })
+
+  it('returns users sorted by name ascending', async () => {
+    await testDb.insert(user).values([
+      {
+        id: uuidv7(),
+        name: 'Zara',
+        email: 'zara@test.com',
+        emailVerified: false,
+      },
+      {
+        id: uuidv7(),
+        name: 'Aaron',
+        email: 'aaron@test.com',
+        emailVerified: false,
+      },
+    ])
+
+    const res = await app.inject({
+      method: 'GET',
+      url: '/users/all',
+      headers: { cookie: authCookie },
+    })
+    expect(res.statusCode).toBe(200)
+    const names = res.json().map((u: { name: string }) => u.name)
+    expect(names).toEqual([...names].sort())
+  })
+
+  it('embeds role when user has one', async () => {
+    const [role] = await testDb
+      .insert(roles)
+      .values({ name: 'editor' })
+      .returning()
+    await testDb.insert(user).values({
+      id: uuidv7(),
+      name: 'Alice',
+      email: 'alice@test.com',
+      emailVerified: false,
+      roleId: role.id,
+    })
+
+    const res = await app.inject({
+      method: 'GET',
+      url: '/users/all',
+      headers: { cookie: authCookie },
+    })
+    expect(res.statusCode).toBe(200)
+    const alice = res
+      .json()
+      .find((u: { email: string }) => u.email === 'alice@test.com')
+    expect(alice.role).toEqual({ id: role.id, name: 'editor' })
+  })
+})
+
 describe('DELETE /users/:id', () => {
   it('returns 204 for existing user', async () => {
     const [inserted] = await testDb
@@ -497,6 +564,16 @@ describe('Permission enforcement', () => {
     const cookies = Array.isArray(setCookie) ? setCookie : [setCookie ?? '']
     return cookies.map((c) => c.split(';')[0]).join('; ')
   }
+
+  it('returns 403 on GET /users/all without users:view', async () => {
+    const cookie = await createRestrictedSession([])
+    const res = await app.inject({
+      method: 'GET',
+      url: '/users/all',
+      headers: { cookie },
+    })
+    expect(res.statusCode).toBe(403)
+  })
 
   it('returns 403 on GET /users without users:view', async () => {
     const cookie = await createRestrictedSession([])
