@@ -149,6 +149,33 @@ describe('PATCH /me/email', () => {
     })
     expect(res.statusCode).toBe(400)
   })
+
+  it('returns 400 when the email is already in use by another account', async () => {
+    const { user } = await import('@/db/schema/authentication')
+    const { uuidv7 } = await import('uuidv7')
+    const existingEmail = 'already-taken@test.com'
+    await testDb.insert(user).values({
+      id: uuidv7(),
+      name: 'Other User',
+      email: existingEmail,
+      emailVerified: false,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    })
+
+    const res = await app.inject({
+      method: 'PATCH',
+      url: '/me/email',
+      payload: { newEmail: existingEmail },
+      headers: { cookie: authCookie },
+    })
+    expect(res.statusCode).toBe(400)
+    expect(res.json().message).toBe('This email is already in use')
+
+    await testDb
+      .delete(user)
+      .where((await import('drizzle-orm')).eq(user.email, existingEmail))
+  })
 })
 
 describe('POST /me/set-password', () => {

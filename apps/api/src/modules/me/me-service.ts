@@ -1,4 +1,5 @@
-import { eq } from 'drizzle-orm'
+import { APIError } from 'better-auth'
+import { and, eq, ne } from 'drizzle-orm'
 
 import type { Auth } from '@/auth'
 import type { Database } from '@/db'
@@ -30,7 +31,21 @@ export function createMeService(
     return getMe(userId)
   }
 
-  async function changeEmail(data: UpdateMeEmailInput, headers: Headers) {
+  async function changeEmail(
+    userId: string,
+    data: UpdateMeEmailInput,
+    headers: Headers
+  ) {
+    const newEmail = data.newEmail.toLowerCase()
+    const [existing] = await database
+      .select({ id: user.id })
+      .from(user)
+      .where(and(eq(user.email, newEmail), ne(user.id, userId)))
+    if (existing) {
+      throw new APIError('BAD_REQUEST', {
+        message: 'This email is already in use',
+      })
+    }
     await auth.api.changeEmail({
       headers,
       body: {

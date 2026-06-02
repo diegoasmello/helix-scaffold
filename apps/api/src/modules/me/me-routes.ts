@@ -90,6 +90,7 @@ export async function meRoutes(
     async (request, reply) => {
       try {
         await service.changeEmail(
+          request.sessionUser.id,
           request.body,
           fromNodeHeaders(request.headers)
         )
