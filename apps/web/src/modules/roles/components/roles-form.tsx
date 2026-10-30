@@ -1,5 +1,5 @@
 import type { UseFormReturnType } from '@helix/ui'
-import { Grid, Switch, Text, Textarea, TextInput } from '@helix/ui'
+import { Grid, Switch, Textarea, TextInput } from '@helix/ui'
 import { useTranslation } from 'react-i18next'
 
 import type { RoleFormValues } from '../types'
@@ -34,11 +34,7 @@ export function RolesForm(props: Readonly<RolesFormProps>) {
       <Grid.Col span={12}>
         <Switch
           label={t('form.isDefault.label')}
-          description={
-            <Text size="xs" c="dimmed">
-              {t('form.isDefault.description')}
-            </Text>
-          }
+          description={t('form.isDefault.description')}
           {...form.getInputProps('isDefault', { type: 'checkbox' })}
         />
       </Grid.Col>
