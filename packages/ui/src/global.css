@@ -1,3 +1,31 @@
 body {
   font-variant-numeric: tabular-nums lining-nums;
 }
+
+/*
+ * Focus ring entrance animation.
+ * Mantine ships no motion tokens — 150ms matches the duration its own
+ * components use. Reference the token from any custom focus style via
+ * `animation: var(--helix-focus-ring-animation)`.
+ */
+:root {
+  --helix-focus-ring-animation: helix-focus-ring-in 150ms ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --helix-focus-ring-animation: none;
+  }
+}
+
+@keyframes helix-focus-ring-in {
+  from {
+    outline-color: transparent;
+    outline-offset: 0;
+  }
+}
+
+.mantine-focus-auto:focus-visible,
+.mantine-focus-always:focus {
+  animation: var(--helix-focus-ring-animation);
+}

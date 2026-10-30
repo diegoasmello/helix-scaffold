@@ -32,6 +32,7 @@ export function createTheme(
             '&:focus-within': {
               outline: `2px solid ${theme.colors.main[6]}`,
               outlineOffset: '2px',
+              animation: 'var(--helix-focus-ring-animation)',
             },
             '&:has([aria-invalid="true"]):focus-within': {
               outline: `2px solid ${theme.colors.red[6]}`,

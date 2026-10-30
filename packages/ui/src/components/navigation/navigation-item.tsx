@@ -96,6 +96,7 @@ const useStyles = createStyles((theme, params: { px: string }, u) => ({
     &:focus div,
     &:focus-within div {
       outline-offset: 2px;
+      animation: var(--helix-focus-ring-animation);
 
       ${u.light} {
         outline: 2px solid ${theme.colors.main[6]};

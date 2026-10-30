@@ -244,10 +244,12 @@ const useStyles = createStyles((theme) => ({
   editorFocused: css`
     outline: 2px solid var(--mantine-primary-color-filled);
     outline-offset: calc(0.125rem * var(--mantine-scale));
+    animation: var(--helix-focus-ring-animation);
   `,
   editorFocusedError: css`
     outline: 2px solid var(--mantine-color-error);
     outline-offset: calc(0.125rem * var(--mantine-scale));
+    animation: var(--helix-focus-ring-animation);
   `,
   content: css`
     display: flex;

@@ -234,6 +234,8 @@ padding: var(--mantine-spacing-md);
 color: var(--mantine-color-dimmed);
 ```
 
+**Focus rings**: every custom focus outline must also declare `animation: var(--helix-focus-ring-animation);` so it animates like Mantine's built-in focus ring. The token and keyframes live in `src/global.css` (Mantine has no motion tokens) and resolve to `none` under `prefers-reduced-motion`.
+
 **Spacing**: always `${theme.spacing.*}`. **Colors**: always `${theme.colors.*[shade]}`, `${theme.white}`, or `${theme.black}`. The `light-dark()` CSS function is allowed for simple rgba literals only.
 
 ## Props convention
