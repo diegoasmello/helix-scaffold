@@ -49,7 +49,7 @@ export function PermissionsTree(props: Readonly<PermissionsTreeProps>) {
           <Paper key={def.resource} p="md" withBorder>
             <Checkbox
               label={
-                <Text fw={600} size="sm">
+                <Text component="span" fw={600} size="sm">
                   {def.label}
                 </Text>
               }
