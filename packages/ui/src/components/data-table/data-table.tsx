@@ -68,7 +68,7 @@ const useStyles = createStyles((theme, _, u) => ({
             background: ${theme.colors.dark[6]};
           }
 
-          &:first-child {
+          &:first-of-type {
             border-top-left-radius: ${theme.radius['sm']};
             border-bottom-left-radius: ${theme.radius['sm']};
           }
@@ -115,7 +115,7 @@ const useStyles = createStyles((theme, _, u) => ({
         bottom: -0.375rem;
       }
 
-      td:first-child {
+      td:first-of-type {
         border-top-left-radius: ${theme.radius['md']};
         border-bottom-left-radius: ${theme.radius['md']};
       }
