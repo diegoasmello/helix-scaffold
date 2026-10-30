@@ -64,7 +64,7 @@ export const client = async <TData, _TError = unknown, TVariables = unknown>(
 
   const responseData =
     response.status === 204
-      ? undefined
+      ? null
       : await response.json().catch(() => undefined)
 
   if (!response.ok) {

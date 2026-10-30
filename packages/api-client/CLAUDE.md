@@ -29,6 +29,7 @@ Implements the interface expected by kubb. Responsible for:
 - Building the URL via `new URL(url, _baseUrl)`
 - Sending `credentials: "include"` (better-auth session cookies)
 - Throwing `Error` with `message` from the body when `!response.ok`
+- Resolving `204 No Content` to `data: null` — React Query rejects `undefined` as query data, so a GET that can return 204 (e.g. `GET /me/subscription`) must yield `null`
 - Returning `{ data, status, statusText, headers }`
 
 `configure({ baseUrl })` must be called once before any fetch — in `apps/web/src/main.tsx` for the app, and in `vitest.setup.ts` for tests (with `http://localhost:3333`).

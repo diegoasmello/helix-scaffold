@@ -22,7 +22,7 @@ export function useSubscription() {
   // React Query v5 reports isPending=true for disabled queries that never fetched.
   const isPending = statusPending || (enabled && subscriptionPending)
 
-  const subscription = (data as Subscription | undefined) ?? null
+  const subscription = (data as Subscription | null | undefined) ?? null
 
   return {
     subscription,
