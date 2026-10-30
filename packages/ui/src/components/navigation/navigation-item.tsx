@@ -131,7 +131,7 @@ const useStyles = createStyles((theme, params: { px: string }, u) => ({
     flex: 1;
     display: flex;
     align-items: center;
-    gap: 0.875rem;
+    gap: 0.75rem;
     min-width: 0;
     height: 100%;
     padding: 0 1rem;

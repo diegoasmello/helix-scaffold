@@ -2,6 +2,7 @@ import {
   createTheme as createMantineTheme,
   type MantineTheme,
   type MantineThemeOverride,
+  rem,
 } from '@mantine/core'
 
 export function createTheme(
@@ -14,6 +15,14 @@ export function createTheme(
     },
     focusRing: 'auto',
     defaultRadius: 'md',
+    // 4/8px grid — Mantine's default uses 10px (xs) and 20px (lg)
+    spacing: {
+      xs: rem(8),
+      sm: rem(12),
+      md: rem(16),
+      lg: rem(24),
+      xl: rem(32),
+    },
     components: {
       Input: {
         styles: (theme: MantineTheme) => ({
@@ -97,7 +106,7 @@ export function createTheme(
               fontSize: '16px',
               color: `light-dark(${theme.colors.dark[9]}, ${theme.colors.dark[0]})`,
               lineHeight: '1.4',
-              marginBottom: '2px',
+              marginBottom: '4px',
             },
             description: {
               fontSize: '14px',

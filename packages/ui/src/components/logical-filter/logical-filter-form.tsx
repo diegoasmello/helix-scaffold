@@ -295,7 +295,7 @@ export function LogicalFilterForm<T extends string = string>(
           </Group>
         </Group>
 
-        <Stack gap={5}>
+        <Stack gap={4}>
           {form.values.conditions.map((condition, index) => (
             <Stack key={form.key(`conditions.${index}`)}>
               <Box className={classes.row}>
@@ -349,7 +349,7 @@ export function LogicalFilterForm<T extends string = string>(
           onClick={handleAddCondition}
           type="button"
         >
-          <Group gap={6}>
+          <Group gap={8}>
             <IconPlus size={14} />
             <Text size="sm">{t('filters.addFilter')}</Text>
           </Group>

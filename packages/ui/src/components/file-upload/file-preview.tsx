@@ -42,7 +42,7 @@ export function FilePreview(props: Readonly<FilePreviewProps>) {
           </Stack>
         )}
 
-        <Stack gap={2} className={classes.fileInfo}>
+        <Stack gap={4} className={classes.fileInfo}>
           <Text size="sm" truncate="end" title={upload.originalName}>
             {upload.originalName}
           </Text>

@@ -34,11 +34,11 @@ export function UserMenu(props: Readonly<UserMenuProps>) {
         <UnstyledButton
           className={cx(classes.user, { [classes.userActive]: userMenuOpened })}
         >
-          <Group gap={7}>
+          <Group gap={8}>
             <Avatar radius="xl" size={32}>
               {user.name[0]}
             </Avatar>
-            <Text fw={500} size="sm" lh={1} mr={3}>
+            <Text fw={500} size="sm" lh={1} mr={4}>
               {user.name}
             </Text>
             <IconChevronDown size={12} stroke={1.5} />
