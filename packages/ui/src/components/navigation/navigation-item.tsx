@@ -93,8 +93,7 @@ const useStyles = createStyles((theme, params: { px: string }, u) => ({
     padding: 0 ${params.px};
     outline: none;
 
-    &:focus div,
-    &:focus-within div {
+    &:focus-visible div {
       outline-offset: 2px;
       animation: var(--helix-focus-ring-animation);
 

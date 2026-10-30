@@ -220,8 +220,12 @@ const useStyles = createStyles((theme, _, u) => ({
     width: calc(100% + ${theme.spacing.md} * 2);
     margin-left: calc(${theme.spacing.md} * -1);
     margin-right: calc(${theme.spacing.md} * -1);
+    /* Pulled up by the focus ring extent (2px outline + 2px offset) and
+       padded back below, so the viewport doesn't clip the first item's ring */
+    margin-top: -4px;
   `,
   scrollAreaInner: css`
+    padding-top: 4px;
     padding-bottom: ${theme.spacing.xl};
   `,
   group: css`
