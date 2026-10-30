@@ -18,5 +18,5 @@ export interface SubscriptionFormValues {
   currentPeriodStart: string
   currentPeriodEnd: string
   trialEndsAt: string | null
-  externalId: string | null
+  externalId: string
 }

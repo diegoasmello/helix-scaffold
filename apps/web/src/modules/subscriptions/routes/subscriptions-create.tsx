@@ -29,7 +29,7 @@ export function SubscriptionsCreate() {
         .toISOString()
         .split('T')[0],
       trialEndsAt: null,
-      externalId: null,
+      externalId: '',
     },
     validate: subscriptionFormValidate,
   })
@@ -43,7 +43,7 @@ export function SubscriptionsCreate() {
         currentPeriodStart: data.currentPeriodStart,
         currentPeriodEnd: data.currentPeriodEnd,
         trialEndsAt: data.trialEndsAt,
-        externalId: data.externalId ?? undefined,
+        externalId: data.externalId || undefined,
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({

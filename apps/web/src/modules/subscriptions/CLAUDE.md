@@ -121,7 +121,7 @@ interface SubscriptionFormValues {
   currentPeriodStart: string    // ISO string; DateInput onChange returns string
   currentPeriodEnd: string
   trialEndsAt: string | null
-  externalId: string | null
+  externalId: string             // '' when empty — mapped to undefined (create) / null (edit) on submit
 }
 ```
 
@@ -207,7 +207,7 @@ All `DateInput` fields bind `value` and `onChange` manually (not via `getInputPr
 
 ## Create screen (`subscriptions-create.tsx`)
 
-- `useForm<SubscriptionFormValues>` with default `status: 'active'`, `currentPeriodStart: now`, `currentPeriodEnd: now + 30d`, `trialEndsAt: null`, `externalId: null`
+- `useForm<SubscriptionFormValues>` with default `status: 'active'`, `currentPeriodStart: now`, `currentPeriodEnd: now + 30d`, `trialEndsAt: null`, `externalId: ''`
 - Mutation: `postSubscriptions(...)` → invalidates `getSubscriptionsSuspenseQueryKey()` on success
 - On 400 from the API (invalid `userId`) the mutation's `onError` fires and shows a danger notification
 

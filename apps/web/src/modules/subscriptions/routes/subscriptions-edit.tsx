@@ -30,7 +30,7 @@ export function SubscriptionsEdit() {
       currentPeriodStart: item.currentPeriodStart.split('T')[0],
       currentPeriodEnd: item.currentPeriodEnd.split('T')[0],
       trialEndsAt: item.trialEndsAt ? item.trialEndsAt.split('T')[0] : null,
-      externalId: item.externalId ?? null,
+      externalId: item.externalId ?? '',
     },
     validate: subscriptionFormValidate,
   })
@@ -43,7 +43,7 @@ export function SubscriptionsEdit() {
         currentPeriodStart: data.currentPeriodStart,
         currentPeriodEnd: data.currentPeriodEnd,
         trialEndsAt: data.trialEndsAt ?? null,
-        externalId: data.externalId ?? null,
+        externalId: data.externalId || null,
       }),
     onSuccess: (updated) => {
       queryClient.invalidateQueries({

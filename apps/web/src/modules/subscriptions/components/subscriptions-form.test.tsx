@@ -16,7 +16,7 @@ const base: SubscriptionFormValues = {
   currentPeriodStart: '2026-01-01',
   currentPeriodEnd: '2026-02-01',
   trialEndsAt: null,
-  externalId: null,
+  externalId: '',
 }
 
 function FormWrapper(props: Readonly<{ isEditing?: boolean }>) {
