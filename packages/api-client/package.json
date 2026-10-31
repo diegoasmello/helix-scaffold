@@ -10,7 +10,8 @@
     "format": "prettier . --write",
     "type-check": "tsc --noEmit",
     "export-spec": "curl -s http://localhost:3333/docs/openapi.json -o openapi.json",
-    "generate": "KUBB_DISABLE_TELEMETRY=1 kubb generate"
+    "generate": "KUBB_DISABLE_TELEMETRY=1 kubb generate",
+    "postinstall": "KUBB_DISABLE_TELEMETRY=1 KUBB_INPUT=./openapi.json kubb generate"
   },
   "exports": {
     ".": "./index.ts",
