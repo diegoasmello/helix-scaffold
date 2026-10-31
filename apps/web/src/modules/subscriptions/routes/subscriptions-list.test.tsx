@@ -262,7 +262,9 @@ describe('SubscriptionsList', () => {
     })
 
     it('hides the create button when user lacks create permission', async () => {
-      server.use(getMePermissionsHandler({ grants: { subscriptions: ['view'] } }))
+      server.use(
+        getMePermissionsHandler({ grants: { subscriptions: ['view'] } })
+      )
       renderSubscriptionsList()
       await screen.findByText('No subscriptions yet')
       await waitFor(() =>

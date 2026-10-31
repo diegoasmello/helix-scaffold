@@ -176,7 +176,10 @@ describe('SubscriptionsEdit', () => {
     renderSubscriptionsEdit()
     await screen.findByDisplayValue('pro')
     await userEvent.clear(screen.getByPlaceholderText('Select a plan'))
-    await userEvent.type(screen.getByPlaceholderText('Select a plan'), 'starter')
+    await userEvent.type(
+      screen.getByPlaceholderText('Select a plan'),
+      'starter'
+    )
     await userEvent.click(screen.getByRole('button', { name: 'Save' }))
 
     await waitFor(() => {
