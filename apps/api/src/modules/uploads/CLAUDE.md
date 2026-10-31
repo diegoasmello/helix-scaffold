@@ -17,7 +17,7 @@ Body is `multipart/form-data` — `@fastify/multipart` is registered globally in
 
 1. `const data = await request.file()` — reads the multipart field named `file`
 2. Validate MIME type against `ALLOWED_MIME_TYPES` (defined in `uploads-schema.ts`)
-3. Validate file size against `env.UPLOAD_MAX_SIZE_MB`
+3. Validate file size against `config.uploads.maxSizeMb`
 4. `await data.toBuffer()` — buffer the stream
 5. If image: `processImage(buffer, mimeType)` → save each variant to storage with key `<id>/<variant>.<ext>`
 6. Save original to storage with key `<id>/original.<ext>`

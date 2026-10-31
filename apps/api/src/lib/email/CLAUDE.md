@@ -26,20 +26,25 @@ interface EmailProvider {
 ## Factory
 
 ```ts
-import { createEmailProvider } from '@/lib/email'
+import { config } from '@/config'
 import { env } from '@/env'
+import { createEmailProvider } from '@/lib/email'
 
-const emailProvider = createEmailProvider(env)
+const emailProvider = createEmailProvider({
+  resendApiKey: env.RESEND_API_KEY,
+  from: config.email.from,
+  nodeEnv: env.NODE_ENV,
+})
 ```
 
 Called once in `app.ts`. The returned instance is injected into `createAuth` and into each route module that needs it via route options.
 
-## Environment variables
+## Configuration
 
-| Variable | Default | Notes |
-|---|---|---|
-| `RESEND_API_KEY` | — | Optional. Omit to fall back to console logging. |
-| `EMAIL_FROM` | `noreply@localhost` | Sender address. Must be from a domain verified in Resend for production. |
+| Setting | Where | Default | Notes |
+|---|---|---|---|
+| `RESEND_API_KEY` | `.env` | — | Optional. Omit to fall back to console logging. |
+| `email.from` | `src/app.config.ts` | `noreply@localhost` | Sender address. Must be from a domain verified in Resend for production. |
 
 **Resend domain requirement**: Resend rejects sends from unverified domains (including `gmail.com` or any domain you don't own). For production, add and verify your domain at resend.com/domains. For local testing without a verified domain, omit `RESEND_API_KEY` and use the console provider.
 

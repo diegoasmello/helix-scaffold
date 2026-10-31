@@ -1,6 +1,6 @@
 import z from 'zod'
 
-import { env } from '../../env'
+import { config } from '../../config'
 import { getConfiguredSocialProviders } from '../../lib/social-providers'
 import type { FastifyTypedInstance } from '../../types'
 
@@ -22,9 +22,11 @@ export async function registrationRoutes(app: FastifyTypedInstance) {
       },
     },
     async () => ({
-      open: env.REGISTRATION_MODE === 'open',
+      open: config.registration.mode === 'open',
       providers:
-        env.REGISTRATION_MODE === 'open' ? getConfiguredSocialProviders() : [],
+        config.registration.mode === 'open'
+          ? getConfiguredSocialProviders()
+          : [],
     })
   )
 }

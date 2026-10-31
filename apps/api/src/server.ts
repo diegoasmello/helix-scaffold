@@ -1,6 +1,7 @@
 import './config/upload-references'
 
 import { buildApp } from './app'
+import { config } from './config'
 import { db } from './db'
 import { env } from './env'
 import { deleteOrphanUploads } from './lib/orphan-uploads'
@@ -8,11 +9,12 @@ import { createStorageProvider } from './lib/storage'
 import { getUploadReferenceLoaders } from './lib/upload-references'
 
 const app = buildApp(db)
-const storage = createStorageProvider(env)
+const storage = createStorageProvider(config.uploads, env.BASE_URL)
 
-const CLEANUP_INTERVAL_MS = 6 * 60 * 60 * 1000
+const { intervalHours, graceHours } = config.uploads.orphanCleanup
+const CLEANUP_INTERVAL_MS = intervalHours * 60 * 60 * 1000
 
-app.listen({ port: 3333, host: '0.0.0.0' }).then(() => {
+app.listen({ port: config.server.port, host: config.server.host }).then(() => {
   console.log(`HTTP server running on ${env.BASE_URL}`)
   console.log(`Docs available at ${env.BASE_URL}/docs`)
 
@@ -21,7 +23,8 @@ app.listen({ port: 3333, host: '0.0.0.0' }).then(() => {
       const { deleted } = await deleteOrphanUploads(
         db,
         storage,
-        getUploadReferenceLoaders()
+        getUploadReferenceLoaders(),
+        { graceHours }
       )
       if (deleted > 0) {
         app.log.info(`Orphan upload cleanup: deleted ${deleted} uploads`)

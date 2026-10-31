@@ -2,13 +2,16 @@ import { betterAuth } from 'better-auth'
 import { drizzleAdapter } from 'better-auth/adapters/drizzle'
 import { eq } from 'drizzle-orm'
 
-import { TRIAL_PLAN_ID } from '@/config/subscription'
+import { config } from '@/config'
 import type { Database } from '@/db'
 import { roles, subscriptions, user as userTable } from '@/db/schema'
 import { env } from '@/env'
 import type { EmailProvider } from '@/lib/email'
 
 export function createAuth(database: Database, emailProvider: EmailProvider) {
+  const { google, facebook, apple } = config.auth.socialProviders
+  const disableSignUp = config.registration.mode !== 'open'
+
   return betterAuth({
     database: drizzleAdapter(database, {
       provider: 'pg',
@@ -17,7 +20,7 @@ export function createAuth(database: Database, emailProvider: EmailProvider) {
       user: {
         create: {
           after: async (user) => {
-            if (env.REGISTRATION_MODE !== 'open') return
+            if (config.registration.mode !== 'open') return
 
             const [defaultRole] = await database
               .select()
@@ -31,20 +34,16 @@ export function createAuth(database: Database, emailProvider: EmailProvider) {
                 .where(eq(userTable.id, user.id))
             }
 
-            if (
-              env.SUBSCRIPTION_MODE === 'enabled' &&
-              env.SUBSCRIPTION_TRIAL_DAYS
-            ) {
+            const { enabled, trial } = config.subscriptions
+            if (enabled && trial) {
               const now = new Date()
               const trialEndsAt = new Date(now)
-              trialEndsAt.setDate(
-                trialEndsAt.getDate() + env.SUBSCRIPTION_TRIAL_DAYS
-              )
+              trialEndsAt.setDate(trialEndsAt.getDate() + trial.days)
               await database
                 .insert(subscriptions)
                 .values({
                   userId: user.id,
-                  planId: TRIAL_PLAN_ID,
+                  planId: trial.planId,
                   status: 'trialing',
                   trialEndsAt,
                   currentPeriodStart: now,
@@ -95,33 +94,36 @@ export function createAuth(database: Database, emailProvider: EmailProvider) {
       },
     },
     socialProviders: {
-      ...(env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET
+      // Credentials are guaranteed by config validation when a provider is enabled.
+      ...(google.enabled && env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET
         ? {
             google: {
               clientId: env.GOOGLE_CLIENT_ID,
               clientSecret: env.GOOGLE_CLIENT_SECRET,
-              disableSignUp: env.REGISTRATION_MODE !== 'open',
+              disableSignUp,
             },
           }
         : {}),
-      ...(env.FACEBOOK_CLIENT_ID && env.FACEBOOK_CLIENT_SECRET
+      ...(facebook.enabled &&
+      env.FACEBOOK_CLIENT_ID &&
+      env.FACEBOOK_CLIENT_SECRET
         ? {
             facebook: {
               clientId: env.FACEBOOK_CLIENT_ID,
               clientSecret: env.FACEBOOK_CLIENT_SECRET,
-              disableSignUp: env.REGISTRATION_MODE !== 'open',
+              disableSignUp,
             },
           }
         : {}),
-      ...(env.APPLE_CLIENT_ID && env.APPLE_CLIENT_SECRET
+      ...(apple.enabled && env.APPLE_CLIENT_ID && env.APPLE_CLIENT_SECRET
         ? {
             apple: {
               clientId: env.APPLE_CLIENT_ID,
               clientSecret: env.APPLE_CLIENT_SECRET,
-              ...(env.APPLE_APP_BUNDLE_ID
-                ? { appBundleIdentifier: env.APPLE_APP_BUNDLE_ID }
+              ...(apple.appBundleId
+                ? { appBundleIdentifier: apple.appBundleId }
                 : {}),
-              disableSignUp: env.REGISTRATION_MODE !== 'open',
+              disableSignUp,
             },
           }
         : {}),

@@ -21,7 +21,7 @@ The scaffold does **not** provide:
 
 ## Feature flag
 
-All admin routes and `GET /me/subscription` are **only registered when `SUBSCRIPTION_MODE=enabled`**. When `disabled` (the default), the module has zero overhead — no routes, no DB queries. The `requireSubscription()` hook is always created but returns a no-op preHandler when mode is disabled, so apps can freely decorate routes without worrying about mode.
+All admin routes and `GET /me/subscription` are **only registered when `subscriptions.enabled` is `true`** in `src/app.config.ts`. When `false` (the default), the module has zero overhead — no routes, no DB queries. The `requireSubscription()` hook is always created but returns a no-op preHandler when subscriptions are disabled, so apps can freely decorate routes without worrying about mode.
 
 `GET /subscription/status` is always registered at root scope (unauthenticated), like `GET /registration/status`. It returns `{ enabled: boolean }` and is the single source of truth the frontend reads to decide whether to show subscription UI.
 
@@ -58,7 +58,7 @@ All admin routes and `GET /me/subscription` are **only registered when `SUBSCRIP
 | `past_due` | Payment failed; grace period |
 | `expired` | Period ended with no renewal |
 
-**The `status` field is the source of truth.** `requireSubscription()` checks `status IN ('active', 'trialing')` — it does not compare dates. Apps are responsible for updating status via payment webhook handlers when billing events occur (renewal, cancellation, payment failure). See `src/config/subscription.ts` for the trial plan ID constant.
+**The `status` field is the source of truth.** `requireSubscription()` checks `status IN ('active', 'trialing')` — it does not compare dates. Apps are responsible for updating status via payment webhook handlers when billing events occur (renewal, cancellation, payment failure). The trial plan ID is set in `subscriptions.trial.planId` in `src/app.config.ts`.
 
 ---
 
@@ -86,7 +86,7 @@ Resource registered in `src/config/permissions.ts`:
 | `PATCH` | `/subscriptions/:id` | `subscriptions:edit` | Update subscription |
 | `DELETE` | `/subscriptions/:id` | `subscriptions:delete` | Hard delete |
 
-**Important:** all routes except `GET /subscription/status` require `SUBSCRIPTION_MODE=enabled` to be registered.
+**Important:** all routes except `GET /subscription/status` require `subscriptions.enabled: true` to be registered.
 
 ### `GET /me/subscription`
 
@@ -152,7 +152,7 @@ app.get('/feature', {
 
 **Behavior matrix:**
 
-| `SUBSCRIPTION_MODE` | User has `subscriptions:view` | User has active subscription | Result |
+| `subscriptions.enabled` | User has `subscriptions:view` | User has active subscription | Result |
 | --- | --- | --- | --- |
 | `disabled` | Any | Any | Pass (no-op) |
 | `enabled` | Yes | Any | Pass (admin bypass) |
@@ -167,14 +167,14 @@ The admin bypass is implemented by calling `permissionsService.hasPermission(rol
 
 ## Trial auto-start (`src/auth.ts`)
 
-When both `REGISTRATION_MODE=open` and `SUBSCRIPTION_MODE=enabled` and `SUBSCRIPTION_TRIAL_DAYS` is set, a trialing subscription is automatically created in `databaseHooks.user.create.after` immediately after new user registration.
+When `registration.mode` is `'open'`, `subscriptions.enabled` is `true` and `subscriptions.trial` is set (all in `src/app.config.ts`), a trialing subscription is automatically created in `databaseHooks.user.create.after` immediately after new user registration.
 
 The trial subscription uses:
-- `planId: TRIAL_PLAN_ID` — the value of `src/config/subscription.ts → TRIAL_PLAN_ID` (default `'trial'`; change this constant to match your plan catalog)
+- `planId: trial.planId` — from `subscriptions.trial.planId` (set it to match your plan catalog)
 - `status: 'trialing'`
-- `trialEndsAt` = `now + SUBSCRIPTION_TRIAL_DAYS` days
+- `trialEndsAt` = `now + trial.days` days
 - `currentPeriodStart` = `now`
-- `currentPeriodEnd` = `now + SUBSCRIPTION_TRIAL_DAYS` days
+- `currentPeriodEnd` = `now + trial.days` days
 
 **This operation is best-effort.** The INSERT is followed by `.catch(() => {})` so a DB failure does not cause user creation to fail. If the insert silently fails, the user will exist without a trial subscription and will see "no active subscription" on the me-page.
 
@@ -182,15 +182,17 @@ Trial auto-start only fires for users created via the self-registration flow. Bo
 
 ---
 
-## Subscription config (`src/config/subscription.ts`)
+## Subscription config (`src/app.config.ts`)
 
 ```ts
-// Plan ID assigned to trial subscriptions created on registration.
-// Change this to match your app's plan catalog.
-export const TRIAL_PLAN_ID = 'trial'
+subscriptions: {
+  enabled: true,
+  // Auto-starts a trial on self-registration. `false` disables trials.
+  trial: { days: 14, planId: 'trial' },
+},
 ```
 
-This is the only subscription-specific value apps are expected to change in code (as opposed to env vars). Edit `TRIAL_PLAN_ID` to match whatever planId your app uses for trial users (e.g., `'free-trial'`, `'starter-trial'`).
+Set `planId` to whatever planId your app uses for trial users (e.g., `'free-trial'`, `'starter-trial'`). A warning is logged at startup if `trial` is set but subscriptions are disabled or registration is closed, since it would have no effect.
 
 ---
 
@@ -209,7 +211,7 @@ Route integration tests against the real `api_test` database.
 
 `cleanupSubscriptions()` truncates the `subscriptions` table between tests. The `cleanupAuth()` call in `afterAll` cascades to subscriptions via the FK.
 
-**Test session setup:** `createTestSession()` in `src/test/helpers.ts` automatically creates an `active` subscription (`planId: 'test'`, expires 2099) for the test admin user when `SUBSCRIPTION_MODE=enabled`. This is required because `todos-routes` (the reference module) uses `requireSubscription()`, and without a subscription the test admin would fail those routes. Individual tests that need to verify "no subscription" behavior call `cleanupSubscriptions()` explicitly before the assertion.
+**Test session setup:** `createTestSession()` in `src/test/helpers.ts` automatically creates an `active` subscription (`planId: 'test'`, expires 2099) for the test admin user when `config.subscriptions.enabled` is `true` (always the case in tests — see `src/config/test-overrides.ts`). This is required because `todos-routes` (the reference module) uses `requireSubscription()`, and without a subscription the test admin would fail those routes. Individual tests that need to verify "no subscription" behavior call `cleanupSubscriptions()` explicitly before the assertion.
 
 **Coverage:**
 - `GET /subscription/status` — always 200 with `{ enabled: boolean }`

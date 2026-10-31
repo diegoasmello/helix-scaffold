@@ -24,7 +24,7 @@ Only one role can have `isDefault = true` at a time. This is enforced at two lay
 1. **DB**: partial unique index `roles_is_default_unique` on `(is_default) WHERE is_default = true` — the database rejects a second `true` row.
 2. **Service**: `create()` and `update()` wrap in a transaction that first sets all existing `isDefault = true` rows to `false`, then applies the new value. This prevents the unique index from rejecting the new row before the old one is cleared.
 
-When `REGISTRATION_MODE=open`, the User role created during bootstrap has `isDefault = true`. Self-registered users automatically receive this role via `databaseHooks.user.create.after` in `auth.ts`.
+When `registration.mode` is `'open'`, the User role created during bootstrap has `isDefault = true`. Self-registered users automatically receive this role via `databaseHooks.user.create.after` in `auth.ts`.
 
 ## Schema (`roles-schema.ts`)
 

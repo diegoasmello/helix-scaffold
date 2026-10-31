@@ -67,7 +67,7 @@ preHandler: [requireSubscription(), requirePermission('todos', 'view')]
 
 When registering a new module that uses `requireSubscription`, mirror this pattern in `app.ts` and in the route module's options type.
 
-### Behavior with `SUBSCRIPTION_MODE=disabled`
+### Behavior with `subscriptions.enabled: false`
 
 When subscription mode is disabled, `requireSubscription()` returns a no-op preHandler. Todos routes work exactly as before — the `[requireSubscription(), requirePermission(...)]` array simply runs the permission check only. No code changes are needed to toggle this behavior.
 
@@ -102,4 +102,4 @@ Route integration tests against the real `api_test` database.
 - `PATCH` test asserts that fields not sent in the body (`description`) remain unchanged.
 - `DELETE` asserts 204 both for existing and non-existing ids.
 
-**Subscription in tests:** `createTestSession()` in `src/test/helpers.ts` automatically creates an active subscription for the test admin user when `SUBSCRIPTION_MODE=enabled` (which is the case in `.env.test`). Individual todos tests never need to set up a subscription manually — it is always present for the test admin. Restricted-session users created with `createRoleWithPermissions` do not receive a subscription, so they return 403 from subscription-gated routes even if given the `todos:view` permission — this is expected and not tested here (it is tested in `subscriptions-routes.test.ts`).
+**Subscription in tests:** `createTestSession()` in `src/test/helpers.ts` automatically creates an active subscription for the test admin user when `config.subscriptions.enabled` is `true` (always the case in tests, via `src/config/test-overrides.ts`). Individual todos tests never need to set up a subscription manually — it is always present for the test admin. Restricted-session users created with `createRoleWithPermissions` do not receive a subscription, so they return 403 from subscription-gated routes even if given the `todos:view` permission — this is expected and not tested here (it is tested in `subscriptions-routes.test.ts`).

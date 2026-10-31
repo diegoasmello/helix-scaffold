@@ -78,7 +78,7 @@ This starts two PostgreSQL 17 containers (user/password `postgres`):
 
 | Service   | Database     | Port   |
 | --------- | ------------ | ------ |
-| `db`      | `helix`      | `5437` |
+| `db`      | `helix`      | `5434` |
 | `db_test` | `helix_test` | `5436` |
 
 **3. Configure environment**
@@ -91,14 +91,14 @@ cp apps/web/.env.example apps/web/.env
 
 | File                 | Purpose                                                                              |
 | -------------------- | ------------------------------------------------------------------------------------ |
-| `apps/api/.env`      | Backend configuration (see [Configuration](#configuration))                          |
+| `apps/api/.env`      | Backend secrets and per-deploy URLs (see [Configuration](#configuration))            |
 | `apps/api/.env.test` | Overrides `.env` when running API tests — points `DATABASE_URL` to the test database |
 | `apps/web/.env`      | Frontend API URL (`VITE_API_URL`) and E2E login credentials                          |
 
 Edit `apps/api/.env` and fill in at minimum:
 
 ```env
-DATABASE_URL=postgresql://postgres:postgres@localhost:5437/helix
+DATABASE_URL=postgresql://postgres:postgres@localhost:5434/helix
 AUTH_SECRET=YOUR_SUPER_SECRET_HERE
 BASE_URL=http://localhost:3333
 CLIENT_URL=http://localhost:5173
@@ -146,21 +146,43 @@ Before the first E2E run:
 
 ## Configuration
 
-All backend configuration lives in `apps/api/.env`. See `.env.example` for the full list with descriptions. The most important knobs:
+Backend configuration is split in two:
 
-| Variable                         | Default     | Description                                                      |
-| -------------------------------- | ----------- | ---------------------------------------------------------------- |
-| `REGISTRATION_MODE`              | `closed`    | `open` enables self-registration and social login buttons        |
-| `SUBSCRIPTION_MODE`              | `disabled`  | `enabled` activates the full subscription infrastructure         |
-| `SUBSCRIPTION_TRIAL_DAYS`        | —           | Auto-creates a trialing subscription on registration when set    |
-| `RESEND_API_KEY`                 | —           | Omit to fall back to console email logging                       |
-| `GOOGLE_CLIENT_ID` / `_SECRET`   | —           | Enables Google social login when both are set and mode is `open` |
-| `FACEBOOK_CLIENT_ID` / `_SECRET` | —           | Enables Facebook social login                                    |
-| `APPLE_CLIENT_ID` / `_SECRET`    | —           | Enables Apple social login                                       |
-| `STORAGE_PROVIDER`               | `local`     | File storage backend (`local` is fully implemented)              |
-| `UPLOAD_DIR`                     | `./storage` | Local storage directory                                          |
+- **`apps/api/src/app.config.ts`**: what your app is and does. It is committed and written with `defineConfig()`, the same way as `vite.config.ts`. Every field has inline docs on hover and is validated at startup, so a typo or an invalid value stops the API with a clear message.
+- **`apps/api/.env`**: secrets and values that change per deploy. Never committed.
 
-The frontend's only env var is `VITE_API_URL` (in `apps/web/.env`). Everything else — registration mode, enabled social providers, subscription mode — is read from the API at runtime, so there is no `VITE_*` duplication of backend settings.
+```ts
+// apps/api/src/app.config.ts
+export default defineConfig(({ mode }) => ({
+  registration: { mode: 'open' },
+  auth: { socialProviders: { google: { enabled: true } } },
+  subscriptions: { enabled: true, trial: { days: 14, planId: 'trial' } },
+  email: { from: 'hello@myapp.com' },
+  uploads: { maxSizeMb: 20 },
+  logger: { pretty: mode !== 'production' },
+}))
+```
+
+| `app.config.ts`                  | Default     | Description                                                       |
+| -------------------------------- | ----------- | ----------------------------------------------------------------- |
+| `registration.mode`              | `'closed'`  | `'open'` enables self-registration and social login buttons       |
+| `auth.socialProviders.<name>`    | disabled    | `google` / `facebook` / `apple`; credentials go in `.env`         |
+| `subscriptions.enabled`          | `false`     | Activates the full subscription infrastructure                    |
+| `subscriptions.trial`            | `false`     | `{ days, planId }` auto-creates a trial on registration           |
+| `email.from`                     | `noreply@…` | Sender address for outgoing email                                 |
+| `uploads.*`                      | —           | Storage backend, directory, max size, orphan cleanup schedule     |
+| `server.port` / `logger.*`       | `3333`      | HTTP port, log level, pretty logs                                 |
+
+| `.env`                           | Description                                                       |
+| -------------------------------- | ----------------------------------------------------------------- |
+| `DATABASE_URL`, `AUTH_SECRET`    | Required                                                          |
+| `BASE_URL`, `CLIENT_URL`         | Public URLs of the API and the frontend for this deploy           |
+| `RESEND_API_KEY`                 | Omit to fall back to console email logging                        |
+| `<PROVIDER>_CLIENT_ID` / `_SECRET` | Required for each social provider enabled in `app.config.ts`    |
+
+RBAC resources are declared in `apps/api/src/config/permissions.ts`.
+
+The frontend's only env var is `VITE_API_URL` (in `apps/web/.env`). Everything else, including registration mode, enabled social providers and subscription mode, is read from the API at runtime, so there is no `VITE_*` duplication of backend settings.
 
 ## Project documentation
 

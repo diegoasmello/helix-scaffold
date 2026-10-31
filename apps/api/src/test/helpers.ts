@@ -2,6 +2,7 @@ import { eq, ne } from 'drizzle-orm'
 import { drizzle } from 'drizzle-orm/node-postgres'
 
 import { buildApp } from '@/app'
+import { config } from '@/config'
 import { ALL_PERMISSIONS } from '@/config/permissions'
 import * as schema from '@/db/schema'
 import {
@@ -106,7 +107,7 @@ export async function createTestSession(
 
   // When subscription mode is enabled, give the test user an active subscription
   // so routes protected by requireSubscription() pass without extra setup per test.
-  if (env.SUBSCRIPTION_MODE === 'enabled') {
+  if (config.subscriptions.enabled) {
     const [testUser] = await testDb
       .select()
       .from(user)

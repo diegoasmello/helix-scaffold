@@ -4,6 +4,7 @@ import { faker } from '@faker-js/faker'
 import { eq, sql } from 'drizzle-orm'
 
 import { createAuth } from '@/auth'
+import { config } from '@/config'
 import { ALL_PERMISSIONS } from '@/config/permissions'
 import { db } from '@/db'
 import {
@@ -19,7 +20,14 @@ import { createStorageProvider } from '@/lib/storage'
 
 import { createSeedUploads } from './seed-uploads'
 
-const auth = createAuth(db, createEmailProvider(env))
+const auth = createAuth(
+  db,
+  createEmailProvider({
+    resendApiKey: env.RESEND_API_KEY,
+    from: config.email.from,
+    nodeEnv: env.NODE_ENV,
+  })
+)
 
 const MODERATOR_PERMISSIONS = [
   { resource: 'me', action: 'view' },
@@ -79,8 +87,8 @@ async function main() {
   }
 
   console.log('Cleaning upload directory...')
-  await fs.rm(env.UPLOAD_DIR, { recursive: true, force: true })
-  await fs.mkdir(env.UPLOAD_DIR, { recursive: true })
+  await fs.rm(config.uploads.dir, { recursive: true, force: true })
+  await fs.mkdir(config.uploads.dir, { recursive: true })
 
   console.log('Creating roles...')
   const [adminRole] = await db
@@ -146,7 +154,7 @@ async function main() {
   }
 
   console.log('Creating uploads...')
-  const storage = createStorageProvider(env)
+  const storage = createStorageProvider(config.uploads, env.BASE_URL)
   const imageUploads = await createSeedUploads(db, storage, {
     imageCount: TODO_COUNT,
   })

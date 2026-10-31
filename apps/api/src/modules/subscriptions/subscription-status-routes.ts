@@ -1,6 +1,6 @@
 import z from 'zod'
 
-import { env } from '@/env'
+import { config } from '@/config'
 import type { FastifyTypedInstance } from '@/types'
 
 export async function subscriptionStatusRoutes(app: FastifyTypedInstance) {
@@ -15,6 +15,6 @@ export async function subscriptionStatusRoutes(app: FastifyTypedInstance) {
         },
       },
     },
-    async () => ({ enabled: env.SUBSCRIPTION_MODE === 'enabled' })
+    async () => ({ enabled: config.subscriptions.enabled })
   )
 }

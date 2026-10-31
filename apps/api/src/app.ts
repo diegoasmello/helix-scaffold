@@ -16,6 +16,7 @@ import {
 } from 'fastify-type-provider-zod'
 
 import { createAuth } from './auth'
+import { config } from './config'
 import type { Database } from './db'
 import { env } from './env'
 import { registerAuditRequest } from './hooks/audit-request'
@@ -40,26 +41,29 @@ import { usersRoutes } from './modules/users/users-routes'
 export function buildApp(database: Database) {
   const app = fastify({
     logger: {
-      level: 'info',
+      level: config.logger.level,
       redact: ['req.headers.authorization', 'req.headers.cookie'],
-      transport:
-        env.NODE_ENV !== 'production' ? { target: 'pino-pretty' } : undefined,
+      transport: config.logger.pretty ? { target: 'pino-pretty' } : undefined,
     },
   }).withTypeProvider<ZodTypeProvider>()
 
-  const storage = createStorageProvider(env)
-  const emailProvider = createEmailProvider(env)
+  const storage = createStorageProvider(config.uploads, env.BASE_URL)
+  const emailProvider = createEmailProvider({
+    resendApiKey: env.RESEND_API_KEY,
+    from: config.email.from,
+    nodeEnv: env.NODE_ENV,
+  })
   const auth = createAuth(database, emailProvider)
 
   app.setValidatorCompiler(validatorCompiler)
   app.setSerializerCompiler(serializerCompiler)
 
   app.register(fastifyMultipart, {
-    limits: { fileSize: env.UPLOAD_MAX_SIZE_MB * 1024 * 1024 },
+    limits: { fileSize: config.uploads.maxSizeMb * 1024 * 1024 },
   })
 
   app.register(fastifyStatic, {
-    root: path.resolve(env.UPLOAD_DIR),
+    root: path.resolve(config.uploads.dir),
     prefix: '/files/',
     decorateReply: false,
   })
@@ -76,7 +80,7 @@ export function buildApp(database: Database) {
     openapi: {
       openapi: '3.1.0',
       info: {
-        title: 'Helix API',
+        title: config.app.name,
         version: '1.0.0',
       },
     },
@@ -100,7 +104,7 @@ export function buildApp(database: Database) {
       if (
         request.method === 'POST' &&
         request.url.split('?')[0] === '/api/auth/sign-up/email' &&
-        env.REGISTRATION_MODE !== 'open'
+        config.registration.mode !== 'open'
       ) {
         return reply.status(403).send({ message: 'Registration is closed' })
       }
@@ -161,7 +165,7 @@ export function buildApp(database: Database) {
       storage,
     })
 
-    if (env.SUBSCRIPTION_MODE === 'enabled') {
+    if (config.subscriptions.enabled) {
       authenticated.register(subscriptionsRoutes, {
         database,
         requirePermission,

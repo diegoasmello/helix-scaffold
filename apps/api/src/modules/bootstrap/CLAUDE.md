@@ -51,7 +51,7 @@ The admin role is found by name (`'Admin'`); if it does not exist, it is created
 
 ## Open registration mode
 
-When `REGISTRATION_MODE=open`, `POST /bootstrap` creates a second role after the admin user is fully set up:
+When `registration.mode` is `'open'`, `POST /bootstrap` creates a second role after the admin user is fully set up:
 
 ```
 1. INSERT Admin role + ALL_PERMISSIONS
@@ -64,7 +64,7 @@ The User role is always created **after** the admin is assigned the Admin role. 
 
 The admin can later customize the User role's permissions via the permissions panel.
 
-**Test environment:** `.env.test` sets `REGISTRATION_MODE=open` so test helpers can create users via `POST /api/auth/sign-up/email`. The bootstrap test accounts for both roles being created in this mode.
+**Test environment:** `src/config/test-overrides.ts` sets `registration.mode: 'open'` so test helpers can create users via `POST /api/auth/sign-up/email`. The bootstrap test accounts for both roles being created in this mode.
 
 ## `ALL_PERMISSIONS` and `src/config/permissions.ts`
 

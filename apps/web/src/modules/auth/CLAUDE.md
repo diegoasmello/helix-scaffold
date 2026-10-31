@@ -155,7 +155,7 @@ The reset flow is a **two-hop redirect** handled by Better Auth:
 
 - The `url` in `sendResetPassword` (backend) is the API callback URL, not the frontend URL — this is by design. Never send it directly to the user as the "reset link"; Better Auth's email already embeds it.
 - `validateSearch` on `resetPasswordRoute` declares `{ token?: string, error?: string }`. Better Auth redirects with `?error=INVALID_TOKEN` when a token is expired/invalid — the component renders a differentiated message for this case.
-- `resetPasswordRoute` is accessible regardless of `REGISTRATION_MODE` (password reset works in both open and closed modes).
+- `resetPasswordRoute` is accessible regardless of the registration mode (password reset works in both open and closed modes).
 - Error messages on the reset form are always generic — never reflect `error.message` from the API verbatim (avoids leaking internal Better Auth error codes).
 
 ## `SocialLoginButtons` (`components/social-login-buttons.tsx`)
@@ -182,10 +182,10 @@ Renders OAuth provider buttons driven by a `providers: string[]` prop. Only rend
 
 **Adding a new provider:**
 1. Add it to `PROVIDER_CONFIG` in `social-login-buttons.tsx`.
-2. Add its env vars to `apps/api/src/env.ts`.
-3. Add its entry to `socialProviders` in `apps/api/src/auth.ts`.
-4. Add it to `getConfiguredProviders()` in `apps/api/src/modules/registration/registration-routes.ts`.
-5. Add it to `.env.example`.
+2. Add it to `AppConfig` and `appConfigSchema` in `apps/api/src/config/define-config.ts`, and to the credential map in `apps/api/src/config/index.ts`.
+3. Add its credentials to `apps/api/src/env.ts` and `.env.example`.
+4. Add its entry to `socialProviders` in `apps/api/src/auth.ts`.
+5. Enable it in `apps/api/src/app.config.ts`.
 
 **Placement on screens:**
 - **Login** — below the submit button, separated by `<Divider label="or" labelPosition="center" />`. Guarded by `registrationOpen && providers.length > 0`.

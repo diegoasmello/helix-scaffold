@@ -33,13 +33,13 @@ function createConsoleEmailProvider(): EmailProvider {
   }
 }
 
-export function createEmailProvider(env: {
-  RESEND_API_KEY?: string
-  EMAIL_FROM: string
-  NODE_ENV: string
+export function createEmailProvider(options: {
+  resendApiKey?: string
+  from: string
+  nodeEnv: string
 }): EmailProvider {
-  if (env.NODE_ENV !== 'test' && env.RESEND_API_KEY) {
-    return createResendEmailProvider(env.RESEND_API_KEY, env.EMAIL_FROM)
+  if (options.nodeEnv !== 'test' && options.resendApiKey) {
+    return createResendEmailProvider(options.resendApiKey, options.from)
   }
   return createConsoleEmailProvider()
 }

@@ -6,7 +6,7 @@ This module is the single home for everything subscription-related in the fronte
 - **Components** — `RequiresSubscription` guard + admin form fields
 - **Admin routes** — operator-facing CRUD for managing subscriptions manually
 
-The admin routes are **only accessible when `SUBSCRIPTION_MODE=enabled`**. The hooks and guard component work in both modes — they return safe defaults (`enabled: false`, `subscription: null`) when the feature is disabled.
+The admin routes are **only accessible when `subscriptions.enabled` is `true`** in the API config. The hooks and guard component work in both modes — they return safe defaults (`enabled: false`, `subscription: null`) when the feature is disabled.
 
 ---
 
@@ -43,7 +43,7 @@ const { subscription, isActive, isTrialing, isPending, enabled } = useSubscripti
 ```
 
 **Returns:**
-- `enabled: boolean` — `true` when `SUBSCRIPTION_MODE=enabled` on the server
+- `enabled: boolean` — `true` when `subscriptions.enabled` is `true` in `apps/api/src/app.config.ts`
 - `subscription: Subscription | null` — active/trialing subscription, or `null`
 - `isActive: boolean` — `subscription.status === 'active'`
 - `isTrialing: boolean` — `subscription.status === 'trialing'`
@@ -240,7 +240,7 @@ The `/me/subscription` route lives in the `me` module but consumes `useSubscript
 - Shows "No active subscription" when `subscription: null`
 - Shows plan ID, status badge (colored by `STATUS_COLORS`), trial end date (when `trialEndsAt` is set), period start/end when a subscription exists
 
-**Navigation:** the tab only appears in `MePage`'s sidebar when `enabled: true`. `MePage` calls `useSubscription()` and conditionally renders the `NavigationItem` based on the `enabled` flag. The `meSubscriptionRoute` `beforeLoad` also checks the subscription mode and redirects to `/me/account` when `SUBSCRIPTION_MODE=disabled`, so direct URL navigation is blocked when the feature is off.
+**Navigation:** the tab only appears in `MePage`'s sidebar when `enabled: true`. `MePage` calls `useSubscription()` and conditionally renders the `NavigationItem` based on the `enabled` flag. The `meSubscriptionRoute` `beforeLoad` also checks the subscription mode and redirects to `/me/account` when subscriptions are disabled, so direct URL navigation is blocked when the feature is off.
 
 **i18n:** uses the `subscription` namespace under `me.*` keys — the same namespace as the admin module.
 
@@ -259,7 +259,7 @@ The `/me/subscription` route lives in the `me` module but consumes `useSubscript
 }
 ```
 
-The `requiresSubscriptionEnabled: true` flag causes `app.tsx` to hide this item when `SUBSCRIPTION_MODE=disabled`. The filtering logic in `app.tsx`:
+The `requiresSubscriptionEnabled: true` flag causes `app.tsx` to hide this item when subscriptions are disabled. The filtering logic in `app.tsx`:
 
 ```ts
 .filter((item) => {

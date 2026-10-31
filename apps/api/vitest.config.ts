@@ -7,6 +7,8 @@ export default defineConfig(({ mode }) => ({
   test: {
     globals: true,
     fileParallelism: false,
-    env: loadEnv(mode, process.cwd(), ''),
+    // NODE_ENV is pinned so `.env` values never leak a non-test mode into
+    // the suite — config test overrides depend on it.
+    env: { ...loadEnv(mode, process.cwd(), ''), NODE_ENV: 'test' },
   },
 }))

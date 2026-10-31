@@ -4,6 +4,7 @@ import z from 'zod'
 import { ALL_PERMISSIONS } from '@/config/permissions'
 
 import type { Auth } from '../../auth'
+import { config } from '../../config'
 import type { Database } from '../../db'
 import { rolePermissions, roles, user } from '../../db/schema'
 import { env } from '../../env'
@@ -88,7 +89,7 @@ export async function bootstrapRoutes(
         .set({ roleId: adminRole.id })
         .where(sql`${user.id} = ${result.user.id}`)
 
-      if (env.REGISTRATION_MODE === 'open') {
+      if (config.registration.mode === 'open') {
         const [userRole] = await database
           .insert(roles)
           .values({

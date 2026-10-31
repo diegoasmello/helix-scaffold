@@ -1,5 +1,5 @@
+import { config } from '@/config'
 import type { Database } from '@/db'
-import { env } from '@/env'
 import { createPermissionsService } from '@/modules/permissions/permissions-service'
 import { createSubscriptionsService } from '@/modules/subscriptions/subscriptions-service'
 import type { PreHandler, RequireSubscription } from '@/types'
@@ -11,7 +11,7 @@ export function createRequireSubscription(
   const permissionsService = createPermissionsService(database)
 
   return function requireSubscription(): PreHandler {
-    if (env.SUBSCRIPTION_MODE !== 'enabled') {
+    if (!config.subscriptions.enabled) {
       return async () => {}
     }
 

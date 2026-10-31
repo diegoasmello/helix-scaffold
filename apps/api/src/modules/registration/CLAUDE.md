@@ -22,19 +22,21 @@ Returns `{ open: boolean, providers: string[] }`. No auth, no permissions.
 
 | Field | Type | Description |
 | --- | --- | --- |
-| `open` | `boolean` | `true` when `REGISTRATION_MODE === 'open'` |
+| `open` | `boolean` | `true` when `config.registration.mode === 'open'` |
 | `providers` | `string[]` | Social providers with credentials configured. Always `[]` when `open` is `false`. |
 
-**`providers` values:** `"google"` | `"facebook"` | `"apple"` — only providers whose `CLIENT_ID` and `CLIENT_SECRET` env vars are both set.
+**`providers` values:** `"google"` | `"facebook"` | `"apple"` — only providers enabled in `config.auth.socialProviders` (their credentials are guaranteed by config validation at startup).
 
-**Why `providers` is empty when closed:** returning a non-empty list in closed mode would leak which OAuth services are configured without giving users a way to act on it. The list is filtered to only the effective state: `env.REGISTRATION_MODE === 'open' ? getConfiguredProviders() : []`.
+**Why `providers` is empty when closed:** returning a non-empty list in closed mode would leak which OAuth services are configured without giving users a way to act on it. The list is filtered to only the effective state: `config.registration.mode === 'open' ? getConfiguredSocialProviders() : []`.
 
 ## Configuration
 
-Controlled by `REGISTRATION_MODE` in `apps/api/src/env.ts`:
+Controlled by `registration.mode` in `apps/api/src/app.config.ts`:
 
-```
-REGISTRATION_MODE: z.enum(['open', 'closed']).default('closed')
+```ts
+registration: {
+  mode: 'closed', // 'open' | 'closed', default 'closed'
+},
 ```
 
 | Mode | Behaviour |
@@ -42,26 +44,29 @@ REGISTRATION_MODE: z.enum(['open', 'closed']).default('closed')
 | `closed` | Only admins can create accounts (via `POST /users`). Default. |
 | `open` | Anyone can self-register via email/password or social OAuth. |
 
-Set in `.env` (or via environment at deploy time). The test env (`.env.test`) uses `REGISTRATION_MODE=open` so test helpers can create users via the sign-up endpoint.
+Tests force `mode: 'open'` via `src/config/test-overrides.ts` so test helpers can create users via the sign-up endpoint, regardless of the product setting.
 
 ## Social providers
 
-Social providers are configured in `apps/api/src/auth.ts` as `socialProviders` inside `betterAuth()`. Each provider is included **conditionally** — only when both its `CLIENT_ID` and `CLIENT_SECRET` env vars are set:
+Providers are turned on in `apps/api/src/app.config.ts` (`auth.socialProviders.<name>.enabled: true`); their credentials live in `.env`. The API refuses to start when an enabled provider has no credentials. They are wired in `apps/api/src/auth.ts` as `socialProviders` inside `betterAuth()`, each one included **conditionally**:
 
 ```ts
+const { google, facebook, apple } = config.auth.socialProviders
+const disableSignUp = config.registration.mode !== 'open'
+
 socialProviders: {
-  ...(env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET
-    ? { google: { clientId: env.GOOGLE_CLIENT_ID, clientSecret: env.GOOGLE_CLIENT_SECRET, disableSignUp: env.REGISTRATION_MODE !== 'open' } }
+  ...(google.enabled && env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET
+    ? { google: { clientId: env.GOOGLE_CLIENT_ID, clientSecret: env.GOOGLE_CLIENT_SECRET, disableSignUp } }
     : {}),
   // facebook and apple follow the same pattern
 }
 ```
 
-**`disableSignUp: env.REGISTRATION_MODE !== 'open'`** — Better Auth enforces this during the OAuth callback. In closed mode, the OAuth flow can be initiated but account creation is blocked server-side. The `providers` field in the status response is also empty in closed mode, so the frontend never shows the buttons.
+**`disableSignUp: config.registration.mode !== 'open'`** — Better Auth enforces this during the OAuth callback. In closed mode, the OAuth flow can be initiated but account creation is blocked server-side. The `providers` field in the status response is also empty in closed mode, so the frontend never shows the buttons.
 
 **Important:** `socialProviders` in `betterAuth()` expects **raw options objects**, not the result of calling the provider helper functions (`google()`, `facebook()`, etc.). Those helpers are for standalone use.
 
-**`getConfiguredProviders()`** in `registration-routes.ts` reads the same env vars as `auth.ts` to determine which providers are active. If you add a new social provider to `auth.ts`, add it to `getConfiguredProviders()` as well — they must stay in sync.
+**`getConfiguredSocialProviders()`** in `src/lib/social-providers.ts` derives the active list from `config.auth.socialProviders`, the same source `auth.ts` uses. See `apps/api/CLAUDE.md` → _Shared social provider utility_ for the steps to add a new provider.
 
 ## Sign-up guard (email/password)
 
@@ -72,7 +77,7 @@ instance.addHook('onRequest', async (request, reply) => {
   if (
     request.method === 'POST' &&
     request.url.split('?')[0] === '/api/auth/sign-up/email' &&
-    env.REGISTRATION_MODE !== 'open'
+    config.registration.mode !== 'open'
   ) {
     return reply.status(403).send({ message: 'Registration is closed' })
   }
@@ -90,7 +95,7 @@ databaseHooks: {
   user: {
     create: {
       after: async (user) => {
-        if (env.REGISTRATION_MODE !== 'open') return
+        if (config.registration.mode !== 'open') return
         const [defaultRole] = await database.select().from(roles)
           .where(eq(roles.isDefault, true)).limit(1)
         if (defaultRole) {

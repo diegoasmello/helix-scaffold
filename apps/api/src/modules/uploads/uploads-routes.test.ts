@@ -62,9 +62,9 @@ let tmpUploadDir = ''
 beforeAll(async () => {
   await cleanupAuth()
   authCookie = await createTestSession(app)
-  // Capture upload dir from env for cleanup
-  const { env } = await import('@/env')
-  tmpUploadDir = path.resolve(env.UPLOAD_DIR)
+  // Capture upload dir from config for cleanup
+  const { config } = await import('@/config')
+  tmpUploadDir = path.resolve(config.uploads.dir)
 })
 
 beforeEach(async () => {

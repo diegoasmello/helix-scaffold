@@ -1,17 +1,15 @@
-import type { env } from '../../env'
+import type { ResolvedAppConfig } from '../../config'
 import { createLocalStorageProvider } from './local-storage'
 import type { StorageProvider } from './types'
 
 export type { StorageProvider }
 
 export function createStorageProvider(
-  config: Pick<
-    typeof env,
-    'STORAGE_PROVIDER' | 'UPLOAD_DIR' | 'UPLOAD_BASE_URL'
-  >
+  uploads: Pick<ResolvedAppConfig['uploads'], 'storage' | 'dir'>,
+  baseUrl: string
 ): StorageProvider {
-  if (config.STORAGE_PROVIDER === 's3') {
+  if (uploads.storage === 's3') {
     throw new Error('S3 storage provider is not yet implemented')
   }
-  return createLocalStorageProvider(config.UPLOAD_DIR, config.UPLOAD_BASE_URL)
+  return createLocalStorageProvider(uploads.dir, baseUrl)
 }

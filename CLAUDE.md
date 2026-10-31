@@ -59,18 +59,33 @@ pnpm --filter api test:watch
 
 See each workspace's `CLAUDE.md` for the full testing guide.
 
+## Application config (`apps/api/src/app.config.ts`)
+
+Backend settings are split in two places:
+
+| Where | What goes there |
+| --- | --- |
+| `apps/api/src/app.config.ts` | **Product decisions**, committed: registration mode, subscriptions and trial, social providers on/off, email sender, uploads, server port, logger. Written with `defineConfig()` (Vite-style: a plain object or `({ mode }) => ({ ... })`). |
+| `apps/api/.env` | **Secrets and per-deploy values**, never committed: `DATABASE_URL`, `AUTH_SECRET`, `BASE_URL`, `CLIENT_URL`, `RESEND_API_KEY`, OAuth client IDs/secrets. |
+
+Read settings via `import { config } from '@/config'` (validated, defaulted, frozen) and secrets via `import { env } from '@/env'`. Never put a secret in `app.config.ts`, and never add a new product setting to `.env`. To add a setting: extend the `AppConfig` interface (with JSDoc) and `appConfigSchema` in `src/config/define-config.ts`, then set it in `app.config.ts`.
+
+Tests (`NODE_ENV=test`) apply `src/config/test-overrides.ts` on top of `app.config.ts`: registration open, subscriptions enabled, uploads in a temp dir. The suite never depends on what a fork configures.
+
+See `apps/api/CLAUDE.md` → _Application config_ for the full reference.
+
 ## Registration mode
 
-The scaffold supports two account-creation strategies, configured via `REGISTRATION_MODE` in `apps/api/.env`:
+The scaffold supports two account-creation strategies, configured via `registration.mode` in `apps/api/src/app.config.ts`:
 
 | Mode | Behaviour |
 | --- | --- |
 | `closed` (default) | Only admins create accounts. Bootstrap creates the first admin; subsequent users are created via `POST /users` by a permissioned admin. |
 | `open` | Anyone can self-register via `/sign-up` (email/password) or via social login (Google, Facebook, Apple). Bootstrap also creates a "User" role (`isDefault = true`) with basic permissions (`me:view`, `me:edit`). New self-registered users receive this role automatically. |
 
-**Single source of truth:** the mode lives only in the backend env. The frontend reads `GET /registration/status → { open: boolean, providers: string[] }` at route-load time — no `VITE_*` duplication.
+**Single source of truth:** the mode lives only in the backend config. The frontend reads `GET /registration/status → { open: boolean, providers: string[] }` at route-load time — no `VITE_*` duplication.
 
-**Social providers** are enabled per-provider by setting credentials in `apps/api/.env` (see `.env.example` → _Social providers_ section). The `providers` array in the status response lists only the providers that have credentials configured **and** are in open mode — it is always `[]` in closed mode. The frontend renders social login buttons only for the providers in this list.
+**Social providers** are turned on per-provider in `app.config.ts` (`auth.socialProviders.<name>.enabled: true`), with their credentials in `apps/api/.env` (see `.env.example` → _Social providers_). The API refuses to start if an enabled provider has no credentials. The `providers` array in the status response lists the enabled providers only in open mode — it is always `[]` in closed mode. The frontend renders social login buttons only for the providers in this list.
 
 **Changing the default role for open registration:** set `isDefault = true` on the desired role via the Roles admin panel. Only one role can be the default at a time (DB-enforced partial unique index). The previous default is automatically unset by the service in a transaction.
 
@@ -80,12 +95,12 @@ See `apps/api/src/modules/registration/CLAUDE.md` for the full backend documenta
 
 The scaffold supports optional subscription gating for products that require users to have an active plan to access features.
 
-| Variable | Default | Behaviour |
+| Setting (`app.config.ts`) | Default | Behaviour |
 | --- | --- | --- |
-| `SUBSCRIPTION_MODE` | `disabled` | `enabled` activates all subscription infrastructure. `disabled` means zero overhead — no routes, no DB queries, no UI. |
-| `SUBSCRIPTION_TRIAL_DAYS` | — | Optional integer. When set (and both registration and subscription modes are open/enabled), a trialing subscription is auto-created on user registration. |
+| `subscriptions.enabled` | `false` | `true` activates all subscription infrastructure. `false` means zero overhead — no routes, no DB queries, no UI. |
+| `subscriptions.trial` | `false` | `{ days, planId }`. When set (and registration is open and subscriptions are enabled), a trialing subscription is auto-created on user registration. |
 
-**Single source of truth:** the mode lives only in the backend env. The frontend reads `GET /subscription/status → { enabled: boolean }` once at startup and caches it for the session — no `VITE_*` duplication.
+**Single source of truth:** the mode lives only in the backend config. The frontend reads `GET /subscription/status → { enabled: boolean }` once at startup and caches it for the session — no `VITE_*` duplication.
 
 **Admin bypass:** users whose role has the `subscriptions:view` permission are never blocked by `requireSubscription()`, regardless of whether they have an active subscription themselves. Operators can always access the product.
 
@@ -96,16 +111,16 @@ The scaffold supports optional subscription gating for products that require use
 - Pricing and billing cycles
 - Payment processor integration (webhook handlers are app-level; they call the subscription service to update status)
 - Which features are gated per plan (apps use `<RequiresSubscription>` and `requireSubscription()` as needed)
-- Trial duration (controlled by `SUBSCRIPTION_TRIAL_DAYS`) and trial plan ID (controlled by `TRIAL_PLAN_ID` in `apps/api/src/config/subscription.ts`)
+- Trial duration and trial plan ID (both in `subscriptions.trial` in `apps/api/src/app.config.ts`)
 
 See `apps/api/src/modules/subscriptions/CLAUDE.md` for the full backend documentation.  
 See `apps/web/src/modules/subscriptions/CLAUDE.md` for all frontend subscription code (hooks, guard component, admin CRUD).
 
 ### Subscription checklist (when building a product on this scaffold)
 
-When `SUBSCRIPTION_MODE=enabled`, the app is responsible for:
+When `subscriptions.enabled` is `true`, the app is responsible for:
 
-- [ ] Setting `SUBSCRIPTION_TRIAL_DAYS` (if trials are offered) and updating `TRIAL_PLAN_ID` in `src/config/subscription.ts`
+- [ ] Setting `subscriptions.trial: { days, planId }` in `src/app.config.ts` (if trials are offered)
 - [ ] Implementing a webhook endpoint that calls `subscriptionsService` methods to update subscription status on billing events (renewal, cancellation, payment failure)
 - [ ] Adding `requireSubscription()` to routes that should be gated (inject it alongside `requirePermission` in route options, then add to the `preHandler` array)
 - [ ] Optionally rendering `<RequiresSubscription fallback={<UpgradePrompt />}>` around premium UI sections in the frontend

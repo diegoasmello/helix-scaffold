@@ -9,7 +9,7 @@ afterAll(async () => {
 })
 
 describe('GET /registration/status', () => {
-  it('returns open: true with a providers array (REGISTRATION_MODE=open in test env)', async () => {
+  it('returns open: true with a providers array (registration open in test config overrides)', async () => {
     const res = await app.inject({ method: 'GET', url: '/registration/status' })
     expect(res.statusCode).toBe(200)
     const body = res.json()

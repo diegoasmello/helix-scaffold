@@ -54,11 +54,11 @@ Receives `{ database, auth, emailProvider }` — no `requirePermission` paramete
 
 **`POST /me/set-password`** — calls `service.setPassword(body, headers, sessionUser.email)`. Catches `APIError` → 400 `{ message }` (better-auth rejects if the user already has a credential account). Returns 204 on success. Audit: `{ passwordSet: true }`.
 
-**`GET /me/providers`** — calls `getConfiguredSocialProviders()` from `src/lib/social-providers.ts`. Returns `{ providers: string[] }` with all social providers that have credentials configured in env vars, **regardless of `REGISTRATION_MODE`**. This differs from `GET /registration/status`, which filters providers by mode — the me endpoint is for authenticated users linking accounts, where mode doesn't apply.
+**`GET /me/providers`** — calls `getConfiguredSocialProviders()` from `src/lib/social-providers.ts`. Returns `{ providers: string[] }` with all social providers enabled in `config.auth.socialProviders`, **regardless of `registration.mode`**. This differs from `GET /registration/status`, which filters providers by mode — the me endpoint is for authenticated users linking accounts, where mode doesn't apply.
 
 ## Shared utility: `src/lib/social-providers.ts`
 
-`getConfiguredSocialProviders()` returns an array of provider names (`"google"`, `"facebook"`, `"apple"`) based on which env var pairs are set. Used by:
+`getConfiguredSocialProviders()` returns an array of provider names (`"google"`, `"facebook"`, `"apple"`) based on which providers are enabled in `config.auth.socialProviders`. Used by:
 
 - `registration-routes.ts` — for `GET /registration/status` (filtered by mode)
 - `me-routes.ts` — for `GET /me/providers` (always returned)

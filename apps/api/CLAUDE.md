@@ -11,29 +11,70 @@ Fastify + TypeScript — the REST API for this project.
 - **Docs**: `@fastify/swagger` + `@scalar/fastify-api-reference` (available at `/docs`)
 - **Tests**: Vitest + real test database (PostgreSQL)
 
-## Environment variables
+## Application config
 
-All variables are validated with Zod in `src/env.ts` at startup. If a required variable is missing or invalid, the process fails immediately with a clear message.
+Configuration is split by one rule: **secrets and per-deploy values go in `.env`; product decisions go in `src/app.config.ts`.**
 
-| Variable | Default | Notes |
+### `src/app.config.ts` — product settings
+
+The file a developer edits to shape the app. Written with `defineConfig()` (Vite-style): a plain object or a function receiving `{ mode }` (the `NODE_ENV`). Every field is optional and documented via JSDoc on hover.
+
+| Key | Default | Notes |
 | --- | --- | --- |
-| `REGISTRATION_MODE` | `closed` | `open` enables public self-registration. See `src/modules/registration/CLAUDE.md`. |
-| `SUBSCRIPTION_MODE` | `disabled` | `enabled` activates the subscription infrastructure (routes, hooks, trial auto-start). See `src/modules/subscriptions/CLAUDE.md`. |
-| `SUBSCRIPTION_TRIAL_DAYS` | — | Optional positive integer. When set with `REGISTRATION_MODE=open` and `SUBSCRIPTION_MODE=enabled`, auto-creates a trialing subscription on user registration. |
-| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | — | Optional. Enables Google social login when both are set and `REGISTRATION_MODE=open`. |
-| `FACEBOOK_CLIENT_ID` / `FACEBOOK_CLIENT_SECRET` | — | Optional. Enables Facebook social login when both are set and `REGISTRATION_MODE=open`. |
-| `APPLE_CLIENT_ID` / `APPLE_CLIENT_SECRET` / `APPLE_APP_BUNDLE_ID` | — | Optional. Enables Apple social login. `APPLE_CLIENT_SECRET` is a JWT signed with the `.p8` private key (max 6-month expiry). See `.env.example` for details. |
+| `app.name` | `'Helix API'` | Title of the API docs (`/docs`) |
+| `server.port` / `server.host` | `3333` / `'0.0.0.0'` | |
+| `registration.mode` | `'closed'` | `'open'` enables public self-registration. See `src/modules/registration/CLAUDE.md`. |
+| `auth.socialProviders.{google,facebook,apple}.enabled` | `false` | Requires the provider's `CLIENT_ID`/`CLIENT_SECRET` in `.env`; startup fails otherwise. `apple.appBundleId` is optional (native iOS). |
+| `subscriptions.enabled` | `false` | Activates the subscription infrastructure (routes, hooks, trial auto-start). See `src/modules/subscriptions/CLAUDE.md`. |
+| `subscriptions.trial` | `false` | `{ days, planId }` — auto-creates a trialing subscription on self-registration (requires `registration.mode: 'open'` and `subscriptions.enabled: true`; a warning is logged otherwise). |
+| `email.from` | `'noreply@localhost'` | Sender address. Must be from a domain verified in Resend for production. |
+| `uploads.storage` | `'local'` | `'s3'` stub exists but throws |
+| `uploads.dir` | `'./storage'` | Local storage root directory |
+| `uploads.maxSizeMb` | `50` | Enforced by `@fastify/multipart` |
+| `uploads.orphanCleanup.intervalHours` / `graceHours` | `6` / `24` | Orphan upload cleanup schedule (`server.ts`) |
+| `logger.level` / `logger.pretty` | `'info'` / `false` | The scaffold sets `pretty: mode !== 'production'` |
 
-The test env (`.env.test`) sets `REGISTRATION_MODE=open` and `SUBSCRIPTION_MODE=enabled`. `REGISTRATION_MODE=open` allows `createTestSession()` to sign up the test admin via `POST /api/auth/sign-up/email`. `SUBSCRIPTION_MODE=enabled` is required because `todos-routes` (the reference implementation for `requireSubscription`) gates all its endpoints behind a subscription check — the helper creates an active subscription for the test admin automatically. Social provider credentials may or may not be set in the test env — status endpoints assert on shape, not content.
+**Infrastructure (`src/config/`):**
+
+| File | Purpose |
+| --- | --- |
+| `define-config.ts` | `AppConfig` interface (the JSDoc users see), `defineConfig()` (identity, typing only), `appConfigSchema` (Zod: defaults + runtime validation, strict objects reject unknown keys) |
+| `index.ts` | Resolves the config once: calls the factory with `{ mode }`, merges `test-overrides.ts` in test mode, parses, cross-validates against `env` (enabled social provider without credentials → startup error), deep-freezes. Exports `config`. |
+| `test-overrides.ts` | Pinned values for the test suite — see below |
+
+Consumers import `config` from `@/config`. **Adding a setting:** add the field with JSDoc to `AppConfig`, the matching entry (with `.default()`) to `appConfigSchema`, then the value to `app.config.ts`. Keep the two shapes in sync — a key missing from the schema is rejected at startup.
+
+### `.env` — secrets and per-deploy values
+
+Validated with Zod in `src/env.ts` at startup. If a required variable is missing or invalid, the process fails immediately with a clear message.
+
+| Variable | Notes |
+| --- | --- |
+| `NODE_ENV` | `development` \| `production` \| `test`. Passed to `app.config.ts` as `mode`. |
+| `DATABASE_URL`, `AUTH_SECRET` | Required |
+| `BASE_URL` | Public URL of this API. Also prefixes public upload URLs. |
+| `CLIENT_URL` | Public URL of the frontend (CORS, trusted origins, email links) |
+| `RESEND_API_KEY` | Optional. Omit to fall back to console email logging. |
+| `GOOGLE_*`, `FACEBOOK_*`, `APPLE_*` (`CLIENT_ID` / `CLIENT_SECRET`) | Credentials for social providers enabled in `app.config.ts`. `APPLE_CLIENT_SECRET` is a JWT signed with the `.p8` private key (max 6-month expiry). |
+
+### Test config
+
+`.env.test` only overrides `DATABASE_URL`. `vitest.config.ts` pins `NODE_ENV=test`, which makes `src/config/index.ts` apply `src/config/test-overrides.ts` on top of `app.config.ts`:
+
+- `registration.mode: 'open'` — allows `createTestSession()` to sign up the test admin via `POST /api/auth/sign-up/email`.
+- `subscriptions.enabled: true` — required because `todos-routes` (the reference implementation for `requireSubscription`) gates all its endpoints behind a subscription check; the helper creates an active subscription for the test admin automatically.
+- `uploads.dir: '/tmp/helix-test-uploads'`.
+
+The suite therefore never depends on what a product sets in `app.config.ts`. Social providers are not overridden — status endpoints assert on shape, not content.
 
 ## Shared social provider utility (`src/lib/social-providers.ts`)
 
-`getConfiguredSocialProviders(): string[]` — returns the names of social providers that have both `CLIENT_ID` and `CLIENT_SECRET` env vars set. Imported by two modules:
+`getConfiguredSocialProviders(): string[]` — returns the names of social providers enabled in `config.auth.socialProviders` (credentials are guaranteed by config validation). Imported by two modules:
 
-- `registration-routes.ts` — for `GET /registration/status` (only when `REGISTRATION_MODE=open`)
+- `registration-routes.ts` — for `GET /registration/status` (only when `registration.mode` is `'open'`)
 - `me-routes.ts` — for `GET /me/providers` (always, regardless of mode)
 
-**When adding a new social provider:** update `auth.ts` (socialProviders config), `.env.example`, `env.ts`, and **this function** — it is the single place that determines which providers surface in both API responses.
+**When adding a new social provider:** update `auth.ts` (socialProviders config), `AppConfig` + `appConfigSchema` in `src/config/define-config.ts`, the credential map in `src/config/index.ts`, `env.ts` and `.env.example`.
 
 ## Module structure
 
@@ -79,13 +120,13 @@ app.get('/feature', {
 
 **Admin bypass:** users whose role has `subscriptions:view` pass through `requireSubscription()` without a subscription check. This ensures operators are never blocked by billing status.
 
-**When `SUBSCRIPTION_MODE=disabled`:** `requireSubscription()` returns a no-op preHandler. Routes decorated with it work normally, so apps can add `requireSubscription()` to routes today and activate enforcement later by setting `SUBSCRIPTION_MODE=enabled`.
+**When `subscriptions.enabled` is `false`:** `requireSubscription()` returns a no-op preHandler. Routes decorated with it work normally, so apps can add `requireSubscription()` to routes today and activate enforcement later by setting `subscriptions.enabled: true` in `src/app.config.ts`.
 
 The `todos` module uses `requireSubscription()` on all its routes as the reference implementation. See `src/modules/subscriptions/CLAUDE.md` for the full subscription documentation.
 
-### Subscription config (`src/config/subscription.ts`)
+### Trial config
 
-Contains `TRIAL_PLAN_ID` — the `planId` assigned to auto-created trial subscriptions. Default is `'trial'`. Edit this constant to match your app's plan catalog before shipping.
+`subscriptions.trial` in `src/app.config.ts` holds `{ days, planId }` for auto-created trial subscriptions. Set `planId` to match your app's plan catalog before shipping.
 
 ---
 
@@ -239,20 +280,15 @@ The file upload system is implemented as a standalone `uploads` module. Any othe
 | File | Purpose |
 |------|---------|
 | `src/lib/storage/types.ts` | `StorageProvider` interface (`save`, `delete`, `getUrl`) |
-| `src/lib/storage/local-storage.ts` | `LocalStorageProvider` — writes to `UPLOAD_DIR`, serves via `/files/*` |
-| `src/lib/storage/index.ts` | `createStorageProvider(env)` factory — returns local or throws for S3 (stub) |
+| `src/lib/storage/local-storage.ts` | `LocalStorageProvider` — writes to `config.uploads.dir`, serves via `/files/*` |
+| `src/lib/storage/index.ts` | `createStorageProvider(config.uploads, env.BASE_URL)` factory — returns local or throws for S3 (stub) |
 | `src/lib/image-processor.ts` | `processImage(buffer, mimeType)` — generates 4 WebP variants via `sharp` |
 
 The provider instance is created once in `app.ts` and injected into every module that needs it via route options. Files are served publicly at `/files/*` via `@fastify/static` — no auth required on that path (needed for `<img>` tags).
 
-### Environment variables
+### Configuration
 
-| Variable | Default | Notes |
-|----------|---------|-------|
-| `STORAGE_PROVIDER` | `'local'` | `'s3'` stub exists but throws |
-| `UPLOAD_DIR` | `'./storage'` | Local storage root directory |
-| `UPLOAD_MAX_SIZE_MB` | `50` | Enforced in `POST /uploads` |
-| `UPLOAD_BASE_URL` | `'http://localhost:3333'` | Prepended to storage keys to build public URLs |
+Upload settings live under `uploads` in `src/app.config.ts` (`storage`, `dir`, `maxSizeMb`, `orphanCleanup`) — see _Application config_. Public file URLs are built from `env.BASE_URL`.
 
 ### Adding file attachments to a module
 
@@ -273,16 +309,16 @@ Transactional email is sent via the `EmailProvider` abstraction in `src/lib/emai
 
 | File | Purpose |
 |---|---|
-| `src/lib/email/index.ts` | `EmailProvider` interface, `createResendEmailProvider`, `createConsoleEmailProvider`, `createEmailProvider(env)` factory |
+| `src/lib/email/index.ts` | `EmailProvider` interface, `createResendEmailProvider`, `createConsoleEmailProvider`, `createEmailProvider({ resendApiKey, from, nodeEnv })` factory |
 
 The provider instance is created once in `app.ts` and injected into `createAuth` and into each route module that needs it via route options — same pattern as `storage`.
 
-### Environment variables
+### Configuration
 
-| Variable | Default | Notes |
+| Setting | Where | Notes |
 |---|---|---|
-| `RESEND_API_KEY` | — | Optional. Omit in dev/test to fall back to console logging. |
-| `EMAIL_FROM` | `noreply@localhost` | Sender address. Must be from a domain verified in Resend for production. |
+| `RESEND_API_KEY` | `.env` | Optional. Omit in dev/test to fall back to console logging. |
+| `email.from` | `src/app.config.ts` | Sender address (default `noreply@localhost`). Must be from a domain verified in Resend for production. |
 
 In `NODE_ENV=test` the console provider is always used, regardless of `RESEND_API_KEY`.
 
