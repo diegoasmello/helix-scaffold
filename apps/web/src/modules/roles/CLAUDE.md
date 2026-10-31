@@ -10,17 +10,28 @@ src/modules/roles/
 ├── validation.ts
 ├── validation.test.ts
 ├── components/
-│   ├── roles-form.tsx          ← shared form fields (create + edit)
-│   ├── role-select-field.tsx   ← cross-module Select component
-│   └── role-create-drawer.tsx  ← cross-module creation drawer (used by role-select-field)
+│   ├── roles-form.tsx               ← shared form fields (create + edit)
+│   ├── roles-form.test.tsx
+│   ├── role-select-field.tsx        ← cross-module Select component
+│   ├── role-select-field.test.tsx
+│   ├── role-create-drawer.tsx       ← cross-module creation drawer (used by role-select-field)
+│   ├── role-create-drawer.test.tsx
+│   ├── permissions-tree.tsx         ← checkbox tree of resource × action grants (read-only on detail)
+│   ├── permissions-tree.test.tsx
+│   └── permissions-editor.tsx       ← loads + saves a role's grants (PUT /roles/:id/permissions)
 └── routes/
     ├── index.ts
     ├── roles-pending.tsx
     ├── roles-list.tsx
     ├── roles-list.test.tsx
     ├── roles-create.tsx
+    ├── roles-create.test.tsx
     ├── roles-detail.tsx
-    └── roles-edit.tsx
+    ├── roles-detail.test.tsx
+    ├── roles-edit.tsx
+    ├── roles-edit.test.tsx
+    ├── roles-permissions.tsx        ← wraps PermissionsEditor in a PageEdit
+    └── roles-permissions.test.tsx   ← also covers PermissionsEditor (no separate test file)
 ```
 
 ## Types (`types.ts`)
@@ -103,6 +114,7 @@ Props: `opened`, `onClose`, `onSuccess(roleId)`. On success: invalidates `getRol
 | `rolesCreateRoute` | `/roles/create`    | `roles:create` |
 | `rolesDetailRoute` | `/roles/$id`       | `roles:view`   |
 | `rolesEditRoute`   | `/roles/$id/edit`  | `roles:edit`   |
+| `rolesPermissionsRoute` | `/roles/$id/permissions` | `permissions:edit` |
 
 `rolesListRoute` validateSearch: `page` (default 1), `pageSize` (default 10), `sortBy` (enum `name | createdAt`, optional), `sortOrder` (default `'desc'`).
 

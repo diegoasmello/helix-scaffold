@@ -15,22 +15,31 @@ The admin routes are **only accessible when `subscriptions.enabled` is `true`** 
 ```
 src/modules/subscriptions/
 ├── types.ts
+├── constants.ts                      ← SUBSCRIPTION_STATUS_COLORS
 ├── validation.ts
+├── validation.test.ts
 ├── hooks/
 │   ├── use-subscription.ts           ← reads status (incl. plan catalog) + user subscription
 │   └── use-subscription-access.ts    ← hasAccess(feature?) — mirrors the API's requireSubscription()
 ├── components/
 │   ├── requires-subscription.tsx     ← conditional render guard (like HasPermission)
 │   ├── requires-subscription.test.tsx
-│   └── subscriptions-form.tsx        ← shared admin form fields (create + edit)
+│   ├── subscriptions-form.tsx        ← shared admin form fields (create + edit)
+│   └── subscriptions-form.test.tsx
 └── routes/
     ├── index.ts                      ← route constants + combined array
     ├── subscriptions-pending.tsx
     ├── subscriptions-list.tsx
+    ├── subscriptions-list.test.tsx
     ├── subscriptions-create.tsx
+    ├── subscriptions-create.test.tsx
     ├── subscriptions-edit.tsx
-    └── subscriptions-detail.tsx
+    ├── subscriptions-edit.test.tsx
+    ├── subscriptions-detail.tsx
+    └── subscriptions-detail.test.tsx
 ```
+
+The hooks have no test files of their own: `requires-subscription.test.tsx` covers `useSubscriptionAccess`, and `src/app.test.tsx` covers the sidebar filtering built on both hooks.
 
 ---
 
