@@ -15,6 +15,8 @@ The admin routes are **only accessible when `subscriptions.enabled` is `true`** 
 ```
 src/modules/subscriptions/
 ├── types.ts
+├── access.ts                         ← hasSubscriptionAccess() — the access rule, shared by hook and router
+├── access.test.ts
 ├── constants.ts                      ← SUBSCRIPTION_STATUS_COLORS
 ├── validation.ts
 ├── validation.test.ts
@@ -38,7 +40,9 @@ src/modules/subscriptions/
     ├── subscriptions-edit.tsx
     ├── subscriptions-edit.test.tsx
     ├── subscriptions-detail.tsx
-    └── subscriptions-detail.test.tsx
+    ├── subscriptions-detail.test.tsx
+    ├── upgrade-required.tsx          ← /upgrade — where route guards send users whose plan lacks a feature
+    └── upgrade-required.test.tsx
 ```
 
 The hook tests use `renderHook` with a `QueryClientProvider` wrapper. `src/app.test.tsx` also covers the sidebar filtering built on both hooks.
@@ -90,6 +94,22 @@ hasAccess('reports') // ...and the plan lists 'reports' in its features
 ```
 
 Mirrors `requireSubscription()` in the API so the UI hides exactly what the API would reject: always `true` when subscriptions are disabled, and for users with `subscriptions:view` (operators). `isPending` also waits for the user's permissions, so operators never see a fallback flash. Kept separate from `useSubscription()` because it depends on `useAuth()`.
+
+The rule itself lives in `access.ts` → `hasSubscriptionAccess(state, feature?)`, a pure function also used by the router context (see _Route guards_ below). Change the rule there, never in the callers.
+
+### Route guards (`context.hasSubscriptionAccess`)
+
+`authenticatedRoute.beforeLoad` (`src/routes.ts`) injects `hasSubscriptionAccess(feature?)` next to `hasPermission`. It reads the same queries as `useSubscription()` (`GET /subscription/status`, and `GET /me/subscription` when enabled) through `ensureQueryData`, so it shares the cache and adds no requests. Gate a route by plan feature **before** the permission check — same order as the API:
+
+```ts
+beforeLoad: ({ context }) => {
+  if (!context.hasSubscriptionAccess('reports'))
+    throw redirect({ to: '/upgrade', search: { feature: 'reports' } })
+  if (!context.hasPermission('reports', 'view')) throw redirect({ to: '/403' })
+},
+```
+
+`todos` is the reference: all four routes guard on `'todos'`. Without this guard, typing the URL directly would hit the API's 403 and show the generic error page.
 
 ### Importing
 
@@ -180,8 +200,11 @@ subscriptionFormValidate = createValidator<SubscriptionFormValues>()({
 | `subscriptionsCreateRoute` | `/subscriptions/create` | `subscriptions:create` |
 | `subscriptionsDetailRoute` | `/subscriptions/$id` | `subscriptions:view` |
 | `subscriptionsEditRoute` | `/subscriptions/$id/edit` | `subscriptions:edit` |
+| `upgradeRoute` | `/upgrade?feature=<key>` | — (any authenticated user) |
 
-All four `beforeLoad` hooks:
+`upgradeRoute` redirects to `/` when subscriptions are disabled or when the user already has access to `feature`. The page (`UpgradeRequired`) says whether the user has no subscription or a plan that lacks the feature, lists the plans that include it (all plans when `feature` is absent), and links to `/me/subscription`. It has no checkout — products with a payment flow replace the `upgrade.contact` hint with their own call to action.
+
+The four admin route `beforeLoad` hooks:
 1. Check RBAC permission (throws `/403` if missing)
 2. Check subscription mode via `queryClient.ensureQueryData(getSubscriptionStatusQueryOptions())` (redirects to `/` if disabled)
 

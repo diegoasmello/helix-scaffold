@@ -260,6 +260,8 @@ Permission per route type:
 | create (`/xxx/create`) | `create` |
 | edit (`/xxx/$id/edit`) | `edit`   |
 
+**Routes gated by subscription plan** also check `context.hasSubscriptionAccess('<feature>')` — before the permission check — and redirect to `/upgrade?feature=<feature>`. See `src/modules/subscriptions/CLAUDE.md` → _Route guards_.
+
 The `/403` page (`src/modules/errors/forbidden.tsx`) renders inside the app layout so the user can navigate to sections they do have access to. The `/404` and generic error pages (`src/modules/errors/`) are full-screen and set on `createRootRoute`.
 
 ## Module structure convention

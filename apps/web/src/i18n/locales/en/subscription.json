@@ -8,6 +8,19 @@
     "description": "Create a subscription to grant a user access.",
     "createButton": "Create first subscription"
   },
+  "upgrade": {
+    "noSubscription": {
+      "title": "Subscription required",
+      "description": "You need an active subscription to access this feature."
+    },
+    "planLacks": {
+      "title": "Upgrade your plan",
+      "description": "Your current plan ({{plan}}) doesn't include this feature."
+    },
+    "availableOn": "Available on",
+    "contact": "Contact an administrator to subscribe or change your plan.",
+    "viewSubscription": "View my subscription"
+  },
   "me": {
     "title": "Subscription",
     "description": "Your current plan and billing details.",

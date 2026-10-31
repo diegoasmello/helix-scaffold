@@ -107,7 +107,7 @@ The scaffold supports optional subscription gating for products that require use
 
 **Admin bypass:** users whose role has the `subscriptions:view` permission are never blocked by `requireSubscription()`, regardless of whether they have an active subscription themselves. Operators can always access the product.
 
-**Gating by plan feature:** `requireSubscription('reports')` on a route and `<RequiresSubscription feature="reports">` (or `subscriptionFeature: 'reports'` on a sidebar item) in the UI allow only users whose plan lists `'reports'`. Without a feature, any active subscription passes. A feature no plan declares fails at API startup.
+**Gating by plan feature:** `requireSubscription('reports')` on an API route, and in the UI `context.hasSubscriptionAccess('reports')` in `beforeLoad` (redirects to `/upgrade`), `<RequiresSubscription feature="reports">` or `subscriptionFeature: 'reports'` on a sidebar item, allow only users whose plan lists `'reports'`. Without a feature, any active subscription passes. A feature no plan declares fails at API startup.
 
 **Subscription period is per user:** each `subscriptions` row has its own `currentPeriodStart`/`currentPeriodEnd`, but access is decided by `status` (`active`/`trialing`) only — dates are never compared. Who moves status to `expired`/`canceled` depends on who owns the row: subscriptions with an `externalId` belong to the payment processor and are updated by its webhooks; subscriptions without one (trial auto-start, admin panel) are expired by the scaffold's job in `server.ts` (`subscriptions.expiration.intervalHours`). A user has at most one live (`active`/`trialing`) subscription — enforced by a partial unique index.
 
@@ -130,7 +130,8 @@ When `subscriptions.enabled` is `true`, the app is responsible for:
 - [ ] Setting `subscriptions.trial: { days, planId }` in `src/app.config.ts` (if trials are offered)
 - [ ] Implementing a webhook endpoint that calls `subscriptionsService` methods to update subscription status on billing events (renewal, cancellation, payment failure)
 - [ ] Adding `requireSubscription('<feature>')` to routes that should be gated (inject it alongside `requirePermission` in route options, then add to the `preHandler` array)
-- [ ] Hiding gated UI: `subscriptionFeature` on sidebar items, `<RequiresSubscription feature="..." fallback={<UpgradePrompt />}>` around premium sections
+- [ ] Gating the UI the same way: `context.hasSubscriptionAccess('<feature>')` in the routes' `beforeLoad` (redirect to `/upgrade?feature=<feature>`), `subscriptionFeature` on sidebar items, `<RequiresSubscription feature="..." fallback={<UpgradePrompt />}>` around premium sections
+- [ ] Replacing the "contact an administrator" hint on `/upgrade` with your checkout call to action
 
 ## Creating a new module
 

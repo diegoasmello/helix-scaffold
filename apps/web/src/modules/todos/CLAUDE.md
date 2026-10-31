@@ -100,6 +100,8 @@ For upload fields, use `minFiles(n)` (from `@helix/ui`) for `FilesInput` and `re
 | `todoDetailRoute` | `/todos/$id`      | `todos:view`   |
 | `todoEditRoute`   | `/todos/$id/edit` | `todos:edit`   |
 
+Every route checks `context.hasSubscriptionAccess('todos')` first (redirecting to `/upgrade?feature=todos`), then the permission — the same order as the API's `[requireSubscription('todos'), requirePermission(...)]`. It is the reference for gating routes by plan feature; see `src/modules/subscriptions/CLAUDE.md` → _Route guards_.
+
 `todoListRoute` has `validateSearch` with: `page` (default 1), `pageSize` (default 10), `sortBy` (enum: `title | status | date | createdAt`, optional), `sortOrder` (default `'desc'`), `filters` (JSON string, optional), `filterLogic` (`'AND' | 'OR'`, default `'AND'`).
 
 `loaderDeps` forwards all four params so the loader re-runs on search changes.
@@ -121,7 +123,7 @@ Inline in each component — no `hooks.ts`. Cache operations in `useMutation.onS
 ## Sidebar
 
 ```ts
-{ label: 'Todos', icon: IconChecklist, to: '/todos', permission: { resource: 'todos', action: 'view' } }
+{ label: 'nav.todos', icon: IconChecklist, to: '/todos', permission: { resource: 'todos', action: 'view' }, subscriptionFeature: 'todos' }
 ```
 
 ## PDF export

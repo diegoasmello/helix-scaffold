@@ -23,6 +23,7 @@ import { SubscriptionsDetail } from './subscriptions-detail'
 import { SubscriptionsEdit } from './subscriptions-edit'
 import { SubscriptionsList } from './subscriptions-list'
 import { SubscriptionsPending } from './subscriptions-pending'
+import { UpgradeRequired } from './upgrade-required'
 
 export const subscriptionsListRoute = createRoute({
   getParentRoute: () => authenticatedRoute,
@@ -122,9 +123,25 @@ export const subscriptionsEditRoute = createRoute({
     ),
 })
 
+// Where route guards send users whose plan lacks a feature:
+// throw redirect({ to: '/upgrade', search: { feature: 'reports' } })
+export const upgradeRoute = createRoute({
+  getParentRoute: () => authenticatedRoute,
+  path: '/upgrade',
+  component: UpgradeRequired,
+  validateSearch: z.object({ feature: z.string().optional() }),
+  beforeLoad: async ({ context, search }) => {
+    await assertSubscriptionEnabled()
+    if (context.hasSubscriptionAccess(search.feature)) {
+      throw redirect({ to: '/' })
+    }
+  },
+})
+
 export const subscriptionsRoutes = [
   subscriptionsListRoute,
   subscriptionsCreateRoute,
   subscriptionsDetailRoute,
   subscriptionsEditRoute,
+  upgradeRoute,
 ]

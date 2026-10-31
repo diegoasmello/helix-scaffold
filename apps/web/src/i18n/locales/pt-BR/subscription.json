@@ -8,6 +8,19 @@
     "description": "Crie uma assinatura para conceder acesso a um usuário.",
     "createButton": "Criar primeira assinatura"
   },
+  "upgrade": {
+    "noSubscription": {
+      "title": "Assinatura necessária",
+      "description": "Você precisa de uma assinatura ativa para acessar este recurso."
+    },
+    "planLacks": {
+      "title": "Faça upgrade do seu plano",
+      "description": "Seu plano atual ({{plan}}) não inclui este recurso."
+    },
+    "availableOn": "Disponível nos planos",
+    "contact": "Fale com um administrador para assinar ou trocar de plano.",
+    "viewSubscription": "Ver minha assinatura"
+  },
   "me": {
     "title": "Assinatura",
     "description": "Seu plano atual e detalhes de cobrança.",

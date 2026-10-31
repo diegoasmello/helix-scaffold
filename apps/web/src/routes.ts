@@ -1,4 +1,9 @@
-import { getMePermissionsQueryOptions } from '@helix/api-client/hooks'
+import {
+  getMePermissionsQueryOptions,
+  getMeSubscriptionQueryOptions,
+  getSubscriptionStatusQueryOptions,
+} from '@helix/api-client/hooks'
+import type { Subscription } from '@helix/api-client/types'
 import {
   createRootRoute,
   createRoute,
@@ -18,6 +23,7 @@ import { Forbidden } from './modules/errors/forbidden'
 import { NotFound } from './modules/errors/not-found'
 import { meRoutes } from './modules/me/routes'
 import { rolesRoutes } from './modules/roles/routes'
+import { hasSubscriptionAccess } from './modules/subscriptions/access'
 import { subscriptionsRoutes } from './modules/subscriptions/routes'
 import { todosRoutes } from './modules/todos/routes'
 import { usersRoutes } from './modules/users/routes'
@@ -56,14 +62,33 @@ export const authenticatedRoute = createRoute({
     const session = await authClient.getSession()
     if (!session.data?.user) throw redirect({ to: '/login' })
 
-    const perms = await (
-      context as { queryClient: typeof queryClient }
-    ).queryClient.ensureQueryData(getMePermissionsQueryOptions())
+    const client = (context as { queryClient: typeof queryClient }).queryClient
+    const perms = await client.ensureQueryData(getMePermissionsQueryOptions())
     const grants = perms?.grants ?? {}
+    const hasPermission = (resource: string, action: string): boolean =>
+      (grants[resource] ?? []).includes(action)
+
+    // Same queries (and cache) as useSubscription(), so this adds no requests.
+    const status = await client.ensureQueryData(
+      getSubscriptionStatusQueryOptions()
+    )
+    const subscription = status.enabled
+      ? ((await client.ensureQueryData(
+          getMeSubscriptionQueryOptions()
+        )) as Subscription | null)
+      : null
+    const subscriptionAccess = {
+      enabled: status.enabled,
+      plans: status.plans,
+      subscription,
+      isOperator: hasPermission('subscriptions', 'view'),
+    }
 
     return {
-      hasPermission: (resource: string, action: string): boolean =>
-        (grants[resource] ?? []).includes(action),
+      hasPermission,
+      /** Route guard counterpart of `<RequiresSubscription feature>`. */
+      hasSubscriptionAccess: (feature?: string): boolean =>
+        hasSubscriptionAccess(subscriptionAccess, feature),
     }
   },
 })

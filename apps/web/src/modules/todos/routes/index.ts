@@ -24,6 +24,8 @@ export const todoListRoute = createRoute({
     breadcrumbs: [{ label: 'nav.todos' }],
   },
   beforeLoad: ({ context }) => {
+    if (!context.hasSubscriptionAccess('todos'))
+      throw redirect({ to: '/upgrade', search: { feature: 'todos' } })
     if (!context.hasPermission('todos', 'view')) throw redirect({ to: '/403' })
   },
   validateSearch: z.object({
@@ -60,6 +62,8 @@ export const todoCreateRoute = createRoute({
     ],
   },
   beforeLoad: ({ context }) => {
+    if (!context.hasSubscriptionAccess('todos'))
+      throw redirect({ to: '/upgrade', search: { feature: 'todos' } })
     if (!context.hasPermission('todos', 'create'))
       throw redirect({ to: '/403' })
   },
@@ -78,6 +82,8 @@ export const todoDetailRoute = createRoute({
     ],
   },
   beforeLoad: ({ context }) => {
+    if (!context.hasSubscriptionAccess('todos'))
+      throw redirect({ to: '/upgrade', search: { feature: 'todos' } })
     if (!context.hasPermission('todos', 'view')) throw redirect({ to: '/403' })
   },
   loader: ({ params }) =>
@@ -97,6 +103,8 @@ export const todoEditRoute = createRoute({
     ],
   },
   beforeLoad: ({ context }) => {
+    if (!context.hasSubscriptionAccess('todos'))
+      throw redirect({ to: '/upgrade', search: { feature: 'todos' } })
     if (!context.hasPermission('todos', 'edit')) throw redirect({ to: '/403' })
   },
   loader: ({ params }) =>
