@@ -55,6 +55,8 @@ KUBB_INPUT=./openapi.json kubb generate
 
 The `KUBB_INPUT` variable overrides `input.path` in `kubb.config.ts`.
 
+**Pitfall:** the running API only exposes routes enabled by its local `apps/api/src/app.config.ts` — with `subscriptions.enabled: false`, every subscription route except `/subscription/status` is missing from its spec. Generating (or `export-spec`) from it silently drops those hooks and mocks, and web tests fail with `getMeSubscriptionHandler is not a function`. The committed `openapi.json` must include them: export it with subscriptions enabled, and prefer `KUBB_INPUT=./openapi.json` when in doubt.
+
 ### Excluded routes
 
 `/api/auth/*` is managed by better-auth on the client — excluded from generation in all plugins via `excludeAuth`.

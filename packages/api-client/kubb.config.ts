@@ -9,7 +9,9 @@ const excludeAuth = [{ type: 'path' as const, pattern: /^\/api\/auth/ }]
 
 export default defineConfig({
   input: {
-    path: 'http://localhost:3333/docs/openapi.json',
+    // KUBB_INPUT=./openapi.json generates from the committed spec instead of
+    // the running API (whose spec depends on its local app.config.ts).
+    path: process.env.KUBB_INPUT ?? 'http://localhost:3333/docs/openapi.json',
   },
   output: {
     path: './src/generated',
