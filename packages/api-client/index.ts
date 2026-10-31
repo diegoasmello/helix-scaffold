@@ -1,1 +1,1 @@
-export { configure } from './src/client'
+export { ApiError, configure } from './src/client'

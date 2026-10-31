@@ -6,7 +6,7 @@ Automatic generation of types, fetchers, hooks, and mocks from the API's OpenAPI
 
 | Entry point               | Content                                                         |
 | ------------------------- | --------------------------------------------------------------- |
-| `@helix/api-client`       | `configure({ baseUrl })` — configures the fetch client base URL |
+| `@helix/api-client`       | `configure({ baseUrl })` — configures the fetch client base URL; `ApiError` |
 | `@helix/api-client/hooks` | Fetchers, queryKey helpers, React Query hooks (generated)       |
 | `@helix/api-client/types` | TypeScript types for the API contracts (generated)              |
 | `@helix/api-client/mocks` | Faker factories and MSW handlers (generated)                    |
@@ -28,9 +28,23 @@ Implements the interface expected by kubb. Responsible for:
 
 - Building the URL via `new URL(url, _baseUrl)`
 - Sending `credentials: "include"` (better-auth session cookies)
-- Throwing `Error` with `message` from the body when `!response.ok`
+- Throwing `ApiError` (an `Error` with `status`) when `!response.ok` — `message` comes from the body's `message`, falling back to `statusText`
 - Resolving `204 No Content` to `data: null` — React Query rejects `undefined` as query data, so a GET that can return 204 (e.g. `GET /me/subscription`) must yield `null`
 - Returning `{ data, status, statusText, headers }`
+
+Branch on `status` to show a specific, translated message instead of the API's English one:
+
+```ts
+import { ApiError } from '@helix/api-client'
+
+onError: (error) => {
+  const message =
+    error instanceof ApiError && error.status === 409
+      ? t('notifications.alreadyLive')
+      : t('notifications.createFailed')
+  notify({ status: 'danger', message })
+}
+```
 
 `configure({ baseUrl })` must be called once before any fetch — in `apps/web/src/main.tsx` for the app, and in `vitest.setup.ts` for tests (with `http://localhost:3333`).
 

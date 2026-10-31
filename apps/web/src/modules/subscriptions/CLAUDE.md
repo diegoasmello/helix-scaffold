@@ -239,6 +239,7 @@ All `DateInput` fields bind `value` and `onChange` manually (not via `getInputPr
 - `useForm<SubscriptionFormValues>` with default `status: 'active'`, `currentPeriodStart: now`, `currentPeriodEnd: now + 30d`, `trialEndsAt: null`, `externalId: ''`
 - Mutation: `postSubscriptions(...)` → invalidates `getSubscriptionsSuspenseQueryKey()` on success
 - On 400 from the API (invalid `userId`) the mutation's `onError` fires and shows a danger notification
+- On **409** (the user already has an active/trialing subscription — one per user, enforced by the API) the notification uses `notifications.alreadyLive` instead of the generic `createFailed`; detected via `ApiError.status`
 
 ---
 
@@ -247,6 +248,7 @@ All `DateInput` fields bind `value` and `onChange` manually (not via `getInputPr
 - Pre-fills form from `useGetSubscriptionsIdSuspense(id)`
 - `SubscriptionsForm` rendered with `isEditing` — `userId` field hidden
 - Mutation: `patchSubscriptionsId(id, ...)` → invalidates list + `setQueryData` on item cache
+- On **409** (reactivating while the user has another live subscription) the notification uses `notifications.alreadyLive`
 - **Setting `status: 'canceled'` without `canceledAt`**: the backend service automatically sets `canceledAt = now()` in this case. The edit form does not expose `canceledAt` directly — if a precise cancellation date is needed, it can be set via the API directly.
 
 ---

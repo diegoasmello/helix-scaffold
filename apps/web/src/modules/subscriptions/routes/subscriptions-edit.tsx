@@ -1,3 +1,4 @@
+import { ApiError } from '@helix/api-client'
 import {
   getSubscriptionsIdSuspenseQueryKey,
   getSubscriptionsSuspenseQueryKey,
@@ -62,8 +63,13 @@ export function SubscriptionsEdit() {
         notify({ status: 'success', message: t('notifications.updated') })
         navigate({ to: '/subscriptions' })
       },
-      onError: () => {
-        notify({ status: 'danger', message: t('notifications.updateFailed') })
+      onError: (error) => {
+        // 409: the user already has a live subscription (one per user).
+        const message =
+          error instanceof ApiError && error.status === 409
+            ? t('notifications.alreadyLive')
+            : t('notifications.updateFailed')
+        notify({ status: 'danger', message })
       },
     })
   }

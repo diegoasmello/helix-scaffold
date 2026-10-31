@@ -67,6 +67,7 @@
     "createFailed": "Failed to create subscription",
     "updated": "Subscription updated successfully",
     "updateFailed": "Failed to update subscription",
+    "alreadyLive": "This user already has an active or trialing subscription. Cancel it or change its plan instead.",
     "deleted": "Subscription deleted successfully",
     "deleteFailed": "Failed to delete subscription"
   }

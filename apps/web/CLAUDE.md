@@ -1067,7 +1067,7 @@ const { mutate: deleteXxx } = useMutation({
 **Separation of concerns in mutations:**
 
 - `useMutation` (`onSuccess`) — reserved for cache operations (invalidation, `setQueryData`, `removeQueries`). Always fires, even if the component has unmounted.
-- `mutate(data, { onSuccess, onError })` — component-dependent side effects: `notify()` and `navigate()`. Only fires if the component is still mounted. **Always declare both `onSuccess` and `onError` with `notify()`** in this scenario.
+- `mutate(data, { onSuccess, onError })` — component-dependent side effects: `notify()` and `navigate()`. Only fires if the component is still mounted. **Always declare both `onSuccess` and `onError` with `notify()`** in this scenario. When the API returns a meaningful error status (e.g. 409), branch on `error instanceof ApiError && error.status === 409` (`ApiError` from `@helix/api-client`) to show a specific translated message — never display the API's raw English `error.message`.
 
 ```ts
 createXxx(data, {

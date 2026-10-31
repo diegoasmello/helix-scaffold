@@ -20,6 +20,13 @@ import { SubscriptionsEdit } from './subscriptions-edit'
 
 const mockNavigate = vi.fn()
 
+const mockNotify = vi.hoisted(() => vi.fn())
+
+vi.mock('@helix/ui', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@helix/ui')>()),
+  notify: mockNotify,
+}))
+
 vi.mock('.', () => ({
   subscriptionsEditRoute: { useParams: () => ({ id: '1' }) },
   subscriptionsListRoute: { useNavigate: () => mockNavigate },
@@ -237,6 +244,37 @@ describe('SubscriptionsEdit', () => {
 
     await waitFor(() =>
       expect(screen.getByRole('button', { name: 'Save' })).toBeEnabled()
+    )
+    expect(mockNavigate).not.toHaveBeenCalled()
+    expect(mockNotify).toHaveBeenCalledWith({
+      status: 'danger',
+      message: 'Failed to update subscription',
+    })
+  })
+
+  it('explains a 409 when the user already has a live subscription', async () => {
+    server.use(
+      patchSubscriptionsIdHandler(
+        () =>
+          new Response(
+            JSON.stringify({
+              message: 'User already has an active or trialing subscription',
+            }),
+            { status: 409 }
+          )
+      )
+    )
+
+    renderSubscriptionsEdit()
+    await screen.findByDisplayValue('pro')
+    await userEvent.click(screen.getByRole('button', { name: 'Save' }))
+
+    await waitFor(() =>
+      expect(mockNotify).toHaveBeenCalledWith({
+        status: 'danger',
+        message:
+          'This user already has an active or trialing subscription. Cancel it or change its plan instead.',
+      })
     )
     expect(mockNavigate).not.toHaveBeenCalled()
   })
