@@ -1,7 +1,9 @@
 import { useGetSubscriptionsIdSuspense } from '@helix/api-client/hooks'
 import { Badge, Button, Group, LabeledValue, PageView, Stack } from '@helix/ui'
-import { formatDate, parseISO } from 'date-fns'
+import { parseISO } from 'date-fns'
 import { useTranslation } from 'react-i18next'
+
+import { formatDate } from '@/utils/date'
 
 import { SUBSCRIPTION_STATUS_COLORS } from '../constants'
 import { useSubscription } from '../hooks/use-subscription'

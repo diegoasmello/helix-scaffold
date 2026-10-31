@@ -7,10 +7,11 @@ import {
   Text,
   Title,
 } from '@helix/ui'
-import { formatDate, parseISO } from 'date-fns'
+import { parseISO } from 'date-fns'
 import { useTranslation } from 'react-i18next'
 
 import { SUBSCRIPTION_STATUS_COLORS } from '@/modules/subscriptions/constants'
+import { formatDate } from '@/utils/date'
 
 import { useSubscription } from '../../subscriptions/hooks/use-subscription'
 
