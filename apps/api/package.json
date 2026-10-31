@@ -16,6 +16,7 @@
     "db:seed": "tsx --env-file=.env src/db/seed.ts",
     "db:reset": "tsx --env-file=.env src/db/reset.ts",
     "db:migrate:test": "dotenv -e .env.test -- drizzle-kit migrate",
+    "spec:export": "tsx src/scripts/export-spec.ts",
     "test": "vitest run",
     "test:watch": "vitest"
   },

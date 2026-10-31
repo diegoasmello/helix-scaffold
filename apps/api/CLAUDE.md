@@ -42,8 +42,9 @@ The file a developer edits to shape the app. Written with `defineConfig()` (Vite
 | File | Purpose |
 | --- | --- |
 | `define-config.ts` | `AppConfig` interface (the JSDoc users see), `defineConfig()` (identity, typing only), `appConfigSchema` (Zod: defaults + runtime validation, strict objects reject unknown keys) |
-| `index.ts` | Resolves the config once: calls the factory with `{ mode }`, merges `test-overrides.ts` in test mode, parses, cross-validates against `env` (enabled social provider without credentials → startup error), deep-freezes. Exports `config`. |
+| `index.ts` | Resolves the config once: calls the factory with `{ mode }`, merges `spec-overrides.ts` when exporting the spec or `test-overrides.ts` in test mode, parses, cross-validates against `env` (enabled social provider without credentials → startup error), deep-freezes. Exports `config`. |
 | `test-overrides.ts` | Pinned values for the test suite — see below |
+| `spec-overrides.ts` | Profile for `pnpm spec:export` (`src/scripts/export-spec.ts`): every optional route registered, placeholder plan, social providers off. Only settings that decide which routes exist belong here — see _OpenAPI spec export_ |
 | `billing-webhook.ts` | Registry, not config: the payment processor adapter (`null` = webhook off). See `src/modules/billing-webhook/CLAUDE.md` |
 
 Consumers import `config` from `@/config`. **Adding a setting:** add the field with JSDoc to `AppConfig`, the matching entry (with `.default()`) to `appConfigSchema`, then the value to `app.config.ts`. Keep the two shapes in sync — a key missing from the schema is rejected at startup.
@@ -70,6 +71,12 @@ Validated with Zod in `src/env.ts` at startup. If a required variable is missing
 - `uploads.dir: '/tmp/helix-test-uploads'`.
 
 The suite therefore never depends on what a product sets in `app.config.ts`. Social providers are not overridden — status endpoints assert on shape, not content.
+
+### OpenAPI spec export
+
+`pnpm spec:export <file>` (`src/scripts/export-spec.ts`) writes the spec `@helix/api-client` is generated from — `pnpm export-spec` in `packages/api-client` calls it. It builds the app in memory with `src/config/spec-overrides.ts` applied (via `enableSpecExport()`, before `@/config` is imported), so the spec lists every route the codebase can expose regardless of `app.config.ts`. It needs no database (building the app opens no connection) and no `.env` (placeholder values only pass `src/env.ts`).
+
+`/docs` on a running server keeps serving the spec of its own config. **When a new setting registers routes conditionally** (like `subscriptions.enabled`), turn it on in `spec-overrides.ts`, or its routes vanish from the client. In this profile `requireSubscription()` skips its unknown-feature check, since the placeholder plan declares no features.
 
 ## Shared social provider utility (`src/lib/social-providers.ts`)
 
@@ -126,7 +133,7 @@ app.get('/feature', {
 
 **When `subscriptions.enabled` is `false`:** `requireSubscription()` returns a no-op preHandler. Routes decorated with it work normally, so apps can add `requireSubscription()` to routes today and activate enforcement later by setting `subscriptions.enabled: true` in `src/app.config.ts`.
 
-The `todos` module uses `requireSubscription('todos')` on all its routes as the reference implementation. A feature that no plan declares throws at startup. See `src/modules/subscriptions/CLAUDE.md` for the full subscription documentation.
+The `todos` module uses `requireSubscription('todos')` on all its routes as the reference implementation. A feature that no plan declares throws at startup (except during the spec export — see _OpenAPI spec export_). See `src/modules/subscriptions/CLAUDE.md` for the full subscription documentation.
 
 ### Trial config
 

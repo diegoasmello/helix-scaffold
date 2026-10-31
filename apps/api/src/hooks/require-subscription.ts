@@ -1,4 +1,5 @@
 import { config } from '@/config'
+import { isSpecExport } from '@/config/spec-overrides'
 import type { Database } from '@/db'
 import { createPermissionsService } from '@/modules/permissions/permissions-service'
 import {
@@ -19,8 +20,9 @@ export function createRequireSubscription(
       return async () => {}
     }
 
-    // Runs at route registration, so a typo fails at startup.
-    if (feature && !isKnownFeature(feature)) {
+    // Runs at route registration, so a typo fails at startup. Skipped when
+    // exporting the spec, whose placeholder catalog declares no features.
+    if (feature && !isSpecExport() && !isKnownFeature(feature)) {
       throw new Error(
         `requireSubscription('${feature}'): no plan in subscriptions.plans (src/app.config.ts) includes this feature`
       )

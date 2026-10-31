@@ -8,6 +8,7 @@ import {
   appConfigSchema,
   type ResolvedAppConfig,
 } from './define-config'
+import { isSpecExport, specConfigOverrides } from './spec-overrides'
 import { testConfigOverrides } from './test-overrides'
 
 type DeepReadonly<T> = {
@@ -95,7 +96,12 @@ function resolveConfig(): DeepReadonly<ResolvedAppConfig> {
   const mode = env.NODE_ENV
   const raw: AppConfig =
     typeof appConfig === 'function' ? appConfig({ mode }) : appConfig
-  const merged = mode === 'test' ? deepMerge(raw, testConfigOverrides) : raw
+  const overrides = isSpecExport()
+    ? specConfigOverrides
+    : mode === 'test'
+      ? testConfigOverrides
+      : undefined
+  const merged = overrides ? deepMerge(raw, overrides) : raw
 
   const parsed = appConfigSchema.safeParse(merged)
   if (!parsed.success) {

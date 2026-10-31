@@ -61,17 +61,23 @@ kubb reads the spec and generates everything in `src/generated/`:
 ### How kubb determines the spec source
 
 ```bash
-# dev — reads from the running API (always up to date)
-kubb generate
-# equivalent to: input.path = "http://localhost:3333/docs/openapi.json"
-
-# build / CI — reads from the committed file (no API dependency)
+# pnpm generate / postinstall — reads the committed file (no API dependency)
 KUBB_INPUT=./openapi.json kubb generate
+
+# pnpm dev (watch) — reads from the running API
+kubb generate --watch
+# equivalent to: input.path = "http://localhost:3333/docs/openapi.json"
 ```
 
 The `KUBB_INPUT` variable overrides `input.path` in `kubb.config.ts`.
 
-**Pitfall:** the running API only exposes routes enabled by its local `apps/api/src/app.config.ts` — with `subscriptions.enabled: false`, every subscription route except `/subscription/status` is missing from its spec. Generating (or `export-spec`) from it silently drops those hooks and mocks, and web tests fail with `getMeSubscriptionHandler is not a function`. The committed `openapi.json` must include them: export it with subscriptions enabled, and prefer `KUBB_INPUT=./openapi.json` when in doubt.
+### Where `openapi.json` comes from
+
+`pnpm export-spec` runs `pnpm --filter api spec:export` (`apps/api/src/scripts/export-spec.ts`), which builds the API in memory with `apps/api/src/config/spec-overrides.ts` applied and writes its spec here. No running server, database or `.env` needed.
+
+The committed spec is the contract of the **codebase**, not of one deploy: it lists every route the API can expose (subscriptions included), whatever the local `app.config.ts` enables. `apps/web` compiles against all of them and decides at runtime what to show (`GET /subscription/status`). The spec a deploy serves at `/docs` still reflects its own config.
+
+**Pitfall:** the running API only exposes routes enabled by its local `apps/api/src/app.config.ts` — with `subscriptions.enabled: false`, every subscription route except `/subscription/status` is missing from its spec. That is why `pnpm dev` (watch mode, reading the live server) can drop hooks and mocks, and web tests then fail with `getMeSubscriptionHandler is not a function`. Run `pnpm export-spec && pnpm generate` to get back to the full client. Never `curl` the live spec into `openapi.json`.
 
 ### Excluded routes
 
@@ -80,16 +86,15 @@ The `KUBB_INPUT` variable overrides `input.path` in `kubb.config.ts`.
 ## Workflow when creating or modifying an API endpoint
 
 1. Modify the schema/route in `apps/api`
-2. With the API running (`pnpm dev`), export the updated spec:
+2. Export the updated spec (no API running needed):
    ```bash
    pnpm export-spec
    ```
-   This runs `curl http://localhost:3333/docs/openapi.json -o openapi.json` and updates the committed file.
-3. Regenerate the files in `src/generated/`:
+   This builds the API with every optional route enabled and rewrites the committed `openapi.json` — see _Where `openapi.json` comes from_.
+3. Regenerate the files in `src/generated/` from it:
    ```bash
    pnpm generate
    ```
-   In continuous dev, `pnpm dev` does this automatically via `--watch`.
 4. Commit `openapi.json` alongside the other changes.
 
 The `postinstall` script in package.json runs `kubb generate` with `KUBB_INPUT=./openapi.json` — so `pnpm install` at the root always regenerates `src/generated/` from the committed file, without needing the API running.
