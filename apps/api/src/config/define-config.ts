@@ -113,6 +113,21 @@ export interface AppConfig {
      * @default false
      */
     trial?: TrialConfig | false
+    /**
+     * Periodic job that marks lapsed subscriptions as `expired`: trials past
+     * `trialEndsAt` and active subscriptions past `currentPeriodEnd`.
+     * Only touches subscriptions **without `externalId`** — the ones the
+     * scaffold created (trial auto-start, admin panel). Subscriptions with an
+     * `externalId` belong to the payment processor and are updated by its
+     * webhooks. Access may outlive the period by up to one interval.
+     */
+    expiration?: {
+      /**
+       * How often the job runs. It also runs once at startup.
+       * @default 1
+       */
+      intervalHours?: number
+    }
   }
 
   email?: {
@@ -238,6 +253,11 @@ export const appConfigSchema = z.strictObject({
           }),
         ])
         .default(false),
+      expiration: z
+        .strictObject({
+          intervalHours: z.number().positive().default(1),
+        })
+        .prefault({}),
     })
     .prefault({}),
   email: z

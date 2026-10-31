@@ -27,6 +27,7 @@ The file a developer edits to shape the app. Written with `defineConfig()` (Vite
 | `auth.socialProviders.{google,facebook,apple}.enabled` | `false` | Requires the provider's `CLIENT_ID`/`CLIENT_SECRET` in `.env`; startup fails otherwise. `apple.appBundleId` is optional (native iOS). |
 | `subscriptions.enabled` | `false` | Activates the subscription infrastructure (routes, hooks, trial auto-start). See `src/modules/subscriptions/CLAUDE.md`. |
 | `subscriptions.plans` | `[]` | Plan catalog: `{ id, name, features }[]`. Required (non-empty) when enabled. `features` are the keys checked by `requireSubscription('<feature>')`. |
+| `subscriptions.expiration.intervalHours` | `1` | How often lapsed scaffold-owned subscriptions (no `externalId`) are marked `expired` (`server.ts`). |
 | `subscriptions.trial` | `false` | `{ days, planId }` — auto-creates a trialing subscription on self-registration (requires `registration.mode: 'open'` and `subscriptions.enabled: true`; a warning is logged otherwise). |
 | `email.from` | `'noreply@localhost'` | Sender address. Must be from a domain verified in Resend for production. |
 | `uploads.storage` | `'local'` | `'s3'` stub exists but throws |

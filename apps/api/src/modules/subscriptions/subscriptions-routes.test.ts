@@ -337,7 +337,7 @@ describe('GET /subscriptions', () => {
       {
         userId: testUser.id,
         planId: 'starter',
-        status: 'trialing',
+        status: 'canceled',
         currentPeriodStart: now,
         currentPeriodEnd: end,
       },
@@ -388,6 +388,76 @@ describe('POST /subscriptions', () => {
     })
     expect(res.statusCode).toBe(400)
   })
+  it('returns 400 when the user does not exist', async () => {
+    const res = await app.inject({
+      method: 'POST',
+      url: '/subscriptions',
+      payload: {
+        userId: 'nonexistent-user',
+        planId: 'pro',
+        currentPeriodStart: new Date().toISOString(),
+        currentPeriodEnd: new Date('2099-01-01').toISOString(),
+      },
+      headers: { cookie: authCookie },
+    })
+    expect(res.statusCode).toBe(400)
+    expect(res.json().message).toBe('User not found')
+  })
+
+  it('returns 409 when the user already has a live subscription', async () => {
+    const [testUser] = await testDb.select().from(user).limit(1)
+    const payload = {
+      userId: testUser.id,
+      planId: 'pro',
+      status: 'active',
+      currentPeriodStart: new Date().toISOString(),
+      currentPeriodEnd: new Date('2099-01-01').toISOString(),
+    }
+    const first = await app.inject({
+      method: 'POST',
+      url: '/subscriptions',
+      payload,
+      headers: { cookie: authCookie },
+    })
+    expect(first.statusCode).toBe(201)
+
+    const second = await app.inject({
+      method: 'POST',
+      url: '/subscriptions',
+      payload: { ...payload, status: 'trialing' },
+      headers: { cookie: authCookie },
+    })
+    expect(second.statusCode).toBe(409)
+    expect(second.json().message).toBe(
+      'User already has an active or trialing subscription'
+    )
+  })
+
+  it('allows non-live subscriptions alongside a live one', async () => {
+    const [testUser] = await testDb.select().from(user).limit(1)
+    await testDb.insert(subscriptions).values({
+      userId: testUser.id,
+      planId: 'pro',
+      status: 'active',
+      currentPeriodStart: new Date(),
+      currentPeriodEnd: new Date('2099-01-01'),
+    })
+
+    const res = await app.inject({
+      method: 'POST',
+      url: '/subscriptions',
+      payload: {
+        userId: testUser.id,
+        planId: 'starter',
+        status: 'canceled',
+        currentPeriodStart: new Date().toISOString(),
+        currentPeriodEnd: new Date('2099-01-01').toISOString(),
+      },
+      headers: { cookie: authCookie },
+    })
+    expect(res.statusCode).toBe(201)
+  })
+
   it('returns 400 for a plan not in the catalog', async () => {
     const [testUser] = await testDb.select().from(user).limit(1)
     const res = await app.inject({
@@ -481,6 +551,37 @@ describe('PATCH /subscriptions/:id', () => {
     expect(res.json().planId).toBe('enterprise')
     expect(res.json().status).toBe('canceled')
     expect(res.json().userId).toBe(testUser.id)
+  })
+
+  it('returns 409 when reactivating while another subscription is live', async () => {
+    const [testUser] = await testDb.select().from(user).limit(1)
+    const [canceled] = await testDb
+      .insert(subscriptions)
+      .values([
+        {
+          userId: testUser.id,
+          planId: 'starter',
+          status: 'canceled',
+          currentPeriodStart: new Date(),
+          currentPeriodEnd: new Date('2099-01-01'),
+        },
+        {
+          userId: testUser.id,
+          planId: 'pro',
+          status: 'active',
+          currentPeriodStart: new Date(),
+          currentPeriodEnd: new Date('2099-01-01'),
+        },
+      ])
+      .returning()
+
+    const res = await app.inject({
+      method: 'PATCH',
+      url: `/subscriptions/${canceled.id}`,
+      payload: { status: 'active' },
+      headers: { cookie: authCookie },
+    })
+    expect(res.statusCode).toBe(409)
   })
 
   it('returns 400 when changing to a plan not in the catalog', async () => {

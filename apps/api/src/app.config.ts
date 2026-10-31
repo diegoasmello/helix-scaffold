@@ -45,6 +45,10 @@ export default defineConfig(({ mode }) => ({
     ],
     // Auto-starts a trial on self-registration, e.g. { days: 14, planId: 'pro' }
     trial: false,
+    // Expires lapsed trials and admin-created subscriptions (not processor-managed ones).
+    expiration: {
+      intervalHours: 1,
+    },
   },
 
   email: {

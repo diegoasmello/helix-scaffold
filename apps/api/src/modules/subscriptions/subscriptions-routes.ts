@@ -2,6 +2,11 @@ import z from 'zod'
 
 import type { Database } from '@/db'
 import { buildPaginatedResponse } from '@/lib/pagination'
+import {
+  getPgErrorCode,
+  PG_FOREIGN_KEY_VIOLATION,
+  PG_UNIQUE_VIOLATION,
+} from '@/lib/pg-errors'
 import type { FastifyTypedInstance, RequirePermission } from '@/types'
 
 import {
@@ -12,6 +17,10 @@ import {
   updateSubscriptionSchema,
 } from './subscriptions-schema'
 import { createSubscriptionsService } from './subscriptions-service'
+
+// Enforced by the `subscriptions_one_live_per_user` partial unique index.
+const LIVE_SUBSCRIPTION_CONFLICT =
+  'User already has an active or trialing subscription'
 
 export async function subscriptionsRoutes(
   app: FastifyTypedInstance,
@@ -91,6 +100,7 @@ export async function subscriptionsRoutes(
         response: {
           201: subscriptionSchema,
           400: z.object({ message: z.string() }),
+          409: z.object({ message: z.string() }),
         },
       },
       preHandler: requirePermission('subscriptions', 'create'),
@@ -100,9 +110,12 @@ export async function subscriptionsRoutes(
       try {
         sub = await service.create(request.body)
       } catch (error) {
-        const pgError = error as { code?: string }
-        if (pgError.code === '23503') {
+        const code = getPgErrorCode(error)
+        if (code === PG_FOREIGN_KEY_VIOLATION) {
           return reply.status(400).send({ message: 'User not found' })
+        }
+        if (code === PG_UNIQUE_VIOLATION) {
+          return reply.status(409).send({ message: LIVE_SUBSCRIPTION_CONFLICT })
         }
         throw error
       }
@@ -122,12 +135,21 @@ export async function subscriptionsRoutes(
         response: {
           200: subscriptionSchema,
           404: z.object({ message: z.string() }),
+          409: z.object({ message: z.string() }),
         },
       },
       preHandler: requirePermission('subscriptions', 'edit'),
     },
     async (request, reply) => {
-      const sub = await service.update(request.params.id, request.body)
+      let sub: Awaited<ReturnType<typeof service.update>>
+      try {
+        sub = await service.update(request.params.id, request.body)
+      } catch (error) {
+        if (getPgErrorCode(error) === PG_UNIQUE_VIOLATION) {
+          return reply.status(409).send({ message: LIVE_SUBSCRIPTION_CONFLICT })
+        }
+        throw error
+      }
       if (!sub)
         return reply.status(404).send({ message: 'Subscription not found' })
       await request.audit(

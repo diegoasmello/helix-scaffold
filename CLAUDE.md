@@ -109,7 +109,7 @@ The scaffold supports optional subscription gating for products that require use
 
 **Gating by plan feature:** `requireSubscription('reports')` on a route and `<RequiresSubscription feature="reports">` (or `subscriptionFeature: 'reports'` on a sidebar item) in the UI allow only users whose plan lists `'reports'`. Without a feature, any active subscription passes. A feature no plan declares fails at API startup.
 
-**Subscription period is per user:** each `subscriptions` row has its own `currentPeriodStart`/`currentPeriodEnd`, but access is decided by `status` (`active`/`trialing`) only — dates are never compared. Payment webhooks (or an admin, or a job you write) must move status to `expired`/`canceled`.
+**Subscription period is per user:** each `subscriptions` row has its own `currentPeriodStart`/`currentPeriodEnd`, but access is decided by `status` (`active`/`trialing`) only — dates are never compared. Who moves status to `expired`/`canceled` depends on who owns the row: subscriptions with an `externalId` belong to the payment processor and are updated by its webhooks; subscriptions without one (trial auto-start, admin panel) are expired by the scaffold's job in `server.ts` (`subscriptions.expiration.intervalHours`). A user has at most one live (`active`/`trialing`) subscription — enforced by a partial unique index.
 
 **Subscription vs. RBAC:** these are two independent axes. RBAC controls what you're *permitted* to do (role-based). Subscription controls whether you have *paid access* (billing-based). A route can require both — subscription is checked first.
 

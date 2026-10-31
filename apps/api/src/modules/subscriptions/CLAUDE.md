@@ -45,6 +45,10 @@ All admin routes and `GET /me/subscription` are **only registered when `subscrip
 | `createdAt` | `timestamp NOT NULL` | `defaultNow()` |
 | `updatedAt` | `timestamp NOT NULL` | `$onUpdateFn(() => new Date())` |
 
+**One live subscription per user:** the partial unique index `subscriptions_one_live_per_user` (`user_id WHERE status IN ('active', 'trialing')`) allows at most one active/trialing row per user. Any number of `canceled`/`expired`/`past_due` rows can coexist as history. To change plans, update the live subscription's `planId` (or cancel it first) — do not insert a second live row. Migration `0005` cancels pre-existing duplicates (keeping the most recent) before creating the index.
+
+**`externalId` decides who owns the row:** with an `externalId`, the payment processor is the source of truth and its webhooks update the row. Without one (trial auto-start, admin-created), the scaffold owns it and the expiration job (below) ends it.
+
 ### Status values
 
 `status` uses `text.$type<SubscriptionStatus>()` to get TypeScript narrowing without a PostgreSQL enum (which would require a migration to extend).
@@ -103,6 +107,12 @@ The frontend `useSubscription()` hook (`src/modules/subscriptions/hooks/use-subs
 
 The `userId` field is validated by the DB FK constraint. If the provided `userId` does not refer to an existing user, PostgreSQL raises error code `23503` (FOREIGN_KEY_VIOLATION). The route catches this code specifically and returns **400 `{ message: 'User not found' }`**. All other DB errors re-throw as 500.
 
+Postgres codes are read with `getPgErrorCode(error)` from `src/lib/pg-errors.ts` — Drizzle wraps driver errors, so the code may be on the error or on its `cause`. Never read `error.code` directly.
+
+### `POST` / `PATCH` — one live subscription per user
+
+Creating a live (`active`/`trialing`) subscription for a user who already has one, or reactivating a `canceled`/`expired` row while another is live, violates `subscriptions_one_live_per_user` (`23505`). Both routes return **409 `{ message: 'User already has an active or trialing subscription' }`**.
+
 ### `PATCH /subscriptions/:id` — automatic `canceledAt`
 
 When `status: 'canceled'` is included in the patch body without an explicit `canceledAt`, the service automatically sets `canceledAt = new Date()`. This enforces the domain invariant that a canceled subscription always has a cancellation timestamp.
@@ -121,6 +131,7 @@ Factory `createSubscriptionsService(database)` returns:
   create(data: CreateSubscriptionInput): Promise<Subscription>
   update(id: string, data: UpdateSubscriptionInput): Promise<Subscription | null>
   remove(id: string): Promise<void>
+  expireLapsed(now?: Date): Promise<{ expired: number }>
 }
 ```
 
@@ -129,6 +140,14 @@ Factory `createSubscriptionsService(database)` returns:
 **`update`** — applies the `canceledAt` auto-set logic before writing to the DB.
 
 **`remove`** — hard delete, no soft delete.
+
+**`expireLapsed`** — sets `status: 'expired'` on scaffold-owned rows (`externalId IS NULL`) whose period ended: `trialing` past `COALESCE(trialEndsAt, currentPeriodEnd)` and `active` past `currentPeriodEnd`. Processor-managed rows are never touched. Tested directly in `subscriptions-service.test.ts` (it has logic of its own).
+
+## Expiration job (`src/server.ts`)
+
+Access is decided by `status`, never by dates, so something must end lapsed subscriptions. For processor-managed rows that is the webhook. For scaffold-owned rows — trials created on sign-up and subscriptions created in the admin panel — no processor knows they exist, so `server.ts` runs `expireLapsed()` once at startup and then every `subscriptions.expiration.intervalHours` (default `1`, in `src/app.config.ts`). It only runs when `subscriptions.enabled` is `true`.
+
+A lapsed subscription keeps access until the next run — up to one interval. Lower the interval if that matters for your product.
 
 ---
 
@@ -224,7 +243,7 @@ Startup fails when `enabled: true` and `plans` is empty, when plan ids repeat, o
 
 ---
 
-## Tests (`subscriptions-routes.test.ts`)
+## Tests (`subscriptions-routes.test.ts`, `subscriptions-service.test.ts`)
 
 Route integration tests against the real `api_test` database.
 

@@ -1,4 +1,4 @@
-import { and, asc, count, desc, eq, or } from 'drizzle-orm'
+import { and, asc, count, desc, eq, isNull, lt, or, sql } from 'drizzle-orm'
 
 import type { Database } from '@/db'
 import { subscriptions } from '@/db/schema'
@@ -86,7 +86,47 @@ export function createSubscriptionsService(database: Database) {
     await database.delete(subscriptions).where(eq(subscriptions.id, id))
   }
 
-  return { getActiveByUserId, list, getById, create, update, remove }
+  /**
+   * Marks as `expired` the lapsed subscriptions the scaffold owns (no
+   * `externalId`): trials past `trialEndsAt` (or `currentPeriodEnd` when unset)
+   * and active subscriptions past `currentPeriodEnd`. Rows with an
+   * `externalId` are managed by the payment processor's webhooks.
+   */
+  async function expireLapsed(now = new Date()) {
+    const expired = await database
+      .update(subscriptions)
+      .set({ status: 'expired' })
+      .where(
+        and(
+          isNull(subscriptions.externalId),
+          or(
+            and(
+              eq(subscriptions.status, 'trialing'),
+              lt(
+                sql`coalesce(${subscriptions.trialEndsAt}, ${subscriptions.currentPeriodEnd})`,
+                now
+              )
+            ),
+            and(
+              eq(subscriptions.status, 'active'),
+              lt(subscriptions.currentPeriodEnd, now)
+            )
+          )
+        )
+      )
+      .returning({ id: subscriptions.id })
+    return { expired: expired.length }
+  }
+
+  return {
+    getActiveByUserId,
+    list,
+    getById,
+    create,
+    update,
+    remove,
+    expireLapsed,
+  }
 }
 
 export type SubscriptionsService = ReturnType<typeof createSubscriptionsService>
