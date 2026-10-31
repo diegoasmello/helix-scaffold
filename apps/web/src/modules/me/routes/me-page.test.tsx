@@ -1,6 +1,8 @@
 import {
   createGetMe200,
   getMeHandler,
+  getSubscriptionStatusHandler,
+  getSubscriptionStatusHandlerResponse200,
   patchMeHandler,
   patchMeHandlerResponse200,
   patchMePasswordHandler,
@@ -12,10 +14,11 @@ import {
 import {
   MantineEmotionProvider,
   MantineProvider,
+  type NavigationItemProps,
   Notifications,
 } from '@helix/ui'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { Suspense } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -23,6 +26,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { server } from '../../../mocks/server'
 import type { LinkedAccount } from '../types'
 import { MeAccount } from './me-account'
+import { MePage } from './me-page'
 import { MeSecurity } from './me-security'
 
 const { mockListAccounts } = vi.hoisted(() => ({
@@ -46,6 +50,23 @@ vi.mock('../../../lib/authentication', () => ({
     listAccounts: mockListAccounts,
   },
 }))
+
+// MePage renders <Outlet /> and NavigationItem (a router Link), both of which
+// need a RouterProvider. Stub them; MeAccount and MeSecurity use neither.
+vi.mock('@tanstack/react-router', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@tanstack/react-router')>()
+  return { ...actual, Outlet: () => <div data-testid="outlet" /> }
+})
+
+vi.mock('@helix/ui', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@helix/ui')>()
+  return {
+    ...actual,
+    NavigationItem: (props: NavigationItemProps) => (
+      <a href={props.to}>{props.label}</a>
+    ),
+  }
+})
 
 const credentialAccount: LinkedAccount = {
   id: 'acc-cred',
@@ -101,12 +122,87 @@ function renderMeSecurity() {
   )
 }
 
+function renderMePage() {
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  })
+  return render(
+    <MantineProvider>
+      <QueryClientProvider client={queryClient}>
+        <MePage />
+      </QueryClientProvider>
+    </MantineProvider>
+  )
+}
+
+function mockSubscriptionsEnabled(enabled: boolean) {
+  server.use(
+    getSubscriptionStatusHandler(() =>
+      getSubscriptionStatusHandlerResponse200({ enabled, plans: [] })
+    )
+  )
+}
+
 beforeEach(() => {
   server.use(getMeHandler(mockProfile))
   mockListAccounts.mockResolvedValue({ data: [credentialAccount], error: null })
 })
 
 afterEach(() => vi.clearAllMocks())
+
+describe('MePage layout', () => {
+  it('renders the page title and the outlet', async () => {
+    renderMePage()
+    expect(
+      screen.getByRole('heading', { name: 'Account settings' })
+    ).toBeInTheDocument()
+    expect(screen.getByTestId('outlet')).toBeInTheDocument()
+  })
+
+  it('links to every sub-page', () => {
+    renderMePage()
+    expect(screen.getByRole('link', { name: 'Account' })).toHaveAttribute(
+      'href',
+      '/me/account'
+    )
+    expect(screen.getByRole('link', { name: 'Security' })).toHaveAttribute(
+      'href',
+      '/me/security'
+    )
+    expect(screen.getByRole('link', { name: 'Preferences' })).toHaveAttribute(
+      'href',
+      '/me/preferences'
+    )
+  })
+
+  it('shows the Subscription link when subscriptions are enabled', async () => {
+    mockSubscriptionsEnabled(true)
+    renderMePage()
+    expect(
+      await screen.findByRole('link', { name: 'Subscription' })
+    ).toHaveAttribute('href', '/me/subscription')
+  })
+
+  it('hides the Subscription link when subscriptions are disabled', async () => {
+    let statusRequested = false
+    server.use(
+      getSubscriptionStatusHandler(() => {
+        statusRequested = true
+        return getSubscriptionStatusHandlerResponse200({
+          enabled: false,
+          plans: [],
+        })
+      })
+    )
+    renderMePage()
+    await waitFor(() => expect(statusRequested).toBe(true))
+    // Let the status response render before asserting absence.
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    expect(
+      screen.queryByRole('link', { name: 'Subscription' })
+    ).not.toBeInTheDocument()
+  })
+})
 
 describe('Profile display', () => {
   it('renders the name and email sections', async () => {

@@ -17,10 +17,11 @@ src/modules/me/
     ├── index.ts
     ├── me-pending.tsx
     ├── me-page.tsx                ← layout with sidebar nav
-    ├── me-page.test.tsx           ← tests for MeAccount + MeSecurity (password section)
+    ├── me-page.test.tsx           ← tests for MePage, MeAccount + MeSecurity (password section)
     ├── me-account.tsx             ← name form + email change form
     ├── me-security.tsx            ← PasswordSection + SignInMethods
     ├── me-preferences.tsx         ← language, dark mode, sidebar toggle
+    ├── me-preferences.test.tsx
     ├── me-subscription.tsx        ← subscription status view (only when subscriptions are enabled)
     └── me-subscription.test.tsx
 ```
@@ -205,12 +206,13 @@ Dates use `formatDate` from `@/utils/date`, never the `date-fns` function of the
 
 | File | Covers | Wrapper |
 |---|---|---|
-| `routes/me-page.test.tsx` | `MeAccount` (name, email) and `MeSecurity`'s password section (change + set) | `MantineProvider` + `<Notifications />` + `QueryClientProvider`. `MeSecurity` also needs `MantineEmotionProvider` because `SignInMethods` uses `createStyles` |
+| `routes/me-page.test.tsx` | `MePage` (nav links, Subscription link only when enabled), `MeAccount` (name, email) and `MeSecurity`'s password section (change + set) | `MantineProvider` + `<Notifications />` + `QueryClientProvider`. `MeSecurity` also needs `MantineEmotionProvider` because `SignInMethods` uses `createStyles`. The file stubs `Outlet` and `NavigationItem` (both need a router) for `MePage` |
+| `routes/me-preferences.test.tsx` | Language switch, dark mode, sidebar toggle, error outside the context | `MantineProvider` + `SidebarPreferenceContext.Provider` with a `vi.fn()` toggle. `afterEach` restores `i18n` to `en` and clears the color scheme, which are global |
 | `components/sign-in-methods.test.tsx` | Connected accounts, link-another section, `linkSocial` errors | `MantineProvider` + `MantineEmotionProvider` + `<Notifications />` + `QueryClientProvider` |
 | `routes/me-subscription.test.tsx` | Loading, empty state, plan fallback, badge, dates | `MantineProvider` + `MantineEmotionProvider` (for `LabeledValue`) + `QueryClientProvider` |
 | `validation.test.ts` | `meFormValidate`, `createEmailChangeFormValidate`, `passwordFormValidate` | none |
 
-`MePage` and `MePreferences` have no tests yet, and `setPasswordFormValidate` is only covered indirectly by the set-password tests in `me-page.test.tsx`.
+`setPasswordFormValidate` is only covered indirectly by the set-password tests in `me-page.test.tsx`.
 
 ### Mocking `authClient`
 

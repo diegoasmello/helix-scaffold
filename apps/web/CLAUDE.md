@@ -1887,6 +1887,18 @@ These come up whenever a test renders real Mantine components instead of mocks:
   )
   ```
 
+  Typing in a `searchable` Select calls `scrollIntoView`, which jsdom lacks. `vitest.setup.ts` stubs it, alongside `matchMedia` and `ResizeObserver`.
+
+- **i18n and the color scheme are global too.** A test that calls `i18n.changeLanguage(...)` or toggles dark mode changes them for every later test in the file. Restore them in `afterEach`:
+
+  ```ts
+  afterEach(async () => {
+    await i18n.changeLanguage('en')
+    localStorage.clear()
+    document.documentElement.removeAttribute('data-mantine-color-scheme')
+  })
+  ```
+
 - **The notifications store is global.** Notifications shown by `notify()` live in a module-level store that survives RTL's unmount between tests. A notification from one test is still there in the next, so `findByText` fails with "Found multiple elements". Every file that renders `<Notifications />` and asserts on notification text must clean the store:
 
   ```ts

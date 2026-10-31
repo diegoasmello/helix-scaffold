@@ -20,7 +20,9 @@ src/modules/subscriptions/
 ├── validation.test.ts
 ├── hooks/
 │   ├── use-subscription.ts           ← reads status (incl. plan catalog) + user subscription
-│   └── use-subscription-access.ts    ← hasAccess(feature?) — mirrors the API's requireSubscription()
+│   ├── use-subscription.test.tsx
+│   ├── use-subscription-access.ts    ← hasAccess(feature?) — mirrors the API's requireSubscription()
+│   └── use-subscription-access.test.tsx
 ├── components/
 │   ├── requires-subscription.tsx     ← conditional render guard (like HasPermission)
 │   ├── requires-subscription.test.tsx
@@ -39,7 +41,7 @@ src/modules/subscriptions/
     └── subscriptions-detail.test.tsx
 ```
 
-The hooks have no test files of their own: `requires-subscription.test.tsx` covers `useSubscriptionAccess`, and `src/app.test.tsx` covers the sidebar filtering built on both hooks.
+The hook tests use `renderHook` with a `QueryClientProvider` wrapper. `src/app.test.tsx` also covers the sidebar filtering built on both hooks.
 
 ---
 

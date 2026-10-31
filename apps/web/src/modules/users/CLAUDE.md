@@ -10,16 +10,24 @@ src/modules/users/
 ├── validation.ts
 ├── validation.test.ts
 ├── components/
-│   └── users-form.tsx         ← shared form fields; hides password when isEditing
+│   ├── users-form.tsx               ← shared form fields; hides password when isEditing
+│   ├── users-form.test.tsx
+│   ├── user-select-field.tsx        ← cross-module Select over GET /users/all ("name (email)")
+│   └── user-select-field.test.tsx
 └── routes/
     ├── index.ts
     ├── users-pending.tsx
     ├── users-list.tsx
     ├── users-list.test.tsx
     ├── users-create.tsx
+    ├── users-create.test.tsx
     ├── users-detail.tsx
-    └── users-edit.tsx
+    ├── users-detail.test.tsx
+    ├── users-edit.tsx
+    └── users-edit.test.tsx
 ```
+
+`UserSelectField` is used by the subscriptions admin form (`userId`). It needs `getUsersAllSuspenseQueryOptions()` prefetched in the route loader, or it suspends on its own.
 
 ## Types (`types.ts`)
 

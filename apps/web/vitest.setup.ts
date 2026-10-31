@@ -32,6 +32,10 @@ window.ResizeObserver = class {
   disconnect() {}
 }
 
+// jsdom has no layout, so no scrollIntoView. Mantine's Combobox calls it when
+// typing in a searchable Select.
+Element.prototype.scrollIntoView = vi.fn()
+
 window.getSelection = () =>
   ({
     addRange: vi.fn(),
