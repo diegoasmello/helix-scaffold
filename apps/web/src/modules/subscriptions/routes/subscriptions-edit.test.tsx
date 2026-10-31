@@ -259,6 +259,7 @@ describe('SubscriptionsEdit', () => {
           new Response(
             JSON.stringify({
               message: 'User already has an active or trialing subscription',
+              code: 'live_subscription_exists',
             }),
             { status: 409 }
           )

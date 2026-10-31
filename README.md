@@ -9,7 +9,7 @@ A full-stack TypeScript monorepo scaffold. Clone it, configure your env, and sta
 | **Authentication**      | Email/password + social login (Google, Facebook, Apple) via `better-auth`                                       |
 | **RBAC**                | Roles, permissions, per-route guards on both backend and frontend                                               |
 | **Registration modes**  | `closed` (admin-only) or `open` (self-registration) — toggled via a single env var                              |
-| **Subscription gating** | Optional billing layer: plan catalog with per-plan features, `requireSubscription('feature')` on routes, `<RequiresSubscription feature>` in the UI, trial auto-start |
+| **Subscription gating** | Optional billing layer: plan catalog with per-plan features, `requireSubscription('feature')` on routes, `<RequiresSubscription feature>` in the UI, trial auto-start, generic payment processor webhook |
 | **File uploads**        | Multi-file and single-file inputs with image processing (4 WebP variants via sharp), local storage provider     |
 | **Email**               | Transactional email via Resend                                                                                  |
 | **PDF export**          | Server-side PDF reports via `@react-pdf/renderer`                                                               |

@@ -22,16 +22,19 @@ export type Client = typeof client
 
 /**
  * Thrown for every non-2xx response. `message` comes from the API body
- * (`{ message }`) when present; `status` lets callers branch on specific
- * failures (e.g. 409) and show their own translated message.
+ * (`{ message }`) when present. `status` and `code` (the body's optional
+ * `code`, e.g. `'external_id_taken'`) let callers branch on specific failures
+ * and show their own translated message.
  */
 export class ApiError extends Error {
   readonly status: number
+  readonly code?: string
 
-  constructor(message: string, status: number) {
+  constructor(message: string, status: number, code?: string) {
     super(message)
     this.name = 'ApiError'
     this.status = status
+    this.code = code
   }
 }
 
@@ -83,9 +86,11 @@ export const client = async <TData, _TError = unknown, TVariables = unknown>(
       : await response.json().catch(() => undefined)
 
   if (!response.ok) {
+    const body = responseData as { message?: string; code?: string } | undefined
     throw new ApiError(
-      (responseData as { message?: string })?.message ?? response.statusText,
-      response.status
+      body?.message ?? response.statusText,
+      response.status,
+      typeof body?.code === 'string' ? body.code : undefined
     )
   }
 

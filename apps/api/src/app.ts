@@ -17,6 +17,7 @@ import {
 
 import { createAuth } from './auth'
 import { config } from './config'
+import { billingWebhookAdapter as configuredBillingWebhookAdapter } from './config/billing-webhook'
 import type { Database } from './db'
 import { env } from './env'
 import { registerAuditRequest } from './hooks/audit-request'
@@ -27,6 +28,8 @@ import { createEmailProvider } from './lib/email'
 import { createStorageProvider } from './lib/storage'
 import { auditRoutes } from './modules/audit/audit-routes'
 import { createAuditService } from './modules/audit/audit-service'
+import { billingWebhookRoutes } from './modules/billing-webhook/billing-webhook-routes'
+import type { BillingWebhookAdapter } from './modules/billing-webhook/billing-webhook-types'
 import { bootstrapRoutes } from './modules/bootstrap/bootstrap-routes'
 import { meRoutes } from './modules/me/me-routes'
 import { permissionsRoutes } from './modules/permissions/permissions-routes'
@@ -38,7 +41,14 @@ import { todosRoutes } from './modules/todos/todos-routes'
 import { uploadsRoutes } from './modules/uploads/uploads-routes'
 import { usersRoutes } from './modules/users/users-routes'
 
-export function buildApp(database: Database) {
+interface BuildAppOptions {
+  /** Overrides src/config/billing-webhook.ts — used by tests. */
+  billingWebhookAdapter?: BillingWebhookAdapter | null
+}
+
+export function buildApp(database: Database, options: BuildAppOptions = {}) {
+  const { billingWebhookAdapter = configuredBillingWebhookAdapter } = options
+
   const app = fastify({
     logger: {
       level: config.logger.level,
@@ -54,6 +64,7 @@ export function buildApp(database: Database) {
     nodeEnv: env.NODE_ENV,
   })
   const auth = createAuth(database, emailProvider)
+  const auditService = createAuditService(database)
 
   app.setValidatorCompiler(validatorCompiler)
   app.setSerializerCompiler(serializerCompiler)
@@ -140,9 +151,17 @@ export function buildApp(database: Database) {
   app.register(registrationRoutes)
   app.register(subscriptionStatusRoutes)
 
+  if (config.subscriptions.enabled && billingWebhookAdapter) {
+    app.register(billingWebhookRoutes, {
+      database,
+      adapter: billingWebhookAdapter,
+      auditService,
+    })
+  }
+
   app.register(async (authenticated) => {
     authenticated.addHook('preHandler', createRequireAuth(auth))
-    registerAuditRequest(authenticated, createAuditService(database))
+    registerAuditRequest(authenticated, auditService)
 
     const requirePermission = createRequirePermission(database)
     const requireSubscription = createRequireSubscription(database)

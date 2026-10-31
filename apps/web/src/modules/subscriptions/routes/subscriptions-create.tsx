@@ -1,4 +1,3 @@
-import { ApiError } from '@helix/api-client'
 import {
   getSubscriptionsSuspenseQueryKey,
   postSubscriptions,
@@ -7,6 +6,7 @@ import { Button, Form, Group, notify, PageCreate, useForm } from '@helix/ui'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 
+import { conflictMessageKey } from '../api-errors'
 import { SubscriptionsForm } from '../components/subscriptions-form'
 import { useSubscription } from '../hooks/use-subscription'
 import type { SubscriptionFormValues } from '../types'
@@ -63,12 +63,10 @@ export function SubscriptionsCreate() {
         navigate({ to: '/subscriptions' })
       },
       onError: (error) => {
-        // 409: the user already has a live subscription (one per user).
-        const message =
-          error instanceof ApiError && error.status === 409
-            ? t('notifications.alreadyLive')
-            : t('notifications.createFailed')
-        notify({ status: 'danger', message })
+        notify({
+          status: 'danger',
+          message: t(conflictMessageKey(error) ?? 'notifications.createFailed'),
+        })
       },
     })
   }

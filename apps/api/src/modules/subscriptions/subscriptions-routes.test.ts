@@ -428,9 +428,38 @@ describe('POST /subscriptions', () => {
       headers: { cookie: authCookie },
     })
     expect(second.statusCode).toBe(409)
-    expect(second.json().message).toBe(
-      'User already has an active or trialing subscription'
-    )
+    expect(second.json()).toEqual({
+      message: 'User already has an active or trialing subscription',
+      code: 'live_subscription_exists',
+    })
+  })
+
+  it('returns 409 when the externalId is already used', async () => {
+    const [testUser] = await testDb.select().from(user).limit(1)
+    await testDb.insert(subscriptions).values({
+      userId: testUser.id,
+      planId: 'pro',
+      status: 'canceled',
+      externalId: 'sub_taken',
+      currentPeriodStart: new Date(),
+      currentPeriodEnd: new Date('2099-01-01'),
+    })
+
+    const res = await app.inject({
+      method: 'POST',
+      url: '/subscriptions',
+      payload: {
+        userId: testUser.id,
+        planId: 'pro',
+        status: 'canceled',
+        externalId: 'sub_taken',
+        currentPeriodStart: new Date().toISOString(),
+        currentPeriodEnd: new Date('2099-01-01').toISOString(),
+      },
+      headers: { cookie: authCookie },
+    })
+    expect(res.statusCode).toBe(409)
+    expect(res.json().code).toBe('external_id_taken')
   })
 
   it('allows non-live subscriptions alongside a live one', async () => {
@@ -582,6 +611,7 @@ describe('PATCH /subscriptions/:id', () => {
       headers: { cookie: authCookie },
     })
     expect(res.statusCode).toBe(409)
+    expect(res.json().code).toBe('live_subscription_exists')
   })
 
   it('returns 400 when changing to a plan not in the catalog', async () => {

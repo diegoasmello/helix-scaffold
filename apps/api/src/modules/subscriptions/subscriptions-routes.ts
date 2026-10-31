@@ -4,6 +4,7 @@ import type { Database } from '@/db'
 import { buildPaginatedResponse } from '@/lib/pagination'
 import {
   getPgErrorCode,
+  getPgErrorConstraint,
   PG_FOREIGN_KEY_VIOLATION,
   PG_UNIQUE_VIOLATION,
 } from '@/lib/pg-errors'
@@ -18,9 +19,25 @@ import {
 } from './subscriptions-schema'
 import { createSubscriptionsService } from './subscriptions-service'
 
-// Enforced by the `subscriptions_one_live_per_user` partial unique index.
-const LIVE_SUBSCRIPTION_CONFLICT =
-  'User already has an active or trialing subscription'
+// Unique-index violations, told apart by index name. `code` lets the frontend
+// show a translated message (ApiError.code).
+const conflictSchema = z.object({
+  message: z.string(),
+  code: z.enum(['live_subscription_exists', 'external_id_taken']),
+})
+
+function toConflict(error: unknown): z.infer<typeof conflictSchema> | null {
+  if (getPgErrorCode(error) !== PG_UNIQUE_VIOLATION) return null
+  return getPgErrorConstraint(error) === 'subscriptions_external_id_unique'
+    ? {
+        message: 'External ID is already used by another subscription',
+        code: 'external_id_taken',
+      }
+    : {
+        message: 'User already has an active or trialing subscription',
+        code: 'live_subscription_exists',
+      }
+}
 
 export async function subscriptionsRoutes(
   app: FastifyTypedInstance,
@@ -100,7 +117,7 @@ export async function subscriptionsRoutes(
         response: {
           201: subscriptionSchema,
           400: z.object({ message: z.string() }),
-          409: z.object({ message: z.string() }),
+          409: conflictSchema,
         },
       },
       preHandler: requirePermission('subscriptions', 'create'),
@@ -114,9 +131,8 @@ export async function subscriptionsRoutes(
         if (code === PG_FOREIGN_KEY_VIOLATION) {
           return reply.status(400).send({ message: 'User not found' })
         }
-        if (code === PG_UNIQUE_VIOLATION) {
-          return reply.status(409).send({ message: LIVE_SUBSCRIPTION_CONFLICT })
-        }
+        const conflict = toConflict(error)
+        if (conflict) return reply.status(409).send(conflict)
         throw error
       }
       await request.audit('create', 'subscriptions', sub.id, request.body)
@@ -135,7 +151,7 @@ export async function subscriptionsRoutes(
         response: {
           200: subscriptionSchema,
           404: z.object({ message: z.string() }),
-          409: z.object({ message: z.string() }),
+          409: conflictSchema,
         },
       },
       preHandler: requirePermission('subscriptions', 'edit'),
@@ -145,9 +161,8 @@ export async function subscriptionsRoutes(
       try {
         sub = await service.update(request.params.id, request.body)
       } catch (error) {
-        if (getPgErrorCode(error) === PG_UNIQUE_VIOLATION) {
-          return reply.status(409).send({ message: LIVE_SUBSCRIPTION_CONFLICT })
-        }
+        const conflict = toConflict(error)
+        if (conflict) return reply.status(409).send(conflict)
         throw error
       }
       if (!sub)

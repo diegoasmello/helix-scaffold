@@ -79,6 +79,7 @@
     "created": "Assinatura criada com sucesso",
     "createFailed": "Falha ao criar assinatura",
     "updated": "Assinatura atualizada com sucesso",
+    "externalIdTaken": "Este ID externo já está em uso por outra assinatura.",
     "alreadyLive": "Este usuário já tem uma assinatura ativa ou em teste. Cancele-a ou altere o plano dela.",
     "updateFailed": "Falha ao atualizar assinatura",
     "deleted": "Assinatura excluída com sucesso",

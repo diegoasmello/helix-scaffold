@@ -40,7 +40,7 @@ All admin routes and `GET /me/subscription` are **only registered when `subscrip
 | `currentPeriodStart` | `timestamp NOT NULL` | Start of the current billing period |
 | `currentPeriodEnd` | `timestamp NOT NULL` | End of the current billing period |
 | `canceledAt` | `timestamp` | Set automatically when status is changed to `'canceled'` |
-| `externalId` | `text` | Payment processor subscription ID (Stripe, etc.) |
+| `externalId` | `text` UNIQUE | Payment processor subscription ID (Stripe, etc.) — the webhook sync key (`subscriptions_external_id_unique`; NULLs don't collide) |
 | `metadata` | `jsonb` | Provider-specific data — arbitrary JSON |
 | `createdAt` | `timestamp NOT NULL` | `defaultNow()` |
 | `updatedAt` | `timestamp NOT NULL` | `$onUpdateFn(() => new Date())` |
@@ -111,7 +111,14 @@ Postgres codes are read with `getPgErrorCode(error)` from `src/lib/pg-errors.ts`
 
 ### `POST` / `PATCH` — one live subscription per user
 
-Creating a live (`active`/`trialing`) subscription for a user who already has one, or reactivating a `canceled`/`expired` row while another is live, violates `subscriptions_one_live_per_user` (`23505`). Both routes return **409 `{ message: 'User already has an active or trialing subscription' }`**.
+Both unique indexes raise `23505`; the routes tell them apart with `getPgErrorConstraint()` and return **409 `{ message, code }`**:
+
+| Violated index | When | `code` |
+| --- | --- | --- |
+| `subscriptions_one_live_per_user` | Creating a live (`active`/`trialing`) subscription for a user who already has one, or reactivating a row while another is live | `live_subscription_exists` |
+| `subscriptions_external_id_unique` | Reusing an `externalId` that another subscription has | `external_id_taken` |
+
+The frontend maps `code` to a translated message (`apps/web/src/modules/subscriptions/api-errors.ts`).
 
 ### `PATCH /subscriptions/:id` — automatic `canceledAt`
 
@@ -132,6 +139,8 @@ Factory `createSubscriptionsService(database)` returns:
   update(id: string, data: UpdateSubscriptionInput): Promise<Subscription | null>
   remove(id: string): Promise<void>
   expireLapsed(now?: Date): Promise<{ expired: number }>
+  getByExternalId(externalId: string): Promise<Subscription | null>
+  syncFromBilling(state: BillingSubscriptionState): Promise<{ subscription, created } | null>
 }
 ```
 
@@ -142,6 +151,8 @@ Factory `createSubscriptionsService(database)` returns:
 **`remove`** — hard delete, no soft delete.
 
 **`expireLapsed`** — sets `status: 'expired'` on scaffold-owned rows (`externalId IS NULL`) whose period ended: `trialing` past `COALESCE(trialEndsAt, currentPeriodEnd)` and `active` past `currentPeriodEnd`. Processor-managed rows are never touched. Tested directly in `subscriptions-service.test.ts` (it has logic of its own).
+
+**`getByExternalId` / `syncFromBilling`** — used by the payment processor webhook. `syncFromBilling` upserts by `externalId` and cancels the user's other live subscription when the new state is live. See `src/modules/billing-webhook/CLAUDE.md` for the semantics and the integration guide.
 
 ## Expiration job (`src/server.ts`)
 

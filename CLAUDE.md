@@ -116,7 +116,7 @@ The scaffold supports optional subscription gating for products that require use
 **What the scaffold does not dictate:**
 - Which plans exist and which features they unlock (apps declare them in `subscriptions.plans`)
 - Pricing and billing cycles (they belong to the payment processor)
-- Payment processor integration (webhook handlers are app-level; they call the subscription service to update status)
+- Which payment processor you use — the scaffold ships a generic webhook (`POST /webhooks/billing`) and an adapter interface; you write the adapter for your processor
 - Trial duration and trial plan ID (both in `subscriptions.trial` in `apps/api/src/app.config.ts`)
 
 See `apps/api/src/modules/subscriptions/CLAUDE.md` for the full backend documentation.  
@@ -128,7 +128,7 @@ When `subscriptions.enabled` is `true`, the app is responsible for:
 
 - [ ] Declaring the plan catalog in `subscriptions.plans` (`src/app.config.ts`), with the features each plan unlocks
 - [ ] Setting `subscriptions.trial: { days, planId }` in `src/app.config.ts` (if trials are offered)
-- [ ] Implementing a webhook endpoint that calls `subscriptionsService` methods to update subscription status on billing events (renewal, cancellation, payment failure)
+- [ ] Writing a payment processor adapter and registering it in `apps/api/src/config/billing-webhook.ts` — follow the checklist in `apps/api/src/modules/billing-webhook/CLAUDE.md`
 - [ ] Adding `requireSubscription('<feature>')` to routes that should be gated (inject it alongside `requirePermission` in route options, then add to the `preHandler` array)
 - [ ] Gating the UI the same way: `context.hasSubscriptionAccess('<feature>')` in the routes' `beforeLoad` (redirect to `/upgrade?feature=<feature>`), `subscriptionFeature` on sidebar items, `<RequiresSubscription feature="..." fallback={<UpgradePrompt />}>` around premium sections
 - [ ] Replacing the "contact an administrator" hint on `/upgrade` with your checkout call to action

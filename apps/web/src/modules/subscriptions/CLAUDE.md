@@ -17,6 +17,8 @@ src/modules/subscriptions/
 ├── types.ts
 ├── access.ts                         ← hasSubscriptionAccess() — the access rule, shared by hook and router
 ├── access.test.ts
+├── api-errors.ts                     ← conflictMessageKey() — 409 code → i18n key
+├── api-errors.test.ts
 ├── constants.ts                      ← SUBSCRIPTION_STATUS_COLORS
 ├── validation.ts
 ├── validation.test.ts
@@ -262,7 +264,7 @@ All `DateInput` fields bind `value` and `onChange` manually (not via `getInputPr
 - `useForm<SubscriptionFormValues>` with default `status: 'active'`, `currentPeriodStart: now`, `currentPeriodEnd: now + 30d`, `trialEndsAt: null`, `externalId: ''`
 - Mutation: `postSubscriptions(...)` → invalidates `getSubscriptionsSuspenseQueryKey()` on success
 - On 400 from the API (invalid `userId`) the mutation's `onError` fires and shows a danger notification
-- On **409** (the user already has an active/trialing subscription — one per user, enforced by the API) the notification uses `notifications.alreadyLive` instead of the generic `createFailed`; detected via `ApiError.status`
+- On **409** the notification explains the conflict instead of the generic `createFailed`: `conflictMessageKey(error)` (`api-errors.ts`) maps `ApiError.code` — `live_subscription_exists` → `notifications.alreadyLive`, `external_id_taken` → `notifications.externalIdTaken`
 
 ---
 
@@ -271,7 +273,7 @@ All `DateInput` fields bind `value` and `onChange` manually (not via `getInputPr
 - Pre-fills form from `useGetSubscriptionsIdSuspense(id)`
 - `SubscriptionsForm` rendered with `isEditing` — `userId` field hidden
 - Mutation: `patchSubscriptionsId(id, ...)` → invalidates list + `setQueryData` on item cache
-- On **409** (reactivating while the user has another live subscription) the notification uses `notifications.alreadyLive`
+- On **409** (reactivating while another subscription is live, or a taken `externalId`) the notification comes from `conflictMessageKey(error)`, like the create screen
 - **Setting `status: 'canceled'` without `canceledAt`**: the backend service automatically sets `canceledAt = now()` in this case. The edit form does not expose `canceledAt` directly — if a precise cancellation date is needed, it can be set via the API directly.
 
 ---

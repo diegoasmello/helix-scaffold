@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX "subscriptions_external_id_unique" ON "subscriptions" USING btree ("external_id");

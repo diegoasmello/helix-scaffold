@@ -43,6 +43,7 @@ The file a developer edits to shape the app. Written with `defineConfig()` (Vite
 | `define-config.ts` | `AppConfig` interface (the JSDoc users see), `defineConfig()` (identity, typing only), `appConfigSchema` (Zod: defaults + runtime validation, strict objects reject unknown keys) |
 | `index.ts` | Resolves the config once: calls the factory with `{ mode }`, merges `test-overrides.ts` in test mode, parses, cross-validates against `env` (enabled social provider without credentials → startup error), deep-freezes. Exports `config`. |
 | `test-overrides.ts` | Pinned values for the test suite — see below |
+| `billing-webhook.ts` | Registry, not config: the payment processor adapter (`null` = webhook off). See `src/modules/billing-webhook/CLAUDE.md` |
 
 Consumers import `config` from `@/config`. **Adding a setting:** add the field with JSDoc to `AppConfig`, the matching entry (with `.default()`) to `appConfigSchema`, then the value to `app.config.ts`. Keep the two shapes in sync — a key missing from the schema is rejected at startup.
 
@@ -87,7 +88,7 @@ src/modules/<feature>/
 └── <feature>-routes.ts   ← Fastify route registrations
 ```
 
-The entry point is `src/app.ts`, which exports `buildApp(database: Database)`. Each route module is registered there via `app.register(featureRoutes, { database })`.
+The entry point is `src/app.ts`, which exports `buildApp(database: Database, options?)` (`options.billingWebhookAdapter` overrides `src/config/billing-webhook.ts` — used by tests). Each route module is registered there via `app.register(featureRoutes, { database })`.
 
 ## Hooks (`src/hooks/`)
 

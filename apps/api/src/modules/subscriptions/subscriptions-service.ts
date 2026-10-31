@@ -1,9 +1,10 @@
-import { and, asc, count, desc, eq, isNull, lt, or, sql } from 'drizzle-orm'
+import { and, asc, count, desc, eq, isNull, lt, ne, or, sql } from 'drizzle-orm'
 
 import type { Database } from '@/db'
 import { subscriptions } from '@/db/schema'
 import { getPaginationParams } from '@/lib/pagination'
 
+import type { BillingSubscriptionState } from '../billing-webhook/billing-webhook-types'
 import type {
   CreateSubscriptionInput,
   SubscriptionsListQuery,
@@ -118,8 +119,82 @@ export function createSubscriptionsService(database: Database) {
     return { expired: expired.length }
   }
 
+  async function getByExternalId(externalId: string) {
+    const [sub] = await database
+      .select()
+      .from(subscriptions)
+      .where(eq(subscriptions.externalId, externalId))
+    return sub ?? null
+  }
+
+  /**
+   * Creates or updates the subscription identified by `state.externalId` from
+   * the payment processor's state (see `BillingSubscriptionState`).
+   *
+   * When the result is live (active/trialing), any other live subscription of
+   * the same user is canceled first — a user has at most one, and a paid
+   * subscription supersedes e.g. the trial created on sign-up.
+   *
+   * Returns `null` when the subscription is new and `state.userId` is missing.
+   */
+  async function syncFromBilling(state: BillingSubscriptionState) {
+    return database.transaction(async (tx) => {
+      const [existing] = await tx
+        .select()
+        .from(subscriptions)
+        .where(eq(subscriptions.externalId, state.externalId))
+      const userId = existing?.userId ?? state.userId
+      if (!userId) return null
+
+      if (state.status === 'active' || state.status === 'trialing') {
+        await tx
+          .update(subscriptions)
+          .set({ status: 'canceled', canceledAt: new Date() })
+          .where(
+            and(
+              eq(subscriptions.userId, userId),
+              or(
+                eq(subscriptions.status, 'active'),
+                eq(subscriptions.status, 'trialing')
+              ),
+              existing ? ne(subscriptions.id, existing.id) : undefined
+            )
+          )
+      }
+
+      // `undefined` fields are skipped by Drizzle: omitted optional fields keep
+      // their stored value.
+      const values = {
+        planId: state.planId,
+        status: state.status,
+        currentPeriodStart: state.currentPeriodStart,
+        currentPeriodEnd: state.currentPeriodEnd,
+        trialEndsAt: state.trialEndsAt,
+        canceledAt: state.canceledAt,
+        metadata: state.metadata,
+      }
+
+      if (existing) {
+        const [updated] = await tx
+          .update(subscriptions)
+          .set(values)
+          .where(eq(subscriptions.id, existing.id))
+          .returning()
+        return { subscription: updated, created: false }
+      }
+
+      const [created] = await tx
+        .insert(subscriptions)
+        .values({ ...values, userId, externalId: state.externalId })
+        .returning()
+      return { subscription: created, created: true }
+    })
+  }
+
   return {
     getActiveByUserId,
+    getByExternalId,
+    syncFromBilling,
     list,
     getById,
     create,

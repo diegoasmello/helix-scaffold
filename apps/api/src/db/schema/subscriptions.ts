@@ -45,5 +45,8 @@ export const subscriptions = pgTable(
     uniqueIndex('subscriptions_one_live_per_user')
       .on(table.userId)
       .where(sql`status in ('active', 'trialing')`),
+    // The payment processor's id is the webhook sync key. NULLs (scaffold-owned
+    // rows) don't collide in a Postgres unique index.
+    uniqueIndex('subscriptions_external_id_unique').on(table.externalId),
   ]
 )
