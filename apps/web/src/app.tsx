@@ -13,16 +13,18 @@ import { authClient } from './lib/authentication'
 import { SidebarPreferenceContext } from './lib/sidebar-preference'
 import { useAuth } from './modules/auth/use-auth'
 import { useSubscription } from './modules/subscriptions/hooks/use-subscription'
+import { useSubscriptionAccess } from './modules/subscriptions/hooks/use-subscription-access'
 
 export function App() {
   const { user, hasPermission, isAuthenticated, isPending } = useAuth()
   const { enabled: subscriptionEnabled } = useSubscription()
+  const { hasAccess, isPending: subscriptionPending } = useSubscriptionAccess()
   const navigate = useNavigate()
   const { t: tRaw, i18n } = useTranslation('common')
   const t = tRaw as (key: string) => string
   const [sidebarCollapsed, toggleSidebar] = usePersistedSidebar(user?.id)
 
-  if (isPending) {
+  if (isPending || subscriptionPending) {
     return (
       <Center h="100vh">
         <Loader />
@@ -36,6 +38,12 @@ export function App() {
       items: group.items
         .filter((item) => {
           if (item.requiresSubscriptionEnabled && !subscriptionEnabled) {
+            return false
+          }
+          if (
+            item.subscriptionFeature &&
+            !hasAccess(item.subscriptionFeature)
+          ) {
             return false
           }
           return item.permission

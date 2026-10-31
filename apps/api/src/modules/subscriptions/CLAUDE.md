@@ -6,16 +6,15 @@ Subscription infrastructure for products built on the scaffold. Provides the plu
 
 The scaffold provides:
 - A `subscriptions` table with generic fields
-- A `requireSubscription()` preHandler (analogous to `requirePermission()`) that gates routes
+- A plan catalog in `src/app.config.ts` (`subscriptions.plans`), each plan listing the features it unlocks
+- A `requireSubscription(feature?)` preHandler (analogous to `requirePermission()`) that gates routes by active subscription and, optionally, by plan feature
 - Admin CRUD routes for manual subscription management
 - A user-facing `GET /me/subscription` endpoint
 - Optional trial auto-start on registration
 
 The scaffold does **not** provide:
-- Plan definitions or pricing (`planId` is a free-form string apps define)
+- Pricing, billing intervals or proration (they belong to the payment processor)
 - Payment processor integration (webhook handlers are app-level)
-- Feature flags or entitlements per plan
-- Billing cycles or proration logic
 
 ---
 
@@ -35,7 +34,7 @@ All admin routes and `GET /me/subscription` are **only registered when `subscrip
 | --- | --- | --- |
 | `id` | `text` PK | UUIDv7, generated at insert |
 | `userId` | `text NOT NULL` | FK → `user.id` ON DELETE CASCADE |
-| `planId` | `text NOT NULL` | App-defined string — e.g. `'pro'`, `'starter'` |
+| `planId` | `text NOT NULL` | One of `subscriptions.plans[].id` (validated on create/update, not by the DB) |
 | `status` | `text NOT NULL` | See status values below |
 | `trialEndsAt` | `timestamp` | Null for non-trial subscriptions |
 | `currentPeriodStart` | `timestamp NOT NULL` | Start of the current billing period |
@@ -78,7 +77,7 @@ Resource registered in `src/config/permissions.ts`:
 
 | Method | Path | Auth | Notes |
 | --- | --- | --- | --- |
-| `GET` | `/subscription/status` | None | Always available; returns `{ enabled: boolean }` |
+| `GET` | `/subscription/status` | None | Always available; returns `{ enabled, plans }` — `plans` is the catalog (id, name, features), `[]` when disabled |
 | `GET` | `/me/subscription` | Session | Returns current user's active/trialing subscription or 204 |
 | `GET` | `/subscriptions` | `subscriptions:view` | Paginated list of all subscriptions |
 | `GET` | `/subscriptions/:id` | `subscriptions:view` | Single subscription |
@@ -87,6 +86,12 @@ Resource registered in `src/config/permissions.ts`:
 | `DELETE` | `/subscriptions/:id` | `subscriptions:delete` | Hard delete |
 
 **Important:** all routes except `GET /subscription/status` require `subscriptions.enabled: true` to be registered.
+
+### Plan validation
+
+`planId` on `POST`/`PATCH /subscriptions` is refined against the catalog — an unknown plan returns **400** (`Unknown plan`). The OpenAPI spec keeps `planId` as a plain string, so changing the catalog never requires regenerating `@helix/api-client`; the frontend reads the catalog from `GET /subscription/status`.
+
+Rows whose `planId` was later removed from the catalog keep working: they still satisfy `requireSubscription()` (no feature), but unlock no features.
 
 ### `GET /me/subscription`
 
@@ -132,8 +137,13 @@ Factory `createSubscriptionsService(database)` returns:
 `createRequireSubscription(database)` returns a `RequireSubscription` function:
 
 ```ts
-export type RequireSubscription = () => PreHandler
+export type RequireSubscription = (feature?: string) => PreHandler
 ```
+
+- `requireSubscription()` — requires any active/trialing subscription.
+- `requireSubscription('reports')` — also requires the subscription's plan to list `'reports'` in `features`.
+
+A feature that no plan declares throws **at route registration**, so a typo stops the API from starting instead of silently locking everyone out. Feature checks live in `src/modules/subscriptions/subscription-plans.ts` (`getPlan`, `isKnownPlan`, `isKnownFeature`, `planHasFeature`).
 
 **Usage in route modules:**
 
@@ -143,7 +153,7 @@ authenticated.register(featureRoutes, { database, requirePermission, requireSubs
 
 // In feature-routes.ts — add to preHandler array
 app.get('/feature', {
-  preHandler: [requireSubscription(), requirePermission('feature', 'view')],
+  preHandler: [requireSubscription('feature'), requirePermission('feature', 'view')],
   // ...
 })
 ```
@@ -156,12 +166,13 @@ app.get('/feature', {
 | --- | --- | --- | --- |
 | `disabled` | Any | Any | Pass (no-op) |
 | `enabled` | Yes | Any | Pass (admin bypass) |
-| `enabled` | No | Yes | Pass |
+| `enabled` | No | Yes, plan includes the feature (or no feature requested) | Pass |
+| `enabled` | No | Yes, plan lacks the feature | 403 `Your plan does not include this feature` |
 | `enabled` | No | No | 403 `Active subscription required` |
 
 The admin bypass is implemented by calling `permissionsService.hasPermission(roleId, 'subscriptions', 'view')`. Users without a role (`roleId === null`) are never bypassed.
 
-**Reference implementation:** `todos-routes.ts` uses `requireSubscription()` on every route as a working example of how apps gate their features.
+**Reference implementation:** `todos-routes.ts` uses `requireSubscription('todos')` on every route as a working example of how apps gate their features.
 
 ---
 
@@ -187,19 +198,27 @@ Trial auto-start only fires for users created via the self-registration flow. Bo
 ```ts
 subscriptions: {
   enabled: true,
+  plans: [
+    { id: 'starter', name: 'Starter', features: ['todos'] },
+    { id: 'pro', name: 'Pro', features: ['todos', 'reports'] },
+  ],
   // Auto-starts a trial on self-registration. `false` disables trials.
-  trial: { days: 14, planId: 'trial' },
+  trial: { days: 14, planId: 'pro' },
 },
 ```
 
-Set `planId` to whatever planId your app uses for trial users (e.g., `'free-trial'`, `'starter-trial'`). A warning is logged at startup if `trial` is set but subscriptions are disabled or registration is closed, since it would have no effect.
+- **`plans[].id`** is stored on each subscription and sent by your payment processor's webhooks — never rename it once in use.
+- **`plans[].features`** are free keys: usually a module name (`'todos'`), sometimes a capability (`'pdf-export'`). They are what `requireSubscription('<feature>')` and the frontend's `<RequiresSubscription feature>` check.
+
+Startup fails when `enabled: true` and `plans` is empty, when plan ids repeat, or when `trial.planId` is not in the catalog. A warning is logged if `trial` is set but subscriptions are disabled or registration is closed, since it would have no effect.
 
 ---
 
 ## Schema (`subscriptions-schema.ts`)
 
 - `subscriptionSchema` — full entity returned by the API; `.meta({ id: 'Subscription' })` so Swagger emits it as a `$ref` and kubb generates a clean `Subscription` type
-- `createSubscriptionSchema` — `userId`, `planId`, `status` (default `'active'`), `currentPeriodStart`, `currentPeriodEnd`, `trialEndsAt?`, `externalId?`, `metadata?`
+- `subscriptionPlanSchema` — `{ id, name, features }`, `.meta({ id: 'SubscriptionPlan' })`, used by `GET /subscription/status`
+- `createSubscriptionSchema` — `userId`, `planId` (refined against the catalog), `status` (default `'active'`), `currentPeriodStart`, `currentPeriodEnd`, `trialEndsAt?`, `externalId?`, `metadata?`
 - `updateSubscriptionSchema` — all fields optional (partial update); `canceledAt` can be explicitly set or auto-derived
 - `SUBSCRIPTION_SORT_COLUMNS` — `['planId', 'status', 'currentPeriodEnd', 'createdAt']`; default sort: `createdAt`
 
@@ -211,7 +230,9 @@ Route integration tests against the real `api_test` database.
 
 `cleanupSubscriptions()` truncates the `subscriptions` table between tests. The `cleanupAuth()` call in `afterAll` cascades to subscriptions via the FK.
 
-**Test session setup:** `createTestSession()` in `src/test/helpers.ts` automatically creates an `active` subscription (`planId: 'test'`, expires 2099) for the test admin user when `config.subscriptions.enabled` is `true` (always the case in tests — see `src/config/test-overrides.ts`). This is required because `todos-routes` (the reference module) uses `requireSubscription()`, and without a subscription the test admin would fail those routes. Individual tests that need to verify "no subscription" behavior call `cleanupSubscriptions()` explicitly before the assertion.
+**Test session setup:** `createTestSession()` in `src/test/helpers.ts` automatically creates an `active` subscription (`planId: 'pro'`, expires 2099) for the test admin user when `config.subscriptions.enabled` is `true` (always the case in tests — see `src/config/test-overrides.ts`). This is required because `todos-routes` (the reference module) uses `requireSubscription('todos')`, and without a subscription the test admin would fail those routes. The test catalog (`src/config/test-overrides.ts`) is `starter` (no features), `pro` and `enterprise` (both `['todos']`), with `trial: false` — independent of the product catalog.
+
+The `requireSubscription (via GET /todos)` block covers the behavior matrix above plus the registration-time error for unknown features. Individual tests that need to verify "no subscription" behavior call `cleanupSubscriptions()` explicitly before the assertion.
 
 **Coverage:**
 - `GET /subscription/status` — always 200 with `{ enabled: boolean }`

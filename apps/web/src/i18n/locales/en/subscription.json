@@ -33,7 +33,7 @@
   },
   "form": {
     "userId": { "label": "User ID", "placeholder": "User ID" },
-    "planId": { "label": "Plan ID", "placeholder": "e.g. pro, starter, enterprise" },
+    "planId": { "label": "Plan", "placeholder": "Select a plan" },
     "status": { "label": "Status" },
     "currentPeriodStart": { "label": "Period start" },
     "currentPeriodEnd": { "label": "Period end" },

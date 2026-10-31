@@ -117,7 +117,7 @@ export async function createTestSession(
       const far = new Date('2099-01-01')
       await testDb.insert(subscriptions).values({
         userId: testUser.id,
-        planId: 'test',
+        planId: 'pro',
         status: 'active',
         currentPeriodStart: now,
         currentPeriodEnd: far,

@@ -11,6 +11,8 @@ import {
 interface SidebarItemWithPermission extends SidebarItem {
   permission?: { resource: string; action: PermissionAction }
   requiresSubscriptionEnabled?: true
+  /** Hidden unless the user's plan includes this feature (see `subscriptions.plans` in the API config). */
+  subscriptionFeature?: string
 }
 
 interface SidebarGroupWithPermission {
@@ -26,6 +28,7 @@ export const sidebarGroups: SidebarGroupWithPermission[] = [
         icon: IconChecklist,
         to: '/todos',
         permission: { resource: 'todos', action: 'view' },
+        subscriptionFeature: 'todos',
       },
     ],
   },

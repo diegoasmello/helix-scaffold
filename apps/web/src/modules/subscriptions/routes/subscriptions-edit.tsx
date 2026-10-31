@@ -9,6 +9,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 
 import { SubscriptionsForm } from '../components/subscriptions-form'
+import { useSubscription } from '../hooks/use-subscription'
 import type { SubscriptionFormValues } from '../types'
 import { subscriptionFormValidate } from '../validation'
 import { subscriptionsEditRoute, subscriptionsListRoute } from '.'
@@ -19,6 +20,7 @@ export function SubscriptionsEdit() {
   const queryClient = useQueryClient()
   const { t } = useTranslation('subscription')
   const { t: tc } = useTranslation('common')
+  const { plans } = useSubscription()
 
   const { data: item } = useGetSubscriptionsIdSuspense(id)
 
@@ -87,7 +89,7 @@ export function SubscriptionsEdit() {
           </Group>
         }
       >
-        <SubscriptionsForm form={form} isEditing />
+        <SubscriptionsForm form={form} plans={plans} isEditing />
       </PageEdit>
     </Form>
   )

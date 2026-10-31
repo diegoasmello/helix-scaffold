@@ -23,6 +23,7 @@ import { useTranslation } from 'react-i18next'
 
 import { HasPermission } from '../../auth/components/has-permission'
 import { SUBSCRIPTION_STATUS_COLORS } from '../constants'
+import { useSubscription } from '../hooks/use-subscription'
 import type { SubscriptionItem } from '../types'
 import { subscriptionsListRoute } from '.'
 
@@ -33,6 +34,7 @@ export function SubscriptionsList() {
   const { page, pageSize, sortBy, sortOrder } = search
   const { t } = useTranslation('subscription')
   const { t: tc } = useTranslation('common')
+  const { getPlanName } = useSubscription()
 
   const { data: subscriptionsResponse } = useGetSubscriptionsSuspense({
     page,
@@ -80,7 +82,12 @@ export function SubscriptionsList() {
 
   const columns: DataTableColumn<SubscriptionItem>[] = [
     { accessor: 'userId', title: t('columns.userId'), width: '20%' },
-    { accessor: 'planId', title: t('columns.planId'), sortable: true },
+    {
+      accessor: 'planId',
+      title: t('columns.planId'),
+      sortable: true,
+      render: (item) => getPlanName(item.planId),
+    },
     {
       accessor: 'status',
       title: t('columns.status'),

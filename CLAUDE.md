@@ -100,19 +100,23 @@ The scaffold supports optional subscription gating for products that require use
 | Setting (`app.config.ts`) | Default | Behaviour |
 | --- | --- | --- |
 | `subscriptions.enabled` | `false` | `true` activates all subscription infrastructure. `false` means zero overhead — no routes, no DB queries, no UI. |
+| `subscriptions.plans` | `[]` | The plan catalog: `{ id, name, features }[]`. Each plan lists the **features** (free keys, usually module names) it unlocks. Required when enabled. |
 | `subscriptions.trial` | `false` | `{ days, planId }`. When set (and registration is open and subscriptions are enabled), a trialing subscription is auto-created on user registration. |
 
 **Single source of truth:** the mode lives only in the backend config. The frontend reads `GET /subscription/status → { enabled: boolean }` once at startup and caches it for the session — no `VITE_*` duplication.
 
 **Admin bypass:** users whose role has the `subscriptions:view` permission are never blocked by `requireSubscription()`, regardless of whether they have an active subscription themselves. Operators can always access the product.
 
+**Gating by plan feature:** `requireSubscription('reports')` on a route and `<RequiresSubscription feature="reports">` (or `subscriptionFeature: 'reports'` on a sidebar item) in the UI allow only users whose plan lists `'reports'`. Without a feature, any active subscription passes. A feature no plan declares fails at API startup.
+
+**Subscription period is per user:** each `subscriptions` row has its own `currentPeriodStart`/`currentPeriodEnd`, but access is decided by `status` (`active`/`trialing`) only — dates are never compared. Payment webhooks (or an admin, or a job you write) must move status to `expired`/`canceled`.
+
 **Subscription vs. RBAC:** these are two independent axes. RBAC controls what you're *permitted* to do (role-based). Subscription controls whether you have *paid access* (billing-based). A route can require both — subscription is checked first.
 
 **What the scaffold does not dictate:**
-- Which plan IDs exist (`planId` is a free-form string — apps define their catalog)
-- Pricing and billing cycles
+- Which plans exist and which features they unlock (apps declare them in `subscriptions.plans`)
+- Pricing and billing cycles (they belong to the payment processor)
 - Payment processor integration (webhook handlers are app-level; they call the subscription service to update status)
-- Which features are gated per plan (apps use `<RequiresSubscription>` and `requireSubscription()` as needed)
 - Trial duration and trial plan ID (both in `subscriptions.trial` in `apps/api/src/app.config.ts`)
 
 See `apps/api/src/modules/subscriptions/CLAUDE.md` for the full backend documentation.  
@@ -122,10 +126,11 @@ See `apps/web/src/modules/subscriptions/CLAUDE.md` for all frontend subscription
 
 When `subscriptions.enabled` is `true`, the app is responsible for:
 
+- [ ] Declaring the plan catalog in `subscriptions.plans` (`src/app.config.ts`), with the features each plan unlocks
 - [ ] Setting `subscriptions.trial: { days, planId }` in `src/app.config.ts` (if trials are offered)
 - [ ] Implementing a webhook endpoint that calls `subscriptionsService` methods to update subscription status on billing events (renewal, cancellation, payment failure)
-- [ ] Adding `requireSubscription()` to routes that should be gated (inject it alongside `requirePermission` in route options, then add to the `preHandler` array)
-- [ ] Optionally rendering `<RequiresSubscription fallback={<UpgradePrompt />}>` around premium UI sections in the frontend
+- [ ] Adding `requireSubscription('<feature>')` to routes that should be gated (inject it alongside `requirePermission` in route options, then add to the `preHandler` array)
+- [ ] Hiding gated UI: `subscriptionFeature` on sidebar items, `<RequiresSubscription feature="..." fallback={<UpgradePrompt />}>` around premium sections
 
 ## Creating a new module
 

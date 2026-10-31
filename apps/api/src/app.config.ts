@@ -38,7 +38,12 @@ export default defineConfig(({ mode }) => ({
 
   subscriptions: {
     enabled: false,
-    // Auto-starts a trial on self-registration, e.g. { days: 14, planId: 'trial' }
+    // Plan catalog. `features` are the keys checked by requireSubscription('<feature>').
+    plans: [
+      { id: 'starter', name: 'Starter', features: [] },
+      { id: 'pro', name: 'Pro', features: ['todos'] },
+    ],
+    // Auto-starts a trial on self-registration, e.g. { days: 14, planId: 'pro' }
     trial: false,
   },
 

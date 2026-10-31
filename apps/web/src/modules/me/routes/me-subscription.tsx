@@ -15,7 +15,7 @@ import { SUBSCRIPTION_STATUS_COLORS } from '@/modules/subscriptions/constants'
 import { useSubscription } from '../../subscriptions/hooks/use-subscription'
 
 export function MeSubscription() {
-  const { subscription, isPending } = useSubscription()
+  const { subscription, plan, isPending } = useSubscription()
   const { t } = useTranslation('subscription')
 
   if (isPending) {
@@ -53,7 +53,7 @@ export function MeSubscription() {
 
         <Stack gap="xs">
           <LabeledValue label={t('me.labels.plan')}>
-            {subscription.planId}
+            {plan?.name ?? subscription.planId}
           </LabeledValue>
 
           <LabeledValue label={t('me.labels.status')}>

@@ -176,7 +176,7 @@ export const handlers = [
 
   // Subscriptions
   getSubscriptionStatusHandler(() =>
-    getSubscriptionStatusHandlerResponse200({ enabled: false })
+    getSubscriptionStatusHandlerResponse200({ enabled: false, plans: [] })
   ),
   getMeSubscriptionHandler(() => getMeSubscriptionHandlerResponse204()),
   getSubscriptionsHandler(

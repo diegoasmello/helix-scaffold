@@ -23,7 +23,8 @@ export type PreHandler = (
 ) => Promise<void>
 
 export type RequirePermission = (resource: string, action: string) => PreHandler
-export type RequireSubscription = () => PreHandler
+/** Pass a feature to also require that the user's plan includes it. */
+export type RequireSubscription = (feature?: string) => PreHandler
 
 declare module 'fastify' {
   interface FastifyRequest {

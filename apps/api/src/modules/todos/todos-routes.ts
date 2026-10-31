@@ -43,7 +43,10 @@ export async function todosRoutes(
         description: 'Export todos as PDF',
         querystring: todosExportQuerySchema,
       },
-      preHandler: [requireSubscription(), requirePermission('todos', 'view')],
+      preHandler: [
+        requireSubscription('todos'),
+        requirePermission('todos', 'view'),
+      ],
     },
     async (request, reply) => {
       let buffer: Buffer
@@ -78,7 +81,10 @@ export async function todosRoutes(
         querystring: todosListQuerySchema,
         response: { 200: paginatedTodosSchema },
       },
-      preHandler: [requireSubscription(), requirePermission('todos', 'view')],
+      preHandler: [
+        requireSubscription('todos'),
+        requirePermission('todos', 'view'),
+      ],
     },
     async (request) => {
       const { data, total } = await service.list(request.query)
@@ -98,7 +104,10 @@ export async function todosRoutes(
           404: z.object({ message: z.string() }),
         },
       },
-      preHandler: [requireSubscription(), requirePermission('todos', 'view')],
+      preHandler: [
+        requireSubscription('todos'),
+        requirePermission('todos', 'view'),
+      ],
     },
     async (request, reply) => {
       const todo = await service.getById(request.params.id)
@@ -116,7 +125,10 @@ export async function todosRoutes(
         body: createTodoSchema,
         response: { 201: todoSchema },
       },
-      preHandler: [requireSubscription(), requirePermission('todos', 'create')],
+      preHandler: [
+        requireSubscription('todos'),
+        requirePermission('todos', 'create'),
+      ],
     },
     async (request, reply) => {
       const todo = await service.create(request.body)
@@ -138,7 +150,10 @@ export async function todosRoutes(
           404: z.object({ message: z.string() }),
         },
       },
-      preHandler: [requireSubscription(), requirePermission('todos', 'edit')],
+      preHandler: [
+        requireSubscription('todos'),
+        requirePermission('todos', 'edit'),
+      ],
     },
     async (request, reply) => {
       const todo = await service.update(request.params.id, request.body)
@@ -157,7 +172,10 @@ export async function todosRoutes(
         params: z.object({ id: z.string() }),
         response: { 204: z.null().describe('Todo deleted') },
       },
-      preHandler: [requireSubscription(), requirePermission('todos', 'delete')],
+      preHandler: [
+        requireSubscription('todos'),
+        requirePermission('todos', 'delete'),
+      ],
     },
     async (request, reply) => {
       await service.remove(request.params.id)

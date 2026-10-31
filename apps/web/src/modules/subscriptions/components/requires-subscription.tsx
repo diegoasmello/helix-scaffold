@@ -1,21 +1,22 @@
 import type { ReactNode } from 'react'
 
-import { useSubscription } from '../hooks/use-subscription'
+import { useSubscriptionAccess } from '../hooks/use-subscription-access'
 
-interface RequiresSubscriptionProps {
+export interface RequiresSubscriptionProps {
   children: ReactNode
+  /** Also require the user's plan to include this feature. */
+  feature?: string
   fallback?: ReactNode
 }
 
 export function RequiresSubscription(
   props: Readonly<RequiresSubscriptionProps>
 ) {
-  const { children, fallback = null } = props
-  const { enabled, isActive, isTrialing, isPending } = useSubscription()
+  const { children, feature, fallback = null } = props
+
+  const { hasAccess, isPending } = useSubscriptionAccess()
 
   if (isPending) return null
 
-  if (!enabled) return <>{children}</>
-
-  return isActive || isTrialing ? <>{children}</> : <>{fallback}</>
+  return hasAccess(feature) ? <>{children}</> : <>{fallback}</>
 }

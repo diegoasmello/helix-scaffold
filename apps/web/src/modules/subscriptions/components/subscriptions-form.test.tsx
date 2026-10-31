@@ -19,17 +19,26 @@ const base: SubscriptionFormValues = {
   externalId: '',
 }
 
-function FormWrapper(props: Readonly<{ isEditing?: boolean }>) {
-  const { isEditing } = props
-  const form = useForm<SubscriptionFormValues>({ initialValues: base })
-  return <SubscriptionsForm form={form} isEditing={isEditing} />
+const plans = [
+  { id: 'starter', name: 'Starter', features: [] },
+  { id: 'pro', name: 'Pro', features: ['todos'] },
+]
+
+function FormWrapper(
+  props: Readonly<{ isEditing?: boolean; planId?: string }>
+) {
+  const { isEditing, planId = '' } = props
+  const form = useForm<SubscriptionFormValues>({
+    initialValues: { ...base, planId },
+  })
+  return <SubscriptionsForm form={form} plans={plans} isEditing={isEditing} />
 }
 
-function renderForm(isEditing?: boolean) {
+function renderForm(isEditing?: boolean, planId?: string) {
   render(
     <MantineProvider>
       <MantineEmotionProvider>
-        <FormWrapper isEditing={isEditing} />
+        <FormWrapper isEditing={isEditing} planId={planId} />
       </MantineEmotionProvider>
     </MantineProvider>
   )
@@ -38,7 +47,7 @@ function renderForm(isEditing?: boolean) {
 describe('SubscriptionsForm', () => {
   it('renders all field labels', () => {
     renderForm()
-    expect(screen.getByText('Plan ID')).toBeInTheDocument()
+    expect(screen.getByText('Plan')).toBeInTheDocument()
     expect(screen.getByText('Status')).toBeInTheDocument()
     expect(screen.getByText('Period start')).toBeInTheDocument()
     expect(screen.getByText('Period end')).toBeInTheDocument()
@@ -54,10 +63,18 @@ describe('SubscriptionsForm', () => {
     expect(screen.queryByTestId('user-select-field')).not.toBeInTheDocument()
   })
 
-  it('marks plan ID as required', () => {
+  it('marks plan as required', () => {
     renderForm()
-    expect(
-      screen.getByPlaceholderText('e.g. pro, starter, enterprise')
-    ).toBeRequired()
+    expect(screen.getByPlaceholderText('Select a plan')).toBeRequired()
+  })
+
+  it('shows the plan name for a plan in the catalog', () => {
+    renderForm(true, 'pro')
+    expect(screen.getByPlaceholderText('Select a plan')).toHaveValue('Pro')
+  })
+
+  it('keeps a plan removed from the catalog selectable', () => {
+    renderForm(true, 'legacy')
+    expect(screen.getByPlaceholderText('Select a plan')).toHaveValue('legacy')
   })
 })

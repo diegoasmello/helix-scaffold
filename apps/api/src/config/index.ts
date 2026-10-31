@@ -61,11 +61,29 @@ function validateAgainstEnv(resolved: ResolvedAppConfig) {
     }
   }
 
+  const { plans, trial, enabled } = resolved.subscriptions
+  const planIds = plans.map((plan) => plan.id)
+  const duplicates = planIds.filter((id, i) => planIds.indexOf(id) !== i)
+  if (duplicates.length > 0) {
+    errors.push(
+      `subscriptions.plans has duplicate ids: ${[...new Set(duplicates)].join(', ')}`
+    )
+  }
+  if (enabled && plans.length === 0) {
+    errors.push(
+      'subscriptions.enabled is true, but subscriptions.plans is empty — declare at least one plan'
+    )
+  }
+  if (enabled && trial && !planIds.includes(trial.planId)) {
+    errors.push(
+      `subscriptions.trial.planId '${trial.planId}' is not one of subscriptions.plans (${planIds.join(', ')})`
+    )
+  }
+
   if (errors.length > 0) {
     throw new Error(`Invalid src/app.config.ts:\n  ✖ ${errors.join('\n  ✖ ')}`)
   }
 
-  const { trial, enabled } = resolved.subscriptions
   if (trial && (!enabled || resolved.registration.mode !== 'open')) {
     console.warn(
       "[config] subscriptions.trial has no effect: it requires subscriptions.enabled = true and registration.mode = 'open'"

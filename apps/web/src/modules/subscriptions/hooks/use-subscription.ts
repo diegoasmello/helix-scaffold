@@ -12,6 +12,7 @@ export function useSubscription() {
   })
 
   const enabled = statusData?.enabled ?? false
+  const plans = statusData?.plans ?? []
 
   const { data, isPending: subscriptionPending } = useQuery({
     ...getMeSubscriptionQueryOptions(),
@@ -23,9 +24,19 @@ export function useSubscription() {
   const isPending = statusPending || (enabled && subscriptionPending)
 
   const subscription = (data as Subscription | null | undefined) ?? null
+  const plan = subscription
+    ? (plans.find((p) => p.id === subscription.planId) ?? null)
+    : null
+
+  // Falls back to the raw id for plans no longer in the catalog.
+  const getPlanName = (planId: string) =>
+    plans.find((p) => p.id === planId)?.name ?? planId
 
   return {
     subscription,
+    plan,
+    plans,
+    getPlanName,
     isActive: subscription?.status === 'active',
     isTrialing: subscription?.status === 'trialing',
     isPending,

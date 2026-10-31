@@ -6,6 +6,8 @@ import {
 } from '@/lib/pagination'
 import { sortingQuerySchema } from '@/lib/sorting'
 
+import { isKnownPlan } from './subscription-plans'
+
 export const SUBSCRIPTION_STATUSES = [
   'active',
   'trialing',
@@ -33,9 +35,26 @@ export const subscriptionSchema = z
   })
   .meta({ id: 'Subscription', title: 'Subscription' })
 
+export const subscriptionPlanSchema = z
+  .object({
+    id: z.string(),
+    name: z.string(),
+    features: z.array(z.string()),
+  })
+  .meta({ id: 'SubscriptionPlan', title: 'SubscriptionPlan' })
+
+// Validated against `subscriptions.plans` in src/app.config.ts. Kept as a plain
+// string in the OpenAPI spec so the catalog can change without regenerating
+// the client — the frontend reads it from GET /subscription/status.
+const planIdSchema = z
+  .string()
+  .min(1)
+  .max(100)
+  .refine(isKnownPlan, { message: 'Unknown plan' })
+
 export const createSubscriptionSchema = z.object({
   userId: z.string().min(1),
-  planId: z.string().min(1).max(100),
+  planId: planIdSchema,
   status: z.enum(SUBSCRIPTION_STATUSES).default('active'),
   currentPeriodStart: z.coerce.date(),
   currentPeriodEnd: z.coerce.date(),
@@ -45,7 +64,7 @@ export const createSubscriptionSchema = z.object({
 })
 
 export const updateSubscriptionSchema = z.object({
-  planId: z.string().min(1).max(100).optional(),
+  planId: planIdSchema.optional(),
   status: z.enum(SUBSCRIPTION_STATUSES).optional(),
   currentPeriodStart: z.coerce.date().optional(),
   currentPeriodEnd: z.coerce.date().optional(),

@@ -27,10 +27,27 @@ export interface AppleProviderConfig extends SocialProviderConfig {
   appBundleId?: string
 }
 
+export interface PlanConfig {
+  /**
+   * Stable identifier stored on each subscription (`planId`) and sent by your
+   * payment processor's webhooks. Do not rename it once subscriptions use it.
+   */
+  id: string
+  /** Display name shown in the admin panel and on the user's subscription page. */
+  name: string
+  /**
+   * Features this plan unlocks. A feature is any key you choose — usually a
+   * module name (`'todos'`) or a capability (`'pdf-export'`). Gate routes with
+   * `requireSubscription('<feature>')` and UI with
+   * `<RequiresSubscription feature="<feature>">`.
+   */
+  features: string[]
+}
+
 export interface TrialConfig {
   /** Trial length in days. */
   days: number
-  /** `planId` stored on the trial subscription. Must match your plan catalog. */
+  /** Plan assigned to the trial subscription. Must be one of `subscriptions.plans`. */
   planId: string
 }
 
@@ -82,6 +99,13 @@ export interface AppConfig {
      * @default false
      */
     enabled?: boolean
+    /**
+     * Plan catalog. Every subscription's `planId` must be one of these ids.
+     * Required (at least one plan) when `enabled: true`.
+     * Pricing and billing intervals belong to your payment processor, not here.
+     * @default []
+     */
+    plans?: PlanConfig[]
     /**
      * Auto-creates a trialing subscription when a user self-registers.
      * Only takes effect when `enabled: true` and `registration.mode: 'open'`.
@@ -196,6 +220,15 @@ export const appConfigSchema = z.strictObject({
   subscriptions: z
     .strictObject({
       enabled: z.boolean().default(false),
+      plans: z
+        .array(
+          z.strictObject({
+            id: z.string().min(1).max(100),
+            name: z.string().min(1),
+            features: z.array(z.string().min(1)),
+          })
+        )
+        .default([]),
       trial: z
         .union([
           z.literal(false),

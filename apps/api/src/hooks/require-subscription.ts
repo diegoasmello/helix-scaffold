@@ -1,6 +1,10 @@
 import { config } from '@/config'
 import type { Database } from '@/db'
 import { createPermissionsService } from '@/modules/permissions/permissions-service'
+import {
+  isKnownFeature,
+  planHasFeature,
+} from '@/modules/subscriptions/subscription-plans'
 import { createSubscriptionsService } from '@/modules/subscriptions/subscriptions-service'
 import type { PreHandler, RequireSubscription } from '@/types'
 
@@ -10,9 +14,16 @@ export function createRequireSubscription(
   const subscriptionsService = createSubscriptionsService(database)
   const permissionsService = createPermissionsService(database)
 
-  return function requireSubscription(): PreHandler {
+  return function requireSubscription(feature?: string): PreHandler {
     if (!config.subscriptions.enabled) {
       return async () => {}
+    }
+
+    // Runs at route registration, so a typo fails at startup.
+    if (feature && !isKnownFeature(feature)) {
+      throw new Error(
+        `requireSubscription('${feature}'): no plan in subscriptions.plans (src/app.config.ts) includes this feature`
+      )
     }
 
     return async (request, reply) => {
@@ -34,6 +45,12 @@ export function createRequireSubscription(
         return reply
           .status(403)
           .send({ message: 'Active subscription required' })
+      }
+
+      if (feature && !planHasFeature(sub.planId, feature)) {
+        return reply
+          .status(403)
+          .send({ message: 'Your plan does not include this feature' })
       }
     }
   }

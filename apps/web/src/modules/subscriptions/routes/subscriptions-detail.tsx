@@ -4,6 +4,7 @@ import { formatDate, parseISO } from 'date-fns'
 import { useTranslation } from 'react-i18next'
 
 import { SUBSCRIPTION_STATUS_COLORS } from '../constants'
+import { useSubscription } from '../hooks/use-subscription'
 import { subscriptionsDetailRoute, subscriptionsListRoute } from '.'
 
 export function SubscriptionsDetail() {
@@ -11,6 +12,7 @@ export function SubscriptionsDetail() {
   const navigate = subscriptionsListRoute.useNavigate()
   const { t } = useTranslation('subscription')
   const { t: tc } = useTranslation('common')
+  const { getPlanName } = useSubscription()
 
   const { data: item } = useGetSubscriptionsIdSuspense(id)
 
@@ -34,7 +36,9 @@ export function SubscriptionsDetail() {
       <Stack gap="md">
         <LabeledValue label={t('labels.userId')}>{item.userId}</LabeledValue>
 
-        <LabeledValue label={t('labels.planId')}>{item.planId}</LabeledValue>
+        <LabeledValue label={t('labels.planId')}>
+          {getPlanName(item.planId)}
+        </LabeledValue>
 
         <LabeledValue label={t('labels.status')}>
           <Badge color={statusColor} variant="light">

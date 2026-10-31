@@ -3,10 +3,11 @@ import { DateInput, Grid, GridCol, Select, TextInput } from '@helix/ui'
 import { useTranslation } from 'react-i18next'
 
 import { UserSelectField } from '../../users/components/user-select-field'
-import type { SubscriptionFormValues } from '../types'
+import type { SubscriptionFormValues, SubscriptionPlan } from '../types'
 
-interface SubscriptionsFormProps {
+export interface SubscriptionsFormProps {
   form: UseFormReturnType<SubscriptionFormValues>
+  plans: SubscriptionPlan[]
   isEditing?: boolean
 }
 
@@ -19,8 +20,19 @@ const STATUS_OPTIONS = [
 ] as const
 
 export function SubscriptionsForm(props: Readonly<SubscriptionsFormProps>) {
-  const { form, isEditing = false } = props
+  const { form, plans, isEditing = false } = props
+
   const { t } = useTranslation('subscription')
+
+  const planOptions = plans.map((plan) => ({
+    value: plan.id,
+    label: plan.name,
+  }))
+  // Keep a plan that was removed from the catalog selectable on edit.
+  const currentPlanId = form.values.planId
+  if (currentPlanId && !plans.some((plan) => plan.id === currentPlanId)) {
+    planOptions.push({ value: currentPlanId, label: currentPlanId })
+  }
 
   return (
     <Grid>
@@ -31,10 +43,12 @@ export function SubscriptionsForm(props: Readonly<SubscriptionsFormProps>) {
       )}
 
       <GridCol span={{ base: 12, sm: 6 }}>
-        <TextInput
+        <Select
           label={t('form.planId.label')}
           placeholder={t('form.planId.placeholder')}
           required
+          data={planOptions}
+          allowDeselect={false}
           {...form.getInputProps('planId')}
         />
       </GridCol>

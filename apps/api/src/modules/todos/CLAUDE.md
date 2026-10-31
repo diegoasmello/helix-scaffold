@@ -40,20 +40,20 @@ Pure SQL, no business logic. Factory `createTodosService(database)` returns `{ l
 
 ## Routes (`todos-routes.ts`)
 
-All routes require **both** an active subscription (via `requireSubscription()`) **and** an RBAC permission. The `preHandler` arrays follow this order — subscription check first, then permission:
+All routes require **both** an active subscription whose plan includes the `todos` feature (via `requireSubscription('todos')`) **and** an RBAC permission. The `preHandler` arrays follow this order — subscription check first, then permission:
 
 ```ts
-preHandler: [requireSubscription(), requirePermission('todos', 'view')]
+preHandler: [requireSubscription('todos'), requirePermission('todos', 'view')]
 ```
 
 | Method | Path | `preHandler` | Audit call |
 | --- | --- | --- | --- |
-| `GET` | `/todos/export` | `[requireSubscription(), requirePermission('todos', 'view')]` | `request.audit('export', ...)` |
-| `GET` | `/todos` | `[requireSubscription(), requirePermission('todos', 'view')]` | — |
-| `GET` | `/todos/:id` | `[requireSubscription(), requirePermission('todos', 'view')]` | — |
-| `POST` | `/todos` | `[requireSubscription(), requirePermission('todos', 'create')]` | `request.audit('create', 'todos', id, body)` |
-| `PATCH` | `/todos/:id` | `[requireSubscription(), requirePermission('todos', 'edit')]` | `request.audit('edit', 'todos', id, body)` |
-| `DELETE` | `/todos/:id` | `[requireSubscription(), requirePermission('todos', 'delete')]` | `request.audit('delete', 'todos', id)` |
+| `GET` | `/todos/export` | `[requireSubscription('todos'), requirePermission('todos', 'view')]` | `request.audit('export', ...)` |
+| `GET` | `/todos` | `[requireSubscription('todos'), requirePermission('todos', 'view')]` | — |
+| `GET` | `/todos/:id` | `[requireSubscription('todos'), requirePermission('todos', 'view')]` | — |
+| `POST` | `/todos` | `[requireSubscription('todos'), requirePermission('todos', 'create')]` | `request.audit('create', 'todos', id, body)` |
+| `PATCH` | `/todos/:id` | `[requireSubscription('todos'), requirePermission('todos', 'edit')]` | `request.audit('edit', 'todos', id, body)` |
+| `DELETE` | `/todos/:id` | `[requireSubscription('todos'), requirePermission('todos', 'delete')]` | `request.audit('delete', 'todos', id)` |
 
 `GET /todos/export` must be registered **before** `GET /todos` — Fastify matches routes in registration order and `/todos/export` would otherwise be captured by `/todos/:id`.
 
@@ -69,7 +69,7 @@ When registering a new module that uses `requireSubscription`, mirror this patte
 
 ### Behavior with `subscriptions.enabled: false`
 
-When subscription mode is disabled, `requireSubscription()` returns a no-op preHandler. Todos routes work exactly as before — the `[requireSubscription(), requirePermission(...)]` array simply runs the permission check only. No code changes are needed to toggle this behavior.
+When subscription mode is disabled, `requireSubscription('todos')` returns a no-op preHandler. Todos routes work exactly as before — the `[requireSubscription('todos'), requirePermission(...)]` array simply runs the permission check only. No code changes are needed to toggle this behavior.
 
 `DELETE` returns `204` even when the id does not exist (Drizzle `delete().where()` is a no-op on missing rows).
 

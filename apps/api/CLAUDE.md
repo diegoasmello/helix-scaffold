@@ -26,6 +26,7 @@ The file a developer edits to shape the app. Written with `defineConfig()` (Vite
 | `registration.mode` | `'closed'` | `'open'` enables public self-registration. See `src/modules/registration/CLAUDE.md`. |
 | `auth.socialProviders.{google,facebook,apple}.enabled` | `false` | Requires the provider's `CLIENT_ID`/`CLIENT_SECRET` in `.env`; startup fails otherwise. `apple.appBundleId` is optional (native iOS). |
 | `subscriptions.enabled` | `false` | Activates the subscription infrastructure (routes, hooks, trial auto-start). See `src/modules/subscriptions/CLAUDE.md`. |
+| `subscriptions.plans` | `[]` | Plan catalog: `{ id, name, features }[]`. Required (non-empty) when enabled. `features` are the keys checked by `requireSubscription('<feature>')`. |
 | `subscriptions.trial` | `false` | `{ days, planId }` — auto-creates a trialing subscription on self-registration (requires `registration.mode: 'open'` and `subscriptions.enabled: true`; a warning is logged otherwise). |
 | `email.from` | `'noreply@localhost'` | Sender address. Must be from a domain verified in Resend for production. |
 | `uploads.storage` | `'local'` | `'s3'` stub exists but throws |
@@ -95,12 +96,12 @@ The `src/hooks/` directory contains request-lifecycle hooks injected into the au
 | --- | --- | --- |
 | `require-auth.ts` | `createRequireAuth(auth)` | Validates the session cookie; attaches `request.sessionUser` |
 | `require-permission.ts` | `createRequirePermission(database)` | Returns `requirePermission(resource, action) → PreHandler`; enforces RBAC per route |
-| `require-subscription.ts` | `createRequireSubscription(database)` | Returns `requireSubscription() → PreHandler`; enforces active subscription per route |
+| `require-subscription.ts` | `createRequireSubscription(database)` | Returns `requireSubscription(feature?) → PreHandler`; enforces active subscription (and plan feature) per route |
 | `audit-request.ts` | `registerAuditRequest(app, auditService)` | Attaches `request.audit(action, resource, id?, metadata?)` globally |
 
 ### `requireSubscription` — subscription gate
 
-`requireSubscription()` is a preHandler factory analogous to `requirePermission()`. Add it to any route that should require an active subscription:
+`requireSubscription(feature?)` is a preHandler factory analogous to `requirePermission()`. Add it to any route that should require an active subscription; pass a feature to also require the user's plan to include it (see `subscriptions.plans` in `src/app.config.ts`):
 
 ```ts
 // In app.ts — create alongside requirePermission
@@ -111,7 +112,7 @@ authenticated.register(featureRoutes, { database, requirePermission, requireSubs
 
 // In feature-routes.ts — use as preHandler
 app.get('/feature', {
-  preHandler: [requireSubscription(), requirePermission('feature', 'view')],
+  preHandler: [requireSubscription('feature'), requirePermission('feature', 'view')],
   // ...
 })
 ```
@@ -122,7 +123,7 @@ app.get('/feature', {
 
 **When `subscriptions.enabled` is `false`:** `requireSubscription()` returns a no-op preHandler. Routes decorated with it work normally, so apps can add `requireSubscription()` to routes today and activate enforcement later by setting `subscriptions.enabled: true` in `src/app.config.ts`.
 
-The `todos` module uses `requireSubscription()` on all its routes as the reference implementation. See `src/modules/subscriptions/CLAUDE.md` for the full subscription documentation.
+The `todos` module uses `requireSubscription('todos')` on all its routes as the reference implementation. A feature that no plan declares throws at startup. See `src/modules/subscriptions/CLAUDE.md` for the full subscription documentation.
 
 ### Trial config
 

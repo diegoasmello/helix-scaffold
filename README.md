@@ -9,7 +9,7 @@ A full-stack TypeScript monorepo scaffold. Clone it, configure your env, and sta
 | **Authentication**      | Email/password + social login (Google, Facebook, Apple) via `better-auth`                                       |
 | **RBAC**                | Roles, permissions, per-route guards on both backend and frontend                                               |
 | **Registration modes**  | `closed` (admin-only) or `open` (self-registration) — toggled via a single env var                              |
-| **Subscription gating** | Optional billing layer: `requireSubscription()` on routes, `<RequiresSubscription>` in the UI, trial auto-start |
+| **Subscription gating** | Optional billing layer: plan catalog with per-plan features, `requireSubscription('feature')` on routes, `<RequiresSubscription feature>` in the UI, trial auto-start |
 | **File uploads**        | Multi-file and single-file inputs with image processing (4 WebP variants via sharp), local storage provider     |
 | **Email**               | Transactional email via Resend                                                                                  |
 | **PDF export**          | Server-side PDF reports via `@react-pdf/renderer`                                                               |
@@ -156,7 +156,14 @@ Backend configuration is split in two:
 export default defineConfig(({ mode }) => ({
   registration: { mode: 'open' },
   auth: { socialProviders: { google: { enabled: true } } },
-  subscriptions: { enabled: true, trial: { days: 14, planId: 'trial' } },
+  subscriptions: {
+    enabled: true,
+    plans: [
+      { id: 'starter', name: 'Starter', features: ['todos'] },
+      { id: 'pro', name: 'Pro', features: ['todos', 'reports'] },
+    ],
+    trial: { days: 14, planId: 'pro' },
+  },
   email: { from: 'hello@myapp.com' },
   uploads: { maxSizeMb: 20 },
   logger: { pretty: mode !== 'production' },
@@ -168,6 +175,7 @@ export default defineConfig(({ mode }) => ({
 | `registration.mode`              | `'closed'`  | `'open'` enables self-registration and social login buttons       |
 | `auth.socialProviders.<name>`    | disabled    | `google` / `facebook` / `apple`; credentials go in `.env`         |
 | `subscriptions.enabled`          | `false`     | Activates the full subscription infrastructure                    |
+| `subscriptions.plans`            | `[]`        | Plan catalog; each plan lists the features it unlocks             |
 | `subscriptions.trial`            | `false`     | `{ days, planId }` auto-creates a trial on registration           |
 | `email.from`                     | `noreply@…` | Sender address for outgoing email                                 |
 | `uploads.*`                      | —           | Storage backend, directory, max size, orphan cleanup schedule     |

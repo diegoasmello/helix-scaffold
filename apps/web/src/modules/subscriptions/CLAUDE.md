@@ -2,7 +2,7 @@
 
 This module is the single home for everything subscription-related in the frontend: shared hooks, the guard component, and the admin CRUD screens.
 
-- **Hooks** — `useSubscription`, consumed across the app
+- **Hooks** — `useSubscription` (state + plan catalog) and `useSubscriptionAccess` (feature gate), consumed across the app
 - **Components** — `RequiresSubscription` guard + admin form fields
 - **Admin routes** — operator-facing CRUD for managing subscriptions manually
 
@@ -17,9 +17,11 @@ src/modules/subscriptions/
 ├── types.ts
 ├── validation.ts
 ├── hooks/
-│   └── use-subscription.ts           ← reads status + user subscription in one hook
+│   ├── use-subscription.ts           ← reads status (incl. plan catalog) + user subscription
+│   └── use-subscription-access.ts    ← hasAccess(feature?) — mirrors the API's requireSubscription()
 ├── components/
 │   ├── requires-subscription.tsx     ← conditional render guard (like HasPermission)
+│   ├── requires-subscription.test.tsx
 │   └── subscriptions-form.tsx        ← shared admin form fields (create + edit)
 └── routes/
     ├── index.ts                      ← route constants + combined array
@@ -39,12 +41,16 @@ src/modules/subscriptions/
 The single hook for all subscription state. Internally fetches both `GET /subscription/status` (cached with `staleTime: Infinity`) and `GET /me/subscription` (only when enabled).
 
 ```ts
-const { subscription, isActive, isTrialing, isPending, enabled } = useSubscription()
+const { subscription, plan, plans, getPlanName, isActive, isTrialing, isPending, enabled } =
+  useSubscription()
 ```
 
 **Returns:**
 - `enabled: boolean` — `true` when `subscriptions.enabled` is `true` in `apps/api/src/app.config.ts`
+- `plans: SubscriptionPlan[]` — the catalog `{ id, name, features }` from `subscriptions.plans` in the API config (`[]` when disabled)
 - `subscription: Subscription | null` — active/trialing subscription, or `null`
+- `plan: SubscriptionPlan | null` — the catalog entry for `subscription.planId` (`null` if none, or if the plan was removed from the catalog)
+- `getPlanName(planId)` — display name for any plan id; falls back to the raw id for plans no longer in the catalog
 - `isActive: boolean` — `subscription.status === 'active'`
 - `isTrialing: boolean` — `subscription.status === 'trialing'`
 - `isPending: boolean` — `true` while `GET /subscription/status` **or** `GET /me/subscription` is in flight
@@ -62,6 +68,17 @@ const { enabled: subscriptionEnabled } = useSubscription()
 // ❌ old pattern — no longer exists
 const { enabled } = useSubscriptionMode()
 ```
+
+### `useSubscriptionAccess()`
+
+```ts
+const { hasAccess, isPending } = useSubscriptionAccess()
+
+hasAccess()          // any active/trialing subscription
+hasAccess('reports') // ...and the plan lists 'reports' in its features
+```
+
+Mirrors `requireSubscription()` in the API so the UI hides exactly what the API would reject: always `true` when subscriptions are disabled, and for users with `subscriptions:view` (operators). `isPending` also waits for the user's permissions, so operators never see a fallback flash. Kept separate from `useSubscription()` because it depends on `useAuth()`.
 
 ### Importing
 
@@ -84,17 +101,16 @@ Conditional render guard. Mirrors `<HasPermission>` in structure and intent.
 ```tsx
 import { RequiresSubscription } from '../components/requires-subscription'
 
-<RequiresSubscription fallback={<UpgradePrompt />}>
+<RequiresSubscription feature="reports" fallback={<UpgradePrompt />}>
   <PremiumFeature />
 </RequiresSubscription>
 ```
 
-- **`children`** — rendered when user has `status: 'active'` or `'trialing'`, or when `enabled=false`
-- **`fallback`** — rendered when user has no active subscription; defaults to `null`
+- **`feature`** — optional; when set, the user's plan must list it in `features`
+- **`children`** — rendered when `useSubscriptionAccess().hasAccess(feature)` is `true`
+- **`fallback`** — rendered otherwise; defaults to `null`. Nothing renders while `isPending`.
 
 **When `enabled=false`:** always renders children. Safe to add to components now and enable enforcement later.
-
-**Implementation:** calls `useSubscription()` only — no separate `useSubscriptionMode()` call needed, since `enabled` is already on the `useSubscription()` return value.
 
 ### `subscriptions-form.tsx`
 
@@ -108,6 +124,7 @@ Shared form fields for the admin create and edit screens. See _Form component_ s
 | --- | --- |
 | `SubscriptionItem` | `Subscription` |
 | `SubscriptionStatus` | `SubscriptionStatusEnumKey` |
+| `SubscriptionPlan` | `SubscriptionPlan` |
 | `CreateSubscriptionInput` | `PostSubscriptionsMutationRequest` |
 | `UpdateSubscriptionInput` | `PatchSubscriptionsIdMutationRequest` |
 
@@ -180,11 +197,11 @@ Loader: `queryClient.ensureQueryData(getSubscriptionsIdSuspenseQueryOptions(para
 
 ## Form component (`components/subscriptions-form.tsx`)
 
-Shared between create and edit. Accepts `isEditing?: boolean` — when `true`, the `userId` field is hidden (can't change the owner of a subscription after creation).
+Shared between create and edit. Receives `plans` (from `useSubscription()` in the route) and `isEditing?: boolean` — when `true`, the `userId` field is hidden (can't change the owner of a subscription after creation).
 
 Fields rendered:
 - `userId` — `TextInput`, required, hidden when `isEditing`
-- `planId` — `TextInput`, required (free-form; app defines valid values)
+- `planId` — `Select` of the catalog (`label: plan.name`), required. On edit, a `planId` no longer in the catalog is appended as an extra option so the form still shows it
 - `status` — `Select` with all five status values (`active`, `trialing`, `canceled`, `past_due`, `expired`)
 - `currentPeriodStart` — `DateInput`, required
 - `currentPeriodEnd` — `DateInput`, required
@@ -198,6 +215,7 @@ All `DateInput` fields bind `value` and `onChange` manually (not via `getInputPr
 ## List screen (`subscriptions-list.tsx`)
 
 - `DataTable` with pagination and sorting (no filters — not needed for an ops tool)
+- Plan column renders `getPlanName(item.planId)`
 - Status column renders a colored `Badge` using the `STATUS_COLORS` map
 - `currentPeriodEnd` column renders `new Date(value).toLocaleDateString()`
 - Actions column: View (always), Edit (behind `subscriptions:edit`), Delete (behind `subscriptions:delete`)
@@ -238,7 +256,7 @@ The `/me/subscription` route lives in the `me` module but consumes `useSubscript
 **Behavior:**
 - Shows a `<Loader>` while `isPending: true` (status or subscription fetching)
 - Shows "No active subscription" when `subscription: null`
-- Shows plan ID, status badge (colored by `STATUS_COLORS`), trial end date (when `trialEndsAt` is set), period start/end when a subscription exists
+- Shows the plan name (`plan?.name`, falling back to the raw `planId`), status badge (colored by `STATUS_COLORS`), trial end date (when `trialEndsAt` is set), period start/end when a subscription exists
 
 **Navigation:** the tab only appears in `MePage`'s sidebar when `enabled: true`. `MePage` calls `useSubscription()` and conditionally renders the `NavigationItem` based on the `enabled` flag. The `meSubscriptionRoute` `beforeLoad` also checks the subscription mode and redirects to `/me/account` when subscriptions are disabled, so direct URL navigation is blocked when the feature is off.
 
@@ -259,11 +277,20 @@ The `/me/subscription` route lives in the `me` module but consumes `useSubscript
 }
 ```
 
-The `requiresSubscriptionEnabled: true` flag causes `app.tsx` to hide this item when subscriptions are disabled. The filtering logic in `app.tsx`:
+The `requiresSubscriptionEnabled: true` flag causes `app.tsx` to hide this item when subscriptions are disabled.
+
+Items gated by plan use `subscriptionFeature` instead — `todos` is the reference:
+
+```ts
+{ label: 'nav.todos', to: '/todos', permission: { resource: 'todos', action: 'view' }, subscriptionFeature: 'todos' }
+```
+
+The filtering logic in `app.tsx` (which also waits for `useSubscriptionAccess().isPending` before rendering the layout):
 
 ```ts
 .filter((item) => {
   if (item.requiresSubscriptionEnabled && !subscriptionEnabled) return false
+  if (item.subscriptionFeature && !hasAccess(item.subscriptionFeature)) return false
   return item.permission
     ? hasPermission(item.permission.resource, item.permission.action)
     : isAuthenticated
@@ -304,7 +331,7 @@ deleteSubscriptionsIdHandler(() => deleteSubscriptionsIdHandlerResponse204())
 Integration tests for this module also need:
 ```ts
 // Override subscription status to enabled
-getSubscriptionStatusHandler(() => getSubscriptionStatusHandlerResponse200({ enabled: true }))
+getSubscriptionStatusHandler(() => getSubscriptionStatusHandlerResponse200({ enabled: true, plans }))
 // Provide subscription mode to allow subscriptions list to render
 getMeSubscriptionHandler(() => getMeSubscriptionHandlerResponse204())
 ```
