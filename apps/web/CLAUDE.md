@@ -1864,6 +1864,59 @@ vi.mock('@tanstack/react-router', async (importOriginal) => {
 
 This is safe to combine with `vi.mock('.')` (the local route index mock) because `@tanstack/react-router` is an external package and does not trigger the circular dependency that makes the local mock necessary.
 
+**jsdom and Mantine gotchas**
+
+These come up whenever a test renders real Mantine components instead of mocks:
+
+- **Native `required` blocks a button-click submit.** In jsdom, clicking the submit button runs the browser's constraint validation first. An empty `required` input cancels the submit, so the Mantine validators never run and no error text appears. To test empty-field validation, submit the form element directly:
+
+  ```ts
+  const { container } = renderBootstrap()
+  fireEvent.submit(container.querySelector('form')!)
+  expect(await screen.findAllByText('Required')).toHaveLength(2)
+  ```
+
+  Inside a drawer or modal, scope it: `fireEvent.submit(dialog.querySelector('form')!)`. Clicking the button still works when every `required` field is filled, which is the case in submit-and-check-payload tests. Create/Edit tests that mock the form component (plain `<input>` without `required`) are not affected.
+
+- **`Select` options are hidden.** The dropdown's open transition never finishes in jsdom, so its options stay out of the accessibility tree. Pass `hidden: true` to find and click them:
+
+  ```ts
+  await userEvent.click(await screen.findByPlaceholderText('Pick one'))
+  await userEvent.click(
+    await screen.findByRole('option', { name: 'Admin', hidden: true })
+  )
+  ```
+
+- **The notifications store is global.** Notifications shown by `notify()` live in a module-level store that survives RTL's unmount between tests. A notification from one test is still there in the next, so `findByText` fails with "Found multiple elements". Every file that renders `<Notifications />` and asserts on notification text must clean the store:
+
+  ```ts
+  import { notifications } from '@helix/ui'
+
+  afterEach(() => {
+    vi.clearAllMocks()
+    notifications.clean()
+  })
+  ```
+
+- **`createStyles` needs `MantineEmotionProvider`.** Without it the component throws "Emotion cache is not available in context". This includes shared components that use it internally, such as `LabeledValue` (detail screens) and `RoleSelectField`. When in doubt, add the provider.
+
+- **Asserting a loading state.** Make the request hang with MSW's `delay('infinite')`, then look for the Mantine loader:
+
+  ```ts
+  import { delay } from 'msw'
+
+  server.use(
+    getMeSubscriptionHandler(async () => {
+      await delay('infinite')
+      return getMeSubscriptionHandlerResponse204()
+    })
+  )
+  const { container } = renderMeSubscription()
+  expect(container.querySelector('.mantine-Loader-root')).toBeInTheDocument()
+  ```
+
+- **Testing `App` (`src/app.tsx`).** The real `Layout` renders `<Outlet />`, which needs a `RouterProvider`. `app.test.tsx` mocks `Layout` from `@helix/ui` (keeping all other exports through `importOriginal`) with a stub that renders the `sidebarGroups` as links plus buttons for `onAccountSettings` and `onLogout`. The test then asserts on what `App` computes, not on the layout's markup. Extend that stub instead of rendering the real layout.
+
 **Mocking the shared form component in Create/Edit tests**
 
 Create and Edit screens render a shared `XxxForm` component that contains Mantine inputs, `RichTextEditor`, and file upload fields — all hard to interact with in jsdom. Mock `XxxForm` with a simplified version that receives the real form instance:
