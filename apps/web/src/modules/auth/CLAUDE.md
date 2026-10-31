@@ -8,18 +8,25 @@ Provides the authentication layer consumed by the entire application: session st
 src/modules/auth/
 ├── types.ts                        ← User and AuthState types
 ├── use-auth.ts                     ← primary auth hook
-└── components/
+├── components/
 │   ├── auth-guard.tsx              ← authenticated route wrapper
 │   ├── has-permission.tsx          ← conditional render by permission
-│   └── social-login-buttons.tsx   ← OAuth provider buttons (Google, Facebook, Apple)
+│   └── social-login-buttons.tsx    ← OAuth provider buttons (Google, Facebook, Apple)
 └── routes/
     ├── index.ts                    ← bootstrapRoute, loginRoute, signUpRoute, forgotPasswordRoute, resetPasswordRoute
     ├── bootstrap.tsx               ← first-run admin setup screen
+    ├── bootstrap.test.tsx
     ├── login.tsx                   ← sign-in screen
+    ├── login.test.tsx              ← also covers SocialLoginButtons
     ├── sign-up.tsx                 ← self-registration screen
+    ├── sign-up.test.tsx            ← also covers SocialLoginButtons
     ├── forgot-password.tsx         ← request password reset by email
-    └── reset-password.tsx          ← set new password via token from email link
+    ├── forgot-password.test.tsx
+    ├── reset-password.tsx          ← set new password via token from email link
+    └── reset-password.test.tsx
 ```
+
+`use-auth.ts`, `AuthGuard` and `HasPermission` have no test files of their own. `HasPermission` and `useAuth` are covered by every list-screen test that checks permission-gated buttons, and by `src/app.test.tsx`.
 
 No `validation.ts`, no `hooks.ts`, no shared form component — each screen owns its own inline `useForm` and validators.
 
