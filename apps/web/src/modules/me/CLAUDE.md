@@ -1,6 +1,6 @@
 # me module — frontend
 
-Single-screen module for profile self-service. No list/create/detail/edit split — one layout (`/me`) with sidebar navigation to independent sub-pages. No `beforeLoad` permission guard — the route only requires authentication.
+Profile self-service module. No list/create/detail/edit split. It has one layout (`/me`) with sidebar navigation to independent sub-pages. No `beforeLoad` permission guard: the routes only require authentication.
 
 ## File structure
 
@@ -9,41 +9,41 @@ src/modules/me/
 ├── types.ts
 ├── validation.ts
 ├── validation.test.ts
+├── components/
+│   ├── password-section.tsx       ← change password, or set a first one (social-only users)
+│   ├── sign-in-methods.tsx        ← linked accounts + link another provider
+│   └── sign-in-methods.test.tsx
 └── routes/
     ├── index.ts
     ├── me-pending.tsx
-    ├── me-page.tsx           ← layout with sidebar nav
-    ├── me-account.tsx        ← name form + email change form
-    ├── me-sign-in.tsx        ← linked accounts + link provider + set password
-    ├── me-security.tsx       ← password change form (for users who already have a password)
-    ├── me-preferences.tsx    ← language picker + sidebar toggle
-    ├── me-subscription.tsx   ← subscription status view (visible when subscriptions are enabled)
-    ├── me-page.test.tsx      ← tests for MeAccount + MeSecurity
-    └── me-sign-in.test.tsx
+    ├── me-page.tsx                ← layout with sidebar nav
+    ├── me-page.test.tsx           ← tests for MeAccount + MeSecurity (password section)
+    ├── me-account.tsx             ← name form + email change form
+    ├── me-security.tsx            ← PasswordSection + SignInMethods
+    ├── me-preferences.tsx         ← language, dark mode, sidebar toggle
+    ├── me-subscription.tsx        ← subscription status view (only when subscriptions are enabled)
+    └── me-subscription.test.tsx
 ```
 
-No `hooks.ts`, no `components/`.
+No `hooks.ts`. The two components live in `components/` because they are sections of one page (`MeSecurity`), not reusable fields.
 
 ## Routes (`routes/index.ts`)
 
 | Path | Component | Notes |
 |---|---|---|
-| `/me` | `MePage` | Layout shell; redirects `/me` → `/me/account` |
+| `/me` | `MePage` | Layout shell. The `/me` index route redirects to `/me/account` |
 | `/me/account` | `MeAccount` | Name update + email change |
-| `/me/sign-in` | `MeSignIn` | Linked accounts, link new provider, set password for social-only users |
-| `/me/security` | `MeSecurity` | Password change (requires current password) |
-| `/me/preferences` | `MePreferences` | Language picker + sidebar toggle |
-| `/me/subscription` | `MeSubscription` | Subscription status view — registered only when subscriptions are enabled (redirects to `/me/account` otherwise) |
+| `/me/security` | `MeSecurity` | Password (change or set) + sign-in methods (linked accounts) |
+| `/me/preferences` | `MePreferences` | Language picker, dark mode, sidebar toggle |
+| `/me/subscription` | `MeSubscription` | Subscription status view. `beforeLoad` redirects to `/me/account` when subscriptions are disabled |
 
-No `beforeLoad` permission check on any route. No `loaderDeps`, no `validateSearch`.
+No permission check on any route. No `loaderDeps`, no `validateSearch`.
 
 Loader on `meRoute`: `queryClient.ensureQueryData(getMeSuspenseQueryOptions())`.
 
-### `/me/subscription` — subscription status tab
+## `MePage` (`routes/me-page.tsx`)
 
-`MeSubscription` imports `useSubscription` from `src/modules/subscriptions/hooks/use-subscription` and is a read-only view of the current user's subscription. No mutations — status changes are handled by payment webhooks, and plan management is in the admin `/subscriptions` section.
-
-`MePage` calls `useSubscription()` and renders the subscription `NavigationItem` only when `enabled: true`. The `meSubscriptionRoute` `beforeLoad` checks the subscription mode and redirects to `/me/account` when subscriptions are disabled, preventing direct URL access when the feature is off.
+Layout: a sidebar with one `NavigationItem` per sub-page and an `<Outlet />` on the right. It calls `useSubscription()` and renders the Subscription item only when `enabled` is `true`. That hides the link, and the `meSubscriptionRoute` `beforeLoad` blocks direct URL access when the feature is off.
 
 ## Types (`types.ts`)
 
@@ -65,7 +65,7 @@ interface EmailChangeFormValues { newEmail: string }
 interface PasswordFormValues {
   currentPassword: string
   newPassword: string
-  confirmPassword: string  // frontend-only — not sent to the API
+  confirmPassword: string  // frontend-only, not sent to the API
 }
 
 interface SetPasswordFormValues {
@@ -74,7 +74,7 @@ interface SetPasswordFormValues {
 }
 ```
 
-**`LinkedAccount`** — shape returned by `authClient.listAccounts()`:
+**`LinkedAccount`** is the shape returned by `authClient.listAccounts()`:
 
 ```ts
 interface LinkedAccount {
@@ -86,46 +86,38 @@ interface LinkedAccount {
 }
 ```
 
-`providerId === "credential"` means the account has an email/password. OAuth accounts have the provider name. A user can have multiple accounts — one per auth method.
+`providerId === "credential"` means the user has an email/password. OAuth accounts carry the provider name. A user can have several accounts, one per auth method.
 
 ## Validation (`validation.ts`)
 
-**`meFormValidate`** — `name`: required.
+**`meFormValidate`**: `name` is required.
 
-**`createEmailChangeFormValidate(currentEmail)`** — factory, not a static export. Rejects empty, non-email, or same-as-current values.
+**`createEmailChangeFormValidate(currentEmail)`**: a factory, not a static export. It rejects empty, non-email, or same-as-current values.
 
-**`passwordFormValidate`** — `currentPassword`: required; `newPassword`: min 8; `confirmPassword`: must match.
+**`passwordFormValidate`**: `currentPassword` is required, `newPassword` needs at least 8 characters, `confirmPassword` must match.
 
-**`setPasswordFormValidate`** — `newPassword`: min 8; `confirmPassword`: must match. No `currentPassword` — this form is for users without a credential account.
+**`setPasswordFormValidate`**: `newPassword` needs at least 8 characters, `confirmPassword` must match. No `currentPassword`, because this form is for users without a credential account.
 
 ## `MeAccount` (`routes/me-account.tsx`)
 
-Three independent forms rendered as separate `<Stack>` sections:
+Two independent forms:
 
-### Name section
-Mutation: `patchMe({ name })` — `onSuccess` updates the cache via `setQueryData` and notifies success.
-
-### Email change section
-Mutation: `patchMeEmail({ newEmail })` — sends a verification link. Email changes only after the user clicks the link. `emailChangePending` is component-local state; it resets on unmount.
-
-### (No password section here)
-Password management was split into two routes: `MeSecurity` (for users with an existing password) and `MeSignIn` (to set a first password for social-only users).
+- **Name**: `patchMe({ name })`. `onSuccess` writes the result to the cache with `setQueryData(getMeSuspenseQueryKey(), ...)` and notifies.
+- **Email change**: `patchMeEmail({ newEmail })` sends a verification link. The email changes only after the user clicks it. On success the form resets and the screen shows a pending notice for the new address. `emailChangePending` is component-local state, so it resets on unmount.
 
 ## `MeSecurity` (`routes/me-security.tsx`)
 
-Password change form: current password + new password + confirm. Mutation: `patchMePassword`. On success: resets the form and notifies. Linked from `MeSignIn` via an `<Anchor>` when the user already has a password set.
+Renders `<PasswordSection />`, a divider, then `<SignInMethods />`. No logic of its own.
 
-## `MeSignIn` (`routes/me-sign-in.tsx`)
+### Shared accounts query
 
-The most complex sub-page. Uses two independent queries and has three visual sections.
-
-### Queries
-
-**Accounts query** — calls `authClient.listAccounts()` directly (not via the generated api-client):
+Both components read the user's linked accounts with the same query. They use the same key, so React Query makes one request:
 
 ```ts
-const { data: accounts = [], isPending: accountsLoading, isError: accountsError } = useQuery({
-  queryKey: ['me', 'accounts'],
+const ME_ACCOUNTS_QUERY_KEY = ['me', 'accounts'] as const
+
+useQuery({
+  queryKey: ME_ACCOUNTS_QUERY_KEY,
   queryFn: async () => {
     const { data, error } = await authClient.listAccounts()
     if (error) throw error          // Better Auth returns { error } instead of throwing
@@ -134,31 +126,41 @@ const { data: accounts = [], isPending: accountsLoading, isError: accountsError 
 })
 ```
 
-**Providers query** — calls the generated `getMeProviders()` fetcher (from `GET /me/providers`). Always wrap in an arrow function to avoid TanStack Query passing its context object as the `config` arg:
+The query calls `authClient.listAccounts()` directly, not the generated api-client. The key constant is declared in both files. Keep the two in sync.
+
+### `PasswordSection` (`components/password-section.tsx`)
+
+Derives `hasPassword = accounts.some(a => a.providerId === 'credential')` and renders one of three states:
+
+- **Loading** (`accountsLoading`): a `<Loader>`.
+- **`hasPassword`**: the change-password form (current, new, confirm). Mutation `patchMePassword`. On success it resets the form and notifies. On error it notifies "incorrect current password".
+- **No password** (social-only user): the set-password form (new + confirm). Mutation `postMeSetPassword`. On success it resets the form, notifies, and invalidates `['me', 'accounts']`, so `hasPassword` flips to `true` and the change form appears without a reload.
+
+The section description also switches between the two cases.
+
+### `SignInMethods` (`components/sign-in-methods.tsx`)
+
+Two queries: the shared accounts query above and the providers query.
+
+**Providers query**: calls the generated `getMeProviders()` fetcher (`GET /me/providers`). Always wrap it in an arrow function. Passing it directly makes TanStack Query hand its context object over as the `config` argument:
 
 ```ts
 const { data: { providers: availableProviders = [] } = {}, isError: providersError } = useQuery({
   queryKey: ['me', 'providers'],
-  queryFn: () => getMeProviders(),   // NOT queryFn: getMeProviders — that passes the wrong arg
+  queryFn: () => getMeProviders(),   // NOT queryFn: getMeProviders
 })
 ```
 
-### Section 1 — Connected accounts
+**Connected accounts**: lists every account in `accounts`. `PROVIDER_ICONS` maps known `providerId` values to an icon, and labels come from `signIn.providers.<id>` in the `me` namespace. Unknown providers fall back to `IconKey` and their raw `providerId`. The list shows an error `Alert` if `accountsError`, a loading text while pending, and an empty text when there are no accounts.
 
-Lists every account in `accounts[]`. `PROVIDER_DISPLAY` maps known `providerId` values to label + icon. Unknown providers fall back to their raw `providerId` string and `IconKey`. If `accountsError`, shows a red `Alert` instead and hides the password section (state unknown).
-
-### Section 2 — Link another account
-
-Shown only when `!providersError && unlinkableProviders.length > 0`.
+**Link another account**: shown only when `!providersError && unlinkableProviders.length > 0`:
 
 ```ts
 const linkedProviderIds = new Set(accounts.map(a => a.providerId))
 const unlinkableProviders = availableProviders.filter(p => !linkedProviderIds.has(p))
 ```
 
-`availableProviders` comes from `GET /me/providers` — all configured social providers regardless of registration mode. `unlinkableProviders` is the subset not yet linked by this user.
-
-Each row has a "Connect" button that calls `handleLink`:
+`availableProviders` lists every configured social provider, whatever the registration mode. Each row has a Connect button. While one provider is linking, the other buttons are disabled:
 
 ```ts
 async function handleLink(provider: string) {
@@ -166,52 +168,53 @@ async function handleLink(provider: string) {
   try {
     const { error } = await authClient.linkSocial({
       provider: provider as 'google' | 'facebook' | 'apple',
-      callbackURL: window.location.origin + '/me/sign-in',
+      callbackURL: window.location.origin + '/me/security',
     })
-    if (error) throw error   // check return value — Better Auth may return error without throwing
+    if (error) throw error   // Better Auth may return an error without throwing
   } catch {
-    notify({ status: 'danger', message: 'Could not link this account. Please try again.' })
+    notify({ status: 'danger', message: t('signIn.errors.couldNotLink') })
   } finally {
     setLinkingProvider(null)
   }
 }
 ```
 
-`linkSocial` triggers a full browser redirect on success (same behaviour as `signIn.social`). `callbackURL` must be absolute — `window.location.origin + '/me/sign-in'` — so Better Auth redirects to the frontend, not the API server. After returning, TanStack Query re-fetches the accounts query on mount (staleTime: 0 default).
+`linkSocial` triggers a full browser redirect on success, like `signIn.social`. `callbackURL` must be absolute (`window.location.origin + '/me/security'`) so Better Auth redirects to the frontend, not the API server. When the user comes back, the accounts query refetches on mount (default `staleTime: 0`).
 
-### Section 3 — Password
+## `MePreferences` (`routes/me-preferences.tsx`)
 
-Derived from `hasPassword = accounts.some(a => a.providerId === 'credential')`:
+Three settings, none of them sent to the API:
 
-- `hasPassword === true` → blue `Alert` "Your account has a password set." + `<Anchor href="/me/security">` to change it
-- `hasPassword === false` → set-password form (newPassword + confirmPassword)
+- **Language**: `<LanguagePicker languages={appConfig.i18n.languages} />` (languages come from `src/config/app.ts`).
+- **Dark mode**: a `Switch` bound to `useMantineColorScheme()`.
+- **Hide sidebar**: a `Switch` bound to `useSidebarPreference()` from `src/lib/sidebar-preference.tsx`. That context is provided by `App`, so `MePreferences` throws if rendered outside it. A test must wrap it in `SidebarPreferenceContext.Provider`.
 
-The set-password mutation invalidates `['me', 'accounts']` on success so the `hasPassword` check re-evaluates immediately without a page reload.
+## `MeSubscription` (`routes/me-subscription.tsx`)
 
-Hidden entirely when `accountsLoading || accountsError`.
+A read-only view of the current user's subscription. It uses `useSubscription()` from `src/modules/subscriptions/hooks/use-subscription` and has no mutations. Status changes come from payment webhooks, and plan management lives in the admin `/subscriptions` section.
+
+- `<Loader>` while `isPending` (status or subscription fetching)
+- "No active subscription" when `subscription` is `null`
+- Otherwise: plan name (`plan?.name`, falling back to the raw `planId`), status badge (`SUBSCRIPTION_STATUS_COLORS`), trial end date (only when `trialEndsAt` is set), period start and end
+
+Dates use `formatDate` from `@/utils/date`, never the `date-fns` function of the same name.
+
+**i18n:** uses the `subscription` namespace under `me.*` keys, shared with the admin module.
 
 ## Tests
 
-### `routes/me-page.test.tsx`
+| File | Covers | Wrapper |
+|---|---|---|
+| `routes/me-page.test.tsx` | `MeAccount` (name, email) and `MeSecurity`'s password section (change + set) | `MantineProvider` + `<Notifications />` + `QueryClientProvider`. `MeSecurity` also needs `MantineEmotionProvider` because `SignInMethods` uses `createStyles` |
+| `components/sign-in-methods.test.tsx` | Connected accounts, link-another section, `linkSocial` errors | `MantineProvider` + `MantineEmotionProvider` + `<Notifications />` + `QueryClientProvider` |
+| `routes/me-subscription.test.tsx` | Loading, empty state, plan fallback, badge, dates | `MantineProvider` + `MantineEmotionProvider` (for `LabeledValue`) + `QueryClientProvider` |
+| `validation.test.ts` | `meFormValidate`, `createEmailChangeFormValidate`, `passwordFormValidate` | none |
 
-Tests for `MeAccount` and `MeSecurity`. Wrapper: `MantineProvider` + `<Notifications />` + `QueryClientProvider`. **No `MantineEmotionProvider`** — these components don't use `createStyles`.
+`MePage` and `MePreferences` have no tests yet, and `setPasswordFormValidate` is only covered indirectly by the set-password tests in `me-page.test.tsx`.
 
-### `routes/me-sign-in.test.tsx`
+### Mocking `authClient`
 
-**Wrapper requires `MantineEmotionProvider`** — `MeSignIn` uses `createStyles` for `flex: 1`:
-
-```tsx
-<MantineProvider>
-  <MantineEmotionProvider>
-    <Notifications />
-    <QueryClientProvider client={queryClient}>
-      <MeSignIn />
-    </QueryClientProvider>
-  </MantineEmotionProvider>
-</MantineProvider>
-```
-
-**Two mocks required:**
+The accounts query and `linkSocial` call `authClient` directly, so the tests mock it with hoisted functions:
 
 ```ts
 const { mockListAccounts, mockLinkSocial } = vi.hoisted(() => ({
@@ -228,21 +231,19 @@ vi.mock('../../../lib/authentication', () => ({
 }))
 ```
 
-**`getMeProviders` via MSW** — default handler returns `{ providers: [] }`. Override per test for linking section tests.
+`vi.clearAllMocks()` in `afterEach` resets call counts but **not** return values, so set `mockListAccounts` again in `beforeEach`. Use `{ data: [credentialAccount], error: null }` for a user with a password, or `{ data: [], error: null }`. To test the `accountsError` branch, return `{ data: null, error: { message: '...' } }`.
 
-**`postMeSetPassword` via MSW** — default handler returns 204.
+`getMeProviders` and `postMeSetPassword` go through MSW (see the handler table below). Override the providers handler per test for the link-another section.
 
-**`afterEach`** — `vi.clearAllMocks()` resets call counts but NOT mock return values. The top-level `beforeEach` re-sets `mockListAccounts` to `{ data: [], error: null }` so each test starts clean.
+### Key assertions
 
-**Key assertions:**
+- Wait for both queries in `SignInMethods` before asserting absence. `await screen.findByText('Email & Password')` proves the accounts resolved. Then wrap the absence assertion in `waitFor` so the providers query settles too.
+- Use `findAllByRole` (async), not `getAllByRole`, for Connect buttons: the providers query resolves after the accounts query.
 
-- Wait for both queries to settle before asserting absence: `await screen.findByText('Email & Password')` proves accounts resolved; wrap the absence assertion in `waitFor` to wait for providers too.
-- Use `findAllByRole` (async) not `getAllByRole` (sync) for connect buttons — providers query resolves after accounts.
-- Error state: mock `listAccounts` to return `{ data: null, error: { message: '...' } }` to test the `accountsError` branch.
-
-## Handler naming for `me-sign-in` endpoints
+## Handlers for `me` endpoints
 
 | Endpoint | Handler | Default response |
 |---|---|---|
 | `GET /me/providers` | `getMeProvidersHandler` | `{ providers: [] }` |
 | `POST /me/set-password` | `postMeSetPasswordHandler` | `204` |
+| `GET /me/subscription` | `getMeSubscriptionHandler` | `204` (no subscription) |
