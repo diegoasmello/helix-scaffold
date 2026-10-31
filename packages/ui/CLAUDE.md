@@ -48,7 +48,7 @@ theme helper         →  createTheme (from ./theme)
 | Filtering      | `logical-filter`                                     | `LogicalFilterForm` — combinable field conditions with AND/OR     |
 | Feedback       | `modals/confirm`, `notifications/notify`             | `confirm()` dialog helper; `notify()` toast helper                |
 | Rich text      | `rich-text-editor`, `rich-text-renderer`             | Tiptap-based editor and read-only renderer                        |
-| Misc           | `language-picker`                                    | Language selection dropdown                                       |
+| Misc           | `language-picker`                                    | Language dropdown; options come from the `languages` prop         |
 | Theme          | `theme/index.ts`                                     | `createTheme()` — sets font defaults, accepts Mantine overrides   |
 
 ## `LogicalFilterForm` component

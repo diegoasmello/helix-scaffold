@@ -4,6 +4,7 @@ import i18n from 'i18next'
 import LanguageDetector from 'i18next-browser-languagedetector'
 import { initReactI18next } from 'react-i18next'
 
+import { appConfig } from '../config/app'
 import auditEn from './locales/en/audit.json'
 import authEn from './locales/en/auth.json'
 import commonEn from './locales/en/common.json'
@@ -54,8 +55,8 @@ i18n
       },
     },
     defaultNS: 'common',
-    fallbackLng: 'en',
-    supportedLngs: ['en', 'pt-BR'],
+    fallbackLng: appConfig.i18n.defaultLanguage,
+    supportedLngs: appConfig.i18n.languages.map(({ value }) => value),
     load: 'currentOnly',
     interpolation: { escapeValue: false },
   })

@@ -10,6 +10,18 @@ React 19 + Vite — the main application.
 - **Forms**: `@mantine/form`
 - **Icons**: Tabler Icons (`@tabler/icons-react`)
 
+## App config (`src/config/`)
+
+| File | Holds |
+| --- | --- |
+| `app.ts` | `appConfig`: product name (browser tab title) and i18n languages + default language |
+| `sidebar.ts` | Navigation groups, items and their permissions |
+| `theme.ts` | Mantine theme via `createTheme()` |
+
+`appConfig.name` and `appConfig.i18n.defaultLanguage` are injected into `index.html` (`%APP_NAME%`, `%APP_LANG%`) by a small plugin in `vite.config.ts`, so `src/config/app.ts` must stay free of browser-only imports (it is also in `tsconfig.node.json`).
+
+**Never put behaviour settings here.** Registration mode, social providers and subscriptions come from the API at runtime (`GET /registration/status`, `GET /subscription/status`) — configure them in `apps/api/src/app.config.ts`. The only env var is `VITE_API_URL` (per-deploy).
+
 ## Routing pattern
 
 Routes are defined in code (not files). The flow is:
@@ -697,6 +709,8 @@ src/i18n/
     pt-BR/          # Portuguese — must have identical key structure to en/
       (same files)
 ```
+
+**Supported languages** are declared in `appConfig.i18n.languages` (`src/config/app.ts`), which feeds both `supportedLngs` and the `LanguagePicker` options. To add a language: add it to that list, create `locales/<code>/` with every namespace, register it under `resources` in `i18n/index.ts`, and add `packages/ui/src/i18n/locales/<code>.json`.
 
 **One namespace per module.** The `common` namespace owns strings shared across all modules: action button labels (`actions.save`, `actions.delete`, …), validation messages (`validation.required`, …), nav labels (`nav.todos`, …), and report toasts (`report.downloaded`, …).
 

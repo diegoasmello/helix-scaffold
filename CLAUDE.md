@@ -74,6 +74,8 @@ Tests (`NODE_ENV=test`) apply `src/config/test-overrides.ts` on top of `app.conf
 
 See `apps/api/CLAUDE.md` → _Application config_ for the full reference.
 
+The frontend has no equivalent of these settings. It reads them from the API at runtime. Its own `apps/web/src/config/` holds only presentation concerns: `app.ts` (product name, languages), `sidebar.ts` and `theme.ts`. See `apps/web/CLAUDE.md` → _App config_.
+
 ## Registration mode
 
 The scaffold supports two account-creation strategies, configured via `registration.mode` in `apps/api/src/app.config.ts`:

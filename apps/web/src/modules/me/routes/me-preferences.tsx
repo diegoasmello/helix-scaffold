@@ -9,6 +9,7 @@ import {
 } from '@helix/ui'
 import { useTranslation } from 'react-i18next'
 
+import { appConfig } from '../../../config/app'
 import { useSidebarPreference } from '../../../lib/sidebar-preference'
 
 export function MePreferences() {
@@ -27,7 +28,7 @@ export function MePreferences() {
             {t('preferences.language.sectionDescription')}
           </Text>
         </Stack>
-        <LanguagePicker />
+        <LanguagePicker languages={appConfig.i18n.languages} />
       </Stack>
 
       <Flex gap="md" align="center" justify="space-between">
