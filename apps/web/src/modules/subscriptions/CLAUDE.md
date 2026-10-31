@@ -30,6 +30,8 @@ src/modules/subscriptions/
 ├── components/
 │   ├── requires-subscription.tsx     ← conditional render guard (like HasPermission)
 │   ├── requires-subscription.test.tsx
+│   ├── plan-catalog.tsx              ← plans as cards with their features; current plan highlighted
+│   ├── plan-catalog.test.tsx
 │   ├── subscriptions-form.tsx        ← shared admin form fields (create + edit)
 │   └── subscriptions-form.test.tsx
 └── routes/
@@ -148,6 +150,16 @@ import { RequiresSubscription } from '../components/requires-subscription'
 - **`fallback`** — rendered otherwise; defaults to `null`. Nothing renders while `isPending`.
 
 **When `enabled=false`:** always renders children. Safe to add to components now and enable enforcement later.
+
+### `<PlanCatalog>`
+
+```tsx
+<PlanCatalog plans={plans} currentPlanId={subscription?.planId} />
+```
+
+Renders each plan as a card with its name and features; the current plan gets a primary-colored border, a "Current plan" badge and `aria-current="true"`. A plan without features reads "Basic access". Used by `/me/subscription`.
+
+**Feature labels:** feature keys come from the API config, so they are translated dynamically through `subscription:features.<key>` (`i18n.t` with `defaultValue: key`). When you add a feature to a plan, add its label to `features` in both `locales/en/subscription.json` and `locales/pt-BR/subscription.json` — otherwise the raw key is shown.
 
 ### `subscriptions-form.tsx`
 

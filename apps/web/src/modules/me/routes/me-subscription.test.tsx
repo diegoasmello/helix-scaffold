@@ -9,7 +9,7 @@ import {
 import type { Subscription } from '@helix/api-client/types'
 import { MantineEmotionProvider, MantineProvider } from '@helix/ui'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import { parseISO } from 'date-fns'
 import { delay } from 'msw'
 import { beforeEach, describe, expect, it } from 'vitest'
@@ -98,12 +98,34 @@ describe('MeSubscription', () => {
     ).toBeInTheDocument()
   })
 
+  it('shows the plan catalog without a current plan when there is no subscription', async () => {
+    mockMeSubscription(null)
+    renderMeSubscription()
+    const catalog = await screen.findByRole('region', { name: 'Plans' })
+    expect(within(catalog).getByText('Starter')).toBeInTheDocument()
+    expect(within(catalog).getByText('Pro')).toBeInTheDocument()
+    expect(within(catalog).queryByText('Current plan')).not.toBeInTheDocument()
+  })
+
   it('renders the plan name from the catalog', async () => {
     renderMeSubscription()
     expect(
       await screen.findByRole('heading', { name: 'Subscription' })
     ).toBeInTheDocument()
-    expect(screen.getByText('Pro')).toBeInTheDocument()
+    // Once in the details, once in the plan catalog.
+    expect(screen.getAllByText('Pro')).toHaveLength(2)
+  })
+
+  it('lists the plan catalog and marks the current plan', async () => {
+    renderMeSubscription()
+    const catalog = await screen.findByRole('region', { name: 'Plans' })
+    expect(within(catalog).getByText('Starter')).toBeInTheDocument()
+    expect(within(catalog).getByText('Current plan')).toBeInTheDocument()
+    const current = within(catalog)
+      .getByText('Current plan')
+      .closest('[aria-current="true"]')
+    expect(current).toHaveTextContent('Pro')
+    expect(within(catalog).getByText('Todos')).toBeInTheDocument()
   })
 
   it('falls back to the raw plan id for plans not in the catalog', async () => {
@@ -120,7 +142,7 @@ describe('MeSubscription', () => {
 
   it('renders the current period dates', async () => {
     renderMeSubscription()
-    await screen.findByText('Pro')
+    await screen.findByText('Period start')
     expect(screen.getByText('Period start')).toBeInTheDocument()
     expect(
       screen.getByText(short(mockSubscription.currentPeriodStart))
@@ -141,7 +163,7 @@ describe('MeSubscription', () => {
 
   it('hides the trial end date when not set', async () => {
     renderMeSubscription()
-    await screen.findByText('Pro')
+    await screen.findByText('Period start')
     expect(screen.queryByText('Trial ends')).not.toBeInTheDocument()
   })
 
@@ -173,7 +195,7 @@ describe('MeSubscription', () => {
 
   it('shows no payment warning for an active subscription', async () => {
     renderMeSubscription()
-    await screen.findByText('Pro')
+    await screen.findByText('Period start')
     expect(screen.queryByText('Payment failed')).not.toBeInTheDocument()
   })
 })

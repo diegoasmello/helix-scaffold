@@ -21,6 +21,15 @@
     "contact": "Fale com um administrador para assinar ou trocar de plano.",
     "viewSubscription": "Ver minha assinatura"
   },
+  "plans": {
+    "title": "Planos",
+    "description": "O que cada plano inclui. Fale com um administrador para assinar ou trocar de plano.",
+    "current": "Plano atual",
+    "noFeatures": "Acesso básico"
+  },
+  "features": {
+    "todos": "Tarefas"
+  },
   "me": {
     "title": "Assinatura",
     "description": "Seu plano atual e detalhes de cobrança.",

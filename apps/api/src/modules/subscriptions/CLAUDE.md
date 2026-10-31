@@ -244,7 +244,7 @@ subscriptions: {
 ```
 
 - **`plans[].id`** is stored on each subscription and sent by your payment processor's webhooks — never rename it once in use.
-- **`plans[].features`** are free keys: usually a module name (`'todos'`), sometimes a capability (`'pdf-export'`). They are what `requireSubscription('<feature>')` and the frontend's `<RequiresSubscription feature>` check.
+- **`plans[].features`** are free keys: usually a module name (`'todos'`), sometimes a capability (`'pdf-export'`). They are what `requireSubscription('<feature>')` and the frontend's `<RequiresSubscription feature>` check. Their display names live in the web i18n files (`subscription:features.<key>`), shown by the plan catalog on `/me/subscription`.
 
 Startup fails when `enabled: true` and `plans` is empty, when plan ids repeat, or when `trial.planId` is not in the catalog. A warning is logged if `trial` is set but subscriptions are disabled or registration is closed, since it would have no effect.
 

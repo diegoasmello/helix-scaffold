@@ -196,7 +196,8 @@ A read-only view of the current user's subscription. It uses `useSubscription()`
 
 - `<Loader>` while `isPending` (status or subscription fetching)
 - "No active subscription" when `subscription` is `null`
-- Otherwise: plan name (`plan?.name`, falling back to the raw `planId`), status badge (`SUBSCRIPTION_STATUS_COLORS`), trial end date (only when `trialEndsAt` is set), period start and end
+- Otherwise: plan name (`plan?.name`, falling back to the raw `planId`), status badge (`SUBSCRIPTION_STATUS_COLORS`), trial end date (only when `trialEndsAt` is set), period start and end; a "payment failed" `Alert` while past_due within the grace period
+- In both cases, a **Plans** section (`<section aria-labelledby>`, so tests find it with `getByRole('region', { name: 'Plans' })`) renders `<PlanCatalog>` from the subscriptions module: every plan with what it includes, the current one highlighted. Its description ("contact an administrator…") is the placeholder for a checkout call to action
 
 Dates use `formatDate` from `@/utils/date`, never the `date-fns` function of the same name.
 
@@ -209,7 +210,7 @@ Dates use `formatDate` from `@/utils/date`, never the `date-fns` function of the
 | `routes/me-page.test.tsx` | `MePage` (nav links, Subscription link only when enabled), `MeAccount` (name, email) and `MeSecurity`'s password section (change + set) | `MantineProvider` + `<Notifications />` + `QueryClientProvider`. `MeSecurity` also needs `MantineEmotionProvider` because `SignInMethods` uses `createStyles`. The file stubs `Outlet` and `NavigationItem` (both need a router) for `MePage` |
 | `routes/me-preferences.test.tsx` | Language switch, dark mode, sidebar toggle, error outside the context | `MantineProvider` + `SidebarPreferenceContext.Provider` with a `vi.fn()` toggle. `afterEach` restores `i18n` to `en` and clears the color scheme, which are global |
 | `components/sign-in-methods.test.tsx` | Connected accounts, link-another section, `linkSocial` errors | `MantineProvider` + `MantineEmotionProvider` + `<Notifications />` + `QueryClientProvider` |
-| `routes/me-subscription.test.tsx` | Loading, empty state, plan fallback, badge, dates | `MantineProvider` + `MantineEmotionProvider` (for `LabeledValue`) + `QueryClientProvider` |
+| `routes/me-subscription.test.tsx` | Loading, empty state, plan fallback, badge, dates, past_due warning, plan catalog (current plan, no-subscription case) | `MantineProvider` + `MantineEmotionProvider` (for `LabeledValue`) + `QueryClientProvider` |
 | `validation.test.ts` | `meFormValidate`, `createEmailChangeFormValidate`, `passwordFormValidate` | none |
 
 `setPasswordFormValidate` is only covered indirectly by the set-password tests in `me-page.test.tsx`.

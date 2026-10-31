@@ -10,16 +10,37 @@ import {
   Title,
 } from '@helix/ui'
 import { parseISO } from 'date-fns'
+import { useId } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { SUBSCRIPTION_STATUS_COLORS } from '@/modules/subscriptions/constants'
 import { formatDate } from '@/utils/date'
 
+import { PlanCatalog } from '../../subscriptions/components/plan-catalog'
 import { useSubscription } from '../../subscriptions/hooks/use-subscription'
 
 export function MeSubscription() {
-  const { subscription, plan, graceEndsAt, isPending } = useSubscription()
+  const { subscription, plan, plans, graceEndsAt, isPending } =
+    useSubscription()
   const { t } = useTranslation('subscription')
+  const plansHeadingId = useId()
+
+  // The catalog doubles as the "change plan" path until a checkout exists:
+  // products with a payment flow add their call to action here.
+  const planCatalog =
+    plans.length > 0 ? (
+      <Stack component="section" aria-labelledby={plansHeadingId} gap="md">
+        <Stack gap={4}>
+          <Title id={plansHeadingId} order={5} lh={1.2}>
+            {t('plans.title')}
+          </Title>
+          <Text c="dimmed" size="xs">
+            {t('plans.description')}
+          </Text>
+        </Stack>
+        <PlanCatalog plans={plans} currentPlanId={subscription?.planId} />
+      </Stack>
+    ) : null
 
   if (isPending) {
     return (
@@ -31,11 +52,14 @@ export function MeSubscription() {
 
   if (!subscription) {
     return (
-      <Stack gap="xs">
-        <Title order={4}>{t('me.noSubscription.title')}</Title>
-        <Text c="dimmed" size="sm">
-          {t('me.noSubscription.description')}
-        </Text>
+      <Stack gap="xl">
+        <Stack gap="xs">
+          <Title order={4}>{t('me.noSubscription.title')}</Title>
+          <Text c="dimmed" size="sm">
+            {t('me.noSubscription.description')}
+          </Text>
+        </Stack>
+        {planCatalog}
       </Stack>
     )
   }
@@ -92,6 +116,8 @@ export function MeSubscription() {
           </LabeledValue>
         </Stack>
       </Stack>
+
+      {planCatalog}
     </Stack>
   )
 }

@@ -127,7 +127,7 @@ See `apps/web/src/modules/subscriptions/CLAUDE.md` for all frontend subscription
 
 When `subscriptions.enabled` is `true`, the app is responsible for:
 
-- [ ] Declaring the plan catalog in `subscriptions.plans` (`src/app.config.ts`), with the features each plan unlocks
+- [ ] Declaring the plan catalog in `subscriptions.plans` (`src/app.config.ts`), with the features each plan unlocks — and a label for each feature in `apps/web/src/i18n/locales/*/subscription.json` → `features.<key>`
 - [ ] Setting `subscriptions.trial: { days, planId }` in `src/app.config.ts` (if trials are offered)
 - [ ] Writing a payment processor adapter and registering it in `apps/api/src/config/billing-webhook.ts` — follow the checklist in `apps/api/src/modules/billing-webhook/CLAUDE.md`
 - [ ] Adding `requireSubscription('<feature>')` to routes that should be gated (inject it alongside `requirePermission` in route options, then add to the `preHandler` array)

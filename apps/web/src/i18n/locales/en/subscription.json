@@ -21,6 +21,15 @@
     "contact": "Contact an administrator to subscribe or change your plan.",
     "viewSubscription": "View my subscription"
   },
+  "plans": {
+    "title": "Plans",
+    "description": "What each plan includes. Contact an administrator to subscribe or change your plan.",
+    "current": "Current plan",
+    "noFeatures": "Basic access"
+  },
+  "features": {
+    "todos": "Todos"
+  },
   "me": {
     "title": "Subscription",
     "description": "Your current plan and billing details.",
