@@ -40,6 +40,7 @@ All admin routes and `GET /me/subscription` are **only registered when `subscrip
 | `currentPeriodStart` | `timestamp NOT NULL` | Start of the current billing period |
 | `currentPeriodEnd` | `timestamp NOT NULL` | End of the current billing period |
 | `canceledAt` | `timestamp` | Set automatically when status is changed to `'canceled'` |
+| `pastDueSince` | `timestamp` | Set automatically when status **becomes** `past_due`, kept while it stays there, cleared when it leaves (admin create/edit and webhook sync). Never accepted from clients. Start of the grace period |
 | `externalId` | `text` UNIQUE | Payment processor subscription ID (Stripe, etc.) — the webhook sync key (`subscriptions_external_id_unique`; NULLs don't collide) |
 | `metadata` | `jsonb` | Provider-specific data — arbitrary JSON |
 | `createdAt` | `timestamp NOT NULL` | `defaultNow()` |
@@ -81,7 +82,7 @@ Resource registered in `src/config/permissions.ts`:
 
 | Method | Path | Auth | Notes |
 | --- | --- | --- | --- |
-| `GET` | `/subscription/status` | None | Always available; returns `{ enabled, plans }` — `plans` is the catalog (id, name, features), `[]` when disabled |
+| `GET` | `/subscription/status` | None | Always available; returns `{ enabled, plans, pastDueGraceDays }` — `plans` is the catalog (id, name, features), `[]` when disabled; `pastDueGraceDays` lets the UI show when a past_due user loses access |
 | `GET` | `/me/subscription` | Session | Returns current user's active/trialing subscription or 204 |
 | `GET` | `/subscriptions` | `subscriptions:view` | Paginated list of all subscriptions |
 | `GET` | `/subscriptions/:id` | `subscriptions:view` | Single subscription |
@@ -144,7 +145,11 @@ Factory `createSubscriptionsService(database)` returns:
 }
 ```
 
-**`getActiveByUserId`** — queries for the most recently created subscription where `status IN ('active', 'trialing')`, ordered by `createdAt DESC`, limited to 1. Returns `null` if none exists. Date fields are intentionally not checked — the status field is authoritative.
+**`getActiveByUserId(userId, { now?, pastDueGraceDays? })`** — the subscription that grants access: `status IN ('active', 'trialing')`, or `past_due` with `pastDueSince` within `subscriptions.pastDueGraceDays` (options default to the current time and the config; tests pass them explicitly). Live rows win over a past_due one, then the most recent. Returns `null` if none qualifies. Period dates are intentionally not checked — status is authoritative; `pastDueSince` only bounds the grace period.
+
+### Past-due grace period
+
+When a payment fails the processor moves the subscription to `past_due` and usually retries the charge for a while before canceling. `subscriptions.pastDueGraceDays` (`src/app.config.ts`, default `0`) decides whether the user keeps access meanwhile: a `past_due` subscription counts as active for that many days after `pastDueSince`. No job is involved — access simply stops qualifying once the window passes. Set it to roughly your processor's retry window. `GET /me/subscription` returns the past_due row while it is in the window, and the frontend shows a "payment failed" warning with the access end date. Migration `0007` backfills `pastDueSince = updatedAt` for rows already past_due.
 
 **`update`** — applies the `canceledAt` auto-set logic before writing to the DB.
 
@@ -198,7 +203,8 @@ app.get('/feature', {
 | `enabled` | Yes | Any | Pass (admin bypass) |
 | `enabled` | No | Yes, plan includes the feature (or no feature requested) | Pass |
 | `enabled` | No | Yes, plan lacks the feature | 403 `Your plan does not include this feature` |
-| `enabled` | No | No | 403 `Active subscription required` |
+| `enabled` | No | `past_due` within `pastDueGraceDays` of `pastDueSince` | Same as an active subscription (feature still checked) |
+| `enabled` | No | No (or `past_due` past the grace period) | 403 `Active subscription required` |
 
 The admin bypass is implemented by calling `permissionsService.hasPermission(roleId, 'subscriptions', 'view')`. Users without a role (`roleId === null`) are never bypassed.
 

@@ -70,7 +70,11 @@ function renderUpgrade(feature?: string) {
 beforeEach(() => {
   server.use(
     getSubscriptionStatusHandler(() =>
-      getSubscriptionStatusHandlerResponse200({ enabled: true, plans })
+      getSubscriptionStatusHandlerResponse200({
+        enabled: true,
+        plans,
+        pastDueGraceDays: 0,
+      })
     )
   )
 })

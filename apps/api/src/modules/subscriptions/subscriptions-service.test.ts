@@ -131,3 +131,66 @@ describe('expireLapsed', () => {
     expect(await statusOf(sub.id)).toBe('past_due')
   })
 })
+
+describe('getActiveByUserId — past_due grace', () => {
+  const DAY = 24 * 60 * 60 * 1000
+
+  it('returns a past_due subscription inside the grace window', async () => {
+    const sub = await insertSubscription({
+      status: 'past_due',
+      pastDueSince: new Date(NOW.getTime() - 2 * DAY),
+    })
+    const found = await service.getActiveByUserId(sub.userId, {
+      now: NOW,
+      pastDueGraceDays: 3,
+    })
+    expect(found?.id).toBe(sub.id)
+  })
+
+  it('ignores it once the grace window has passed', async () => {
+    const sub = await insertSubscription({
+      status: 'past_due',
+      pastDueSince: new Date(NOW.getTime() - 4 * DAY),
+    })
+    const found = await service.getActiveByUserId(sub.userId, {
+      now: NOW,
+      pastDueGraceDays: 3,
+    })
+    expect(found).toBeNull()
+  })
+
+  it('ignores past_due entirely when the grace period is 0', async () => {
+    const sub = await insertSubscription({
+      status: 'past_due',
+      pastDueSince: NOW,
+    })
+    const found = await service.getActiveByUserId(sub.userId, {
+      now: NOW,
+      pastDueGraceDays: 0,
+    })
+    expect(found).toBeNull()
+  })
+
+  it('prefers a live subscription over a past_due one', async () => {
+    const pastDue = await insertSubscription({
+      status: 'past_due',
+      pastDueSince: NOW,
+    })
+    const [live] = await testDb
+      .insert(subscriptions)
+      .values({
+        userId: pastDue.userId,
+        planId: 'pro',
+        status: 'active',
+        currentPeriodStart: PAST,
+        currentPeriodEnd: FUTURE,
+        createdAt: new Date(NOW.getTime() - 10 * DAY),
+      })
+      .returning()
+    const found = await service.getActiveByUserId(pastDue.userId, {
+      now: NOW,
+      pastDueGraceDays: 3,
+    })
+    expect(found?.id).toBe(live.id)
+  })
+})

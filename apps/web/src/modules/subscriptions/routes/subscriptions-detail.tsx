@@ -62,6 +62,12 @@ export function SubscriptionsDetail() {
           </LabeledValue>
         )}
 
+        {item.pastDueSince && (
+          <LabeledValue label={t('labels.pastDueSince')}>
+            {formatDate(parseISO(item.pastDueSince), 'short')}
+          </LabeledValue>
+        )}
+
         {item.canceledAt && (
           <LabeledValue label={t('labels.canceledAt')}>
             {formatDate(parseISO(item.canceledAt), 'short')}

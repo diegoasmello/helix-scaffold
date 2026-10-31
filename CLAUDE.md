@@ -101,6 +101,7 @@ The scaffold supports optional subscription gating for products that require use
 | --- | --- | --- |
 | `subscriptions.enabled` | `false` | `true` activates all subscription infrastructure. `false` means zero overhead — no routes, no DB queries, no UI. |
 | `subscriptions.plans` | `[]` | The plan catalog: `{ id, name, features }[]`. Each plan lists the **features** (free keys, usually module names) it unlocks. Required when enabled. |
+| `subscriptions.pastDueGraceDays` | `0` | Days a `past_due` subscription (failed payment) keeps access while the processor retries. `0` cuts access immediately. |
 | `subscriptions.trial` | `false` | `{ days, planId }`. When set (and registration is open and subscriptions are enabled), a trialing subscription is auto-created on user registration. |
 
 **Single source of truth:** the mode lives only in the backend config. The frontend reads `GET /subscription/status → { enabled: boolean }` once at startup and caches it for the session — no `VITE_*` duplication.

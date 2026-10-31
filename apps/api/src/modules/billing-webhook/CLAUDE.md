@@ -68,7 +68,7 @@ interface BillingWebhookAdapter {
 | `externalId` | The processor's subscription id — the sync key (unique index `subscriptions_external_id_unique`) |
 | `userId?` | Scaffold user id. **Required the first time** a subscription is seen, ignored afterwards. Attach it as metadata when your app creates the checkout on the processor |
 | `planId` | Must be one of `subscriptions.plans[].id`. Map the processor's price/product id to it in the adapter |
-| `status` | One of `active`, `trialing`, `past_due`, `canceled`, `expired` — map the processor's statuses |
+| `status` | One of `active`, `trialing`, `past_due`, `canceled`, `expired` — map the processor's statuses. Entering `past_due` sets `pastDueSince` (start of `subscriptions.pastDueGraceDays`); leaving it clears it |
 | `currentPeriodStart`, `currentPeriodEnd` | `Date` |
 | `trialEndsAt?`, `canceledAt?`, `metadata?` | **Omit to keep** the stored value, `null` to clear it |
 

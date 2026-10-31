@@ -95,7 +95,11 @@ function mockPermissions(grants: Grants) {
 function mockSubscriptionsEnabled(planId: string | null) {
   server.use(
     getSubscriptionStatusHandler(() =>
-      getSubscriptionStatusHandlerResponse200({ enabled: true, plans })
+      getSubscriptionStatusHandlerResponse200({
+        enabled: true,
+        plans,
+        pastDueGraceDays: 0,
+      })
     ),
     getMeSubscriptionHandler(() =>
       planId

@@ -121,6 +121,13 @@ export interface AppConfig {
      * `externalId` belong to the payment processor and are updated by its
      * webhooks. Access may outlive the period by up to one interval.
      */
+    /**
+     * Days a `past_due` subscription (failed payment) keeps access, counted
+     * from when it entered `past_due` (`pastDueSince`). Set it to roughly the
+     * payment processor's retry window. `0` blocks access immediately.
+     * @default 0
+     */
+    pastDueGraceDays?: number
     expiration?: {
       /**
        * How often the job runs. It also runs once at startup.
@@ -253,6 +260,7 @@ export const appConfigSchema = z.strictObject({
           }),
         ])
         .default(false),
+      pastDueGraceDays: z.number().int().nonnegative().default(0),
       expiration: z
         .strictObject({
           intervalHours: z.number().positive().default(1),

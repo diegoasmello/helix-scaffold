@@ -68,7 +68,11 @@ async function renderSettled() {
 beforeEach(() => {
   server.use(
     getSubscriptionStatusHandler(() =>
-      getSubscriptionStatusHandlerResponse200({ enabled: true, plans })
+      getSubscriptionStatusHandlerResponse200({
+        enabled: true,
+        plans,
+        pastDueGraceDays: 0,
+      })
     ),
     getMePermissionsHandler({ grants: {} })
   )
@@ -79,7 +83,11 @@ describe('useSubscriptionAccess', () => {
   it('grants everything when subscriptions are disabled', async () => {
     server.use(
       getSubscriptionStatusHandler(() =>
-        getSubscriptionStatusHandlerResponse200({ enabled: false, plans: [] })
+        getSubscriptionStatusHandlerResponse200({
+          enabled: false,
+          plans: [],
+          pastDueGraceDays: 0,
+        })
       )
     )
     const hasAccess = await renderSettled()
@@ -100,7 +108,7 @@ describe('useSubscriptionAccess', () => {
     expect(hasAccess('reports')).toBe(false)
   })
 
-  it.each(['canceled', 'past_due', 'expired'] as const)(
+  it.each(['canceled', 'expired'] as const)(
     'denies access when the subscription is %s',
     async (status) => {
       mockSubscription(createSubscription({ planId: 'pro', status }))
@@ -110,7 +118,9 @@ describe('useSubscriptionAccess', () => {
     }
   )
 
-  it.each(['active', 'trialing'] as const)(
+  // past_due only comes back from GET /me/subscription while inside the
+  // grace period (subscriptions.pastDueGraceDays), so it grants access.
+  it.each(['active', 'trialing', 'past_due'] as const)(
     'grants feature-less access when the subscription is %s',
     async (status) => {
       mockSubscription(createSubscription({ planId: 'starter', status }))

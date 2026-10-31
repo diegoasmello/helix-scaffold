@@ -17,17 +17,19 @@ export async function subscriptionStatusRoutes(app: FastifyTypedInstance) {
           200: z.object({
             enabled: z.boolean(),
             plans: z.array(subscriptionPlanSchema),
+            pastDueGraceDays: z.number().int(),
           }),
         },
       },
     },
     async () => {
-      const { enabled, plans } = config.subscriptions
+      const { enabled, plans, pastDueGraceDays } = config.subscriptions
       return {
         enabled,
         plans: enabled
           ? plans.map((plan) => ({ ...plan, features: [...plan.features] }))
           : [],
+        pastDueGraceDays,
       }
     }
   )

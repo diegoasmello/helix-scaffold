@@ -28,6 +28,10 @@
       "title": "Sem assinatura ativa",
       "description": "Você não possui uma assinatura ativa."
     },
+    "pastDue": {
+      "title": "Pagamento não aprovado",
+      "description": "Não conseguimos cobrar seu último pagamento. Seu acesso continua até {{date}} — atualize sua forma de pagamento para não perdê-lo."
+    },
     "labels": {
       "plan": "Plano",
       "status": "Status",
@@ -60,6 +64,7 @@
     "trialEndsAt": "Período de teste termina em",
     "currentPeriodStart": "Início do período",
     "currentPeriodEnd": "Fim do período",
+    "pastDueSince": "Inadimplente desde",
     "canceledAt": "Cancelado em",
     "externalId": "ID Externo",
     "createdAt": "Criado em"

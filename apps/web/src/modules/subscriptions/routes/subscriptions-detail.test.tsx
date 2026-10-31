@@ -38,6 +38,7 @@ const mockSubscription = createSubscription({
   currentPeriodEnd: '2026-02-01T12:00:00.000Z',
   trialEndsAt: '2026-01-15T12:00:00.000Z',
   canceledAt: '2026-01-20T12:00:00.000Z',
+  pastDueSince: '2026-01-18T12:00:00.000Z',
   externalId: 'sub_123',
   createdAt: '2025-12-31T12:00:00.000Z',
 })
@@ -64,7 +65,11 @@ function renderSubscriptionsDetail() {
 beforeEach(() => {
   server.use(
     getSubscriptionStatusHandler(() =>
-      getSubscriptionStatusHandlerResponse200({ enabled: true, plans })
+      getSubscriptionStatusHandlerResponse200({
+        enabled: true,
+        plans,
+        pastDueGraceDays: 0,
+      })
     ),
     getSubscriptionsIdHandler(mockSubscription)
   )
@@ -130,6 +135,10 @@ describe('SubscriptionsDetail', () => {
     expect(
       screen.getByText(short(mockSubscription.canceledAt!))
     ).toBeInTheDocument()
+    expect(screen.getByText('Past due since')).toBeInTheDocument()
+    expect(
+      screen.getByText(short(mockSubscription.pastDueSince!))
+    ).toBeInTheDocument()
     expect(screen.getByText('External ID')).toBeInTheDocument()
     expect(screen.getByText('sub_123')).toBeInTheDocument()
   })
@@ -140,6 +149,7 @@ describe('SubscriptionsDetail', () => {
         ...mockSubscription,
         trialEndsAt: null,
         canceledAt: null,
+        pastDueSince: null,
         externalId: null,
       })
     )
@@ -147,6 +157,7 @@ describe('SubscriptionsDetail', () => {
     await screen.findByText('user-1')
     expect(screen.queryByText('Trial ends')).not.toBeInTheDocument()
     expect(screen.queryByText('Canceled at')).not.toBeInTheDocument()
+    expect(screen.queryByText('Past due since')).not.toBeInTheDocument()
     expect(screen.queryByText('External ID')).not.toBeInTheDocument()
   })
 

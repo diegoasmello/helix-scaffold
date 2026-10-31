@@ -13,6 +13,7 @@ export const testConfigOverrides: AppConfig = {
       { id: 'enterprise', name: 'Enterprise', features: ['todos'] },
     ],
     trial: false,
+    pastDueGraceDays: 7,
   },
   uploads: { dir: '/tmp/helix-test-uploads' },
 }

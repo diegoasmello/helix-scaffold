@@ -138,7 +138,11 @@ function renderMePage() {
 function mockSubscriptionsEnabled(enabled: boolean) {
   server.use(
     getSubscriptionStatusHandler(() =>
-      getSubscriptionStatusHandlerResponse200({ enabled, plans: [] })
+      getSubscriptionStatusHandlerResponse200({
+        enabled,
+        plans: [],
+        pastDueGraceDays: 0,
+      })
     )
   )
 }
@@ -191,6 +195,7 @@ describe('MePage layout', () => {
         return getSubscriptionStatusHandlerResponse200({
           enabled: false,
           plans: [],
+          pastDueGraceDays: 0,
         })
       })
     )

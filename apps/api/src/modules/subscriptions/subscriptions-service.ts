@@ -1,5 +1,18 @@
-import { and, asc, count, desc, eq, isNull, lt, ne, or, sql } from 'drizzle-orm'
+import {
+  and,
+  asc,
+  count,
+  desc,
+  eq,
+  gt,
+  isNull,
+  lt,
+  ne,
+  or,
+  sql,
+} from 'drizzle-orm'
 
+import { config } from '@/config'
 import type { Database } from '@/db'
 import { subscriptions } from '@/db/schema'
 import { getPaginationParams } from '@/lib/pagination'
@@ -8,6 +21,7 @@ import type { BillingSubscriptionState } from '../billing-webhook/billing-webhoo
 import type {
   CreateSubscriptionInput,
   SubscriptionsListQuery,
+  SubscriptionStatus,
   UpdateSubscriptionInput,
 } from './subscriptions-schema'
 
@@ -18,8 +32,34 @@ const SORT_COLUMNS = {
   createdAt: subscriptions.createdAt,
 } as const
 
+const DAY_MS = 24 * 60 * 60 * 1000
+
+/**
+ * `pastDueSince` for a write that sets `status`: starts the grace period when
+ * the row enters `past_due`, keeps it while it stays there, clears it otherwise.
+ */
+function pastDueSinceFor(status: SubscriptionStatus) {
+  return status === 'past_due'
+    ? sql`coalesce(${subscriptions.pastDueSince}, now())`
+    : null
+}
+
 export function createSubscriptionsService(database: Database) {
-  async function getActiveByUserId(userId: string) {
+  /**
+   * The subscription that grants access: `active`/`trialing`, or `past_due`
+   * still within `subscriptions.pastDueGraceDays` of `pastDueSince`.
+   * Live rows win over a past_due one; then the most recent.
+   */
+  async function getActiveByUserId(
+    userId: string,
+    options: { now?: Date; pastDueGraceDays?: number } = {}
+  ) {
+    const {
+      now = new Date(),
+      pastDueGraceDays = config.subscriptions.pastDueGraceDays,
+    } = options
+    const graceCutoff = new Date(now.getTime() - pastDueGraceDays * DAY_MS)
+
     const [sub] = await database
       .select()
       .from(subscriptions)
@@ -28,11 +68,20 @@ export function createSubscriptionsService(database: Database) {
           eq(subscriptions.userId, userId),
           or(
             eq(subscriptions.status, 'active'),
-            eq(subscriptions.status, 'trialing')
+            eq(subscriptions.status, 'trialing'),
+            pastDueGraceDays > 0
+              ? and(
+                  eq(subscriptions.status, 'past_due'),
+                  gt(subscriptions.pastDueSince, graceCutoff)
+                )
+              : undefined
           )
         )
       )
-      .orderBy(desc(subscriptions.createdAt))
+      .orderBy(
+        sql`case when ${subscriptions.status} = 'past_due' then 1 else 0 end`,
+        desc(subscriptions.createdAt)
+      )
       .limit(1)
     return sub ?? null
   }
@@ -64,7 +113,13 @@ export function createSubscriptionsService(database: Database) {
   }
 
   async function create(data: CreateSubscriptionInput) {
-    const [sub] = await database.insert(subscriptions).values(data).returning()
+    const [sub] = await database
+      .insert(subscriptions)
+      .values({
+        ...data,
+        pastDueSince: data.status === 'past_due' ? new Date() : null,
+      })
+      .returning()
     return sub
   }
 
@@ -74,6 +129,7 @@ export function createSubscriptionsService(database: Database) {
       ...(data.status === 'canceled' && !data.canceledAt
         ? { canceledAt: new Date() }
         : {}),
+      ...(data.status ? { pastDueSince: pastDueSinceFor(data.status) } : {}),
     }
     const [sub] = await database
       .update(subscriptions)
@@ -167,6 +223,7 @@ export function createSubscriptionsService(database: Database) {
       const values = {
         planId: state.planId,
         status: state.status,
+        pastDueSince: pastDueSinceFor(state.status),
         currentPeriodStart: state.currentPeriodStart,
         currentPeriodEnd: state.currentPeriodEnd,
         trialEndsAt: state.trialEndsAt,
@@ -185,7 +242,12 @@ export function createSubscriptionsService(database: Database) {
 
       const [created] = await tx
         .insert(subscriptions)
-        .values({ ...values, userId, externalId: state.externalId })
+        .values({
+          ...values,
+          pastDueSince: state.status === 'past_due' ? new Date() : null,
+          userId,
+          externalId: state.externalId,
+        })
         .returning()
       return { subscription: created, created: true }
     })

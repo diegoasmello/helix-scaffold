@@ -161,6 +161,22 @@ describe('POST /webhooks/billing — sync', () => {
     expect(rows[0]).toMatchObject({ userId, status: 'past_due' })
   })
 
+  it('starts the past_due grace period on the transition, and clears it after', async () => {
+    const userId = await createUser()
+    await send({ subscriptions: [state({ userId })] })
+    await send({ subscriptions: [state({ status: 'past_due' })] })
+    const [pastDue] = await findByExternalId('sub_123')
+    expect(pastDue.pastDueSince).not.toBeNull()
+
+    await send({ subscriptions: [state({ status: 'past_due' })] })
+    const [stillPastDue] = await findByExternalId('sub_123')
+    expect(stillPastDue.pastDueSince).toEqual(pastDue.pastDueSince)
+
+    await send({ subscriptions: [state({ status: 'active' })] })
+    const [recovered] = await findByExternalId('sub_123')
+    expect(recovered.pastDueSince).toBeNull()
+  })
+
   it('is idempotent when the same delivery arrives twice', async () => {
     const userId = await createUser()
     const payload = { subscriptions: [state({ userId })] }

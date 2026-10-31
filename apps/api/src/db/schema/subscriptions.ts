@@ -32,6 +32,9 @@ export const subscriptions = pgTable(
     currentPeriodStart: timestamp('current_period_start').notNull(),
     currentPeriodEnd: timestamp('current_period_end').notNull(),
     canceledAt: timestamp('canceled_at'),
+    // Set when status becomes 'past_due', cleared when it leaves it. Start of
+    // the `subscriptions.pastDueGraceDays` grace period. Never set by clients.
+    pastDueSince: timestamp('past_due_since'),
     externalId: text('external_id'),
     metadata: jsonb('metadata'),
     createdAt: timestamp('created_at').notNull().defaultNow(),

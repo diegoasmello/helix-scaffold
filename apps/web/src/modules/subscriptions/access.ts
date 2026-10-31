@@ -21,9 +21,11 @@ export function hasSubscriptionAccess(
 ): boolean {
   const { enabled, plans, subscription, isOperator } = state
   if (!enabled || isOperator) return true
+  // `past_due` only reaches the client while inside the grace period
+  // (`subscriptions.pastDueGraceDays`) — the API filters it out afterwards.
   if (
     !subscription ||
-    (subscription.status !== 'active' && subscription.status !== 'trialing')
+    !['active', 'trialing', 'past_due'].includes(subscription.status)
   ) {
     return false
   }

@@ -28,6 +28,7 @@ export const subscriptionSchema = z
     currentPeriodStart: z.date(),
     currentPeriodEnd: z.date(),
     canceledAt: z.date().nullable(),
+    pastDueSince: z.date().nullable(),
     externalId: z.string().nullable(),
     metadata: z.unknown().nullable(),
     createdAt: z.date(),

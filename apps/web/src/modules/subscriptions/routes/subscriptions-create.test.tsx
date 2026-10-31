@@ -92,7 +92,11 @@ async function fillRequiredFields() {
 beforeEach(() => {
   server.use(
     getSubscriptionStatusHandler(() =>
-      getSubscriptionStatusHandlerResponse200({ enabled: true, plans })
+      getSubscriptionStatusHandlerResponse200({
+        enabled: true,
+        plans,
+        pastDueGraceDays: 0,
+      })
     ),
     postSubscriptionsHandler(async (info) => {
       const body = (await info.request.json()) as CreateSubscriptionInput

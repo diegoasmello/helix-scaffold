@@ -112,7 +112,11 @@ beforeEach(() => {
   mockList(mockSubscriptions)
   server.use(
     getSubscriptionStatusHandler(() =>
-      getSubscriptionStatusHandlerResponse200({ enabled: true, plans })
+      getSubscriptionStatusHandlerResponse200({
+        enabled: true,
+        plans,
+        pastDueGraceDays: 0,
+      })
     ),
     getMePermissionsHandler({
       grants: { subscriptions: ['view', 'create', 'edit', 'delete'] },

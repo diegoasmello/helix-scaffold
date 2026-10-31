@@ -176,7 +176,11 @@ export const handlers = [
 
   // Subscriptions
   getSubscriptionStatusHandler(() =>
-    getSubscriptionStatusHandlerResponse200({ enabled: false, plans: [] })
+    getSubscriptionStatusHandlerResponse200({
+      enabled: false,
+      plans: [],
+      pastDueGraceDays: 0,
+    })
   ),
   getMeSubscriptionHandler(() => getMeSubscriptionHandlerResponse204()),
   getSubscriptionsHandler(

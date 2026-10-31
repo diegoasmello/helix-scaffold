@@ -31,6 +31,7 @@ const mockSubscription = createSubscription({
   currentPeriodStart: '2026-01-01T12:00:00.000Z',
   currentPeriodEnd: '2026-02-01T12:00:00.000Z',
   trialEndsAt: null,
+  pastDueSince: null,
 })
 
 const short = (iso: string) => formatDate(parseISO(iso), 'short')
@@ -63,7 +64,11 @@ function renderMeSubscription() {
 beforeEach(() => {
   server.use(
     getSubscriptionStatusHandler(() =>
-      getSubscriptionStatusHandlerResponse200({ enabled: true, plans })
+      getSubscriptionStatusHandlerResponse200({
+        enabled: true,
+        plans,
+        pastDueGraceDays: 0,
+      })
     )
   )
   mockMeSubscription(mockSubscription)
@@ -138,5 +143,37 @@ describe('MeSubscription', () => {
     renderMeSubscription()
     await screen.findByText('Pro')
     expect(screen.queryByText('Trial ends')).not.toBeInTheDocument()
+  })
+
+  describe('past_due within the grace period', () => {
+    beforeEach(() => {
+      server.use(
+        getSubscriptionStatusHandler(() =>
+          getSubscriptionStatusHandlerResponse200({
+            enabled: true,
+            plans,
+            pastDueGraceDays: 7,
+          })
+        )
+      )
+      mockMeSubscription({
+        ...mockSubscription,
+        status: 'past_due',
+        pastDueSince: '2026-03-01T12:00:00.000Z',
+      })
+    })
+
+    it('warns that the payment failed and when access ends', async () => {
+      renderMeSubscription()
+      expect(await screen.findByText('Payment failed')).toBeInTheDocument()
+      const graceEnd = formatDate(parseISO('2026-03-08T12:00:00.000Z'), 'long')
+      expect(screen.getByText(new RegExp(graceEnd))).toBeInTheDocument()
+    })
+  })
+
+  it('shows no payment warning for an active subscription', async () => {
+    renderMeSubscription()
+    await screen.findByText('Pro')
+    expect(screen.queryByText('Payment failed')).not.toBeInTheDocument()
   })
 })

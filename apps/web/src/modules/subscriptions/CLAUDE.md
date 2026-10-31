@@ -70,6 +70,8 @@ const { subscription, plan, plans, getPlanName, isActive, isTrialing, isPending,
 - `getPlanName(planId)` — display name for any plan id; falls back to the raw id for plans no longer in the catalog
 - `isActive: boolean` — `subscription.status === 'active'`
 - `isTrialing: boolean` — `subscription.status === 'trialing'`
+- `isPastDue: boolean` — `subscription.status === 'past_due'` (only returned by the API while inside the grace period)
+- `graceEndsAt: Date | null` — for a past_due subscription, `pastDueSince + pastDueGraceDays` (from `GET /subscription/status`): when access ends
 - `isPending: boolean` — `true` while `GET /subscription/status` **or** `GET /me/subscription` is in flight
 
 **When `enabled=false`:** the `GET /me/subscription` query is skipped entirely. The hook makes exactly one HTTP request (`GET /subscription/status`) and returns `subscription: null` with no further cost.
@@ -96,6 +98,8 @@ hasAccess('reports') // ...and the plan lists 'reports' in its features
 ```
 
 Mirrors `requireSubscription()` in the API so the UI hides exactly what the API would reject: always `true` when subscriptions are disabled, and for users with `subscriptions:view` (operators). `isPending` also waits for the user's permissions, so operators never see a fallback flash. Kept separate from `useSubscription()` because it depends on `useAuth()`.
+
+`past_due` counts as access: `GET /me/subscription` only returns it while inside the API's grace period (`subscriptions.pastDueGraceDays`), so the client never re-checks dates.
 
 The rule itself lives in `access.ts` → `hasSubscriptionAccess(state, feature?)`, a pure function also used by the router context (see _Route guards_ below). Change the rule there, never in the callers.
 
@@ -281,7 +285,7 @@ All `DateInput` fields bind `value` and `onChange` manually (not via `getInputPr
 ## Detail screen (`subscriptions-detail.tsx`)
 
 Read-only view of all subscription fields. Shows:
-- `userId`, `planId`, `status` (badge), `currentPeriodStart`, `currentPeriodEnd`, `trialEndsAt` (only if set), `canceledAt` (only if set), `externalId` (only if set), `createdAt`
+- `userId`, `planId`, `status` (badge), `currentPeriodStart`, `currentPeriodEnd`, `trialEndsAt` (only if set), `pastDueSince` (only if set), `canceledAt` (only if set), `externalId` (only if set), `createdAt`
 
 Footer: Back button → `/subscriptions`.
 
@@ -295,6 +299,7 @@ The `/me/subscription` route lives in the `me` module but consumes `useSubscript
 - Shows a `<Loader>` while `isPending: true` (status or subscription fetching)
 - Shows "No active subscription" when `subscription: null`
 - Shows the plan name (`plan?.name`, falling back to the raw `planId`), status badge (colored by `STATUS_COLORS`), trial end date (when `trialEndsAt` is set), period start/end when a subscription exists
+- When the subscription is past_due (inside the grace period), an orange `Alert` (`me.pastDue.*`) says the payment failed and shows `graceEndsAt`
 
 **Navigation:** the tab only appears in `MePage`'s sidebar when `enabled: true`. `MePage` calls `useSubscription()` and conditionally renders the `NavigationItem` based on the `enabled` flag. The `meSubscriptionRoute` `beforeLoad` also checks the subscription mode and redirects to `/me/account` when subscriptions are disabled, so direct URL navigation is blocked when the feature is off.
 
@@ -369,7 +374,7 @@ deleteSubscriptionsIdHandler(() => deleteSubscriptionsIdHandlerResponse204())
 Integration tests for this module also need:
 ```ts
 // Override subscription status to enabled
-getSubscriptionStatusHandler(() => getSubscriptionStatusHandlerResponse200({ enabled: true, plans }))
+getSubscriptionStatusHandler(() => getSubscriptionStatusHandlerResponse200({ enabled: true, plans, pastDueGraceDays: 0 }))
 // Provide subscription mode to allow subscriptions list to render
 getMeSubscriptionHandler(() => getMeSubscriptionHandlerResponse204())
 ```

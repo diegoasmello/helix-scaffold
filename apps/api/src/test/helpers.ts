@@ -27,6 +27,15 @@ export const testDb = drizzle(env.DATABASE_URL, {
   casing: 'snake_case',
 })
 
+/** The user created by `createTestSession()` — look it up by email, never by row order. */
+export async function getTestUser() {
+  const [testUser] = await testDb
+    .select()
+    .from(user)
+    .where(eq(user.email, TEST_USER_EMAIL))
+  return testUser
+}
+
 export function createTestApp() {
   return buildApp(testDb)
 }

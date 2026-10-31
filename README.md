@@ -176,6 +176,7 @@ export default defineConfig(({ mode }) => ({
 | `auth.socialProviders.<name>`    | disabled    | `google` / `facebook` / `apple`; credentials go in `.env`         |
 | `subscriptions.enabled`          | `false`     | Activates the full subscription infrastructure                    |
 | `subscriptions.plans`            | `[]`        | Plan catalog; each plan lists the features it unlocks             |
+| `subscriptions.pastDueGraceDays` | `0`         | Days a past_due subscription keeps access after a failed payment  |
 | `subscriptions.trial`            | `false`     | `{ days, planId }` auto-creates a trial on registration           |
 | `email.from`                     | `noreply@…` | Sender address for outgoing email                                 |
 | `uploads.*`                      | —           | Storage backend, directory, max size, orphan cleanup schedule     |

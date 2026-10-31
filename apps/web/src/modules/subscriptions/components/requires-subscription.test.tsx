@@ -64,7 +64,11 @@ function renderGate(feature?: string) {
 beforeEach(() => {
   server.use(
     getSubscriptionStatusHandler(() =>
-      getSubscriptionStatusHandlerResponse200({ enabled: true, plans })
+      getSubscriptionStatusHandlerResponse200({
+        enabled: true,
+        plans,
+        pastDueGraceDays: 0,
+      })
     ),
     getMePermissionsHandler({ grants: {} })
   )
@@ -74,7 +78,11 @@ describe('RequiresSubscription', () => {
   it('renders children when subscriptions are disabled', async () => {
     server.use(
       getSubscriptionStatusHandler(() =>
-        getSubscriptionStatusHandlerResponse200({ enabled: false, plans: [] })
+        getSubscriptionStatusHandlerResponse200({
+          enabled: false,
+          plans: [],
+          pastDueGraceDays: 0,
+        })
       )
     )
     renderGate('reports')

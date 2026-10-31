@@ -11,6 +11,7 @@ import {
   createRoleWithPermissions,
   createTestApp,
   createTestSession,
+  getTestUser,
   testDb,
 } from '@/test/helpers'
 
@@ -33,7 +34,11 @@ afterAll(async () => {
 
 async function createRestrictedSession(
   grants: { resource: string; action: string }[],
-  options: { planId?: string } = {}
+  options: {
+    planId?: string
+    status?: 'active' | 'past_due'
+    pastDueSince?: Date
+  } = {}
 ) {
   const role = await createRoleWithPermissions(grants)
   const email = `restricted-subscriptions-${Date.now()}@test.com`
@@ -59,7 +64,8 @@ async function createRestrictedSession(
     await testDb.insert(subscriptions).values({
       userId: created.id,
       planId: options.planId,
-      status: 'active',
+      status: options.status ?? 'active',
+      pastDueSince: options.pastDueSince ?? null,
       currentPeriodStart: new Date(),
       currentPeriodEnd: new Date('2099-01-01'),
     })
@@ -93,6 +99,7 @@ describe('GET /subscription/status', () => {
     expect(res.json()).toEqual({
       enabled: true,
       plans: config.subscriptions.plans,
+      pastDueGraceDays: config.subscriptions.pastDueGraceDays,
     })
   })
 })
@@ -136,6 +143,34 @@ describe('requireSubscription (via GET /todos)', () => {
     expect(res.statusCode).toBe(200)
   })
 
+  it('allows a past_due subscription within the grace period', async () => {
+    const cookie = await createRestrictedSession(todosViewer, {
+      planId: 'pro',
+      status: 'past_due',
+      pastDueSince: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
+    })
+    const res = await app.inject({
+      method: 'GET',
+      url: '/todos',
+      headers: { cookie },
+    })
+    expect(res.statusCode).toBe(200)
+  })
+
+  it('returns 403 for a past_due subscription after the grace period', async () => {
+    const cookie = await createRestrictedSession(todosViewer, {
+      planId: 'pro',
+      status: 'past_due',
+      pastDueSince: new Date(Date.now() - 8 * 24 * 60 * 60 * 1000),
+    })
+    const res = await app.inject({
+      method: 'GET',
+      url: '/todos',
+      headers: { cookie },
+    })
+    expect(res.statusCode).toBe(403)
+  })
+
   it('lets users with subscriptions:view through without a subscription', async () => {
     const cookie = await createRestrictedSession([
       ...todosViewer,
@@ -168,7 +203,7 @@ describe('GET /me/subscription', () => {
   })
 
   it('returns 200 with active subscription when one exists', async () => {
-    const [testUser] = await testDb.select().from(user).limit(1)
+    const testUser = await getTestUser()
     const now = new Date()
     const periodEnd = new Date(now)
     periodEnd.setMonth(periodEnd.getMonth() + 1)
@@ -192,7 +227,7 @@ describe('GET /me/subscription', () => {
   })
 
   it('returns 204 when user has only a canceled subscription', async () => {
-    const [testUser] = await testDb.select().from(user).limit(1)
+    const testUser = await getTestUser()
     const now = new Date()
     const periodEnd = new Date(now)
     periodEnd.setMonth(periodEnd.getMonth() + 1)
@@ -232,7 +267,7 @@ describe('Permission enforcement', () => {
     const now = new Date()
     const end = new Date(now)
     end.setMonth(end.getMonth() + 1)
-    const [testUser] = await testDb.select().from(user).limit(1)
+    const testUser = await getTestUser()
 
     const res = await app.inject({
       method: 'POST',
@@ -249,7 +284,7 @@ describe('Permission enforcement', () => {
   })
 
   it('returns 403 on PATCH /subscriptions/:id without subscriptions:edit', async () => {
-    const [testUser] = await testDb.select().from(user).limit(1)
+    const testUser = await getTestUser()
     const now = new Date()
     const end = new Date(now)
     end.setMonth(end.getMonth() + 1)
@@ -278,7 +313,7 @@ describe('Permission enforcement', () => {
   })
 
   it('returns 403 on DELETE /subscriptions/:id without subscriptions:delete', async () => {
-    const [testUser] = await testDb.select().from(user).limit(1)
+    const testUser = await getTestUser()
     const now = new Date()
     const end = new Date(now)
     end.setMonth(end.getMonth() + 1)
@@ -321,7 +356,7 @@ describe('GET /subscriptions', () => {
   })
 
   it('returns subscriptions with pagination', async () => {
-    const [testUser] = await testDb.select().from(user).limit(1)
+    const testUser = await getTestUser()
     const now = new Date()
     const end = new Date(now)
     end.setMonth(end.getMonth() + 1)
@@ -356,7 +391,7 @@ describe('GET /subscriptions', () => {
 
 describe('POST /subscriptions', () => {
   it('creates a subscription', async () => {
-    const [testUser] = await testDb.select().from(user).limit(1)
+    const testUser = await getTestUser()
     const now = new Date()
     const end = new Date(now)
     end.setMonth(end.getMonth() + 1)
@@ -405,7 +440,7 @@ describe('POST /subscriptions', () => {
   })
 
   it('returns 409 when the user already has a live subscription', async () => {
-    const [testUser] = await testDb.select().from(user).limit(1)
+    const testUser = await getTestUser()
     const payload = {
       userId: testUser.id,
       planId: 'pro',
@@ -435,7 +470,7 @@ describe('POST /subscriptions', () => {
   })
 
   it('returns 409 when the externalId is already used', async () => {
-    const [testUser] = await testDb.select().from(user).limit(1)
+    const testUser = await getTestUser()
     await testDb.insert(subscriptions).values({
       userId: testUser.id,
       planId: 'pro',
@@ -463,7 +498,7 @@ describe('POST /subscriptions', () => {
   })
 
   it('allows non-live subscriptions alongside a live one', async () => {
-    const [testUser] = await testDb.select().from(user).limit(1)
+    const testUser = await getTestUser()
     await testDb.insert(subscriptions).values({
       userId: testUser.id,
       planId: 'pro',
@@ -488,7 +523,7 @@ describe('POST /subscriptions', () => {
   })
 
   it('returns 400 for a plan not in the catalog', async () => {
-    const [testUser] = await testDb.select().from(user).limit(1)
+    const testUser = await getTestUser()
     const res = await app.inject({
       method: 'POST',
       url: '/subscriptions',
@@ -515,7 +550,7 @@ describe('GET /subscriptions/:id', () => {
   })
 
   it('returns the subscription when found', async () => {
-    const [testUser] = await testDb.select().from(user).limit(1)
+    const testUser = await getTestUser()
     const now = new Date()
     const end = new Date(now)
     end.setMonth(end.getMonth() + 1)
@@ -554,7 +589,7 @@ describe('PATCH /subscriptions/:id', () => {
   })
 
   it('updates and returns the subscription', async () => {
-    const [testUser] = await testDb.select().from(user).limit(1)
+    const testUser = await getTestUser()
     const now = new Date()
     const end = new Date(now)
     end.setMonth(end.getMonth() + 1)
@@ -583,7 +618,7 @@ describe('PATCH /subscriptions/:id', () => {
   })
 
   it('returns 409 when reactivating while another subscription is live', async () => {
-    const [testUser] = await testDb.select().from(user).limit(1)
+    const testUser = await getTestUser()
     const [canceled] = await testDb
       .insert(subscriptions)
       .values([
@@ -615,7 +650,7 @@ describe('PATCH /subscriptions/:id', () => {
   })
 
   it('returns 400 when changing to a plan not in the catalog', async () => {
-    const [testUser] = await testDb.select().from(user).limit(1)
+    const testUser = await getTestUser()
     const [inserted] = await testDb
       .insert(subscriptions)
       .values({
@@ -637,9 +672,70 @@ describe('PATCH /subscriptions/:id', () => {
   })
 })
 
+describe('pastDueSince', () => {
+  async function createVia(status: string) {
+    const testUser = await getTestUser()
+    const res = await app.inject({
+      method: 'POST',
+      url: '/subscriptions',
+      payload: {
+        userId: testUser.id,
+        planId: 'pro',
+        status,
+        currentPeriodStart: new Date().toISOString(),
+        currentPeriodEnd: new Date('2099-01-01').toISOString(),
+      },
+      headers: { cookie: authCookie },
+    })
+    return res.json()
+  }
+
+  function patch(id: string, payload: Record<string, unknown>) {
+    return app.inject({
+      method: 'PATCH',
+      url: `/subscriptions/${id}`,
+      payload,
+      headers: { cookie: authCookie },
+    })
+  }
+
+  it('is set when a subscription is created as past_due', async () => {
+    const sub = await createVia('past_due')
+    expect(sub.pastDueSince).not.toBeNull()
+  })
+
+  it('is null for other statuses', async () => {
+    const sub = await createVia('active')
+    expect(sub.pastDueSince).toBeNull()
+  })
+
+  it('is set when the status changes to past_due and kept while it stays', async () => {
+    const sub = await createVia('active')
+    const first = (await patch(sub.id, { status: 'past_due' })).json()
+    expect(first.pastDueSince).not.toBeNull()
+
+    const second = (
+      await patch(sub.id, { status: 'past_due', planId: 'enterprise' })
+    ).json()
+    expect(second.pastDueSince).toBe(first.pastDueSince)
+  })
+
+  it('is kept when a patch does not touch the status', async () => {
+    const sub = await createVia('past_due')
+    const res = (await patch(sub.id, { planId: 'enterprise' })).json()
+    expect(res.pastDueSince).toBe(sub.pastDueSince)
+  })
+
+  it('is cleared when the subscription leaves past_due', async () => {
+    const sub = await createVia('past_due')
+    const res = (await patch(sub.id, { status: 'active' })).json()
+    expect(res.pastDueSince).toBeNull()
+  })
+})
+
 describe('DELETE /subscriptions/:id', () => {
   it('returns 204 for existing subscription', async () => {
-    const [testUser] = await testDb.select().from(user).limit(1)
+    const testUser = await getTestUser()
     const now = new Date()
     const end = new Date(now)
     end.setMonth(end.getMonth() + 1)

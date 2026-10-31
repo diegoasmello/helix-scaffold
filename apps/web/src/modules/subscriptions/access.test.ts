@@ -62,6 +62,14 @@ describe('hasSubscriptionAccess', () => {
     expect(hasSubscriptionAccess(state({ subscription }), 'reports')).toBe(true)
   })
 
+  it('accepts past_due subscriptions (the API only returns them within the grace period)', () => {
+    const subscription = createSubscription({
+      planId: 'pro',
+      status: 'past_due',
+    })
+    expect(hasSubscriptionAccess(state({ subscription }), 'reports')).toBe(true)
+  })
+
   it('grants a feature the plan includes', () => {
     expect(
       hasSubscriptionAccess(state({ subscription: active('pro') }), 'reports')

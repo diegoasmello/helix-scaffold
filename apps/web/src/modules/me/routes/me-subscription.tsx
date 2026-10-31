@@ -1,6 +1,8 @@
 import {
+  Alert,
   Badge,
   Center,
+  IconAlertTriangle,
   LabeledValue,
   Loader,
   Stack,
@@ -16,7 +18,7 @@ import { formatDate } from '@/utils/date'
 import { useSubscription } from '../../subscriptions/hooks/use-subscription'
 
 export function MeSubscription() {
-  const { subscription, plan, isPending } = useSubscription()
+  const { subscription, plan, graceEndsAt, isPending } = useSubscription()
   const { t } = useTranslation('subscription')
 
   if (isPending) {
@@ -51,6 +53,18 @@ export function MeSubscription() {
             {t('me.description')}
           </Text>
         </Stack>
+
+        {graceEndsAt && (
+          <Alert
+            color="orange"
+            icon={<IconAlertTriangle size={16} />}
+            title={t('me.pastDue.title')}
+          >
+            {t('me.pastDue.description', {
+              date: formatDate(graceEndsAt, 'long'),
+            })}
+          </Alert>
+        )}
 
         <Stack gap="xs">
           <LabeledValue label={t('me.labels.plan')}>

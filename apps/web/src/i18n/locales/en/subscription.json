@@ -28,6 +28,10 @@
       "title": "No active subscription",
       "description": "You don't have an active subscription."
     },
+    "pastDue": {
+      "title": "Payment failed",
+      "description": "We couldn't charge your last payment. You keep access until {{date}} — update your payment method to avoid losing it."
+    },
     "labels": {
       "plan": "Plan",
       "status": "Status",
@@ -60,6 +64,7 @@
     "trialEndsAt": "Trial ends",
     "currentPeriodStart": "Period start",
     "currentPeriodEnd": "Period end",
+    "pastDueSince": "Past due since",
     "canceledAt": "Canceled at",
     "externalId": "External ID",
     "createdAt": "Created"
