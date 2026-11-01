@@ -90,11 +90,20 @@ export async function bootstrapRoutes(
             tx.rollback()
           }
 
+          // With no users, a leftover "Admin" role (users deleted by hand) is
+          // reused: it stops being the default role and gets the full catalog.
           const [adminRole] = await tx
             .insert(roles)
             .values({ name: 'Admin', description: 'Full system access' })
+            .onConflictDoUpdate({
+              target: roles.name,
+              set: { description: 'Full system access', isDefault: false },
+            })
             .returning()
 
+          await tx
+            .delete(rolePermissions)
+            .where(eq(rolePermissions.roleId, adminRole.id))
           await tx.insert(rolePermissions).values(
             ALL_PERMISSIONS.map(({ resource, action }) => ({
               roleId: adminRole.id,
@@ -109,13 +118,28 @@ export async function bootstrapRoutes(
             .where(eq(user.id, admin.id))
 
           if (config.registration.mode === 'open') {
-            // No permissions: the profile only needs a session, and what
-            // regular users may do is a product decision.
-            await tx.insert(roles).values({
-              name: 'User',
-              description: 'Default role for self-registered users',
-              isDefault: true,
-            })
+            // A leftover default role is kept with its permissions. Otherwise
+            // "User" becomes the default — created with no permissions (the
+            // profile only needs a session; what regular users may do is a
+            // product decision), or reused if a role by that name is left.
+            const [existingDefault] = await tx
+              .select({ id: roles.id })
+              .from(roles)
+              .where(eq(roles.isDefault, true))
+              .limit(1)
+            if (!existingDefault) {
+              await tx
+                .insert(roles)
+                .values({
+                  name: 'User',
+                  description: 'Default role for self-registered users',
+                  isDefault: true,
+                })
+                .onConflictDoUpdate({
+                  target: roles.name,
+                  set: { isDefault: true },
+                })
+            }
           }
         })
       } catch (error) {
