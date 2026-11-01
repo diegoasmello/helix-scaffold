@@ -50,12 +50,12 @@ When `registration.mode` is `'open'`, `POST /bootstrap` creates a second role af
 1. INSERT Admin role + ALL_PERMISSIONS
 2. auth.api.signUpEmail(admin)        ← hook fires, finds no isDefault role → no-op ✓
 3. UPDATE user SET roleId = adminRole.id
-4. INSERT User role (isDefault = true, me:view + me:edit permissions)
+4. INSERT User role (isDefault = true, no permissions)
 ```
 
 The User role is always created **after** the admin is assigned the Admin role. This is intentional — the `databaseHooks.user.create.after` in `auth.ts` fires during step 2, before the User role exists, so the admin never accidentally gets the User role.
 
-The admin can later customize the User role's permissions on `/roles/$id/permissions`. Note that `me:view`/`me:edit` are not enforced by any route today (the `me` endpoints only require a session), so a User role with just those grants can reach `/me` but no module.
+The User role starts with **no permissions**: what regular users may do is a product decision, granted on `/roles/$id/permissions`. Until then a self-registered user can reach only `/me` (the profile needs just a session) — the frontend's `/` sends them there. The bootstrap test asserts the role has zero permissions.
 
 **Test environment:** `src/config/test-overrides.ts` sets `registration.mode: 'open'` so test helpers can create users via `POST /api/auth/sign-up/email`. The bootstrap test accounts for both roles being created in this mode.
 

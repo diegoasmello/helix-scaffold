@@ -8,7 +8,7 @@ import {
 import { useNavigate } from '@tanstack/react-router'
 import { useTranslation } from 'react-i18next'
 
-import { sidebarGroups } from './config/sidebar'
+import { canSeeSidebarItem, sidebarGroups } from './config/sidebar'
 import { authClient } from './lib/authentication'
 import { SidebarPreferenceContext } from './lib/sidebar-preference'
 import { useAuth } from './modules/auth/use-auth'
@@ -36,20 +36,15 @@ export function App() {
     .map((group) => ({
       title: group.titleKey ? t(group.titleKey) : undefined,
       items: group.items
-        .filter((item) => {
-          if (item.requiresSubscriptionEnabled && !subscriptionEnabled) {
-            return false
-          }
-          if (
-            item.subscriptionFeature &&
-            !hasAccess(item.subscriptionFeature)
-          ) {
-            return false
-          }
-          return item.permission
-            ? hasPermission(item.permission.resource, item.permission.action)
-            : isAuthenticated
-        })
+        .filter(
+          (item) =>
+            isAuthenticated &&
+            canSeeSidebarItem(item, {
+              hasPermission,
+              hasSubscriptionAccess: hasAccess,
+              subscriptionEnabled,
+            })
+        )
         .map((item) => ({
           ...item,
           label: t(item.label),

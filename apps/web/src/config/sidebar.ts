@@ -63,3 +63,41 @@ export const sidebarGroups: SidebarGroupWithPermission[] = [
     ],
   },
 ]
+
+export interface SidebarAccess {
+  hasPermission: (resource: string, action: PermissionAction) => boolean
+  hasSubscriptionAccess: (feature: string) => boolean
+  subscriptionEnabled: boolean
+}
+
+/**
+ * Whether the signed-in user sees the item. Shared by the sidebar (`app.tsx`)
+ * and the `/` redirect (`routes.ts`), so `/` always lands on a page the
+ * sidebar offers.
+ */
+export function canSeeSidebarItem(
+  item: SidebarItemWithPermission,
+  access: SidebarAccess
+): boolean {
+  if (item.requiresSubscriptionEnabled && !access.subscriptionEnabled) {
+    return false
+  }
+  if (
+    item.subscriptionFeature &&
+    !access.hasSubscriptionAccess(item.subscriptionFeature)
+  ) {
+    return false
+  }
+  return item.permission
+    ? access.hasPermission(item.permission.resource, item.permission.action)
+    : true
+}
+
+/** The first item the user can see, in sidebar order — the target of `/`. */
+export function findHomeSidebarItem(
+  access: SidebarAccess
+): SidebarItemWithPermission | undefined {
+  return sidebarGroups
+    .flatMap((group) => group.items)
+    .find((item) => canSeeSidebarItem(item, access))
+}

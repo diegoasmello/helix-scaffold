@@ -114,9 +114,9 @@ The scaffold supports two account-creation strategies, configured via `registrat
 | Mode | Behaviour |
 | --- | --- |
 | `closed` (default) | Only admins create accounts. Bootstrap creates the first admin; subsequent users are created via `POST /users` by a permissioned admin. |
-| `open` | Anyone can self-register via `/sign-up` (email/password) or via social login (Google, Facebook, Apple). Bootstrap also creates a "User" role (`isDefault = true`) with `me:view` and `me:edit`. New self-registered users receive this role automatically. |
+| `open` | Anyone can self-register via `/sign-up` (email/password) or via social login (Google, Facebook, Apple). Bootstrap also creates a "User" role (`isDefault = true`) with **no permissions**. New self-registered users receive this role automatically. |
 
-`me:view`/`me:edit` are not enforced by any route today — profile routes only need a session — so a user holding only the default User role can reach `/me` and nothing else (the app's `/` redirects to `/todos`, which sends them to `/403`). Grant the default role whatever the product's regular users need.
+The profile (`/me`, `/api/me/*`) needs only a session, never a permission — there is no `me` resource. So a user holding only the empty default role can reach `/me` and nothing else: the app's `/` sends each user to the first sidebar page they may open, and to `/me` when there is none. Grant the default role whatever the product's regular users need.
 
 **Single source of truth:** the mode lives only in the backend config. The frontend reads `GET /registration/status → { open: boolean, providers: string[] }` at route-load time — no `VITE_*` duplication.
 

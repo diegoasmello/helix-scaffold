@@ -81,6 +81,13 @@ describe('POST /bootstrap', () => {
       .from(rolePermissions)
       .where(eq(rolePermissions.roleId, adminRole!.id))
     expect(adminPerms).toHaveLength(ALL_PERMISSIONS.length)
+
+    // The default role starts empty — the product decides what users may do
+    const userPerms = await testDb
+      .select()
+      .from(rolePermissions)
+      .where(eq(rolePermissions.roleId, userRole!.id))
+    expect(userPerms).toHaveLength(0)
   })
 
   it('returns 409 when system is already bootstrapped', async () => {

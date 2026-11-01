@@ -19,7 +19,7 @@ React 19 + Vite — the main application.
 | File | Holds |
 | --- | --- |
 | `app.ts` | `appConfig`: product name (browser tab title) and i18n languages + default language |
-| `sidebar.ts` | Navigation groups, items and their permissions |
+| `sidebar.ts` | Navigation groups, items and their permissions; `canSeeSidebarItem()` / `findHomeSidebarItem()` (visibility and the `/` landing page) |
 | `theme.ts` | Mantine theme via `createTheme()` |
 
 `appConfig.name` and `appConfig.i18n.defaultLanguage` are injected into `index.html` (`%APP_NAME%`, `%APP_LANG%`) by a small plugin in `vite.config.ts`, so `src/config/app.ts` must stay free of browser-only imports (it is also in `tsconfig.node.json`).
@@ -42,9 +42,9 @@ To add a new feature module, create `src/modules/<feature>/routes/index.ts` expo
 rootRoute (Outlet; notFoundComponent: NotFound, errorComponent: ErrorBoundary)
 ├── authRoutes — /bootstrap, /login, /sign-up, /forgot-password, /reset-password (public, no layout)
 └── layoutRoute (id 'layout', renders <App /> — sidebar, header)
-    ├── /            → redirects to /todos
     ├── /403         → Forbidden (inside the layout, so the user can navigate away)
     └── authenticatedRoute (id 'authenticated', renders <AuthGuard />)
+        ├── /        → redirects to the user's first visible sidebar page, else /me
         └── users, roles, audit, me, todos, subscriptions routes
 ```
 
@@ -52,6 +52,9 @@ rootRoute (Outlet; notFoundComponent: NotFound, errorComponent: ErrorBoundary)
 
 - `context.hasPermission(resource, action)` — from `GET /me/permissions`
 - `context.hasSubscriptionAccess(feature?)` — from `GET /subscription/status` (+ `GET /me/subscription` when enabled); see `src/modules/subscriptions/CLAUDE.md` → _Route guards_
+- `context.subscriptionEnabled` — `subscriptions.enabled` from the same status
+
+**The `/` redirect** uses them through `findHomeSidebarItem()` (`src/config/sidebar.ts`): the first item, in sidebar order, that `canSeeSidebarItem()` allows — the same function `app.tsx` filters the sidebar with, so `/` never lands on a page the sidebar hides (or on `/403`). With no visible item it goes to `/me`, which every signed-in user may open. Reordering `sidebarGroups` changes the landing page.
 
 Both are loaded with `queryClient.ensureQueryData`, the same cache the `useAuth()` / `useSubscription()` hooks read, so components make no extra requests. Route files import `queryClient` from `src/lib/query-client.ts` (a plain `new QueryClient()` — default `staleTime: 0`, so data refetches when a component mounts).
 
@@ -1525,7 +1528,7 @@ import { xxxRoutes } from './modules/xxx/routes'
 { label: "Xxx", icon: IconXxx, to: "/xxx", permission: { resource: "xxx", action: "view" } }
 ```
 
-The `permission` field controls sidebar visibility — `app.tsx` filters items using `hasPermission` before passing them to `<Layout>`. Use the same resource string registered in `apps/api/src/config/permissions.ts`.
+The `permission` field controls sidebar visibility — `app.tsx` filters items with `canSeeSidebarItem()` (permission, plus `subscriptionFeature` / `requiresSubscriptionEnabled`) before passing them to `<Layout>`. The first visible item is also where `/` sends the user. Use the same resource string registered in `apps/api/src/config/permissions.ts`.
 
 ### 10. Delete confirmation
 

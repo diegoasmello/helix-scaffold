@@ -89,19 +89,13 @@ export async function bootstrapRoutes(
         .where(sql`${user.id} = ${result.user.id}`)
 
       if (config.registration.mode === 'open') {
-        const [userRole] = await database
-          .insert(roles)
-          .values({
-            name: 'User',
-            description: 'Default role for self-registered users',
-            isDefault: true,
-          })
-          .returning()
-
-        await database.insert(rolePermissions).values([
-          { roleId: userRole.id, resource: 'me', action: 'view' },
-          { roleId: userRole.id, resource: 'me', action: 'edit' },
-        ])
+        // No permissions: the profile only needs a session, and what regular
+        // users may do is a product decision (granted on /roles/:id/permissions).
+        await database.insert(roles).values({
+          name: 'User',
+          description: 'Default role for self-registered users',
+          isDefault: true,
+        })
       }
 
       return reply

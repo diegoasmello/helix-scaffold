@@ -67,7 +67,7 @@ It reads `config.auth.socialProviders`, so a new provider needs no change here �
 
 ## Permissions config
 
-`me` **is** in `RESOURCE_DEFINITIONS` (`actions: ['view', 'edit']`), and bootstrap grants both to the default User role in open registration mode — but **no route enforces them**. Every `me` endpoint only requires a session, and the frontend `/me` routes have no permission guard either. Treat `me:*` as reserved until that is decided; do not add `requirePermission('me', …)` to these routes without updating every role that needs profile access.
+None. Every `me` endpoint requires only a session, and the frontend `/me` routes have no permission guard: managing your own profile (name, email, password, sign-in methods, preferences) is a right of every account, so no role can take it away. There is deliberately no `me` entry in `RESOURCE_DEFINITIONS` — it was removed, and migration `0008_drop_me_permissions` deleted the old `me:*` grants. Do not add `requirePermission` to these routes.
 
 ## Tests (`me-routes.test.ts`)
 

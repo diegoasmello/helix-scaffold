@@ -17,13 +17,20 @@ type ParseRoute<TRouteTree, TAcc = TRouteTree> = TRouteTree extends {
         >
   : TAcc
 
+// An index route's fullPath ends in `/` (`/me/`), but `to` takes `/me`.
+type WithoutTrailingSlash<P extends string> = P extends `${infer Base}/`
+  ? Base extends ''
+    ? '/'
+    : Base
+  : P
+
 // Valid navigable app routes — pathless layout routes (e.g. authenticated)
 // are excluded because their fullPath collapses to the parent's path.
 type AppRoute =
   ParseRoute<RegisteredRouter['routeTree']> extends infer R
-    ? R extends { fullPath: infer FP }
+    ? R extends { fullPath: infer FP extends string }
       ? FP extends `/${string}` | '/'
-        ? FP
+        ? WithoutTrailingSlash<FP>
         : never
       : never
     : never

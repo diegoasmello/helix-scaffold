@@ -13,6 +13,7 @@ import {
 } from '@tanstack/react-router'
 
 import { App } from './app'
+import { findHomeSidebarItem } from './config/sidebar'
 import { authClient } from './lib/authentication'
 import { queryClient } from './lib/query-client'
 import { auditRoutes } from './modules/audit/routes'
@@ -38,14 +39,6 @@ const layoutRoute = createRoute({
   getParentRoute: () => rootRoute,
   id: 'layout',
   component: App,
-})
-
-const indexRoute = createRoute({
-  getParentRoute: () => layoutRoute,
-  path: '/',
-  beforeLoad: () => {
-    throw redirect({ to: '/todos', search: { page: 1, pageSize: 10 } })
-  },
 })
 
 const forbiddenRoute = createRoute({
@@ -89,16 +82,29 @@ export const authenticatedRoute = createRoute({
       /** Route guard counterpart of `<RequiresSubscription feature>`. */
       hasSubscriptionAccess: (feature?: string): boolean =>
         hasSubscriptionAccess(subscriptionAccess, feature),
+      subscriptionEnabled: status.enabled,
     }
+  },
+})
+
+// `/` lands on the first sidebar page the user may open — `/me` (always
+// allowed) when there is none, e.g. a self-registered user whose default role
+// has no permissions yet.
+const indexRoute = createRoute({
+  getParentRoute: () => authenticatedRoute,
+  path: '/',
+  beforeLoad: ({ context }) => {
+    const home = findHomeSidebarItem(context)
+    throw redirect({ to: home?.to ?? home?.links?.[0]?.to ?? '/me' })
   },
 })
 
 const routeTree = rootRoute.addChildren([
   ...authRoutes,
   layoutRoute.addChildren([
-    indexRoute,
     forbiddenRoute,
     authenticatedRoute.addChildren([
+      indexRoute,
       ...usersRoutes,
       ...rolesRoutes,
       ...auditRoutes,

@@ -57,6 +57,13 @@
       "when": 1793477682173,
       "tag": "0007_faulty_komodo",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1793508231417,
+      "tag": "0008_drop_me_permissions",
+      "breakpoints": true
     }
   ]
 }
