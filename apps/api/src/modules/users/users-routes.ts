@@ -1,6 +1,7 @@
 import { APIError } from 'better-auth'
 import z from 'zod'
 
+import type { Config } from '@/config'
 import { buildPaginatedResponse } from '@/lib/pagination'
 
 import type { Auth } from '../../auth'
@@ -20,10 +21,16 @@ export async function usersRoutes(
   {
     database,
     auth,
+    config,
     requirePermission,
-  }: { database: Database; auth: Auth; requirePermission: RequirePermission }
+  }: {
+    database: Database
+    auth: Auth
+    config: Config
+    requirePermission: RequirePermission
+  }
 ) {
-  const service = createUsersService(database, auth)
+  const service = createUsersService(database, auth, config)
 
   app.get(
     '/users',

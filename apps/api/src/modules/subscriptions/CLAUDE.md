@@ -234,7 +234,7 @@ The pure functions are unit-tested in `entitlements.test.ts` (no database); `GET
 
 ---
 
-## Trial auto-start (`src/modules/registration/self-registration.ts`)
+## Trial auto-start (`src/modules/accounts/account-provisioning.ts`)
 
 When `registration.mode` is `'open'`, `subscriptions.enabled` is `true` and `subscriptions.trial` is set (all in `src/app.config.ts`), `applySelfRegistrationDefaults()` creates a trialing subscription for a user who **self-registers**. It runs from `databaseHooks.user.create.after` in `src/auth.ts`.
 
@@ -247,7 +247,7 @@ The trial subscription uses:
 
 **This operation is best-effort.** A failed INSERT does not fail the sign-up: it is caught and logged (`'Trial subscription creation failed'`, with `userId`) through the logger `buildApp` hands to `createAuth` (`app.log`). The user then exists without a trial and sees "no active subscription" on the me-page — search the logs for that message.
 
-**Self-registration only:** the hook acts only on sign-ups that arrive over HTTP (`/sign-up/email`, a social callback). `POST /bootstrap`, `POST /users` and the seed call `auth.api.signUpEmail()` on the server, with no request, so they get no trial (and no default role). In `closed` mode no trial is ever created. Covered by `registration/self-registration.test.ts`, which also calls `applySelfRegistrationDefaults()` directly with a trial config, since the test config has trials off.
+**Self-registration only:** the hook acts only on sign-ups that arrive over HTTP (`/sign-up/email`, a social callback). `POST /bootstrap`, `POST /users` and the seed call `auth.api.signUpEmail()` on the server, with no request, so they get no trial (and no default role). In `closed` mode no trial is ever created. Covered by `accounts/account-provisioning.test.ts`, which also calls `applySelfRegistrationDefaults()` directly with a trial config, since the test config has trials off.
 
 ---
 

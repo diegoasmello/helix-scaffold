@@ -1,7 +1,7 @@
 import fs from 'node:fs/promises'
 
 import { faker } from '@faker-js/faker'
-import { eq, sql } from 'drizzle-orm'
+import { sql } from 'drizzle-orm'
 
 import { createAuth } from '@/auth'
 import { config } from '@/config'
@@ -17,6 +17,10 @@ import {
 import { env } from '@/env'
 import { createEmailProvider } from '@/lib/email'
 import { createStorageProvider } from '@/lib/storage'
+import {
+  createAccountProvisioning,
+  ensureDefaultRole,
+} from '@/modules/accounts/account-provisioning'
 
 import { createSeedUploads } from './seed-uploads'
 
@@ -29,6 +33,7 @@ const auth = createAuth(
   }),
   config
 )
+const provisioning = createAccountProvisioning(db, auth, config)
 
 const MODERATOR_PERMISSIONS = [
   { resource: 'todos', action: 'view' },
@@ -124,30 +129,26 @@ async function main() {
     }))
   )
 
+  // In open registration, "User" (with its permissions) becomes the default
+  // role, so people who sign up get the same access as the seeded users.
+  await ensureDefaultRole(db, config)
+
   console.log('Creating admin user...')
-  const adminResult = await auth.api.signUpEmail({
-    body: {
-      name: 'Admin',
-      email: 'admin@example.com',
-      password: 'pass1234',
-    },
+  await provisioning.provisionAccount({
+    name: 'Admin',
+    email: 'admin@example.com',
+    password: 'pass1234',
+    roleId: adminRole.id,
   })
-  await db
-    .update(user)
-    .set({ roleId: adminRole.id })
-    .where(eq(user.id, adminResult.user.id))
 
   console.log('Creating extra users...')
   for (const [i, userData] of EXTRA_USERS.entries()) {
-    const result = await auth.api.signUpEmail({
-      body: {
-        name: userData.name,
-        email: userData.email,
-        password: 'pass1234',
-      },
+    await provisioning.provisionAccount({
+      name: userData.name,
+      email: userData.email,
+      password: 'pass1234',
+      roleId: i % 2 === 0 ? moderatorRole.id : userRole.id,
     })
-    const roleId = i % 2 === 0 ? moderatorRole.id : userRole.id
-    await db.update(user).set({ roleId }).where(eq(user.id, result.user.id))
   }
 
   console.log('Creating uploads...')

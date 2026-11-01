@@ -26,7 +26,7 @@ Run from `apps/api` (or from the root with the `pnpm db:*` / `pnpm spec:*` alias
 | `pnpm db:generate` | Generate a migration from the Drizzle schema (`src/db/schema/`) into `src/db/migrations/` |
 | `pnpm db:migrate` / `pnpm db:migrate:test` | Apply migrations to the dev DB (`.env`) / test DB (`.env.test`) |
 | `pnpm db:studio` | Drizzle Studio |
-| `pnpm db:seed` | Dev data (`src/db/seed.ts`). **Refuses to run if any user exists.** Wipes `uploads.dir`, creates Admin/Moderator/User roles (none marked `isDefault`), an admin login (`admin@example.com` / `pass1234`), 20 extra users (same password) and sample todos with uploads |
+| `pnpm db:seed` | Dev data (`src/db/seed.ts`). **Refuses to run if any user exists.** Wipes `uploads.dir`, creates Admin/Moderator/User roles (in open registration `User` becomes the default role, through `ensureDefaultRole()`), an admin login (`admin@example.com` / `pass1234`), 20 extra users (same password) and sample todos with uploads |
 | `pnpm db:reset` | Truncates every table in the schema (`drizzle-seed` `reset`). Does not touch `uploads.dir` |
 | `pnpm spec:export <file>` | Writes the OpenAPI spec — see _OpenAPI spec export_ |
 | `pnpm test` / `pnpm test:watch` | Vitest against the test DB |

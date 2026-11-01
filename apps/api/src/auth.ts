@@ -7,19 +7,20 @@ import { env } from '@/env'
 import type { EmailProvider } from '@/lib/email'
 import {
   applySelfRegistrationDefaults,
-  type ErrorLogger,
-} from '@/modules/registration/self-registration'
+  type ProvisioningLogger,
+} from '@/modules/accounts/account-provisioning'
 
 // Scripts (the seed) have no Fastify logger; buildApp passes `app.log`.
-const consoleLogger: ErrorLogger = {
+const consoleLogger: ProvisioningLogger = {
   error: (obj, msg) => console.error(msg, obj),
+  warn: (obj, msg) => console.warn(msg, obj),
 }
 
 export function createAuth(
   database: Database,
   emailProvider: EmailProvider,
   config: Config,
-  logger: ErrorLogger = consoleLogger
+  logger: ProvisioningLogger = consoleLogger
 ) {
   const { google, facebook, apple } = config.auth.socialProviders
   const disableSignUp = config.registration.mode !== 'open'
@@ -33,13 +34,14 @@ export function createAuth(
         create: {
           after: async (user, ctx) => {
             // Self-registration only. `auth.api.signUpEmail()` called by the
-            // server (POST /users, bootstrap, seed) carries no request: those
-            // callers set the role themselves and must not start a trial.
-            if (config.registration.mode !== 'open' || !ctx?.request) return
+            // server (account provisioning: POST /users, bootstrap, seed)
+            // carries no request: those callers set the role themselves and
+            // must not start a trial.
+            if (!ctx?.request) return
             await applySelfRegistrationDefaults(
               database,
               user.id,
-              config.subscriptions,
+              config,
               logger
             )
           },

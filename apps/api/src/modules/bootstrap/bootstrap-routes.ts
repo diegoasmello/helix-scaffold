@@ -1,12 +1,10 @@
-import { eq, sql } from 'drizzle-orm'
 import z from 'zod'
 
-import { ALL_PERMISSIONS } from '@/config/permissions'
+import { createAccountProvisioning } from '@/modules/accounts/account-provisioning'
 
 import type { Auth } from '../../auth'
 import type { Config } from '../../config'
 import type { Database } from '../../db'
-import { rolePermissions, roles, user } from '../../db/schema'
 import type { FastifyTypedInstance } from '../../types'
 
 const bootstrapStatusSchema = z.object({
@@ -19,17 +17,12 @@ const bootstrapBodySchema = z.object({
   password: z.string().min(8),
 })
 
-async function isBootstrapped(database: Database): Promise<boolean> {
-  const [{ count }] = await database
-    .select({ count: sql<number>`count(*)` })
-    .from(user)
-  return Number(count) > 0
-}
-
 export async function bootstrapRoutes(
   app: FastifyTypedInstance,
   { database, auth, config }: { database: Database; auth: Auth; config: Config }
 ) {
+  const provisioning = createAccountProvisioning(database, auth, config)
+
   app.get(
     '/bootstrap/status',
     {
@@ -39,7 +32,7 @@ export async function bootstrapRoutes(
         response: { 200: bootstrapStatusSchema },
       },
     },
-    async () => ({ bootstrapped: await isBootstrapped(database) })
+    async () => ({ bootstrapped: await provisioning.isBootstrapped() })
   )
 
   app.post(
@@ -56,103 +49,12 @@ export async function bootstrapRoutes(
       },
     },
     async (request, reply) => {
-      if (await isBootstrapped(database)) {
+      const result = await provisioning.provisionFirstAdmin(request.body)
+      if (result.status === 'already_bootstrapped') {
         return reply
           .status(409)
           .send({ message: 'System already bootstrapped' })
       }
-
-      // better-auth writes the user through its own connection, so it cannot
-      // join the transaction below: create it first, then undo it if the rest
-      // fails. Server-side calls skip the self-registration hook (no default
-      // role, no trial) — see src/modules/registration/self-registration.ts.
-      const { user: admin } = await auth.api.signUpEmail({
-        body: {
-          name: request.body.name,
-          email: request.body.email,
-          password: request.body.password,
-        },
-      })
-
-      let raced = false
-      try {
-        await database.transaction(async (tx) => {
-          // Serialises concurrent bootstraps: the second one waits here, then
-          // sees two users and backs out.
-          await tx.execute(
-            sql`select pg_advisory_xact_lock(hashtext('helix:bootstrap'))`
-          )
-          const [{ count }] = await tx
-            .select({ count: sql<number>`count(*)` })
-            .from(user)
-          if (Number(count) > 1) {
-            raced = true
-            tx.rollback()
-          }
-
-          // With no users, a leftover "Admin" role (users deleted by hand) is
-          // reused: it stops being the default role and gets the full catalog.
-          const [adminRole] = await tx
-            .insert(roles)
-            .values({ name: 'Admin', description: 'Full system access' })
-            .onConflictDoUpdate({
-              target: roles.name,
-              set: { description: 'Full system access', isDefault: false },
-            })
-            .returning()
-
-          await tx
-            .delete(rolePermissions)
-            .where(eq(rolePermissions.roleId, adminRole.id))
-          await tx.insert(rolePermissions).values(
-            ALL_PERMISSIONS.map(({ resource, action }) => ({
-              roleId: adminRole.id,
-              resource,
-              action,
-            }))
-          )
-
-          await tx
-            .update(user)
-            .set({ roleId: adminRole.id })
-            .where(eq(user.id, admin.id))
-
-          if (config.registration.mode === 'open') {
-            // A leftover default role is kept with its permissions. Otherwise
-            // "User" becomes the default — created with no permissions (the
-            // profile only needs a session; what regular users may do is a
-            // product decision), or reused if a role by that name is left.
-            const [existingDefault] = await tx
-              .select({ id: roles.id })
-              .from(roles)
-              .where(eq(roles.isDefault, true))
-              .limit(1)
-            if (!existingDefault) {
-              await tx
-                .insert(roles)
-                .values({
-                  name: 'User',
-                  description: 'Default role for self-registered users',
-                  isDefault: true,
-                })
-                .onConflictDoUpdate({
-                  target: roles.name,
-                  set: { isDefault: true },
-                })
-            }
-          }
-        })
-      } catch (error) {
-        // Sessions and accounts cascade from the user row.
-        await database.delete(user).where(eq(user.id, admin.id))
-        if (raced) {
-          return reply
-            .status(409)
-            .send({ message: 'System already bootstrapped' })
-        }
-        throw error
-      }
-
       return reply
         .status(201)
         .send({ message: 'System bootstrapped successfully' })

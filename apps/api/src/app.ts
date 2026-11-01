@@ -185,7 +185,12 @@ export function buildApp(database: Database, options: BuildAppOptions = {}) {
       emailProvider,
     })
     authenticated.register(rolesRoutes, { database, requirePermission })
-    authenticated.register(usersRoutes, { database, auth, requirePermission })
+    authenticated.register(usersRoutes, {
+      database,
+      auth,
+      config,
+      requirePermission,
+    })
 
     authenticated.register(todosRoutes, {
       database,

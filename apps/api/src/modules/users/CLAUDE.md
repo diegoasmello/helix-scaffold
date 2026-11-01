@@ -33,20 +33,18 @@ Sort columns: `['name', 'email', 'createdAt']`. Default sort: `createdAt`.
 
 ## Service (`users-service.ts`)
 
-Factory signature: `createUsersService(database: Database, auth: Auth)` — receives `auth` as a second argument (unlike other modules).
+Factory signature: `createUsersService(database: Database, auth: Auth, config)` — receives `auth` and `config` for account provisioning (unlike other modules).
 
 **`list`, `listAll` and `getById`** do a `leftJoin(roles, eq(user.roleId, roles.id))` and pass the row through the private `toUserWithRole` helper. This helper aliases the join columns (`roleRefId`, `roleName`) to avoid collisions, then rebuilds `role: { id, name } | null`.
 
 **`create`** flow:
 
-1. If `roleId` is provided, validates the role exists via `validateRoleExists`. Throws `{ code: 'ROLE_NOT_FOUND' }` if not.
-2. Calls `auth.api.signUpEmail({ body: { name, email, password } })` — never inserts directly into `user`.
-3. If `roleId` was provided, updates the newly created user's `roleId` with a second `UPDATE`.
-4. Returns the full `UserWithRole` via `getById`.
+1. `provisionAccount(data)` (account provisioning, `src/modules/accounts/`) — validates the role (throws `RoleNotFoundError`, `code: 'ROLE_NOT_FOUND'`, before anything is written), signs the user up through better-auth (never a direct insert) and assigns the role. A failed assignment deletes the user again, so no user is left without the role that was asked for.
+2. Returns the full `UserWithRole` via `getById`.
 
 **`update`** flow:
 
-1. If `roleId` is provided (and not `null`), validates the role exists. Throws `{ code: 'ROLE_NOT_FOUND' }` if not.
+1. If `roleId` is provided (and not `null`), validates the role exists. Throws `RoleNotFoundError` (`code: 'ROLE_NOT_FOUND'`) if not.
 2. Updates the `user` row directly. Returns `null` when the user id does not exist (callers handle 404).
 3. Returns the full `UserWithRole` via `getById`.
 
@@ -54,7 +52,7 @@ Factory signature: `createUsersService(database: Database, auth: Auth)` — rece
 
 **`listAll`** — every user with its role, no pagination. Backs `GET /users/all`.
 
-**No self-registration side effects:** `create` goes through `auth.api.signUpEmail`, which fires the `databaseHooks.user.create.after` hook in `auth.ts` — but a server-side call carries no request, so the hook skips it. An admin-created user gets exactly the `roleId` sent (`null` when omitted) and never a trial, in either registration mode. Covered by `registration/self-registration.test.ts`.
+**No self-registration side effects:** `create` goes through `auth.api.signUpEmail`, which fires the `databaseHooks.user.create.after` hook in `auth.ts` — but a server-side call carries no request, so the hook skips it. An admin-created user gets exactly the `roleId` sent (`null` when omitted) and never a trial, in either registration mode. Covered by `accounts/account-provisioning.test.ts`.
 
 ## Routes (`users-routes.ts`)
 

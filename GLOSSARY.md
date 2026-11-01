@@ -15,6 +15,14 @@ Domain terms used across `apps/api` and `apps/web`. Use these names in code, doc
 | **Entitlements** | The single answer to "what does the subscription axis let this user do": `{ operator, subscribed, features, graceEndsAt }`. Decided in `apps/api/src/modules/subscriptions/entitlements.ts`, enforced by `requireSubscription()`, returned by `GET /me/entitlements`. The frontend only reads it. |
 | **Entitlement denial** | Why access was refused: `subscription_required` (no access-granting subscription) or `feature_not_in_plan`. Sent as the `code` of the 403. |
 
+## Accounts
+
+| Term | Meaning |
+| --- | --- |
+| **Account provisioning** | Creating a user together with everything its kind gets (role, trial), all or nothing. Lives in `apps/api/src/modules/accounts/` — the only place a user is created. |
+| **Account kinds** | *First admin* (`POST /bootstrap`), *admin-created* (`POST /users`), *seeded* (`db:seed`) and *self-registered* (sign-up or social login in open mode). Only self-registered accounts get the default role and a trial. |
+| **Default role** | The role marked `isDefault` (at most one, DB-enforced) that self-registered users receive in open registration. `ensureDefaultRole()` makes one exist; without it a self-registered user gets no role (logged). |
+
 ## Access control
 
 | Term | Meaning |

@@ -17,7 +17,7 @@ Each workspace has its own `CLAUDE.md` with patterns, conventions, and step-by-s
 
 | Area | Module docs |
 | --- | --- |
-| `apps/api/src/modules/` | `audit`, `billing-webhook`, `bootstrap`, `me`, `permissions`, `registration`, `roles`, `subscriptions`, `todos`, `uploads`, `users` |
+| `apps/api/src/modules/` | `accounts` (account provisioning — every way a user is created), `audit`, `billing-webhook`, `bootstrap`, `me`, `permissions`, `registration`, `roles`, `subscriptions`, `todos`, `uploads`, `users` |
 | `apps/api/src/lib/` | `email`, `pdf` |
 | `apps/web/src/modules/` | `audit`, `auth` (also bootstrap/login/sign-up screens), `me`, `roles` (also the permission editor), `subscriptions`, `todos`, `uploads`, `users` |
 

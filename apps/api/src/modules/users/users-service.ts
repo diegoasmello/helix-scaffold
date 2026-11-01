@@ -1,9 +1,14 @@
 import { asc, count, desc, eq } from 'drizzle-orm'
 
 import type { Auth } from '@/auth'
+import type { Config } from '@/config'
 import type { Database } from '@/db'
 import { roles, user } from '@/db/schema'
 import { getPaginationParams } from '@/lib/pagination'
+import {
+  createAccountProvisioning,
+  RoleNotFoundError,
+} from '@/modules/accounts/account-provisioning'
 
 import type {
   CreateUserInput,
@@ -35,7 +40,13 @@ function toUserWithRole(row: {
   }
 }
 
-export function createUsersService(database: Database, auth: Auth) {
+export function createUsersService(
+  database: Database,
+  auth: Auth,
+  config: Pick<Config, 'registration'>
+) {
+  const provisioning = createAccountProvisioning(database, auth, config)
+
   async function list(query: UsersListQuery) {
     const { limit, offset } = getPaginationParams(query.page, query.pageSize)
     const sortCol = SORT_COLUMNS[query.sortBy ?? 'createdAt']
@@ -90,36 +101,15 @@ export function createUsersService(database: Database, auth: Auth) {
     return !!role
   }
 
+  /** Throws `RoleNotFoundError` for an unknown `roleId` — see account provisioning. */
   async function create(data: CreateUserInput) {
-    if (data.roleId) {
-      const roleExists = await validateRoleExists(data.roleId)
-      if (!roleExists)
-        throw Object.assign(new Error('Role not found'), {
-          code: 'ROLE_NOT_FOUND',
-        })
-    }
-
-    const result = await auth.api.signUpEmail({
-      body: { name: data.name, email: data.email, password: data.password },
-    })
-
-    if (data.roleId) {
-      await database
-        .update(user)
-        .set({ roleId: data.roleId })
-        .where(eq(user.id, result.user.id))
-    }
-
-    return getById(result.user.id)
+    return getById(await provisioning.provisionAccount(data))
   }
 
   async function update(id: string, data: UpdateUserInput) {
     if (data.roleId) {
       const roleExists = await validateRoleExists(data.roleId)
-      if (!roleExists)
-        throw Object.assign(new Error('Role not found'), {
-          code: 'ROLE_NOT_FOUND',
-        })
+      if (!roleExists) throw new RoleNotFoundError()
     }
 
     const [updated] = await database

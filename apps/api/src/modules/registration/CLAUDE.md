@@ -1,6 +1,6 @@
 # registration module — backend
 
-Thin module with two parts: a single `GET` endpoint that exposes the registration mode and configured social providers to the frontend (reads `config`, no table), and `self-registration.ts` — what a self-registered user gets in open mode (default role, trial), called from the better-auth hook in `src/auth.ts`.
+Thin module with two parts: a single `GET` endpoint that exposes the registration mode and configured social providers to the frontend (reads `config`, no table), and the self-registration hook wiring — what a self-registered user gets lives in the accounts module (`src/modules/accounts/`).
 
 ## Purpose
 
@@ -90,24 +90,7 @@ Social sign-up is guarded differently: `disableSignUp` on each provider in `auth
 
 ## Self-registration defaults (default role + trial)
 
-When mode is `open`, `auth.ts` runs `applySelfRegistrationDefaults()` (`self-registration.ts`) from Better Auth's `databaseHooks.user.create.after`. It assigns the default role (`roles.isDefault`) and, when `subscriptions.trial` is set, starts a trial:
-
-```ts
-databaseHooks: {
-  user: {
-    create: {
-      after: async (user, ctx) => {
-        if (config.registration.mode !== 'open' || !ctx?.request) return
-        await applySelfRegistrationDefaults(database, user.id, config.subscriptions)
-      },
-    },
-  },
-},
-```
-
-**Only sign-ups that arrive over HTTP** — `POST /api/auth/sign-up/email` and social callbacks, both of which carry `ctx.request`. Accounts the server creates with `auth.api.signUpEmail()` (`POST /users`, `POST /bootstrap`, the seed) have no request, so the hook skips them: they get the role their caller sets and never a trial. Verified empirically — better-auth passes a context without `request`/`headers` to server-side calls.
-
-`self-registration.test.ts` covers both paths (self sign-up gets the default role; `POST /users` without `roleId` gets `null` and no subscription) and the trial, by calling the function directly with a trial config.
+What a self-registered user gets in open mode — the default role and, when `subscriptions.trial` is set, a trial — is decided by `applySelfRegistrationDefaults()` in the accounts module (`src/modules/accounts/account-provisioning.ts`), next to every other way an account is created. `auth.ts` calls it from Better Auth's `databaseHooks.user.create.after`, only for sign-ups that carry `ctx.request` (over HTTP); it does nothing in closed mode. See `src/modules/accounts/CLAUDE.md`.
 
 ## Frontend counterpart
 

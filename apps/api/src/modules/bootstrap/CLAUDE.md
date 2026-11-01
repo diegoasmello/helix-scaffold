@@ -26,14 +26,16 @@ Returns `{ bootstrapped: boolean }`. Bootstrapped is `true` when `count(*) > 0` 
 
 Body: `{ name, email, password (min 8) }`.
 
+The route is a thin caller of `provisionFirstAdmin()` (account provisioning, `src/modules/accounts/account-provisioning.ts` — the flow below lives there); `GET /bootstrap/status` calls its `isBootstrapped()`.
+
 Flow:
-1. Calls `isBootstrapped` — returns `409` if any user exists.
-2. Calls `auth.api.signUpEmail({ body: { name, email, password } })`. It runs on the server (no request), so the self-registration hook skips it — no default role, no trial.
+1. `isBootstrapped()` — returns `409` if any user exists.
+2. Signs the admin up with `auth.api.signUpEmail()`. It runs on the server (no request), so the self-registration hook skips it — no default role, no trial.
 3. In **one transaction**:
-   1. `pg_advisory_xact_lock(hashtext('helix:bootstrap'))`, then counts users — more than one means a concurrent bootstrap won: roll back and answer `409`.
+   1. `pg_advisory_xact_lock(hashtext('helix:bootstrap'))`, then looks for another user who already has a role — a concurrent bootstrap that won: roll back and answer `409`. (Counting users is not enough: both racing users can exist by then, and both would back out.)
    2. Upserts the `'Admin'` role by name (`description: 'Full system access'`, `isDefault: false`), replaces its permissions with one `rolePermission` row for **every entry in `ALL_PERMISSIONS`** (`src/config/permissions.ts`).
    3. Sets the new user's `roleId` to the Admin role.
-   4. In open mode, ensures a default role exists (see below).
+   4. `ensureDefaultRole()` — in open mode, ensures a default role exists (see below).
 4. Returns `201 { message: 'System bootstrapped successfully' }`.
 
 Returns `409 { message: 'System already bootstrapped' }` if any user exists at step 1.
@@ -51,7 +53,7 @@ There is deliberately no other public way to create an admin — a dev-only `POS
 When `registration.mode` is `'open'`, `POST /bootstrap` creates a second role after the admin user is fully set up:
 
 ```
-1. auth.api.signUpEmail(admin)        ← server-side call: the self-registration hook skips it
+1. signUpEmail(admin)                 ← server-side call: the self-registration hook skips it
 2. transaction: Admin role + ALL_PERMISSIONS, admin.roleId, then — only if no role is the default yet — User role (isDefault = true, no permissions)
 ```
 
