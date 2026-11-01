@@ -1,6 +1,6 @@
 # roles module — frontend
 
-Full CRUD module. Also exports two cross-module components consumed by other modules: `RoleSelectField` and `RoleCreateDrawer`.
+Full CRUD module. Also owns the permission editor (`/roles/$id/permissions`) — there is no separate permissions module in the frontend — and exports two cross-module components: `RoleSelectField` and `RoleCreateDrawer`.
 
 ## File structure
 
@@ -48,6 +48,7 @@ src/modules/roles/
 interface RoleFormValues {
   name: string
   description: string  // always a string — never null in the form
+  isDefault: boolean   // the role self-registered users receive (open registration)
 }
 ```
 
@@ -66,10 +67,13 @@ Note: `description` is required by the form validator even though the API schema
 
 ## Form fields (`components/roles-form.tsx`)
 
-| Field         | Component  | Notes              |
-| ------------- | ---------- | ------------------ |
-| `name`        | `TextInput`| `getInputProps`    |
-| `description` | `Textarea` | `resize="vertical"`|
+| Field         | Component  | Notes                                              |
+| ------------- | ---------- | -------------------------------------------------- |
+| `name`        | `TextInput`| `getInputProps`                                    |
+| `description` | `Textarea` | `resize="vertical"`                                |
+| `isDefault`   | `Switch`   | `getInputProps('isDefault', { type: 'checkbox' })` |
+
+Turning `isDefault` on for one role unsets it on the previous default — the API does it in a transaction (only one default role can exist).
 
 No `isEditing` prop — the form is identical for create and edit.
 
@@ -79,25 +83,16 @@ Cross-module component exported for use by other modules. Wraps a `<Select>` bac
 
 Always `searchable` and `clearable`. Selecting nothing returns `null`. Callers must ensure `getRolesAllSuspenseQueryOptions()` is prefetched in the route loader or the component will suspend on its own.
 
-**Basic usage:**
+**Basic usage** — bind it like any input:
 
 ```tsx
-<RoleSelectField
-  value={form.values.roleId}
-  onChange={(value) => form.setFieldValue('roleId', value)}
-  error={form.errors.roleId}
-/>
+<RoleSelectField {...form.getInputProps('roleId')} />
 ```
 
 **With inline creation** (`allowCreate`): renders the select followed by a "Create related role" button below it. Clicking the button opens `RoleCreateDrawer`. On successful creation the new role is automatically selected.
 
 ```tsx
-<RoleSelectField
-  allowCreate
-  value={form.values.roleId}
-  onChange={(value) => form.setFieldValue('roleId', value)}
-  error={form.errors.roleId}
-/>
+<RoleSelectField allowCreate {...form.getInputProps('roleId')} />
 ```
 
 ## `RoleCreateDrawer` (`components/role-create-drawer.tsx`)
@@ -130,7 +125,7 @@ No `/roles/all` route — `GET /roles/all` is only consumed internally by `RoleS
 
 Inline in each component — no `hooks.ts`.
 
-**Create**: invalidates list (`getRolesSuspenseQueryKey()`, `exact: true`).  
+**Create**: invalidates list (`getRolesSuspenseQueryKey()` — never with `exact: true`, which would skip the cached pages).  
 **Update**: invalidates list + `setQueryData` on item cache.  
 **Delete** (in `RolesList`): `onError` on `useMutation` itself (not on `mutate`) — notifies on failure. Confirm message includes the role's name: `Are you sure you want to delete "${name}"?`. Invalidates list + `removeQueries` on item cache.
 
@@ -163,8 +158,23 @@ This avoids the circular dependency that would occur when mocking `@tanstack/rea
 
 The list handler is called with a `createPaginatedRoles({...})` object — not a plain array.
 
+## Permission editor
+
+`RolesDetail` shows the role's grants read-only (`<PermissionsTree disabled>`) and, for users with `permissions:edit`, a button to `/roles/$id/permissions`.
+
+`rolesPermissionsRoute` (`/roles/$id/permissions`, guarded by `permissions:edit`) renders `RolesPermissions`: a `PageEdit` around `<PermissionsEditor roleId onCancel>`. Its loader awaits the role (for the breadcrumb) and prefetches the catalog and the grants.
+
+**`PermissionsEditor`** (`components/permissions-editor.tsx`):
+
+- Reads `useGetRolesIdPermissionsSuspense(roleId)` (saved grants) and `useGetPermissionsResourcesSuspense()` (the `RESOURCE_DEFINITIONS` catalog).
+- Holds edits in local state (`useState(saved.grants)`); nothing is sent until Save.
+- Save → `putRolesIdPermissions(roleId, { grants })` (full replacement). `onSuccess` writes the result with `setQueryData(getRolesIdPermissionsSuspenseQueryKey(roleId), …)` and notifies; `onError` notifies. Both live on `useMutation` itself. No navigation — the user stays on the page.
+- The API rejects grants outside the catalog with 400 and audits every save, so the editor only ever sends what the catalog offers.
+
+**`PermissionsTree`** (`components/permissions-tree.tsx`): pure controlled component — `definitions`, `grants`, `onChange`, `disabled?`. One block per resource with a parent checkbox (checked when all actions are granted, indeterminate when some are) and one checkbox per action the resource declares. Actions come from the catalog, so a new action in `RESOURCE_DEFINITIONS` shows up with no frontend change. Action labels come from a local `ACTION_LABELS` map (English only — not yet translated).
+
 ## Sidebar
 
 ```ts
-{ label: 'Roles', icon: IconShield, to: '/roles', permission: { resource: 'roles', action: 'view' } }
+{ label: 'nav.roles', icon: IconShield, to: '/roles', permission: { resource: 'roles', action: 'view' } }
 ```

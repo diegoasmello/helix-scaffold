@@ -1,27 +1,27 @@
 # uploads module — backend
 
-Standalone module for file uploads. Exposes `POST /uploads` (multipart), list, detail, and delete. Other modules attach files by adding a junction table — see _Adding uploads to another module_ below.
+Standalone module for file uploads. Exposes `POST /uploads` (multipart), list, detail, and delete. Other modules attach files with a junction table (multi-file) or a nullable FK column (single file) — see _Adding uploads to another module_ below. There is no admin UI over `GET /uploads`; the frontend only calls `POST /uploads` (`apps/web/src/modules/uploads/service.ts`).
 
 ## Endpoints
 
 | Method | Path | Permission | Notes |
 |--------|------|------------|-------|
-| `POST /uploads` | `uploads:create` | Multipart — no Zod body schema; validated manually |
-| `GET /uploads` | `uploads:view` | Paginated list |
-| `GET /uploads/:id` | `uploads:view` | Single upload |
-| `DELETE /uploads/:id` | `uploads:delete` | Removes from DB **and** storage |
+| `POST` | `/uploads` | `uploads:create` | Multipart — no Zod body schema; validated manually |
+| `GET` | `/uploads` | `uploads:view` | Paginated list (sort: `originalName`, `createdAt`) |
+| `GET` | `/uploads/:id` | `uploads:view` | Single upload |
+| `DELETE` | `/uploads/:id` | `uploads:delete` | Removes from DB **and** storage |
 
 ## `POST /uploads` handler flow
 
 Body is `multipart/form-data` — `@fastify/multipart` is registered globally in `app.ts`. No Zod body schema is declared on this route.
 
-1. `const data = await request.file()` — reads the multipart field named `file`
-2. Validate MIME type against `ALLOWED_MIME_TYPES` (defined in `uploads-schema.ts`)
-3. Validate file size against `config.uploads.maxSizeMb`
-4. `await data.toBuffer()` — buffer the stream
-5. If image: `processImage(buffer, mimeType)` → save each variant to storage with key `<id>/<variant>.<ext>`
-6. Save original to storage with key `<id>/original.<ext>`
-7. Insert row into `uploads` table (with `variants` JSONB if image, `null` otherwise)
+1. `const data = await request.file()` — reads the multipart file; `400 No file provided` when absent
+2. Validate MIME type against `ALLOWED_MIME_TYPES` (`uploads-schema.ts`); `400 File type '…' is not allowed` otherwise
+3. `await data.toBuffer()` — buffer the stream. The size limit is not checked here: `@fastify/multipart` is registered with `limits.fileSize = config.uploads.maxSizeMb` and rejects larger files (413) while streaming
+4. Generate a storage folder name with `crypto.randomUUID()` (see _Storage keys_)
+5. If `isProcessableImage(mimeType)`: `processImage(buffer)` → save the four WebP variants
+6. Save the original
+7. Insert the `uploads` row (`variants` JSONB for images, `null` otherwise; `uploadedBy` = session user)
 8. `request.audit('create', 'uploads', upload.id, { originalName, mimeType, fileSize })`
 9. Return `201` + upload object
 
@@ -36,14 +36,14 @@ Defined as `ALLOWED_MIME_TYPES` in `uploads-schema.ts`:
 
 ## Storage keys
 
-Each upload gets a UUID (uuidv7) as its `id`. Storage keys follow the pattern:
+Storage keys live under a folder named by a random UUID generated in the route — **not** the upload's `id` (the row id is a uuidv7 assigned by the DB default). To find an upload's files, read `storageKey` and `variants.*.key` from its row; never derive paths from `id`.
 
 ```
-<id>/original.<ext>       ← always saved
-<id>/thumbnail.webp       ← images only
-<id>/small.webp           ← images only
-<id>/medium.webp          ← images only
-<id>/large.webp           ← images only
+<folder>/original.<ext>   ← always saved (extension from the uploaded filename)
+<folder>/thumbnail.webp   ← processable images only
+<folder>/small.webp
+<folder>/medium.webp
+<folder>/large.webp
 ```
 
 SVG files are stored as-is (no variants generated).
@@ -66,10 +66,10 @@ SVG files are stored as-is (no variants generated).
 
 ## Cascade deletion
 
-`service.remove(id)` always:
-1. Fetches the upload record
-2. Deletes all storage keys: original + all variant keys (if present)
-3. Deletes the DB row
+`service.remove(id)`:
+1. Fetches the upload record (no-op if missing)
+2. Deletes the DB row
+3. Deletes all storage keys — original + variant keys — best-effort (`Promise.allSettled`), after the row is gone
 
 Always call `service.remove()` instead of a raw DB delete when storage cleanup is needed.
 
@@ -84,11 +84,16 @@ Always call `service.remove()` instead of a raw DB delete when storage cleanup i
 | `medium` | 960px wide | WebP |
 | `large` | 1920px wide | WebP |
 
-Only called when `mimeType.startsWith('image/')` and the type is not SVG.
+Only called when `isProcessableImage(mimeType)` — JPEG, PNG, GIF, WebP and AVIF (`IMAGE_MIME_TYPES` in the same file). SVG is excluded. Variants use `withoutEnlargement`, so small images are not upscaled.
 
 ## Adding uploads to another module
 
-The `todos` module is the reference implementation. The pattern:
+The `todos` module is the reference implementation for both shapes:
+
+- **Multi-file** (`attachments: Upload[]`) — a junction table, steps 1–5 below.
+- **Single file** (`file: Upload | null`) — a nullable `text` column `xxx.file_id` referencing `uploads.id` with `onDelete: 'set null'`; the response embeds `file: uploadSchema.nullable()`, create/update accept `fileId`; the service loads the upload by id on reads and deletes it on `remove`. Register the column in step 5.
+
+Multi-file pattern:
 
 ### 1. Junction table
 
@@ -143,7 +148,7 @@ authenticated.register(xxxRoutes, { database, requirePermission, storage })
 
 ### 5. Register upload references for orphan cleanup
 
-Uploads are persisted immediately when the user selects a file — before the parent record exists. If the user abandons the form, those uploads become orphaned. A scheduled job (`deleteOrphanUploads`) runs every 6 hours and removes uploads older than 24 hours that are not referenced by any module.
+Uploads are persisted immediately when the user selects a file — before the parent record exists. If the user abandons the form, those uploads become orphaned. A job in `src/server.ts` (`deleteOrphanUploads`, `src/lib/orphan-uploads.ts`) runs every `uploads.orphanCleanup.intervalHours` (default 6) and removes uploads older than `uploads.orphanCleanup.graceHours` (default 24) that no registered reference points to. Both live in `src/app.config.ts`. The job does not run at startup — only on the interval.
 
 For the job to know which uploads are in use, every column that references `uploads.id` must be registered in `src/config/upload-references.ts`:
 

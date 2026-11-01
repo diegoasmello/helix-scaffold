@@ -57,6 +57,19 @@ kubb reads the spec and generates everything in `src/generated/`:
 - `types/` — one file per operation with request/response types
 - `hooks/` — async fetchers + queryKey helpers + React Query hooks
 - `mocks/` — faker factories + MSW handlers
+- `schemas/` — JSON schemas per named component (from `pluginOas`; not consumed by the app)
+
+**Naming** (what to import, given a route): `GET /todos` → `getTodos`, `useGetTodosSuspense`, `getTodosSuspenseQueryOptions`, `getTodosSuspenseQueryKey`, `getTodosHandler`; `GET /todos/:id` → `…TodosId…`; `POST /todos` → `postTodos`, `PostTodosMutationRequest`, `postTodosHandlerResponse201`; `PUT /roles/:id/permissions` → `putRolesIdPermissions`. Named schemas (`.meta({ id })`) give `Todo`, `PaginatedTodos` and the factories `createTodo`, `createPaginatedTodos`. An explicit `operationId` in the route overrides the name (e.g. `getMeSubscription`).
+
+**Query keys:** `getXxxSuspenseQueryKey(params?)` is `[{ url }, ...(params ? [params] : [])]`. Calling it without params gives the prefix of every cached page, so invalidate with `invalidateQueries({ queryKey: getXxxSuspenseQueryKey() })` — never `exact: true`, which matches only the param-less key and leaves every list page stale.
+
+### Commands
+
+| From the repo root | In `packages/api-client` | Does |
+| --- | --- | --- |
+| `pnpm spec:export` | `pnpm export-spec` | Rewrites `openapi.json` from the API code (calls `pnpm --filter api spec:export <file>`) |
+| `pnpm spec:generate` | `pnpm generate` | Regenerates `src/generated/` from the committed `openapi.json` |
+| `pnpm spec:dev` | `pnpm dev` | Watch mode against the running API — see the pitfall below |
 
 ### How kubb determines the spec source
 
@@ -120,23 +133,15 @@ loader: ({ deps }) => queryClient.ensureQueryData(getRolesSuspenseQueryOptions(d
 
 See `apps/web/CLAUDE.md` → _Step 3_ for the full mutation pattern and cache invalidation rules.
 
-## Known kubb bugs
+## Known limitations of the generated types
 
-### 1. `date: any` fields in todos/mutations
+### `Date` fields are `any` in request bodies
 
-`z.date()` and `z.coerce.date()` generate `{}` in OpenAPI, which kubb converts to `any`. Affects `PostTodosMutationRequest.date` and `PatchTodosIdMutationRequest.date`.
+`z.date()` / `z.coerce.date()` produce an empty schema (`{}`) in OpenAPI, which kubb turns into `any` — e.g. `PostTodosMutationRequest.date`. Send ISO date strings; `string` is assignable to `any`, so no cast is needed. Response dates arrive as ISO strings too (parse with `parseISO` from `date-fns` before formatting).
 
-The types in `apps/web/src/modules/todo/types.ts` re-export `PostTodosMutationRequest` and `PatchTodosIdMutationRequest` directly — the fetchers accept `string` for `date` since `string` is assignable to `any`.
+### `z.string()` fields stay `string`
 
-### 2. `action` type in audit logs (`GetAuditLogs200`)
-
-kubb generates `action: string` instead of `"create" | "edit" | "delete"`. The manually typed `AuditLog.action` has the correct enum.
-
-Workaround in `audit/hooks.ts`:
-
-```ts
-queryFn: () => getAuditLogsSuspense() as unknown as Promise<AuditLog[]>,
-```
+The generated type is only as precise as the Zod schema. `AuditLog.action` is `string` because `auditLogSchema` declares `action: z.string()` — tighten the API schema (e.g. `z.enum([...])`) if the frontend needs a union, instead of casting in the web app.
 
 ## Named schemas (components/schemas)
 

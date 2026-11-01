@@ -68,9 +68,9 @@ Use `userCreateFormValidate` in `UsersCreate` and `userEditFormValidate` in `Use
 | `name`     | `TextInput`        |                                                                              |
 | `email`    | `TextInput`        | `type="email"`                                                               |
 | `password` | `PasswordInput`    | Rendered only when `!isEditing`                                              |
-| `roleId`   | `RoleSelectField`  | Cross-module component from `roles/components/role-select-field.tsx`; `searchable`, `clearable` |
+| `roleId`   | `RoleSelectField`  | Cross-module component from `roles/components/role-select-field.tsx`; `allowCreate` (inline role creation drawer), `{...form.getInputProps('roleId')}` |
 
-`RoleSelectField` calls `useGetRolesAllSuspense()` internally — it consumes `GET /roles/all` and needs no additional props beyond `value`, `onChange`, and `error`. The parent must ensure the roles query is prefetched in the route loader.
+`RoleSelectField` calls `useGetRolesAllSuspense()` internally — it consumes `GET /roles/all`. The parent must ensure the roles query is prefetched in the route loader.
 
 ## Role selector prefetch
 
@@ -108,7 +108,7 @@ loader: ({ params }) => {
 
 Inline in each component — no `hooks.ts`.
 
-**Create**: sends `roleId` only when non-null — `...(values.roleId ? { roleId: values.roleId } : {})`. Never sends `password` in the request body. Invalidates list on success.
+**Create**: sends `name`, `email`, `password`, and `roleId` only when non-null — `...(values.roleId ? { roleId: values.roleId } : {})`. Invalidates list on success.
 
 **Update**: always sends `roleId` (including `null` to remove the role). Does not send `password`. Invalidates list + `setQueryData` on item cache.
 
@@ -127,7 +127,7 @@ View icon is always visible.
 ## Sidebar
 
 ```ts
-{ label: 'Users', icon: IconUsers, to: '/users', permission: { resource: 'users', action: 'view' } }
+{ label: 'nav.users', icon: IconUsers, to: '/users', permission: { resource: 'users', action: 'view' } }
 ```
 
 ## Notes

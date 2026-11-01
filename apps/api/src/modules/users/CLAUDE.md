@@ -24,7 +24,7 @@ Full CRUD module. Differs significantly from other modules because user creation
 Two entity shapes exist:
 
 - `userSchema` — raw user fields without role embed. **No `.meta()`** — not emitted as a named ref.
-- `userWithRoleSchema` — extends `userSchema` with `role: { id: string, name: string } | null`. Has `.meta({ id: 'UserWithRole', title: 'UserWithRole' })`. **This is always what the API returns** — no endpoint returns plain `userSchema`.
+- `userWithRoleSchema` — extends `userSchema` with `role: { id: string, name: string } | null`. Has `.meta({ id: 'UserWithRole', title: 'UserWithRole' })`. **Every `/users` endpoint returns this** — plain `userSchema` is only used by `GET /me` / `PATCH /me` in the `me` module.
 
 `createUserSchema` — `{ name, email, password (min 8), roleId? (optional string) }`.  
 `updateUserSchema` — `{ name?, email?, roleId?: string | null }`. `roleId: null` removes the role. Password change is **not** supported via this endpoint.
@@ -35,7 +35,7 @@ Sort columns: `['name', 'email', 'createdAt']`. Default sort: `createdAt`.
 
 Factory signature: `createUsersService(database: Database, auth: Auth)` — receives `auth` as a second argument (unlike other modules).
 
-**`list` and `getById`** do a `leftJoin(roles, eq(user.roleId, roles.id))` and pass the row through the private `toUserWithRole` helper. This helper aliases the join columns (`roleRefId`, `roleName`) to avoid collisions, then rebuilds `role: { id, name } | null`.
+**`list`, `listAll` and `getById`** do a `leftJoin(roles, eq(user.roleId, roles.id))` and pass the row through the private `toUserWithRole` helper. This helper aliases the join columns (`roleRefId`, `roleName`) to avoid collisions, then rebuilds `role: { id, name } | null`.
 
 **`create`** flow:
 
@@ -52,6 +52,10 @@ Factory signature: `createUsersService(database: Database, auth: Auth)` — rece
 
 **`remove`** — hard deletes the `user` row. Sessions and accounts cascade via FK.
 
+**`listAll`** — every user with its role, no pagination. Backs `GET /users/all`.
+
+**Side effect in open registration mode:** `create` goes through `auth.api.signUpEmail`, which fires the `databaseHooks.user.create.after` hook in `auth.ts`. In `open` mode that hook assigns the default role, so an admin-created user **without** `roleId` ends up with the default role, not `null`. (The trial auto-start runs in the same hook, so such a user also gets a trial subscription when trials are configured.)
+
 ## Routes (`users-routes.ts`)
 
 Receives `{ database, auth, requirePermission }` — `auth` is an extra parameter not present in other modules.
@@ -59,6 +63,7 @@ Receives `{ database, auth, requirePermission }` — `auth` is an extra paramete
 | Method   | Path         | Permission     | Audit call                                                                               |
 | -------- | ------------ | -------------- | ---------------------------------------------------------------------------------------- |
 | `GET`    | `/users`     | `users:view`   | —                                                                                        |
+| `GET`    | `/users/all` | `users:view`   | — (plain array, no pagination — for select fields, e.g. the subscriptions admin form)    |
 | `GET`    | `/users/:id` | `users:view`   | —                                                                                        |
 | `POST`   | `/users`     | `users:create` | `request.audit('create', 'users', id, meta)` — `meta` is the body **without** `password` |
 | `PATCH`  | `/users/:id` | `users:edit`   | `request.audit('edit', 'users', id, body)`                                               |

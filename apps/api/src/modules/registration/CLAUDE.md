@@ -1,10 +1,10 @@
 # registration module — backend
 
-Thin, stateless module that exposes the current registration mode and configured social providers to the frontend. Has no database table, no service, and no mutations — only a single `GET` endpoint that reads from `env`.
+Thin, stateless module that exposes the current registration mode and configured social providers to the frontend. Has no database table, no service, and no mutations — only a single `GET` endpoint that reads from `config` (`src/app.config.ts`).
 
 ## Purpose
 
-The frontend (login page, sign-up route guard) cannot read backend env vars directly. This endpoint is the single source of truth: it tells the frontend whether self-registration is enabled, and which social OAuth providers have credentials configured, so it can show/hide the appropriate UI elements and allow or redirect away from `/sign-up`.
+The frontend (login page, sign-up route guard) cannot read the backend config. This endpoint is the single source of truth: it tells the frontend whether self-registration is enabled, and which social OAuth providers are enabled, so it can show/hide the appropriate UI elements and allow or redirect away from `/sign-up`.
 
 ## Registration
 
@@ -23,7 +23,7 @@ Returns `{ open: boolean, providers: string[] }`. No auth, no permissions.
 | Field | Type | Description |
 | --- | --- | --- |
 | `open` | `boolean` | `true` when `config.registration.mode === 'open'` |
-| `providers` | `string[]` | Social providers with credentials configured. Always `[]` when `open` is `false`. |
+| `providers` | `string[]` | Social providers enabled in `config.auth.socialProviders`. Always `[]` when `open` is `false`. |
 
 **`providers` values:** `"google"` | `"facebook"` | `"apple"` — only providers enabled in `config.auth.socialProviders` (their credentials are guaranteed by config validation at startup).
 
@@ -62,7 +62,9 @@ socialProviders: {
 }
 ```
 
-**`disableSignUp: config.registration.mode !== 'open'`** — Better Auth enforces this during the OAuth callback. In closed mode, the OAuth flow can be initiated but account creation is blocked server-side. The `providers` field in the status response is also empty in closed mode, so the frontend never shows the buttons.
+**`disableSignUp: config.registration.mode !== 'open'`** — Better Auth enforces this during the OAuth callback. In closed mode, the OAuth flow can be initiated but account creation is blocked server-side. The `providers` field in the status response is also empty in closed mode, so the login page never shows the buttons.
+
+**Consequence in closed mode:** users can still *link* an enabled provider from `/me/security` (that list comes from `GET /me/providers`, which ignores the mode), but the login page offers no social button to sign in with it afterwards. Closed mode is effectively email/password only.
 
 **Important:** `socialProviders` in `betterAuth()` expects **raw options objects**, not the result of calling the provider helper functions (`google()`, `facebook()`, etc.). Those helpers are for standalone use.
 

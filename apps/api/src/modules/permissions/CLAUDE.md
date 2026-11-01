@@ -33,7 +33,7 @@ No entity schema for a "permission" object. The schemas are:
 
 **`getByRoleId(roleId)`** — selects all rows for the role and collapses them into a `Grants` object: `{ [resource]: action[] }`. Returns `{}` when the role has no permissions.
 
-**`replaceForRole(roleId, grants)`** — runs inside a **single transaction**: deletes all existing rows for `roleId`, then bulk-inserts the new set. Returns the result of `getByRoleId` after the transaction. If `grants` is empty, the delete runs but no insert follows — the role ends up with no permissions.
+**`replaceForRole(roleId, grants)`** — runs inside a **single transaction**: deletes all existing rows for `roleId`, then bulk-inserts the new set (duplicate actions within a resource are dropped, so they never hit the unique index). Returns the result of `getByRoleId` after the transaction. If `grants` is empty, the delete runs but no insert follows — the role ends up with no permissions.
 
 **`hasPermission(roleId, resource, action)`** — point-lookup with `.limit(1)`. Returns `boolean`. Used by `createRequirePermission` (`src/hooks/require-permission.ts`) on every authenticated request.
 
@@ -52,7 +52,11 @@ Four endpoints across two URL namespaces:
 
 **`GET /me/permissions`** — reads `request.sessionUser.roleId`; returns `{ grants: {} }` immediately when `roleId` is `null` (user has no role). No permission guard — every authenticated user needs this to function.
 
-**`PUT /roles/:id/permissions`** — uses `PUT` (full replacement), not `PATCH`. The body is `{ grants: Grants }`, identical in shape to the response. No audit call — permission changes are not currently logged.
+**`PUT /roles/:id/permissions`** — uses `PUT` (full replacement), not `PATCH`. The body is `{ grants: Grants }`, identical in shape to the response.
+
+- **400** `{ message: 'Unknown permissions: <resource:action>, …' }` when any grant is not declared in `RESOURCE_DEFINITIONS` — checked by `findUnknownGrants()` (`src/config/permissions.ts`) before anything is written, so the request is all-or-nothing.
+- **404** `{ message: 'Role not found' }` for an unknown role id (Postgres FK violation, read with `getPgErrorCode`).
+- **Audit:** `request.audit('edit', 'permissions', roleId, { grants })` after a successful replace.
 
 ## `requirePermission` hook (`src/hooks/require-permission.ts`)
 
@@ -72,7 +76,7 @@ Only `view` and `edit` — there is no `create` or `delete` action. Permissions 
 
 ## Tests (`permissions-routes.test.ts`)
 
-`beforeEach` truncates `cleanupUsers()` then `cleanupRoles()` — same FK order as the users module.
+`beforeEach` runs `cleanupAuditLogs()`, then `cleanupUsers()` and `cleanupRoles()` — same FK order as the users module.
 
 **`GET /permissions/resources`** — asserts shape only (`resource`, `label`, `actions` properties), not the exact list, so the test stays valid when new modules are added.
 
@@ -80,7 +84,7 @@ Only `view` and `edit` — there is no `create` or `delete` action. Permissions 
 
 **`GET /roles/:id/permissions`** — uses `createRoleWithPermissions` seeder; asserts with `expect.arrayContaining` (order of actions in the array is not guaranteed).
 
-**`PUT /roles/:id/permissions`** — covers: replace with new grants, clear all grants with `{}`.
+**`PUT /roles/:id/permissions`** — covers: replace with new grants, clear all grants with `{}`, 400 for an unknown resource (and existing grants untouched), 400 for an undeclared action, 404 for an unknown role, duplicate actions deduplicated, audit entry written.
 
 **Permission enforcement** is tested inline within the relevant `describe` blocks rather than in a separate `Permission enforcement` block — `GET /roles/:id/permissions` tests 403, `PUT /roles/:id/permissions` tests 403. The pattern differs slightly from other modules: some tests insert users directly via `testDb.insert(user)` instead of using the sign-up endpoint.
 

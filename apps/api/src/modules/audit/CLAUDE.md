@@ -1,16 +1,18 @@
 # audit module — backend
 
-Read-only module. Exposes two endpoints (`GET /audit-logs`, `GET /audit-logs/:id`) — no POST, PATCH, or DELETE. Audit entries are written exclusively by the `registerAuditRequest` hook, never via a public endpoint.
+Read-only module. Exposes three endpoints (`GET /audit-logs`, `GET /audit-logs/:id`, `GET /audit-logs/export`) — no POST, PATCH, or DELETE. Entries are never written through a public endpoint: route handlers write them via `request.audit()` (the `registerAuditRequest` hook), and the billing webhook writes system entries by calling `auditService.log()` directly.
 
 ## Dual role
 
 The audit module has two responsibilities that are implemented separately:
 
-1. **Writing logs** — `createAuditService(database).log(input)` is called inside `registerAuditRequest` (`src/hooks/audit-request.ts`). This hook runs on `onRequest` in the authenticated scope and attaches `request.audit(action, resource, resourceId?, metadata?)` to every request. Route handlers call this method after a successful mutation.
+1. **Writing logs** — `auditService.log(input)`:
+   - from `registerAuditRequest` (`src/hooks/audit-request.ts`), which runs on `onRequest` in the authenticated scope and attaches `request.audit(action, resource, resourceId?, metadata?)`. Route handlers call it after a successful mutation;
+   - from `billingWebhookRoutes` (public scope, no session), with a system actor: `userId: 'system:<adapter>'`, `userName: 'Billing webhook (<adapter>)'`, `userEmail: 'system'`.
 
-2. **Reading logs** — `auditRoutes` exposes the list and detail endpoints for the UI to query.
+2. **Reading logs** — `auditRoutes` exposes the list, detail and export endpoints.
 
-The `auditService` is instantiated once in `app.ts` and passed to both `registerAuditRequest` and `auditRoutes`.
+`app.ts` creates one `auditService` and passes it to `registerAuditRequest` and `billingWebhookRoutes`. `auditRoutes` builds its own instance from `database`.
 
 ## Data model
 
@@ -20,13 +22,13 @@ The `auditService` is instantiated once in `app.ts` and passed to both `register
 | Column       | DB type              | Notes                                           |
 | ------------ | -------------------- | ----------------------------------------------- |
 | `id`         | `text` PK            | UUIDv7, generated at insert                     |
-| `userId`     | `text NOT NULL`      | Snapshotted at write time — no FK to `user`     |
+| `userId`     | `text NOT NULL`      | Snapshotted at write time — no FK to `user`; `system:<adapter>` for webhook entries |
 | `userName`   | `text NOT NULL`      | Snapshotted at write time                       |
 | `userEmail`  | `text NOT NULL`      | Snapshotted at write time                       |
-| `action`     | `text NOT NULL`      | `'create' | 'edit' | 'delete'`                  |
+| `action`     | `text NOT NULL`      | `'create' \| 'edit' \| 'delete' \| 'export'`      |
 | `resource`   | `text NOT NULL`      | Resource string (e.g. `'todos'`, `'users'`)     |
 | `resourceId` | `text` (nullable)    | Id of the affected record; null when n/a        |
-| `metadata`   | `jsonb` (nullable)   | Request body for create/edit; null for delete   |
+| `metadata`   | `jsonb` (nullable)   | Request body for create/edit; null for delete; export params summary for export |
 | `ip`         | `text` (nullable)    | From `request.ip`                               |
 | `userAgent`  | `text` (nullable)    | From `request.headers['user-agent']`            |
 | `createdAt`  | `timestamp NOT NULL` | `defaultNow()`; **no `updatedAt`** (immutable)  |
@@ -63,11 +65,11 @@ Receives `{ database, requirePermission }` — no `auth` parameter.
 
 No mutation routes. No audit calls within the audit module itself — including the export endpoint.
 
-`GET /audit-logs/export` must be registered **before** `GET /audit-logs/:id` — Fastify matches routes in registration order.
+`GET /audit-logs/export` does not clash with `GET /audit-logs/:id` — Fastify's router always prefers the static segment, whatever the registration order.
 
 ## `registerAuditRequest` hook (`src/hooks/audit-request.ts`)
 
-Registered once in the authenticated scope in `app.ts` via `registerAuditRequest(authenticated, createAuditService(database))`. It runs on `onRequest` and attaches `request.audit` to every authenticated request. The implementation:
+Registered once in the authenticated scope in `app.ts` via `registerAuditRequest(authenticated, auditService)`. It runs on `onRequest` and attaches `request.audit` to every authenticated request. The implementation:
 
 1. Reads `request.sessionUser` (id, name, email), `request.ip`, and `request.headers['user-agent']`.
 2. Calls `auditService.log(...)`.
@@ -89,7 +91,7 @@ Only `view` is registered — there is no create/edit/delete permission.
 
 **Default sort test**: seeds two logs with explicit `createdAt` timestamps and asserts order without `sortBy` (defaults to `createdAt asc`).
 
-**Integration test** (`describe('Audit logging via onResponse hook')`): makes a real `POST /todos` request via `app.inject` and then queries `auditLogs` directly with `testDb.select()` to assert the entry was created. Also verifies that a failed request (400) does **not** create a log.
+**Integration test** (`describe('Audit logging via onResponse hook')` — the name is historical; the hook runs on `onRequest`): makes a real `POST /todos` request via `app.inject` and then queries `auditLogs` directly with `testDb.select()` to assert the entry was created. Also verifies that a failed request (400) does **not** create a log.
 
 **Export tests** (`describe('GET /audit-logs/export')`): asserts 200 + `content-type: application/pdf` + `content-disposition` header with the expected filename pattern. A second test seeds logs and verifies the endpoint accepts `sortBy`/`sortOrder` params.
 

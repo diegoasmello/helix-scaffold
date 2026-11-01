@@ -22,7 +22,7 @@ The scaffold does **not** provide:
 
 All admin routes and `GET /me/subscription` are **only registered when `subscriptions.enabled` is `true`** in `src/app.config.ts`. When `false` (the default), the module has zero overhead — no routes, no DB queries. The `requireSubscription()` hook is always created but returns a no-op preHandler when subscriptions are disabled, so apps can freely decorate routes without worrying about mode.
 
-`GET /subscription/status` is always registered at root scope (unauthenticated), like `GET /registration/status`. It returns `{ enabled: boolean }` and is the single source of truth the frontend reads to decide whether to show subscription UI.
+`GET /subscription/status` is always registered at root scope (unauthenticated), like `GET /registration/status`. It returns `{ enabled, plans, pastDueGraceDays }` and is the single source of truth the frontend reads to decide whether to show subscription UI.
 
 ---
 
@@ -100,7 +100,7 @@ Rows whose `planId` was later removed from the catalog keep working: they still 
 
 ### `GET /me/subscription`
 
-Returns the most recently created subscription with `status IN ('active', 'trialing')` for the current session user. Returns **200** with the subscription object when found, **204** when the user has no active subscription.
+Returns the subscription that currently grants access to the session user — `active`/`trialing`, or `past_due` still inside the grace period (see `getActiveByUserId` below). Returns **200** with the subscription object when found, **204** when there is none.
 
 The frontend `useSubscription()` hook (`src/modules/subscriptions/hooks/use-subscription.ts`) calls this endpoint and treats 204 as "no subscription."
 
@@ -133,7 +133,7 @@ Factory `createSubscriptionsService(database)` returns:
 
 ```ts
 {
-  getActiveByUserId(userId: string): Promise<Subscription | null>
+  getActiveByUserId(userId: string, options?: { now?: Date; pastDueGraceDays?: number }): Promise<Subscription | null>
   list(query: SubscriptionsListQuery): Promise<{ data: Subscription[], total: number }>
   getById(id: string): Promise<Subscription | null>
   create(data: CreateSubscriptionInput): Promise<Subscription>
@@ -225,7 +225,7 @@ The trial subscription uses:
 
 **This operation is best-effort.** The INSERT is followed by `.catch(() => {})` so a DB failure does not cause user creation to fail. If the insert silently fails, the user will exist without a trial subscription and will see "no active subscription" on the me-page.
 
-Trial auto-start only fires for users created via the self-registration flow. Bootstrap-created admins, and users created via `POST /users` (closed-mode admin creation), do not receive trial subscriptions.
+The hook fires for **every** user created through better-auth while `registration.mode` is `'open'` — self sign-up, social sign-up, but also the admin created by `POST /bootstrap` and users created via `POST /users` (both call `auth.api.signUpEmail`). In `closed` mode no trial is ever created. Admins are unaffected in practice (`subscriptions:view` bypasses `requireSubscription()`), but an admin-created user in open mode starts with a trial.
 
 ---
 
@@ -262,7 +262,7 @@ Startup fails when `enabled: true` and `plans` is empty, when plan ids repeat, o
 
 ## Tests (`subscriptions-routes.test.ts`, `subscriptions-service.test.ts`)
 
-Route integration tests against the real `api_test` database.
+Route integration tests against the real test database (`helix_test`).
 
 `cleanupSubscriptions()` truncates the `subscriptions` table between tests. The `cleanupAuth()` call in `afterAll` cascades to subscriptions via the FK.
 
@@ -271,7 +271,7 @@ Route integration tests against the real `api_test` database.
 The `requireSubscription (via GET /todos)` block covers the behavior matrix above plus the registration-time error for unknown features. Individual tests that need to verify "no subscription" behavior call `cleanupSubscriptions()` explicitly before the assertion.
 
 **Coverage:**
-- `GET /subscription/status` — always 200 with `{ enabled: boolean }`
+- `GET /subscription/status` — always 200 with `{ enabled, plans, pastDueGraceDays }`
 - `GET /me/subscription` — 204 when no active sub; 200 when active sub exists; 204 when only canceled sub exists
 - `GET /subscriptions` — empty list, paginated list with multiple subs
 - `GET /subscriptions/:id` — 404 for unknown; 200 for existing

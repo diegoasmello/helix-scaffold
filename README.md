@@ -8,10 +8,10 @@ A full-stack TypeScript monorepo scaffold. Clone it, configure your env, and sta
 | ----------------------- | --------------------------------------------------------------------------------------------------------------- |
 | **Authentication**      | Email/password + social login (Google, Facebook, Apple) via `better-auth`                                       |
 | **RBAC**                | Roles, permissions, per-route guards on both backend and frontend                                               |
-| **Registration modes**  | `closed` (admin-only) or `open` (self-registration) — toggled via a single env var                              |
+| **Registration modes**  | `closed` (admin-only) or `open` (self-registration) — one setting in `apps/api/src/app.config.ts`               |
 | **Subscription gating** | Optional billing layer: plan catalog with per-plan features, `requireSubscription('feature')` on routes, `<RequiresSubscription feature>` in the UI, trial auto-start, generic payment processor webhook |
 | **File uploads**        | Multi-file and single-file inputs with image processing (4 WebP variants via sharp), local storage provider     |
-| **Email**               | Transactional email via Resend                                                                                  |
+| **Email**               | Transactional email via Resend (console fallback in dev/test)                                                   |
 | **PDF export**          | Server-side PDF reports via `@react-pdf/renderer`                                                               |
 | **Audit log**           | Every mutation is logged; browsable admin panel                                                                 |
 | **i18n**                | English and pt-BR, fully typed key safety via `i18next` + TypeScript                                            |
@@ -125,6 +125,8 @@ This starts `apps/api` on `http://localhost:3333` and `apps/web` on `http://loca
 
 Open `http://localhost:5173` — you will be redirected to `/bootstrap` on the first run. Create the admin account there.
 
+Alternatively, `pnpm db:seed` fills an empty database with sample roles, users and todos (the admin credentials are in `apps/api/src/db/seed.ts`).
+
 ## Testing
 
 ```bash
@@ -137,7 +139,7 @@ pnpm test:e2e          # Playwright E2E
 | ---------- | ----------------------- | ---------------------------------------------------------------------- |
 | `apps/api` | Vitest + real database  | Requires `apps/api/.env.test` and `pnpm db:migrate:test`               |
 | `apps/web` | Vitest + RTL + MSW      | No backend needed — API calls are intercepted by MSW                   |
-| `apps/web` | Playwright              | Starts `pnpm dev` automatically (or reuses a running one)              |
+| `apps/web` | Playwright              | Starts `pnpm dev` automatically (or reuses a running one). Only the sign-in setup exists so far |
 
 Before the first E2E run:
 

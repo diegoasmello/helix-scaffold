@@ -11,6 +11,27 @@ Fastify + TypeScript — the REST API for this project.
 - **Docs**: `@fastify/swagger` + `@scalar/fastify-api-reference` (available at `/docs`)
 - **Tests**: Vitest + real test database (PostgreSQL)
 
+`@/` is an alias for `apps/api/src`. Routes and services import from `@/…`; some older files still use relative paths — both work.
+
+## Scripts
+
+Run from `apps/api` (or from the root with the `pnpm db:*` / `pnpm spec:*` aliases):
+
+| Script | Does |
+| --- | --- |
+| `pnpm dev` | `tsx watch` on `src/server.ts` with `.env` |
+| `pnpm db:generate` | Generate a migration from the Drizzle schema (`src/db/schema/`) into `src/db/migrations/` |
+| `pnpm db:migrate` / `pnpm db:migrate:test` | Apply migrations to the dev DB (`.env`) / test DB (`.env.test`) |
+| `pnpm db:studio` | Drizzle Studio |
+| `pnpm db:seed` | Dev data (`src/db/seed.ts`). **Refuses to run if any user exists.** Wipes `uploads.dir`, creates Admin/Moderator/User roles (none marked `isDefault`), an admin login (credentials hard-coded in the file), 20 extra users and sample todos with uploads |
+| `pnpm db:reset` | Truncates every table in the schema (`drizzle-seed` `reset`). Does not touch `uploads.dir` |
+| `pnpm spec:export <file>` | Writes the OpenAPI spec — see _OpenAPI spec export_ |
+| `pnpm test` / `pnpm test:watch` | Vitest against the test DB |
+
+There is no `build` script yet (`tsconfig.json` has `noEmit: true`), so `pnpm start` (`node dist/server.js`) has nothing to run. Production builds are an open decision.
+
+**Background jobs** start in `src/server.ts` after `listen` (not in `buildApp`, so tests never run them): orphan upload cleanup (every `uploads.orphanCleanup.intervalHours`) and, when subscriptions are enabled, subscription expiration (at startup and every `subscriptions.expiration.intervalHours`).
+
 ## Application config
 
 Configuration is split by one rule: **secrets and per-deploy values go in `.env`; product decisions go in `src/app.config.ts`.**
@@ -46,6 +67,8 @@ The file a developer edits to shape the app. Written with `defineConfig()` (Vite
 | `test-overrides.ts` | Pinned values for the test suite — see below |
 | `spec-overrides.ts` | Profile for `pnpm spec:export` (`src/scripts/export-spec.ts`): every optional route registered, placeholder plan, social providers off. Only settings that decide which routes exist belong here — see _OpenAPI spec export_ |
 | `billing-webhook.ts` | Registry, not config: the payment processor adapter (`null` = webhook off). See `src/modules/billing-webhook/CLAUDE.md` |
+| `permissions.ts` | Registry: `RESOURCE_DEFINITIONS` (RBAC resources and actions), `ALL_PERMISSIONS`, `findUnknownGrants()` — see _Creating a new module_ → _Step 0_ |
+| `upload-references.ts` | Registry: every column that references `uploads.id`, so orphan cleanup keeps those uploads — see `src/modules/uploads/CLAUDE.md`. Imported for its side effects by `server.ts` |
 
 Consumers import `config` from `@/config`. **Adding a setting:** add the field with JSDoc to `AppConfig`, the matching entry (with `.default()`) to `appConfigSchema`, then the value to `app.config.ts`. Keep the two shapes in sync — a key missing from the schema is rejected at startup.
 
@@ -111,33 +134,23 @@ The `src/hooks/` directory contains request-lifecycle hooks injected into the au
 
 ### `requireSubscription` — subscription gate
 
-`requireSubscription(feature?)` is a preHandler factory analogous to `requirePermission()`. Add it to any route that should require an active subscription; pass a feature to also require the user's plan to include it (see `subscriptions.plans` in `src/app.config.ts`):
+Full reference (behavior matrix, admin bypass, past-due grace, trial): `src/modules/subscriptions/CLAUDE.md`. What a new module needs:
 
 ```ts
-// In app.ts — create alongside requirePermission
-const requireSubscription = createRequireSubscription(database)
-
-// Pass to route modules that need it
+// app.ts — requireSubscription is created next to requirePermission in the authenticated scope
 authenticated.register(featureRoutes, { database, requirePermission, requireSubscription })
 
-// In feature-routes.ts — use as preHandler
+// feature-routes.ts — subscription first, then permission
 app.get('/feature', {
   preHandler: [requireSubscription('feature'), requirePermission('feature', 'view')],
   // ...
 })
 ```
 
-**Order matters:** put `requireSubscription()` before `requirePermission()` so users see the subscription error, not a permission error, when they lack both.
-
-**Admin bypass:** users whose role has `subscriptions:view` pass through `requireSubscription()` without a subscription check. This ensures operators are never blocked by billing status.
-
-**When `subscriptions.enabled` is `false`:** `requireSubscription()` returns a no-op preHandler. Routes decorated with it work normally, so apps can add `requireSubscription()` to routes today and activate enforcement later by setting `subscriptions.enabled: true` in `src/app.config.ts`.
-
-The `todos` module uses `requireSubscription('todos')` on all its routes as the reference implementation. A feature that no plan declares throws at startup (except during the spec export — see _OpenAPI spec export_). See `src/modules/subscriptions/CLAUDE.md` for the full subscription documentation.
-
-### Trial config
-
-`subscriptions.trial` in `src/app.config.ts` holds `{ days, planId }` for auto-created trial subscriptions. Set `planId` to match your app's plan catalog before shipping.
+- `requireSubscription()` alone requires any active subscription; `requireSubscription('feature')` also requires the user's plan to list `'feature'` in `subscriptions.plans` (`src/app.config.ts`). A feature no plan declares throws at startup.
+- With `subscriptions.enabled: false` it is a no-op, so adding it early is safe.
+- Users whose role has `subscriptions:view` always pass.
+- `todos` is the reference implementation.
 
 ---
 
@@ -190,6 +203,18 @@ Every list endpoint can optionally support field-level filtering via the reusabl
 
 - `filters` — accepts a JSON-encoded `FilterCondition[]` string; transforms to a typed array on validation; invalid JSON silently becomes `[]`
 - `filterLogic` — `'AND' | 'OR'`, defaults to `'AND'`
+
+A condition is `{ field, op, value? }`. Operators (`FILTER_OPERATORS`):
+
+| `op` | SQL | `value` |
+| --- | --- | --- |
+| `eq`, `neq` | `=`, `<>` | string / number / boolean |
+| `contains`, `startsWith`, `endsWith` | `ILIKE '%v%'`, `'v%'`, `'%v'` (case-insensitive) | string only — other types are ignored |
+| `gt`, `gte`, `lt`, `lte` | `>`, `>=`, `<`, `<=` | number, or a date string with a `coerce` entry |
+| `isNull`, `isNotNull` | `IS NULL`, `IS NOT NULL` | omitted |
+| `in` | `IN (...)` | non-empty array of strings/numbers |
+
+A condition whose value does not fit its operator is skipped, not rejected. A field outside the allowed list makes the whole `filters` param fall back to `[]` (same as invalid JSON).
 
 Merge this into the module's `listQuerySchema` alongside pagination and sorting.
 
@@ -293,7 +318,8 @@ The file upload system is implemented as a standalone `uploads` module. Any othe
 | `src/lib/storage/types.ts` | `StorageProvider` interface (`save`, `delete`, `getUrl`) |
 | `src/lib/storage/local-storage.ts` | `LocalStorageProvider` — writes to `config.uploads.dir`, serves via `/files/*` |
 | `src/lib/storage/index.ts` | `createStorageProvider(config.uploads, env.BASE_URL)` factory — returns local or throws for S3 (stub) |
-| `src/lib/image-processor.ts` | `processImage(buffer, mimeType)` — generates 4 WebP variants via `sharp` |
+| `src/lib/image-processor.ts` | `isProcessableImage(mimeType)` + `processImage(buffer)` — 4 WebP variants via `sharp` |
+| `src/lib/upload-references.ts` / `src/lib/orphan-uploads.ts` | Registry API and the orphan cleanup job |
 
 The provider instance is created once in `app.ts` and injected into every module that needs it via route options. Files are served publicly at `/files/*` via `@fastify/static` — no auth required on that path (needed for `<img>` tags).
 
@@ -303,12 +329,13 @@ Upload settings live under `uploads` in `src/app.config.ts` (`storage`, `dir`, `
 
 ### Adding file attachments to a module
 
-Use `todos` as the reference implementation.
+Use `todos` as the reference implementation; the step-by-step guide (multi-file junction table and single-file FK column) is in `src/modules/uploads/CLAUDE.md` → _Adding uploads to another module_. Summary:
 
-1. Create a junction table `xxx_attachments(xxx_id FK cascade, upload_id FK cascade)`
-2. Add `attachments: uploadSchema.array()` to the response schema and `attachmentIds: z.array(z.string()).optional().default([])` to create/update schemas
-3. In the service: JOIN with `uploads` on reads; sync `xxx_attachments` rows on create/update; on delete, fetch upload IDs → delete the record (cascades junction rows) → delete upload DB rows → delete storage keys (best-effort)
-4. Accept `storage: StorageProvider` in route options and pass it through to the service factory
+1. Multi-file: junction table `xxx_attachments(xxx_id FK cascade, upload_id FK cascade)`. Single file: nullable `xxx.file_id` FK → `uploads.id` `on delete set null`
+2. Response embeds `attachments: uploadSchema.array()` / `file: uploadSchema.nullable()`; create/update accept `attachmentIds` / `fileId`
+3. Service: load uploads on reads; sync junction rows on create/update; on delete, collect upload IDs → delete the record → delete the `uploads` rows → delete storage keys (best-effort)
+4. Accept `storage: StorageProvider` in route options and pass it to the service factory
+5. **Register every new column in `src/config/upload-references.ts`** — otherwise the orphan cleanup job deletes those uploads after the grace period
 
 ---
 
@@ -320,7 +347,7 @@ Transactional email is sent via the `EmailProvider` abstraction in `src/lib/emai
 
 | File | Purpose |
 |---|---|
-| `src/lib/email/index.ts` | `EmailProvider` interface, `createResendEmailProvider`, `createConsoleEmailProvider`, `createEmailProvider({ resendApiKey, from, nodeEnv })` factory |
+| `src/lib/email/index.ts` | Exports the `EmailProvider` interface and `createEmailProvider({ resendApiKey, from, nodeEnv })`, which picks Resend or console (both implementations are private) |
 
 The provider instance is created once in `app.ts` and injected into `createAuth` and into each route module that needs it via route options — same pattern as `storage`.
 
@@ -343,18 +370,7 @@ In `NODE_ENV=test` the console provider is always used, regardless of `RESEND_AP
 
 ### Wiring a new module that needs email
 
-```ts
-// app.ts — inside the authenticated scope
-authenticated.register(featureRoutes, { database, requirePermission, emailProvider })
-
-// feature-routes.ts
-export async function featureRoutes(
-  app: FastifyTypedInstance,
-  { database, requirePermission, emailProvider }: { ..., emailProvider: EmailProvider }
-) {
-  const service = createFeatureService(database, emailProvider)
-}
-```
+Receive `emailProvider` in the route options (like `storage`) and pass it to the service factory — see `src/lib/email/CLAUDE.md` → _Using EmailProvider in a module_.
 
 ---
 
@@ -459,6 +475,37 @@ app.get(
 
 ---
 
+## Mapping database errors to HTTP responses
+
+Never let a constraint violation surface as a 500 when the client can act on it. Catch it in the route and read the Postgres code with the helpers in `src/lib/pg-errors.ts` — Drizzle wraps driver errors, so the code may be on the error or on its `cause`; never read `error.code` directly:
+
+```ts
+import {
+  getPgErrorCode,
+  getPgErrorConstraint,
+  PG_FOREIGN_KEY_VIOLATION,
+  PG_UNIQUE_VIOLATION,
+} from '@/lib/pg-errors'
+
+try {
+  item = await service.create(request.body)
+} catch (error) {
+  if (getPgErrorCode(error) === PG_FOREIGN_KEY_VIOLATION) {
+    return reply.status(400).send({ message: 'User not found' })
+  }
+  if (getPgErrorCode(error) === PG_UNIQUE_VIOLATION) {
+    return reply.status(409).send({ message: 'Already exists', code: 'already_exists' })
+  }
+  throw error
+}
+```
+
+- Declare every status you return in the route's `response` schema, or serialization fails.
+- When one status has several causes (two unique indexes), tell them apart with `getPgErrorConstraint(error)` and give each a stable `code` the frontend can translate — see `subscriptions-routes.ts` (409 `live_subscription_exists` / `external_id_taken`) and `packages/api-client/CLAUDE.md` → `ApiError`.
+- References: `subscriptions-routes.ts` (400 on FK, 409 on unique), `permissions-routes.ts` (404 on FK). `roles` still returns 500 on a duplicate `name` — fix it the same way when touching that module.
+
+---
+
 ## Creating a new module (CRUD)
 
 Use the `todos` module as the reference implementation. Follow this order exactly.
@@ -475,6 +522,8 @@ Every module that exposes user-facing data must declare its resource and actions
   actions: ["view", "create", "edit", "delete"],
 },
 ```
+
+Declaring the resource is enough for the rest of the system: bootstrap grants it to the Admin role, the frontend permission editor lists it, and `PUT /roles/:id/permissions` accepts it (anything undeclared is rejected with 400).
 
 `PermissionAction = "view" | "create" | "edit" | "delete"` is the full set of supported actions. TypeScript enforces this via `satisfies` — adding an unsupported action is a compile error. If the module genuinely needs a new action type, extend `PermissionAction` first.
 
@@ -640,7 +689,7 @@ export type FeatureService = ReturnType<typeof createFeatureService>
 
 ### 4. Routes (`<feature>-routes.ts`)
 
-A Fastify plugin that receives `{ database, requirePermission, auditService }` as options. Every route must have a `schema` with `tags`, `description`, and the Zod schemas for body/params/response, **plus** a `preHandler` that enforces the matching permission:
+A Fastify plugin that receives `{ database, requirePermission }` as options (plus `requireSubscription`, `storage`, `emailProvider` or `auth` only when the module needs them). Every route must have a `schema` with `tags`, `description`, and the Zod schemas for body/params/response, **plus** a `preHandler` that enforces the matching permission:
 
 | Route                  | Permission        |
 | ---------------------- | ----------------- |
@@ -795,21 +844,21 @@ All modules that require authentication must be registered inside the `authentic
 
 ```ts
 import { featureRoutes } from './modules/feature/feature-routes'
-import { createRequirePermission } from './hooks/require-permission'
-import { createAuditService } from './modules/audit/audit-service'
-import { registerAuditRequest } from './hooks/audit-request'
 
-// inside the authenticated scope in buildApp:
+// buildApp() — the authenticated scope already exists; only add the register call:
 app.register(async (authenticated) => {
   authenticated.addHook('preHandler', createRequireAuth(auth))
+  registerAuditRequest(authenticated, auditService)
 
   const requirePermission = createRequirePermission(database)
-  registerAuditRequest(authenticated, createAuditService(database))
+  const requireSubscription = createRequireSubscription(database)
 
-  authenticated.register(todosRoutes, { database, requirePermission })
+  // ...existing modules
   authenticated.register(featureRoutes, { database, requirePermission }) // ← add here
 })
 ```
+
+Routes that must exist only under a config flag are registered conditionally (`if (config.subscriptions.enabled) …`) — and the flag must then be turned on in `src/config/spec-overrides.ts`, or the routes disappear from the generated client (see _OpenAPI spec export_).
 
 Registering at the root instead of inside `authenticated` will leave the routes publicly accessible.
 
@@ -835,19 +884,21 @@ Backend tests are route integration tests: they exercise the full Fastify stack 
 ### What NOT to do
 
 - **Do not mock the database.** Replacing the database with a mock eliminates exactly what makes these tests valuable: verifying that the SQL is correct, that constraints are respected, and that Drizzle behaves as expected.
-- **Do not test the service directly when it has no logic of its own.** The `todos` service, for example, is pure SQL delegated to Drizzle — testing `createTodosService` in isolation would only re-assert that `.insert().returning()` works, which is not this project's responsibility. These cases are already covered by route tests.
+- **Do not test the service directly when it has no logic of its own.** The `audit` service, for example, is pure SQL delegated to Drizzle — testing `createAuditService` in isolation would only re-assert that `.insert().returning()` works, which is not this project's responsibility. Route tests already cover it.
 - **Do not write E2E tests here.** Playwright E2E tests live in `apps/web/e2e/` and cover full CRUD flows against the real backend. Do not duplicate that level here.
 
 ### Test infrastructure
 
+Test files run **serially** (`fileParallelism: false` in `vitest.config.ts`) against one shared database (`helix_test`, port 5436, from `.env.test`) — never assume a clean DB, clean what your file touches. `NODE_ENV=test` applies `src/config/test-overrides.ts` (see _Test config_).
+
 The helpers in `src/test/helpers.ts` provide:
 
-- `testDb` — Drizzle instance pointing to the `api_test` database (port 5436)
-- `createTestApp()` — creates an app instance with `testDb` injected
-- `cleanupXxx()` — truncates a table between tests
-- `cleanupAuth()` — truncates all auth tables (session, account, verification, user)
-- `createTestSession(app)` — signs up a test user assigned to the `__test_admin__` role (all permissions); returns the session cookie string
-- `createRoleWithPermissions(grants)` — creates a fresh role with exactly the given permissions; used for permission enforcement tests
+- `testDb` — Drizzle instance on the test database
+- `createTestApp()` — `buildApp(testDb)`. For a custom billing adapter, call `buildApp(testDb, { billingWebhookAdapter })` directly
+- `createTestSession(app)` — signs up `test@test.com` with the `__test_admin__` role (every permission in `ALL_PERMISSIONS`) and an active `pro` subscription; returns the cookie string
+- `getTestUser()` — the user created by `createTestSession()` (look it up by email, never by row order)
+- `createRoleWithPermissions(grants)` — a fresh role with exactly the given permissions, for permission enforcement tests
+- Cleanup: `cleanupAuth()` (session, account, verification, user **and all roles**), `cleanupUsers()` / `cleanupRoles()` (everything except the test user / test role), `cleanupAuditLogs()`, `cleanupSubscriptions()`, `cleanupTodos()`, `cleanupUploads()`
 
 When adding a new module, add a `cleanupFeature()` function to `helpers.ts`:
 

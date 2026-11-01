@@ -9,6 +9,10 @@ React 19 + Vite — the main application.
 - **Data fetching**: TanStack Query v5
 - **Forms**: `@mantine/form`
 - **Icons**: Tabler Icons (`@tabler/icons-react`)
+- **API client**: generated hooks/fetchers/types/mocks from `@helix/api-client` (see `packages/api-client/CLAUDE.md`)
+- **Auth client**: `better-auth/react` (`src/lib/authentication.ts`)
+
+`@/` is an alias for `apps/web/src` (Vite and Vitest). `src/env.ts` validates `import.meta.env` with Zod — `VITE_API_URL` is the only variable.
 
 ## App config (`src/config/`)
 
@@ -31,6 +35,25 @@ Routes are defined in code (not files). The flow is:
 3. Authenticated routes are children of the `authenticatedRoute`, which renders `AuthGuard`
 
 To add a new feature module, create `src/modules/<feature>/routes/index.ts` exporting each route as a named constant and a combined array (e.g. `xxxRoutes`), then register it in `routes.ts`.
+
+### Route tree (`src/routes.ts`)
+
+```
+rootRoute (Outlet; notFoundComponent: NotFound, errorComponent: ErrorBoundary)
+├── authRoutes — /bootstrap, /login, /sign-up, /forgot-password, /reset-password (public, no layout)
+└── layoutRoute (id 'layout', renders <App /> — sidebar, header)
+    ├── /            → redirects to /todos
+    ├── /403         → Forbidden (inside the layout, so the user can navigate away)
+    └── authenticatedRoute (id 'authenticated', renders <AuthGuard />)
+        └── users, roles, audit, me, todos, subscriptions routes
+```
+
+`authenticatedRoute.beforeLoad` redirects to `/login` without a session, then puts two functions in the **router context** for every child route's `beforeLoad`:
+
+- `context.hasPermission(resource, action)` — from `GET /me/permissions`
+- `context.hasSubscriptionAccess(feature?)` — from `GET /subscription/status` (+ `GET /me/subscription` when enabled); see `src/modules/subscriptions/CLAUDE.md` → _Route guards_
+
+Both are loaded with `queryClient.ensureQueryData`, the same cache the `useAuth()` / `useSubscription()` hooks read, so components make no extra requests. Route files import `queryClient` from `src/lib/query-client.ts` (a plain `new QueryClient()` — default `staleTime: 0`, so data refetches when a component mounts).
 
 ## Pagination and sorting
 
@@ -224,23 +247,23 @@ See `apps/web/src/modules/todos/routes/todos-list.test.tsx` → `describe('Filte
 
 ## Auth
 
-`src/core/auth/` contains the full auth layer:
+The auth layer lives in the `auth` module (`src/modules/auth/` — full reference in its `CLAUDE.md`):
 
-- `useAuth()` — returns `{ user, grants, isPending, isAuthenticated, hasPermission(resource, action) }`. Fetches the session via `better-auth` and the user's grants via `GET /me/permissions` (cached 30 s).
-- `HasPermission` — renders children only when the current user has the required permission; renders nothing otherwise:
+- `useAuth()` (`src/modules/auth/use-auth.ts`) — returns `{ user, grants, isPending, isAuthenticated, hasPermission(resource, action) }`. Session from better-auth, grants from `GET /me/permissions` (cached 30 s).
+- `HasPermission` (`src/modules/auth/components/has-permission.tsx`) — renders children only when the current user has the permission:
 
 ```tsx
-import { HasPermission } from '../../../core/auth/has-permission'
+import { HasPermission } from '../../auth/components/has-permission'
 ;<HasPermission resource="features" action="create">
-  <Button onClick={() => navigate({ to: '/features/create' })}>Create</Button>
+  <Button onClick={() => navigate({ to: '/features/create' })}>{tc('actions.create')}</Button>
 </HasPermission>
 ```
 
-- `AuthGuard` — protects authenticated routes; redirects unauthenticated users to `/login`
+- `AuthGuard` (`src/modules/auth/components/auth-guard.tsx`) — component of `authenticatedRoute`; redirects to `/login` if the session ends mid-use.
 
 ### Route-level permission guards
 
-Every protected route must declare a `beforeLoad` that checks the required permission and redirects to `/403` if the user lacks it. The `hasPermission` function is injected into the router context by `authenticatedRoute.beforeLoad` in `routes.ts` (which fetches the session and permissions before any child route renders).
+Every protected route must declare a `beforeLoad` that checks the required permission and redirects to `/403` if the user lacks it. `context.hasPermission` comes from `authenticatedRoute.beforeLoad` (see _Route tree_).
 
 ```ts
 const xxxListRoute = createRoute({
@@ -436,12 +459,7 @@ export function XxxCreateDrawer(props: Readonly<XxxCreateDrawerProps>) {
 **Consuming module** — just add `allowCreate` to the existing field, no wrapper needed:
 
 ```tsx
-<RoleSelectField
-  allowCreate
-  value={form.values.roleId}
-  onChange={(value) => form.setFieldValue('roleId', value)}
-  error={form.errors.roleId}
-/>
+<RoleSelectField allowCreate {...form.getInputProps('roleId')} />
 ```
 
 ## Shared UI package (`packages/ui`)
@@ -464,31 +482,12 @@ export function XxxCreateDrawer(props: Readonly<XxxCreateDrawerProps>) {
 
 Two-level theming:
 
-- `src/config/theme.ts` — app-level Mantine theme (primary color `"main"`), uses `createTheme()` from `@helix/ui`
-- `packages/ui/src/theme/index.ts` — sets font defaults (Inter + Plus Jakarta Sans) and exports `createTheme()` helper
+- `src/config/theme.ts` — app-level Mantine theme: defines the `main` palette and sets it as `primaryColor`, via `createTheme()` from `@helix/ui`
+- `packages/ui/src/theme/index.ts` — base theme: fonts (Geist + Plus Jakarta Sans), radius, component styles and a **custom spacing scale** (`xs` 8px, `sm` 12px, `md` 16px, `lg` 24px, `xl` 32px — not Mantine's defaults). See `packages/ui/CLAUDE.md` → _Theme_.
 
 ### Styling conventions
 
-**Always use `createStyles` + `useStyles` — never the `style` prop.** Inline `style={{…}}` on any component is forbidden; move every CSS rule into a `createStyles` block:
-
-```tsx
-// ✅ correct
-const { classes } = useStyles()
-<Text className={classes.label}>…</Text>
-
-const useStyles = createStyles(() => ({
-  label: css`letter-spacing: 0.5px;`,
-}))
-
-// ❌ wrong
-<Text style={{ letterSpacing: '0.5px' }}>…</Text>
-```
-
-**Only declare `createStyles` parameters you actually use** — `() => ({})`, `(theme) => ({})`, or `(theme, _, u) => ({})`. Never declare a parameter you don't reference.
-
-**Theme tokens over raw CSS variables** — always `${theme.spacing.*}` / `${theme.colors.*[shade]}`, never `var(--mantine-*)`.
-
-This applies to both `packages/ui` components and any `createStyles` used in `apps/web`.
+Same rules as `packages/ui` — the full reference is `packages/ui/CLAUDE.md` → _Styling conventions_. In short: `createStyles` + `useStyles`, never the `style` prop; declare only the `createStyles` parameters you use; theme tokens (`${theme.spacing.md}`, `${theme.colors.gray[6]}`), never raw `var(--mantine-*)`.
 
 ---
 
@@ -699,22 +698,22 @@ src/i18n/
   types.d.ts        # CustomTypeOptions — gives TypeScript literal key unions per namespace
   locales/
     en/             # English (source of truth for types.d.ts)
-      common.json   # shared: nav labels, action buttons, validation messages, report toasts
-      auth.json     # login, sign-up, forgot/reset-password, bootstrap, social providers
+      common.json        # shared: nav labels, action buttons, report toasts
+      auth.json          # login, sign-up, forgot/reset-password, bootstrap, social providers
       todos.json
       users.json
-      roles.json
-      permissions.json
+      roles.json         # includes the permission editor (permissions.*)
       audit.json
       me.json
-      errors.json   # 403, 404, error boundary
+      subscription.json  # admin screens, /me/subscription (me.*), /upgrade, plan feature labels (features.*)
+      errors.json        # 403, 404, error boundary
     pt-BR/          # Portuguese — must have identical key structure to en/
       (same files)
 ```
 
 **Supported languages** are declared in `appConfig.i18n.languages` (`src/config/app.ts`), which feeds both `supportedLngs` and the `LanguagePicker` options. To add a language: add it to that list, create `locales/<code>/` with every namespace, register it under `resources` in `i18n/index.ts`, and add `packages/ui/src/i18n/locales/<code>.json`.
 
-**One namespace per module.** The `common` namespace owns strings shared across all modules: action button labels (`actions.save`, `actions.delete`, …), validation messages (`validation.required`, …), nav labels (`nav.todos`, …), and report toasts (`report.downloaded`, …).
+**One namespace per module.** The `common` namespace owns strings shared across all modules: action button labels (`actions.save`, `actions.delete`, …), nav labels (`nav.todos`, …), and report toasts (`report.downloaded`, …). Validator messages are not here — they live in the `ui` namespace (see below).
 
 ### Using translations in components
 
@@ -769,7 +768,7 @@ import uiLocalePtBR from '@helix/ui/locales/pt-BR'
 
 ### Validator messages
 
-`packages/ui` validator primitives (`required`, `email`, `maxLength`, etc.) call `i18n.t()` directly on the shared singleton with `{ ns: 'ui' }`. Their strings live in `packages/ui/src/i18n/locales/*/en.json` under `validation.*` — **not** in `common.json`. No setup is required in `apps/web`: registering the `'ui'` namespace in `i18n/index.ts` is sufficient.
+`packages/ui` validator primitives (`required`, `email`, `maxLength`, etc.) call `i18n.t()` directly on the shared singleton with `{ ns: 'ui' }`. Their strings live in `packages/ui/src/i18n/locales/en.json` and `pt-BR.json` under `validation.*` — **not** in `common.json`. No setup is required in `apps/web`: registering the `'ui'` namespace in `i18n/index.ts` is sufficient.
 
 ### Cross-field validators with singleton i18n.t
 
@@ -1028,15 +1027,13 @@ import {
 } from '@helix/api-client/hooks'
 import type { CreateXxxInput, UpdateXxxInput } from '../types'
 
-// Create — invalidates the list
+// Create — invalidates the list. No params and NO `exact: true`: the key
+// without params is the prefix of every cached page (page/sort/filters).
 const queryClient = useQueryClient()
 const { mutate: createXxx } = useMutation({
   mutationFn: (data: CreateXxxInput) => postXxxs(data),
   onSuccess: () => {
-    queryClient.invalidateQueries({
-      queryKey: getXxxsSuspenseQueryKey(),
-      exact: true,
-    })
+    queryClient.invalidateQueries({ queryKey: getXxxsSuspenseQueryKey() })
   },
 })
 
@@ -1045,10 +1042,7 @@ const { mutate: updateXxx } = useMutation({
   mutationFn: ({ id, data }: { id: string; data: UpdateXxxInput }) =>
     patchXxxsId(id, data),
   onSuccess: (updated) => {
-    queryClient.invalidateQueries({
-      queryKey: getXxxsSuspenseQueryKey(),
-      exact: true,
-    })
+    queryClient.invalidateQueries({ queryKey: getXxxsSuspenseQueryKey() })
     queryClient.setQueryData(getXxxsIdSuspenseQueryKey(updated.id), updated)
   },
 })
@@ -1057,10 +1051,7 @@ const { mutate: updateXxx } = useMutation({
 const { mutate: deleteXxx } = useMutation({
   mutationFn: (id: string) => deleteXxxsId(id),
   onSuccess: (_, id) => {
-    queryClient.invalidateQueries({
-      queryKey: getXxxsSuspenseQueryKey(),
-      exact: true,
-    })
+    queryClient.invalidateQueries({ queryKey: getXxxsSuspenseQueryKey() })
     queryClient.removeQueries({ queryKey: getXxxsIdSuspenseQueryKey(id) })
   },
 })
@@ -1072,13 +1063,15 @@ const { mutate: deleteXxx } = useMutation({
 - `mutate(data, { onSuccess, onError })` — component-dependent side effects: `notify()` and `navigate()`. Only fires if the component is still mounted. **Always declare both `onSuccess` and `onError` with `notify()`** in this scenario. When the API returns a meaningful error status (e.g. 409), branch on `error instanceof ApiError && error.status === 409` (`ApiError` from `@helix/api-client`) to show a specific translated message — never display the API's raw English `error.message`.
 
 ```ts
+const { t } = useTranslation('xxx')
+
 createXxx(data, {
   onSuccess: () => {
-    notify({ status: 'success', message: 'Xxx created successfully' })
+    notify({ status: 'success', message: t('notifications.created') })
     navigate({ to: '/xxx' })
   },
   onError: () => {
-    notify({ status: 'danger', message: 'Failed to create xxx' })
+    notify({ status: 'danger', message: t('notifications.createFailed') })
   },
 })
 
@@ -1086,24 +1079,26 @@ updateXxx(
   { id, data },
   {
     onSuccess: () => {
-      notify({ status: 'success', message: 'Xxx updated successfully' })
+      notify({ status: 'success', message: t('notifications.updated') })
       navigate({ to: '/xxx' })
     },
     onError: () => {
-      notify({ status: 'danger', message: 'Failed to update xxx' })
+      notify({ status: 'danger', message: t('notifications.updateFailed') })
     },
   }
 )
 
 deleteXxx(id, {
   onSuccess: () => {
-    notify({ status: 'success', message: 'Xxx deleted successfully' })
+    notify({ status: 'success', message: t('notifications.deleted') })
   },
   onError: () => {
-    notify({ status: 'danger', message: 'Failed to delete xxx' })
+    notify({ status: 'danger', message: t('notifications.deleteFailed') })
   },
 })
 ```
+
+Code samples elsewhere in this file may show English literals for brevity — real components always go through `t()` (see _Internationalization_).
 
 **When to create `hooks.ts`** — only in two cases:
 
@@ -1415,11 +1410,11 @@ const handleSubmit = (values: XxxFormValues) => {
     },
     {
       onSuccess: () => {
-        notify({ status: 'success', message: 'Xxx created successfully' })
+        notify({ status: 'success', message: t('notifications.created') })
         navigate({ to: '/xxx' })
       },
       onError: () => {
-        notify({ status: 'danger', message: 'Failed to create xxx' })
+        notify({ status: 'danger', message: t('notifications.createFailed') })
       },
     }
   )
@@ -1427,18 +1422,22 @@ const handleSubmit = (values: XxxFormValues) => {
 
 return (
   <Form<XxxFormValues> form={form} onSubmit={handleSubmit}>
-    <PageCreate title="Create Xxx" footerActions={<Group>...</Group>}>
+    <PageCreate title={t('create.title')} footerActions={<Group>...</Group>}>
       <XxxForm form={form} />
     </PageCreate>
   </Form>
-
-  // xxx-edit.tsx
 )
-;<Form<XxxFormValues> form={form} onSubmit={handleSubmit}>
-  <PageEdit title="Edit Xxx" footerActions={<Group>...</Group>}>
-    <XxxForm form={form} />
-  </PageEdit>
-</Form>
+```
+
+```tsx
+// xxx-edit.tsx — same shape with PageEdit
+return (
+  <Form<XxxFormValues> form={form} onSubmit={handleSubmit}>
+    <PageEdit title={t('edit.title')} footerActions={<Group>...</Group>}>
+      <XxxForm form={form} />
+    </PageEdit>
+  </Form>
+)
 ```
 
 - `XxxFormValues` must be exported — route files use it to type `useForm<XxxFormValues>()`
@@ -1455,10 +1454,10 @@ const form = useForm<XxxFormValues>({
 })
 ```
 
-- Text fields: `{...form.getInputProps("field")}`
-- Switch/checkbox: `{...form.getInputProps("field", { type: "checkbox" })}`
-- Select and DateInput: bind `value` and `onChange` + `error` explicitly
-- Status toggles (e.g. `pending | completed`): use `Switch`, store the domain value in the form, set via `form.setFieldValue`
+- Every input — `TextInput`, `Textarea`, `Select`, `DateInput`, `RichTextEditor`, and select wrappers like `RoleSelectField`/`UserSelectField`: `{...form.getInputProps("field")}`. Do not bind `value`/`onChange`/`error` by hand.
+- Switch/checkbox holding a boolean: `{...form.getInputProps("field", { type: "checkbox" })}`
+- `DateInput` values are date strings (`DateStringValue`, e.g. `'2026-01-15'`), not `Date` — type the form field as `string | null` and never call `.toISOString()` on it.
+- Exception — status toggles storing a domain value (e.g. `pending | completed`) in a `Switch`: bind `checked={form.values.status === 'completed'}` and set it with `form.setFieldValue`. Same for a `Select` whose value must be narrowed to a union type.
 
 **Required fields**: every field that is required — statically or conditionally — must have the `required` prop on the Mantine input component. This renders the asterisk (`*`) indicator next to the label. Never rely on validation errors alone to signal obligation to the user.
 
@@ -1509,7 +1508,7 @@ export const xxxFormValidate = createValidator<XxxFormValues>()({
 })
 ```
 
-Available primitives: `required`, `requiredHtml`, `maxLength(n)`, `minLength(n)`, `email`. See `packages/ui/CLAUDE.md` → _Form validation utilities_ for the full reference.
+Available primitives: `required`, `requiredHtml`, `maxLength(n)`, `minLength(n)`, `minFiles(n)`, `email`. See `packages/ui/CLAUDE.md` → _Form validation utilities_ for the full reference.
 
 ### 9. Register the module
 
@@ -1535,22 +1534,22 @@ Use `confirm()` from `@helix/ui` — no local state, no modal JSX:
 ```ts
 import { confirm } from '@helix/ui'
 
-const handleDelete = (id: string) => {
+const handleDelete = (item: XxxItem) => {
   confirm({
     status: 'danger',
-    title: 'Delete Xxx',
-    message: 'Are you sure? This action cannot be undone.',
-    confirmLabel: 'Delete',
-    onConfirm: () => deleteXxx(id),
+    title: t('delete.title'),
+    message: t('delete.message', { name: item.name }),
+    confirmLabel: tc('actions.delete'),
+    onConfirm: () => deleteXxx(item.id),
   })
 }
 ```
 
-The confirm button is automatically colored with `status: "danger"`. `onConfirm` is called when the user confirms — the modal closes automatically via `ModalsProvider`. Always pass `confirmLabel: 'Delete'` explicitly — the default label is `'Confirm'`, so omitting it produces a button that says "Confirm" instead of "Delete", which will break tests that assert `getByRole('button', { name: 'Delete' })`.
+The confirm button is automatically colored with `status: "danger"`. `onConfirm` is called when the user confirms — the modal closes automatically via `ModalsProvider`. Always pass `confirmLabel` explicitly (the Delete label) — the default label is `'Confirm'`, so omitting it produces a button that says "Confirm" instead of "Delete", which will break tests that assert `getByRole('button', { name: 'Delete' })`.
 
 ### 11. Tests
 
-Every module ships with tests. A module is only complete when all three levels are covered.
+Every module ships with unit and integration tests — a module is only complete when both are covered. E2E specs are not part of the definition of done yet: no module has one (see _3. E2E tests_).
 
 **Unit — `validation.test.ts`**
 
@@ -1560,7 +1559,7 @@ One `describe` per field. Cover: empty, boundary values, valid input.
 
 Use MSW to control API responses. Add the module's endpoints to `src/mocks/handlers.ts` as default handlers, then override per test as needed. See the Testing section below for the full pattern and coverage table.
 
-**E2E — `e2e/<feature>.spec.ts`**
+**E2E — `e2e/<feature>.spec.ts`** (only when asked)
 
 One helper function per data-creation step (e.g. `createXxx`). Cover: list, create, detail, edit, delete (confirm + cancel). Each test creates its own data — no shared state.
 
@@ -1584,7 +1583,7 @@ pnpm test:e2e:ui       # Playwright with interactive UI
 | ----------- | ------------------ | ------------------------------------------------------------------------------ |
 | Unit        | Vitest             | `validation.ts` — pure validator functions; service logic when non-trivial     |
 | Integration | Vitest + RTL + MSW | Route components — rendering, form flows, modal interactions, API error states |
-| E2E         | Playwright         | Full CRUD flows per module against the real backend                            |
+| E2E         | Playwright         | Full CRUD flows against the real backend — infrastructure only, no specs yet   |
 
 ### MSW setup
 
@@ -1686,9 +1685,9 @@ describe('getXxxList', () => {
 
 ### 2. Integration tests (`routes/<feature>-*.test.tsx`)
 
-One test file per route component. Wrap the component with `MantineProvider`, `QueryClientProvider`, and `Suspense`. Two mocks are required at the top of every list test file:
+One test file per route component. Wrap the component with `MantineProvider` (+ `MantineEmotionProvider` when anything uses `createStyles`), `ModalsProvider` when it opens `confirm()`, `QueryClientProvider` and `Suspense`. Two mocks are required at the top of every list test file:
 
-1. `@tanstack/react-router` — navigation/params (no real router in tests)
+1. `'.'` — the local route index. Components read `useNavigate`/`useSearch`/`useParams` from their own route constant (`xxxListRoute.useSearch()`), so mock that object. Do not mock those hooks on `@tanstack/react-router`: the component never imports them from there, and mocking the module the route index also imports creates a circular mock.
 2. `../../../lib/authentication` — `authClient.useSession()` must return a fake user so `useAuth` calls `GET /me/permissions`; without this, `HasPermission` always hides its children
 
 Use the generated factories and handlers from `@helix/api-client/mocks` — never write raw `http.get(...)` / `HttpResponse.json(...)` MSW calls in route tests:
@@ -1699,8 +1698,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { MantineProvider } from '@helix/ui'
+import { MantineEmotionProvider, MantineProvider, ModalsProvider } from '@helix/ui'
 import {
+  createPaginatedXxx,
   createXxx,
   deleteXxxIdHandler,
   deleteXxxIdHandlerResponse204,
@@ -1715,11 +1715,14 @@ import {
 import { server } from '../../../mocks/server'
 import { XxxList } from './xxx-list'
 
-vi.mock('@tanstack/react-router', () => ({
-  useNavigate: () => vi.fn(),
-  // Return pagination + sorting defaults so the list component renders without errors
-  useSearch: () => ({ page: 1, pageSize: 10, sortOrder: 'desc' }),
-  useParams: () => ({}),
+const mockNavigate = vi.fn()
+
+vi.mock('.', () => ({
+  xxxListRoute: {
+    useNavigate: () => mockNavigate,
+    // Pagination + sorting defaults so the list component renders without errors
+    useSearch: () => ({ page: 1, pageSize: 10, sortOrder: 'desc' }),
+  },
 }))
 
 vi.mock('../../../lib/authentication', () => ({
@@ -1750,20 +1753,30 @@ function renderXxxList() {
   })
   return render(
     <MantineProvider>
-      <ModalsProvider>
-        <QueryClientProvider client={queryClient}>
-          <Suspense fallback={<div>Loading...</div>}>
-            <XxxList />
-          </Suspense>
-        </QueryClientProvider>
-      </ModalsProvider>
+      <MantineEmotionProvider>
+        <ModalsProvider>
+          <QueryClientProvider client={queryClient}>
+            <Suspense fallback={<div>Loading...</div>}>
+              <XxxList />
+            </Suspense>
+          </QueryClientProvider>
+        </ModalsProvider>
+      </MantineEmotionProvider>
     </MantineProvider>
   )
 }
 
 beforeEach(() => {
   server.use(
-    getXxxHandler(mockItems),
+    getXxxHandler(
+      createPaginatedXxx({
+        data: mockItems,
+        total: mockItems.length,
+        page: 1,
+        pageSize: 10,
+        totalPages: 1,
+      })
+    ),
     getMePermissionsHandler({
       grants: { xxx: ['view', 'create', 'edit', 'delete'] },
     })
@@ -1792,8 +1805,11 @@ it('hides edit and delete buttons when user lacks permissions', async () => {
 **Response helpers** — every generated handler ships with typed response helpers for each status code it can return. Always use these instead of constructing raw `Response`/`HttpResponse` objects — they encode the correct status, headers, and body shape:
 
 ```ts
-// GET list — pass data directly (no response helper needed for lists)
-server.use(getXxxHandler(mockItems))
+// GET list — pass the paginated object directly (not a plain array)
+server.use(getXxxHandler(createPaginatedXxx({ data: mockItems, total: 2, page: 1, pageSize: 10, totalPages: 1 })))
+
+// GET list whose content changes during the test (e.g. after a delete) — pass a function
+server.use(getXxxHandler(() => getXxxHandlerResponse200(createPaginatedXxx({ data: items, /* … */ }))))
 
 // GET item — handler accepts data directly
 server.use(getXxxIdHandler(createXxx({ id: '1' })))
@@ -1854,7 +1870,8 @@ server.use(
 - Scope modal assertions with `await screen.findByRole("dialog")` — Mantine modals render in portals
 - Use `waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument())` to assert a modal closed
 - Capture request bodies in MSW handlers to verify payloads without spying on service functions
-- For routes that read a param (`useParams`), add it to the router mock: `useParams: () => ({ id: "1" })`
+- For routes that read a param, add it to the route mock: `xxxDetailRoute: { useParams: () => ({ id: "1" }), useNavigate: () => mockNavigate }`
+- To assert that a mutation refreshes the list, serve the list from a variable the mutation handler changes and wait for the row to disappear — see `users-list.test.tsx` → _refetches the list after deleting_
 - **Create and Edit test files must mock `useBlocker`** — `Form` from `@helix/ui` calls `useFormBlocker` → `useBlocker` from `@tanstack/react-router`, which requires a `RouterProvider` context that is not present in unit tests. Use `importOriginal` to keep all other exports intact:
 
 ```ts
@@ -2066,7 +2083,9 @@ The default for `GET /me/permissions` already returns `{ grants: {} }` — test 
 
 ### 3. E2E tests (`e2e/<feature>.spec.ts`)
 
-Tests run against the real dev server and real backend. All tests are pre-authenticated via Playwright's `storageState` (session saved by `e2e/auth.setup.ts` before the suite runs).
+**Current state:** only the infrastructure exists — `playwright.config.ts` (starts `pnpm dev` or reuses it), and `e2e/auth.setup.ts`, which signs in with `E2E_USER_EMAIL`/`E2E_USER_PASSWORD` from `apps/web/.env` (an existing user, e.g. the bootstrap admin) and saves the session to `e2e/.auth/user.json`. There are no specs yet; write them only when asked, following the pattern below.
+
+Tests run against the real dev server and real backend. All tests are pre-authenticated via Playwright's `storageState`.
 
 **Each test must be self-contained** — create any data it needs via the UI and do not rely on pre-existing database state.
 
@@ -2098,7 +2117,7 @@ test.describe('Xxx', () => {
 
 Use `getByRole`, `getByLabel`, and row-scoped locators (`page.getByRole("row", { name: /.../ }).getByLabel("Edit")`) to keep selectors resilient to layout changes.
 
-**Auth E2E** (`e2e/auth.spec.ts`) overrides the storageState to run unauthenticated:
+**Unauthenticated specs** (e.g. a future `e2e/auth.spec.ts`) override the storageState:
 
 ```ts
 test.use({ storageState: { cookies: [], origins: [] } })

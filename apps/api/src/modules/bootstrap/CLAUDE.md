@@ -4,7 +4,7 @@ One-shot setup module. Creates the first admin user and role when the system has
 
 ## Purpose
 
-On a fresh deployment the `user` table is empty. `POST /bootstrap` must be called once to create the first admin account. After that the endpoint returns 409 on every subsequent call. The UI polls `GET /bootstrap/status` on the login and bootstrap routes to redirect users to the right screen.
+On a fresh deployment the `user` table is empty. `POST /bootstrap` must be called once to create the first admin account. After that the endpoint returns 409 on every subsequent call. The frontend route loaders of `/login`, `/sign-up`, `/forgot-password` and `/bootstrap` call `GET /bootstrap/status` to redirect users to the right screen.
 
 ## Registration
 
@@ -14,7 +14,7 @@ Registered at the **root scope** in `app.ts` — outside the `authenticated` sco
 app.register(bootstrapRoutes, { database, auth })
 ```
 
-This makes all three endpoints **publicly accessible** (no session required). That is intentional: before bootstrap, no session can exist.
+This makes both endpoints **publicly accessible** (no session required). That is intentional: before bootstrap, no session can exist.
 
 ## Endpoints
 
@@ -38,16 +38,9 @@ Returns `409 { message: 'System already bootstrapped' }` if any user exists at s
 
 **No audit log** — `request.audit` is not available here (outside the authenticated scope).
 
-### `POST /bootstrap/e2e-user`
+**Not transactional.** If `signUpEmail` fails after step 3 (e.g. an invalid email that slipped past validation), the `Admin` role stays behind with no user, and every retry fails on the unique `roles.name` until that row is deleted by hand.
 
-Dev/test only. Blocked in production (`NODE_ENV === 'production'` → 403). Used by Playwright E2E setup to ensure a known admin user exists without going through the full bootstrap UI flow.
-
-Idempotent — safe to call multiple times:
-- If the user already exists and has a role: returns `200` immediately (no-op).
-- If the user exists but has no role: assigns (or creates) the `'Admin'` role and returns `200`.
-- If the user does not exist: creates the user via `auth.api.signUpEmail`, assigns the admin role, returns `201`.
-
-The admin role is found by name (`'Admin'`); if it does not exist, it is created with all permissions before being assigned.
+There is deliberately no other public way to create an admin — a dev-only `POST /bootstrap/e2e-user` used to exist and was removed; `bootstrap-routes.test.ts` asserts it stays gone. E2E tests sign in with an existing user instead (`apps/web/e2e/auth.setup.ts`).
 
 ## Open registration mode
 
@@ -62,23 +55,21 @@ When `registration.mode` is `'open'`, `POST /bootstrap` creates a second role af
 
 The User role is always created **after** the admin is assigned the Admin role. This is intentional — the `databaseHooks.user.create.after` in `auth.ts` fires during step 2, before the User role exists, so the admin never accidentally gets the User role.
 
-The admin can later customize the User role's permissions via the permissions panel.
+The admin can later customize the User role's permissions on `/roles/$id/permissions`. Note that `me:view`/`me:edit` are not enforced by any route today (the `me` endpoints only require a session), so a User role with just those grants can reach `/me` but no module.
 
 **Test environment:** `src/config/test-overrides.ts` sets `registration.mode: 'open'` so test helpers can create users via `POST /api/auth/sign-up/email`. The bootstrap test accounts for both roles being created in this mode.
 
 ## `ALL_PERMISSIONS` and `src/config/permissions.ts`
 
-`ALL_PERMISSIONS` is a flat array of `{ resource, action }` objects derived from `RESOURCE_DEFINITIONS`. Both `POST /bootstrap` and `POST /bootstrap/e2e-user` insert one `rolePermissions` row per entry. When a new module is added to `RESOURCE_DEFINITIONS`, it is automatically included in the admin role on next bootstrap without any change to this file.
+`ALL_PERMISSIONS` is a flat array of `{ resource, action }` objects derived from `RESOURCE_DEFINITIONS`. `POST /bootstrap` inserts one `rolePermissions` row per entry for the Admin role. When a new module is added to `RESOURCE_DEFINITIONS`, it is automatically included in the admin role on next bootstrap without any change to this file.
 
 ## Tests (`bootstrap-routes.test.ts`)
 
 No `createTestSession` — routes are public. `beforeEach` calls `cleanupAuth()` then manually deletes `rolePermissions` and `roles` (in that order, since `rolePermissions` has a FK to `roles`).
 
-**`POST /bootstrap`** coverage: creates user + role + all permissions (asserts `perms.length === ALL_PERMISSIONS.length`); returns 409 on second call; returns 400 for invalid body.
+**`POST /bootstrap`** coverage: creates user + role + all permissions (asserts `perms.length === ALL_PERMISSIONS.length`); returns 409 on second call; returns 400 for invalid body. A top-level test asserts `POST /bootstrap/e2e-user` returns 404.
 
 **`GET /bootstrap/status`** coverage: `false` when no users; `true` after a successful bootstrap.
-
-The `POST /bootstrap/e2e-user` endpoint is not covered by unit tests here — it is exercised by the Playwright auth setup instead.
 
 ## Frontend counterpart
 

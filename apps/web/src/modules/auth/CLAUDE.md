@@ -105,7 +105,7 @@ import { HasPermission } from '../../auth/components/has-permission'
 
 ## Routes (`routes/index.ts`)
 
-All three routes have `rootRoute` as parent (not `authenticatedRoute`) — they are public and render outside the app layout.
+All five routes have `rootRoute` as parent (not `authenticatedRoute`) — they are public and render outside the app layout.
 
 | Constant | Path | Loader data |
 | --- | --- | --- |
@@ -251,11 +251,13 @@ vi.mock('.', () => ({
 Two mocks are required in every route test file that renders a component behind `useAuth`:
 
 ```ts
-// 1. Mock the router hooks (navigation, params, search)
-vi.mock('@tanstack/react-router', () => ({
-  useNavigate: () => vi.fn(),
-  useSearch: () => ({ page: 1, pageSize: 10, sortOrder: 'desc' }),
-  useParams: () => ({}),
+// 1. Mock the component's own route constant (from the local route index),
+//    not @tanstack/react-router — components read hooks from the route object
+vi.mock('.', () => ({
+  xxxListRoute: {
+    useNavigate: () => vi.fn(),
+    useSearch: () => ({ page: 1, pageSize: 10, sortOrder: 'desc' }),
+  },
 }))
 
 // 2. Mock authClient.useSession so useAuth returns a real user
@@ -283,12 +285,4 @@ The permissions response is controlled via `getMePermissionsHandler` from `@heli
 
 ## How `app.tsx` uses auth
 
-`App` calls `useAuth()` to filter the sidebar and pass the current user to `<Layout>`:
-
-```ts
-const visibleItems = sidebarItems.filter((item) =>
-  item.permission
-    ? hasPermission(item.permission.resource, item.permission.action)
-    : isAuthenticated   // items without permission (e.g. Profile) show when logged in
-)
-```
+`App` calls `useAuth()` for the user passed to `<Layout>` and for sidebar filtering: an item with `permission` shows when `hasPermission(...)` is true; an item without one shows to any authenticated user. The full filter also applies the subscription rules — see `src/modules/subscriptions/CLAUDE.md` → _Sidebar_.

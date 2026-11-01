@@ -10,25 +10,32 @@ This package is the **single source of truth for all UI imports** in `apps/web`.
 
 UI framework packages (`@mantine/*`, `@emotion/react`, `@tabler/icons-react`, `clsx`, `dayjs`) are **direct dependencies** of this package. `apps/web` does not list them.
 
-Only two deps remain as **peer dependencies**: `react` (singleton requirement) and `@tanstack/react-router` (needed for the `AppRoute` type augmentation — see below).
+**Peer dependencies** (one shared instance with the app): `react`, `@tanstack/react-router` (the `AppRoute` type augmentation and `useBlocker` — see below), and `i18next` + `react-i18next` (components translate through the app's i18next singleton — see _Form validation utilities_).
+
+The package ships TypeScript sources (`"exports": { ".": "./src/index.ts" }`) — there is no build step; `apps/web`'s Vite compiles it. It has no test runner of its own: its components are exercised by `apps/web` tests.
 
 ## What `src/index.ts` exports
 
 ```
-side-effect imports  →  @mantine/core/styles.css, @mantine/dates/styles.css,
-                        @mantine/tiptap/styles.css, @mantine/notifications/styles.css,
-                        mantine-datatable/styles.css, fonts
+side-effect imports  →  Mantine styles (core, dates, dropzone, tiptap, notifications),
+                        mantine-datatable/styles.css, dayjs/locale/pt-br,
+                        fonts (Geist, Plus Jakarta Sans), ./global.css
 re-exports           →  @mantine/core, @mantine/hooks, @mantine/emotion, @mantine/dates,
-                        @mantine/form, @mantine/modals, @mantine/notifications,
-                        @tabler/icons-react, clsx
+                        @mantine/dropzone, @mantine/form, @mantine/modals,
+                        @mantine/notifications, @tabler/icons-react, clsx
 named export         →  css (from @emotion/react — only this function, not export *)
 custom components    →  export * from "./components"
-hooks                →  export * from "./hooks" (use-form-blocker)
-utilities            →  export * from "./utils" (data-table helpers, validator primitives, createValidator)
+hooks                →  export * from "./hooks" (useFormBlocker, usePersistedSidebar)
+utilities            →  export * from "./utils" (data-table helpers, validator primitives, createValidator, msg)
 theme helper         →  createTheme (from ./theme)
+locales              →  uiLocaleEn, uiLocalePtBR (also as subpath exports
+                        @helix/ui/locales/en and @helix/ui/locales/pt-BR)
 ```
 
-`CSSProperties` is explicitly re-exported from `@mantine/core` to resolve the naming conflict with `@mantine/emotion`.
+Name clashes resolved explicitly in `src/index.ts`:
+
+- **`FileInput` is the custom upload field** (`components/file-upload/file-input.tsx`), not Mantine's. Mantine's file picker is re-exported as `MantineFileInput`.
+- `CSSProperties` comes from `@mantine/core` (it also exists in `@mantine/emotion`).
 
 ## Adding a new component
 
@@ -39,17 +46,30 @@ theme helper         →  createTheme (from ./theme)
 
 ## Component groups
 
-| Group          | Files                                                | Purpose                                                           |
-| -------------- | ---------------------------------------------------- | ----------------------------------------------------------------- |
-| App shell      | `layout`, `header`, `sidebar`, `user-menu`           | Full-page scaffold rendered by `apps/web`                         |
-| Page wrappers  | `page-list`, `page-create`, `page-edit`, `page-view` | Standard CRUD screen layouts                                      |
-| Data display   | `data-table`, `labeled-value`                        | Paginated/sortable table; label + value pair used in detail views |
-| Forms          | `form`                                               | `<Form>` wrapper that handles `useForm` submission and validation |
-| Filtering      | `logical-filter`                                     | `LogicalFilterForm` — combinable field conditions with AND/OR     |
-| Feedback       | `modals/confirm`, `notifications/notify`             | `confirm()` dialog helper; `notify()` toast helper                |
-| Rich text      | `rich-text-editor`, `rich-text-renderer`             | Tiptap-based editor and read-only renderer                        |
-| Misc           | `language-picker`                                    | Language dropdown; options come from the `languages` prop         |
-| Theme          | `theme/index.ts`                                     | `createTheme()` — sets font defaults, accepts Mantine overrides   |
+| Group          | Exports (folder)                                                        | Purpose |
+| -------------- | ----------------------------------------------------------------------- | ------- |
+| App shell      | `Layout`, `Header`, `Sidebar`, `SidebarLinksGroup`, `UserMenu`, `Breadcrumb` (`layout`, `header`, `sidebar`, `user-menu`, `breadcrumb`) | Full-page scaffold rendered by `apps/web`; breadcrumbs come from route `staticData` |
+| Page wrappers  | `PageList`, `PageCreate`, `PageEdit`, `PageView` (`page/`)              | Standard CRUD screen layouts |
+| Data display   | `DataTable`, `LabeledValue`, `EmptyState`                               | Paginated/sortable table; label + value pair for detail views; empty list screen with a CTA slot |
+| Actions        | `ActionsMenu` (+ `ActionsMenuItemConfig`)                               | Row actions dropdown — use when a row has more than 3 actions |
+| Forms          | `Form`                                                                  | `<form>` wrapper: runs `form.onSubmit`, blocks navigation while dirty (`blockNavigationOnDirty`, default `true`) |
+| File upload    | `FilesInput`, `FileInput`, `FilePreview`, `FileCard` (`file-upload/`)   | Multi/single upload fields (the HTTP call is injected via `onUpload`) and read-only previews |
+| Filtering      | `LogicalFilterForm` (`logical-filter/`)                                 | Combinable field conditions with AND/OR |
+| Feedback       | `confirm()`, `notify()` (`modals/confirm`, `notifications/notify`)      | Confirm dialog helper; toast helper |
+| Rich text      | `RichTextEditor`, `RichTextRenderer`                                    | Tiptap editor (HTML string value) and read-only renderer |
+| Navigation     | `NavigationItem` (`navigation/`)                                        | Router-aware nav link (used by the `/me` sub-navigation) |
+| Misc           | `LanguagePicker`                                                        | Language dropdown; options come from the `languages` prop |
+| Theme          | `createTheme()` (`theme/index.ts`)                                      | Base theme — see _Theme_ |
+
+## Theme (`src/theme/index.ts`)
+
+`createTheme(overrides)` builds the base Mantine theme the app extends (`apps/web/src/config/theme.ts` adds the `main` palette and sets it as `primaryColor`):
+
+- Fonts: **Geist Variable** (body) and **Plus Jakarta Sans Variable** (headings).
+- `defaultRadius: 'md'`, `focusRing: 'auto'`.
+- **Custom spacing scale on a 4/8px grid** — it differs from Mantine's defaults, so pick values by size, not by habit: `xs` 8px, `sm` 12px, `md` 16px, `lg` 24px, `xl` 32px.
+- Component defaults/styles for `Input` (focus outline), `Button`, `Drawer`, `Modal`, `Badge` (light, capitalized) and `Notification`.
+- **It references `theme.colors.main`** (input focus ring, notification fallback), so any app using it must define a `main` palette.
 
 ## `LogicalFilterForm` component
 

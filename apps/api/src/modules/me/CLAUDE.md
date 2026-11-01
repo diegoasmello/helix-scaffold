@@ -25,7 +25,7 @@ Returns `{ getMe, updateMe, changeEmail, updatePassword, setPassword }`.
 
 **`updateMe(userId, data)`** — only runs `db.update(...).set(data)` if `data.name` is defined. Re-fetches via `getMe(userId)` and returns the fresh row.
 
-**`changeEmail(data, headers)`** — delegates to `auth.api.changeEmail` with `callbackURL: env.CLIENT_URL + '/me/account'`. better-auth creates a verification token, stores it in the `verification` table, and fires `sendVerificationEmail` (which sends the email to the new address). Email delivery errors propagate to the caller because `sendVerificationEmail` is called synchronously inside the better-auth handler before the background task runs. Returns void — the email is not changed immediately; it changes only after the user clicks the verification link.
+**`changeEmail(data, headers)`** — delegates to `auth.api.changeEmail` with `callbackURL: env.CLIENT_URL + '/me/account'`. better-auth creates a verification token, stores it in the `verification` table, and calls `sendVerificationEmail` (which sends the email to the new address) through `runInBackgroundOrAwait`. Without a background-task handler configured it awaits the send, but **catches and only logs any error** ("Failed to run background task") — so a delivery failure still returns 200 and the user never gets the link. See `src/lib/email/CLAUDE.md` → _better-auth and the background task limitation_ for the workaround. Returns void — the email is not changed immediately; it changes only after the user clicks the verification link.
 
 **`updatePassword(data, headers, userEmail)`** — delegates to `auth.api.changePassword` with `revokeOtherSessions: false`. Throws `APIError` from better-auth if the current password is incorrect. After a successful change, sends a best-effort notification email to `userEmail` (failures are silently swallowed via `.catch(() => {})`).
 
@@ -48,7 +48,7 @@ Receives `{ database, auth, emailProvider }` — no `requirePermission` paramete
 
 **`PATCH /me`** — name only. No email field, no 409. Audit: `request.audit('edit', 'me', userId, request.body)`.
 
-**`PATCH /me/email`** — calls `service.changeEmail(body, headers)`. Catches `APIError` from better-auth → 400 `{ message }`. Other errors → 500 `{ message: 'Failed to send verification email' }`. On success → 200 `{ message: 'Check your new email address to confirm the change' }`. Audit: `{ emailChangeRequested: true }` — never logs the actual email address.
+**`PATCH /me/email`** — calls `service.changeEmail(body, headers)`. Catches `APIError` from better-auth (e.g. email already in use) → 400 `{ message }`. Other errors → 500 `{ message: 'Failed to send verification email' }` — in practice unreachable for delivery failures, which better-auth swallows (see above). On success → 200 `{ message: 'Check your new email address to confirm the change' }`. Audit: `{ emailChangeRequested: true }` — never logs the actual email address.
 
 **`PATCH /me/password`** — catches `APIError` from better-auth → 400 `{ message: 'Current password is incorrect' }`. Returns 204 on success. Audit: `{ passwordChanged: true }` — never logs actual password values.
 
@@ -63,20 +63,20 @@ Receives `{ database, auth, emailProvider }` — no `requirePermission` paramete
 - `registration-routes.ts` — for `GET /registration/status` (filtered by mode)
 - `me-routes.ts` — for `GET /me/providers` (always returned)
 
-**If you add a new social provider to `auth.ts`, add it here too.** Both callers derive their list from this function.
+It reads `config.auth.socialProviders`, so a new provider needs no change here — see `apps/api/CLAUDE.md` → _Shared social provider utility_ for the files that do change.
 
 ## Permissions config
 
-None. The `me` resource is not in `RESOURCE_DEFINITIONS` — it has no RBAC entries. All endpoints are authenticated-only.
+`me` **is** in `RESOURCE_DEFINITIONS` (`actions: ['view', 'edit']`), and bootstrap grants both to the default User role in open registration mode — but **no route enforces them**. Every `me` endpoint only requires a session, and the frontend `/me` routes have no permission guard either. Treat `me:*` as reserved until that is decided; do not add `requirePermission('me', …)` to these routes without updating every role that needs profile access.
 
 ## Tests (`me-routes.test.ts`)
 
-**No `beforeEach` cleanup** — the test file operates on the single `__test_admin__` user created by `createTestSession`. The test DB is not truncated between tests.
+**No `beforeEach` cleanup** — the test file operates on the single test user (`test@test.com`, role `__test_admin__`) created by `createTestSession`. The test DB is not truncated between tests.
 
 **`PATCH /me/email` test** — sends a valid `newEmail`, asserts 200 with a message string. Cleans up the verification token from the `verification` table after the test to avoid state leakage.
 
 **Password tests** — `PATCH /me/password` restores the original password after the test. `POST /me/set-password` returns 400 for the test admin (who has a credential account) and 400 for a short password. The 204 success case requires a social-only user (no credential account) and is not covered here — it relies on E2E tests with a real OAuth flow.
 
-**`GET /me/providers`** — asserts 200 and that `providers` is an array. Does not assert `[]` because the test env may have social credentials set.
+**`GET /me/providers`** — asserts 200 and that `providers` is an array. Does not assert `[]` because `src/config/test-overrides.ts` does not override `auth.socialProviders`, so the result follows whatever `app.config.ts` enables.
 
 **No permission enforcement tests** — there are no `requirePermission` guards on these routes, so no 403 cases exist.

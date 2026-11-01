@@ -44,37 +44,29 @@ No mutations, no cache invalidation, no `useQueryClient`.
 
 ## List screen (`audit-list.tsx`)
 
-`PageList` with no `actions` prop — there is no Create button.
+`PageList` whose `actions` hold only the **Export PDF** button — no Create button. The export uses `useExportPdf('/audit-logs/export', { sortBy, sortOrder }, 'audit-logs')` (sort only; the audit list has no filters). See `apps/web/CLAUDE.md` → _PDF export_.
 
-`ACTION_COLORS` maps action strings to badge colors:
+`ACTION_COLORS` maps action strings to badge colors (`create` green, `edit` blue, `delete` red); anything else — including `export` — falls back to `gray`.
 
-```ts
-const ACTION_COLORS: Record<string, string> = {
-  create: 'green',
-  edit: 'blue',
-  delete: 'red',
-}
-```
+Columns: `createdAt` (`formatDateTime(parseISO(...))` from `@/utils/date`, sortable), `userName` (sortable), `action` (Badge, sortable), `resource` (sortable), `resourceId` (`?? '—'`), `ip` (`?? '—'`), `actions` (View button only).
 
-`formatDate(iso: string)` converts the ISO timestamp via `new Date(iso).toLocaleString()` — used in the list and detail screens.
+No Edit or Delete buttons. No `<HasPermission>` wrappers — reading the list already requires `audit:view`.
 
-Columns: `createdAt` (formatted, sortable), `userName` (sortable), `action` (Badge, sortable), `resource` (sortable), `resourceId` (nullable — `?? '—'`), `ip` (nullable — `?? '—'`), `actions` (View icon only, width 80).
-
-No Edit or Delete icons. No `<HasPermission>` wrappers — reading the list already requires `audit:view`.
+Entries written by the billing webhook have `userId: 'system:<adapter>'` and `userName: 'Billing webhook (<adapter>)'` — they are not real users, so never link `userId` to `/users/$id`.
 
 ## Detail screen (`audit-detail.tsx`)
 
-`PageView` title is `"${log.resource} — ${log.action}"` (not the entity id).
+`PageView` titled `t('detail.title')`. `createdAt` is shown with `formatDate(parseISO(...), 'short')`.
 
-`ACTION_COLORS` is typed as `Record<AuditLog['action'], string>` (not `Record<string, string>` as in the list) — tighter typing.
+`ACTION_COLORS` is typed as `Record<AuditLog['action'], string>` here (tighter than the list's `Record<string, string>`).
 
-`userAgent` and `metadata` are conditionally rendered — they are skipped when `null` or `undefined`:
+`userAgent` and `metadata` are conditionally rendered:
 
 - `userAgent` — rendered only when truthy.
-- `metadata` — rendered only when `!= null`; displayed as formatted JSON via `JSON.stringify(log.metadata, null, 2)` inside a `<Text component="pre">` with `whiteSpace: 'pre-wrap'`.
+- `metadata` — rendered only when `!= null`, as `JSON.stringify(log.metadata, null, 2)` inside `<Text component="pre">`. It currently uses an inline `style` for `white-space`/`word-break`, against the styling convention — move it to `createStyles` when touching this file.
 
 ## Sidebar
 
 ```ts
-{ label: 'Audit Log', icon: IconClipboardList, to: '/audit', permission: { resource: 'audit', action: 'view' } }
+{ label: 'nav.auditLog', icon: IconClipboardList, to: '/audit', permission: { resource: 'audit', action: 'view' } }
 ```

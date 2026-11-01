@@ -184,14 +184,14 @@ interface SubscriptionFormValues {
   userId: string           // create only — not editable after creation
   planId: string
   status: SubscriptionStatus
-  currentPeriodStart: string    // ISO string; DateInput onChange returns string
+  currentPeriodStart: string    // 'YYYY-MM-DD'; DateInput works with date strings
   currentPeriodEnd: string
   trialEndsAt: string | null
   externalId: string             // '' when empty — mapped to undefined (create) / null (edit) on submit
 }
 ```
 
-Date fields are stored as ISO strings in the form because Mantine v9's `DateInput.onChange` returns `DateStringValue` (a string), not a `Date` object. On submit they are passed directly to the API body, which accepts them via `z.coerce.date()`.
+Date fields are stored as date strings (`'YYYY-MM-DD'`) because Mantine v9's `DateInput` works with `DateStringValue` (a string), not `Date`. On submit they are passed as-is; the API accepts them via `z.coerce.date()`.
 
 ---
 
@@ -251,8 +251,10 @@ Loader: `queryClient.ensureQueryData(getSubscriptionsIdSuspenseQueryOptions(para
 
 Shared between create and edit. Receives `plans` (from `useSubscription()` in the route) and `isEditing?: boolean` — when `true`, the `userId` field is hidden (can't change the owner of a subscription after creation).
 
+Every field is bound with `{...form.getInputProps('<field>')}`.
+
 Fields rendered:
-- `userId` — `TextInput`, required, hidden when `isEditing`
+- `userId` — `UserSelectField` (cross-module, from `users/components/user-select-field.tsx`, over `GET /users/all`), required, hidden when `isEditing`. The create route's loader must prefetch `getUsersAllSuspenseQueryOptions()`
 - `planId` — `Select` of the catalog (`label: plan.name`), required. On edit, a `planId` no longer in the catalog is appended as an extra option so the form still shows it
 - `status` — `Select` with all five status values (`active`, `trialing`, `canceled`, `past_due`, `expired`)
 - `currentPeriodStart` — `DateInput`, required
@@ -260,15 +262,13 @@ Fields rendered:
 - `trialEndsAt` — `DateInput`, optional, `clearable`
 - `externalId` — `TextInput`, optional
 
-All `DateInput` fields bind `value` and `onChange` manually (not via `getInputProps`) because `DateInput`'s `onChange` returns `DateStringValue | null` (a string, not `Date`). The form stores ISO strings and converts with `date ? new Date(date).toISOString() : null`.
-
 ---
 
 ## List screen (`subscriptions-list.tsx`)
 
 - `DataTable` with pagination and sorting (no filters — not needed for an ops tool)
 - Plan column renders `getPlanName(item.planId)`
-- Status column renders a colored `Badge` using the `STATUS_COLORS` map
+- Status column renders a colored `Badge` using `SUBSCRIPTION_STATUS_COLORS` (`constants.ts`)
 - `currentPeriodEnd` column renders `new Date(value).toLocaleDateString()`
 - Actions column: View (always), Edit (behind `subscriptions:edit`), Delete (behind `subscriptions:delete`)
 - Empty state shows "No subscriptions yet" with a Create button (behind `subscriptions:create`)
@@ -303,19 +303,9 @@ Footer: Back button → `/subscriptions`.
 
 ---
 
-## Me-page subscription tab (`src/modules/me/routes/me-subscription.tsx`)
+## Me-page subscription tab
 
-The `/me/subscription` route lives in the `me` module but consumes `useSubscription()` and types from this module. It is a read-only status view — no mutations.
-
-**Behavior:**
-- Shows a `<Loader>` while `isPending: true` (status or subscription fetching)
-- Shows "No active subscription" when `subscription: null`
-- Shows the plan name (`plan?.name`, falling back to the raw `planId`), status badge (colored by `STATUS_COLORS`), trial end date (when `trialEndsAt` is set), period start/end when a subscription exists
-- When the subscription is past_due (inside the grace period), an orange `Alert` (`me.pastDue.*`) says the payment failed and shows `graceEndsAt`
-
-**Navigation:** the tab only appears in `MePage`'s sidebar when `enabled: true`. `MePage` calls `useSubscription()` and conditionally renders the `NavigationItem` based on the `enabled` flag. The `meSubscriptionRoute` `beforeLoad` also checks the subscription mode and redirects to `/me/account` when subscriptions are disabled, so direct URL navigation is blocked when the feature is off.
-
-**i18n:** uses the `subscription` namespace under `me.*` keys — the same namespace as the admin module.
+`/me/subscription` lives in the `me` module and consumes `useSubscription()`, `<PlanCatalog>` and `SUBSCRIPTION_STATUS_COLORS` from here. It is documented in `src/modules/me/CLAUDE.md` → _MeSubscription_.
 
 ---
 

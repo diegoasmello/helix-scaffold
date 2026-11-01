@@ -13,7 +13,15 @@ This is a **pnpm monorepo** with the following workspaces:
 | `packages/ui`         | Shared component library (`@helix/ui`), consumed by `apps/web`                         |
 | `packages/api-client` | Generated types, fetchers, hooks and mocks from the OpenAPI spec (`@helix/api-client`) |
 
-Each workspace has its own `CLAUDE.md` with patterns, conventions, and step-by-step guides specific to that context. **Always read the relevant workspace `CLAUDE.md` before working in it.**
+Each workspace has its own `CLAUDE.md` with patterns, conventions, and step-by-step guides specific to that context. **Always read the relevant workspace `CLAUDE.md` before working in it**, then the `CLAUDE.md` of the module you touch:
+
+| Area | Module docs |
+| --- | --- |
+| `apps/api/src/modules/` | `audit`, `billing-webhook`, `bootstrap`, `me`, `permissions`, `registration`, `roles`, `subscriptions`, `todos`, `uploads`, `users` |
+| `apps/api/src/lib/` | `email`, `pdf` |
+| `apps/web/src/modules/` | `audit`, `auth` (also bootstrap/login/sign-up screens), `me`, `roles` (also the permission editor), `subscriptions`, `todos`, `uploads`, `users` |
+
+`todos` is the reference implementation on both sides.
 
 ## Commands
 
@@ -41,11 +49,33 @@ pnpm test:coverage
 # E2E tests (requires dev server + API running)
 pnpm test:e2e
 
+# Format all workspaces (Prettier)
+pnpm format
+
+# Database (apps/api) — see apps/api/CLAUDE.md → Scripts
+pnpm db:generate       # migration from the Drizzle schema
+pnpm db:migrate        # apply to the dev DB
+pnpm db:migrate:test   # apply to the test DB
+pnpm db:seed           # dev data — only on an empty DB
+pnpm db:reset          # truncate every table
+
+# OpenAPI client (packages/api-client) — see its CLAUDE.md
+pnpm spec:export       # rewrite openapi.json from the API code (no server needed)
+pnpm spec:generate     # regenerate the client from openapi.json
+
 # Target a specific workspace directly (bypasses Turbo)
 pnpm --filter web test:watch
 pnpm --filter web preview
 pnpm --filter api test:watch
 ```
+
+**Local databases** (`docker compose up -d`): `db` → `helix` on port 5434, `db_test` → `helix_test` on port 5436. API tests need `db_test` running and migrated (`pnpm db:migrate:test`).
+
+**Git hooks** (Husky):
+
+- `commit-msg` — commitlint with `@commitlint/config-conventional` (`feat(web): …`, `fix(api): …`).
+- `pre-commit` — lint-staged per workspace: `eslint --fix` on staged `*.ts`/`*.js` (not `*.tsx`, and no Prettier — run `pnpm lint` / `pnpm format` yourself). In `apps/api`, any staged `src/**/*.ts` (tests excluded) also re-exports `packages/api-client/openapi.json` and stages it.
+- `pre-push` — `pnpm type-check`, then re-exports the spec and blocks the push if it changed (skipped while `apps/api` or the spec have uncommitted changes).
 
 ## Tests
 
@@ -54,7 +84,7 @@ pnpm --filter api test:watch
 | Workspace  | Tool                        | Notes                   |
 | ---------- | --------------------------- | ----------------------- |
 | `apps/web` | Vitest + RTL + MSW          | Unit + integration      |
-| `apps/web` | Playwright                  | E2E via `pnpm test:e2e` |
+| `apps/web` | Playwright                  | E2E via `pnpm test:e2e` — only `e2e/auth.setup.ts` exists, no specs yet |
 | `apps/api` | Vitest + real test database | Route integration tests |
 
 See each workspace's `CLAUDE.md` for the full testing guide.
@@ -83,7 +113,9 @@ The scaffold supports two account-creation strategies, configured via `registrat
 | Mode | Behaviour |
 | --- | --- |
 | `closed` (default) | Only admins create accounts. Bootstrap creates the first admin; subsequent users are created via `POST /users` by a permissioned admin. |
-| `open` | Anyone can self-register via `/sign-up` (email/password) or via social login (Google, Facebook, Apple). Bootstrap also creates a "User" role (`isDefault = true`) with basic permissions (`me:view`, `me:edit`). New self-registered users receive this role automatically. |
+| `open` | Anyone can self-register via `/sign-up` (email/password) or via social login (Google, Facebook, Apple). Bootstrap also creates a "User" role (`isDefault = true`) with `me:view` and `me:edit`. New self-registered users receive this role automatically. |
+
+`me:view`/`me:edit` are not enforced by any route today — profile routes only need a session — so a user holding only the default User role can reach `/me` and nothing else (the app's `/` redirects to `/todos`, which sends them to `/403`). Grant the default role whatever the product's regular users need.
 
 **Single source of truth:** the mode lives only in the backend config. The frontend reads `GET /registration/status → { open: boolean, providers: string[] }` at route-load time — no `VITE_*` duplication.
 
@@ -104,7 +136,7 @@ The scaffold supports optional subscription gating for products that require use
 | `subscriptions.pastDueGraceDays` | `0` | Days a `past_due` subscription (failed payment) keeps access while the processor retries. `0` cuts access immediately. |
 | `subscriptions.trial` | `false` | `{ days, planId }`. When set (and registration is open and subscriptions are enabled), a trialing subscription is auto-created on user registration. |
 
-**Single source of truth:** the mode lives only in the backend config. The frontend reads `GET /subscription/status → { enabled: boolean }` once at startup and caches it for the session — no `VITE_*` duplication.
+**Single source of truth:** the mode lives only in the backend config. The frontend reads `GET /subscription/status → { enabled, plans, pastDueGraceDays }` once and caches it for the session (`staleTime: Infinity`) — no `VITE_*` duplication.
 
 **Admin bypass:** users whose role has the `subscriptions:view` permission are never blocked by `requireSubscription()`, regardless of whether they have an active subscription themselves. Operators can always access the product.
 
@@ -139,14 +171,14 @@ When `subscriptions.enabled` is `true`, the app is responsible for:
 By default, a new module spans **both workspaces** — backend + frontend. Unless the prompt explicitly targets one side (e.g. "add a backend endpoint for X" or "add a frontend page for X"), always implement the full stack:
 
 1. **`apps/api`** — database schema + migration, service, routes, tests
-2. **`apps/web`** — types, service, hooks, route components, tests, E2E
+2. **`apps/web`** — types, validation, route components, shared form, i18n, unit + integration tests
 
 Before implementing either side, read the workspace-specific `CLAUDE.md` — it contains the exact file structure, patterns, and step-by-step guide to follow:
 
 - **Backend**: `apps/api/CLAUDE.md` → _Creating a new module (CRUD)_
 - **Frontend**: `apps/web/CLAUDE.md` → _Creating a new module (CRUD)_
 
-A module is only complete when both sides are implemented and all tests are written.
+A module is only complete when both sides are implemented and their unit + integration tests are written. E2E specs are written only when asked (the Playwright setup exists, but no module has specs yet).
 
 ### Pagination defaults
 

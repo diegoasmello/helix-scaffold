@@ -14,14 +14,16 @@ interface EmailProvider {
 
 ## Implementations
 
+Both are private factory functions in `index.ts`; only `EmailProvider` (the interface) and `createEmailProvider` are exported.
+
 | Implementation | When used |
 |---|---|
-| `ResendEmailProvider` | `NODE_ENV !== 'test'` and `RESEND_API_KEY` is set |
-| `ConsoleEmailProvider` | dev without `RESEND_API_KEY`, and all test runs |
+| `createResendEmailProvider` | `NODE_ENV !== 'test'` and `RESEND_API_KEY` is set |
+| `createConsoleEmailProvider` | dev without `RESEND_API_KEY`, and all test runs |
 
-`ConsoleEmailProvider` logs the full HTML body to stdout including the verification URL — sufficient for local testing without any external account.
+The console provider logs the full HTML body to stdout including the verification URL — sufficient for local testing without any external account.
 
-`ResendEmailProvider` uses Resend's REST API directly via `fetch` (no SDK dependency). On a non-2xx response it logs the raw body to stderr and throws a generic message, so Resend error details never leak to the caller or to error-monitoring payloads.
+The Resend provider uses Resend's REST API directly via `fetch` (no SDK dependency). On a non-2xx response it logs the raw body to stderr and throws a generic message, so Resend error details never leak to the caller or to error-monitoring payloads.
 
 ## Factory
 

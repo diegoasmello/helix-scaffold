@@ -10,7 +10,8 @@ src/modules/todos/
 ├── validation.ts
 ├── validation.test.ts
 ├── components/
-│   └── todos-form.tsx       ← shared form fields (create + edit)
+│   ├── todos-form.tsx       ← shared form fields (create + edit)
+│   └── todos-form.test.tsx  ← labels + required markers (route tests mock the form)
 └── routes/
     ├── index.ts             ← route constants + todosRoutes array
     ├── todos-pending.tsx
@@ -59,8 +60,8 @@ interface TodoFormValues {
 | ------------- | ---------------- | -------------------------------------------------------------------- |
 | `title`       | `TextInput`      | `form.getInputProps('title')`                                        |
 | `description` | `Textarea`       | `resize="vertical"`                                                  |
-| `content`     | `RichTextEditor` | Produces an HTML string; **not** a plain Textarea                    |
-| `date`        | `DateInput`      | Value/onChange/error bound explicitly (not via `getInputProps`)      |
+| `content`     | `RichTextEditor` | `getInputProps`; produces an HTML string — **not** a plain Textarea  |
+| `date`        | `DateInput`      | `getInputProps`; the value is a date string (`DateStringValue`), not a `Date` |
 | `status`      | `Switch`         | `checked={form.values.status === 'completed'}`, `form.setFieldValue` |
 | `attachments` | `FilesInput`     | `onUpload={uploadFile}`, `maxFiles={10}` |
 | `file`        | `FileInput`      | `accept={PDF_MIME_TYPE}`, `onUpload={uploadFile}` |
@@ -104,7 +105,7 @@ Every route checks `context.hasSubscriptionAccess('todos')` first (redirecting t
 
 `todoListRoute` has `validateSearch` with: `page` (default 1), `pageSize` (default 10), `sortBy` (enum: `title | status | date | createdAt`, optional), `sortOrder` (default `'desc'`), `filters` (JSON string, optional), `filterLogic` (`'AND' | 'OR'`, default `'AND'`).
 
-`loaderDeps` forwards all four params so the loader re-runs on search changes.
+`loaderDeps` forwards all six params so the loader re-runs on search changes.
 
 ## Data fetching hooks
 
@@ -151,7 +152,7 @@ See `apps/web/CLAUDE.md` → _Filtering_ and `apps/api/CLAUDE.md` → _Filtering
 
 ## Notes
 
-- Action buttons (Edit, Delete, Create) in `TodoList` are **not** wrapped in `<HasPermission>` — they are always rendered. If RBAC guards on action buttons are needed, wrap them per the workspace `CLAUDE.md` convention.
+- **Deviation from the convention:** action buttons (Edit, Delete, Create) in `TodoList` are **not** wrapped in `<HasPermission>` — they are always rendered. Do not copy this when building a new module: follow `users`/`roles`, which wrap them as `apps/web/CLAUDE.md` prescribes.
 - `content` is stored as an HTML string (rich text). Always use `RichTextEditor` for editing and `RichTextRenderer` for display.
 - `attachments`, `file`, and `image` are all **required** upload fields. `attachments` uses `minFiles(1)`, `file` and `image` use `required`. All three have the `required` prop on their `FilesInput`/`FileInput` components to render the asterisk indicator.
 - The upload fields (`attachments`, `file`, `image`) in `TodoFormValues` hold full `UploadItem` objects for previewing during the session. On submit they are mapped to IDs (`attachmentIds`, `fileId`, `imageId`). See `apps/web/CLAUDE.md` → _File uploads_ for the full pattern.
