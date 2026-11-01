@@ -1,4 +1,3 @@
-import type { PermissionAction } from '@helix/api-client/types'
 import type { SidebarItem } from '@helix/ui'
 import {
   IconChecklist,
@@ -8,27 +7,39 @@ import {
   IconUsers,
 } from '@helix/ui'
 
-interface SidebarItemWithPermission extends SidebarItem {
-  permission?: { resource: string; action: PermissionAction }
-  requiresSubscriptionEnabled?: true
-  /** Hidden unless the user's plan includes this feature (see `subscriptions.plans` in the API config). */
-  subscriptionFeature?: string
+import { AUDIT_ACCESS } from '@/modules/audit/routes/access'
+import {
+  type AccessCheckers,
+  checkPageAccess,
+  type PageAccess,
+} from '@/modules/auth/page-access'
+import { ROLES_ACCESS } from '@/modules/roles/routes/access'
+import { SUBSCRIPTIONS_ACCESS } from '@/modules/subscriptions/routes/access'
+import { TODOS_ACCESS } from '@/modules/todos/routes/access'
+import { USERS_ACCESS } from '@/modules/users/routes/access'
+
+interface SidebarItemWithAccess extends SidebarItem {
+  /**
+   * The same `PageAccess` the target route's `guardPage()` enforces — always
+   * the module's constant, never a new object (`routes.test.ts` checks it).
+   * Omit it only for pages every signed-in user may open.
+   */
+  access?: PageAccess
 }
 
-interface SidebarGroupWithPermission {
+interface SidebarGroupWithAccess {
   titleKey?: string
-  items: SidebarItemWithPermission[]
+  items: SidebarItemWithAccess[]
 }
 
-export const sidebarGroups: SidebarGroupWithPermission[] = [
+export const sidebarGroups: SidebarGroupWithAccess[] = [
   {
     items: [
       {
         label: 'nav.todos',
         icon: IconChecklist,
         to: '/todos',
-        permission: { resource: 'todos', action: 'view' },
-        subscriptionFeature: 'todos',
+        access: TODOS_ACCESS.view,
       },
     ],
   },
@@ -39,65 +50,48 @@ export const sidebarGroups: SidebarGroupWithPermission[] = [
         label: 'nav.users',
         icon: IconUsers,
         to: '/users',
-        permission: { resource: 'users', action: 'view' },
+        access: USERS_ACCESS.view,
       },
       {
         label: 'nav.roles',
         icon: IconShield,
         to: '/roles',
-        permission: { resource: 'roles', action: 'view' },
+        access: ROLES_ACCESS.view,
       },
       {
         label: 'nav.auditLog',
         icon: IconClipboardList,
         to: '/audit',
-        permission: { resource: 'audit', action: 'view' },
+        access: AUDIT_ACCESS.view,
       },
       {
         label: 'nav.subscriptions',
         icon: IconCreditCard,
         to: '/subscriptions',
-        permission: { resource: 'subscriptions', action: 'view' },
-        requiresSubscriptionEnabled: true,
+        access: SUBSCRIPTIONS_ACCESS.view,
       },
     ],
   },
 ]
 
-export interface SidebarAccess {
-  hasPermission: (resource: string, action: PermissionAction) => boolean
-  hasSubscriptionAccess: (feature: string) => boolean
-  subscriptionEnabled: boolean
-}
-
 /**
- * Whether the signed-in user sees the item. Shared by the sidebar (`app.tsx`)
+ * Whether the signed-in user sees the item: exactly what the target route's
+ * guard would allow (`checkPageAccess`). Shared by the sidebar (`app.tsx`)
  * and the `/` redirect (`routes.ts`), so `/` always lands on a page the
- * sidebar offers.
+ * sidebar offers — and that the route lets in.
  */
 export function canSeeSidebarItem(
-  item: SidebarItemWithPermission,
-  access: SidebarAccess
+  item: SidebarItemWithAccess,
+  checkers: AccessCheckers
 ): boolean {
-  if (item.requiresSubscriptionEnabled && !access.subscriptionEnabled) {
-    return false
-  }
-  if (
-    item.subscriptionFeature &&
-    !access.hasSubscriptionAccess(item.subscriptionFeature)
-  ) {
-    return false
-  }
-  return item.permission
-    ? access.hasPermission(item.permission.resource, item.permission.action)
-    : true
+  return item.access ? checkPageAccess(item.access, checkers).allowed : true
 }
 
 /** The first item the user can see, in sidebar order — the target of `/`. */
 export function findHomeSidebarItem(
-  access: SidebarAccess
-): SidebarItemWithPermission | undefined {
+  checkers: AccessCheckers
+): SidebarItemWithAccess | undefined {
   return sidebarGroups
     .flatMap((group) => group.items)
-    .find((item) => canSeeSidebarItem(item, access))
+    .find((item) => canSeeSidebarItem(item, checkers))
 }

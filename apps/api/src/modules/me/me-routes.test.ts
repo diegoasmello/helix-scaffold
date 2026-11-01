@@ -4,6 +4,8 @@ import {
   cleanupAuth,
   createTestApp,
   createTestSession,
+  findAuditLogs,
+  getTestUser,
   testDb,
 } from '@/test/helpers'
 
@@ -103,6 +105,10 @@ describe('PATCH /me', () => {
     })
     expect(res.statusCode).toBe(200)
     expect(res.json().name).toBe('Updated Name')
+    const entries = await findAuditLogs('edit', 'me', res.json().id)
+    expect(entries.map((e) => e.metadata)).toContainEqual({
+      name: 'Updated Name',
+    })
 
     await app.inject({
       method: 'PATCH',
@@ -217,6 +223,13 @@ describe('PATCH /me/password', () => {
       headers: { cookie: authCookie },
     })
     expect(res.statusCode).toBe(204)
+    // Records that it changed — never the passwords themselves
+    const { id } = await getTestUser()
+    const metadata = (await findAuditLogs('edit', 'me', id)).map(
+      (e) => e.metadata
+    )
+    expect(metadata).toContainEqual({ passwordChanged: true })
+    expect(JSON.stringify(metadata)).not.toContain('Password')
 
     await app.inject({
       method: 'PATCH',

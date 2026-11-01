@@ -3,12 +3,14 @@ import {
   getAuditLogsSuspenseQueryOptions,
 } from '@helix/api-client/hooks'
 import type { AuditLog } from '@helix/api-client/types'
-import { createRoute, redirect } from '@tanstack/react-router'
+import { createRoute } from '@tanstack/react-router'
 import { z } from 'zod'
 
+import { guardPage } from '@/modules/auth/page-access'
 import { authenticatedRoute } from '@/routes'
 
 import { queryClient } from '../../../lib/query-client'
+import { AUDIT_ACCESS } from './access'
 import { AuditDetail } from './audit-detail'
 import { AuditList } from './audit-list'
 import { AuditPending } from './audit-pending'
@@ -21,9 +23,7 @@ export const auditListRoute = createRoute({
   staticData: {
     breadcrumbs: [{ label: 'nav.auditLog' }],
   },
-  beforeLoad: ({ context }) => {
-    if (!context.hasPermission('audit', 'view')) throw redirect({ to: '/403' })
-  },
+  beforeLoad: guardPage(AUDIT_ACCESS.view),
   validateSearch: z.object({
     page: z.number().int().min(1).default(1),
     pageSize: z.number().int().min(1).max(100).default(10),
@@ -52,9 +52,7 @@ export const auditDetailRoute = createRoute({
       (data) => ({ label: `#${(data as AuditLog).id}` }),
     ],
   },
-  beforeLoad: ({ context }) => {
-    if (!context.hasPermission('audit', 'view')) throw redirect({ to: '/403' })
-  },
+  beforeLoad: guardPage(AUDIT_ACCESS.view),
   loader: ({ params }) =>
     queryClient.ensureQueryData(getAuditLogsIdSuspenseQueryOptions(params.id)),
 })

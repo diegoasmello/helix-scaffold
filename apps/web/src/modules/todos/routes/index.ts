@@ -2,13 +2,15 @@ import {
   getTodosIdSuspenseQueryOptions,
   getTodosSuspenseQueryOptions,
 } from '@helix/api-client/hooks'
-import { createRoute, redirect } from '@tanstack/react-router'
+import { createRoute } from '@tanstack/react-router'
 import { z } from 'zod'
 
+import { guardPage } from '@/modules/auth/page-access'
 import { authenticatedRoute } from '@/routes'
 
 import { queryClient } from '../../../lib/query-client'
 import type { TodoItem } from '../types'
+import { TODOS_ACCESS } from './access'
 import { TodoCreate } from './todos-create'
 import { TodoDetail } from './todos-detail'
 import { TodoEdit } from './todos-edit'
@@ -23,11 +25,7 @@ export const todoListRoute = createRoute({
   staticData: {
     breadcrumbs: [{ label: 'nav.todos' }],
   },
-  beforeLoad: ({ context }) => {
-    if (!context.hasSubscriptionAccess('todos'))
-      throw redirect({ to: '/upgrade', search: { feature: 'todos' } })
-    if (!context.hasPermission('todos', 'view')) throw redirect({ to: '/403' })
-  },
+  beforeLoad: guardPage(TODOS_ACCESS.view),
   validateSearch: z.object({
     page: z.number().int().min(1).default(1),
     pageSize: z.number().int().min(1).max(100).default(10),
@@ -61,12 +59,7 @@ export const todoCreateRoute = createRoute({
       { label: 'actions.create' },
     ],
   },
-  beforeLoad: ({ context }) => {
-    if (!context.hasSubscriptionAccess('todos'))
-      throw redirect({ to: '/upgrade', search: { feature: 'todos' } })
-    if (!context.hasPermission('todos', 'create'))
-      throw redirect({ to: '/403' })
-  },
+  beforeLoad: guardPage(TODOS_ACCESS.create),
 })
 
 export const todoDetailRoute = createRoute({
@@ -81,11 +74,7 @@ export const todoDetailRoute = createRoute({
       (data) => ({ label: `#${(data as TodoItem).id}` }),
     ],
   },
-  beforeLoad: ({ context }) => {
-    if (!context.hasSubscriptionAccess('todos'))
-      throw redirect({ to: '/upgrade', search: { feature: 'todos' } })
-    if (!context.hasPermission('todos', 'view')) throw redirect({ to: '/403' })
-  },
+  beforeLoad: guardPage(TODOS_ACCESS.view),
   loader: ({ params }) =>
     queryClient.ensureQueryData(getTodosIdSuspenseQueryOptions(params.id)),
 })
@@ -102,11 +91,7 @@ export const todoEditRoute = createRoute({
       (data) => ({ label: `#${(data as TodoItem).id}` }),
     ],
   },
-  beforeLoad: ({ context }) => {
-    if (!context.hasSubscriptionAccess('todos'))
-      throw redirect({ to: '/upgrade', search: { feature: 'todos' } })
-    if (!context.hasPermission('todos', 'edit')) throw redirect({ to: '/403' })
-  },
+  beforeLoad: guardPage(TODOS_ACCESS.edit),
   loader: ({ params }) =>
     queryClient.ensureQueryData(getTodosIdSuspenseQueryOptions(params.id)),
 })

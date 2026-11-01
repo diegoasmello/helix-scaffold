@@ -288,6 +288,7 @@ describe('POST /todos', () => {
     const body = res.json()
     expect(body.id).toBeDefined()
     expect(body.title).toBe('New Todo')
+    expect(await findAuditLogs('create', 'todos', body.id)).toHaveLength(1)
     expect(body.description).toBe('New Desc')
     expect(body.status).toBe('pending')
   })
@@ -353,6 +354,7 @@ describe('PATCH /todos/:id', () => {
     expect(body.title).toBe('New Title')
     expect(body.status).toBe('completed')
     expect(body.description).toBe('Old Desc')
+    expect(await findAuditLogs('edit', 'todos', inserted.id)).toHaveLength(1)
   })
 })
 

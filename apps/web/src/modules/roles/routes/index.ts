@@ -4,13 +4,15 @@ import {
   getRolesIdSuspenseQueryOptions,
   getRolesSuspenseQueryOptions,
 } from '@helix/api-client/hooks'
-import { createRoute, redirect } from '@tanstack/react-router'
+import { createRoute } from '@tanstack/react-router'
 import { z } from 'zod'
 
+import { guardPage } from '@/modules/auth/page-access'
 import { authenticatedRoute } from '@/routes'
 
 import { queryClient } from '../../../lib/query-client'
 import type { RoleItem } from '../types'
+import { ROLES_ACCESS } from './access'
 import { RolesCreate } from './roles-create'
 import { RolesDetail } from './roles-detail'
 import { RolesEdit } from './roles-edit'
@@ -26,9 +28,7 @@ export const rolesListRoute = createRoute({
   staticData: {
     breadcrumbs: [{ label: 'nav.roles' }],
   },
-  beforeLoad: ({ context }) => {
-    if (!context.hasPermission('roles', 'view')) throw redirect({ to: '/403' })
-  },
+  beforeLoad: guardPage(ROLES_ACCESS.view),
   validateSearch: z.object({
     page: z.number().int().min(1).default(1),
     pageSize: z.number().int().min(1).max(100).default(10),
@@ -56,10 +56,7 @@ export const rolesCreateRoute = createRoute({
       { label: 'actions.create' },
     ],
   },
-  beforeLoad: ({ context }) => {
-    if (!context.hasPermission('roles', 'create'))
-      throw redirect({ to: '/403' })
-  },
+  beforeLoad: guardPage(ROLES_ACCESS.create),
 })
 
 export const rolesDetailRoute = createRoute({
@@ -74,9 +71,7 @@ export const rolesDetailRoute = createRoute({
       (data) => ({ label: `#${(data as RoleItem).id}` }),
     ],
   },
-  beforeLoad: ({ context }) => {
-    if (!context.hasPermission('roles', 'view')) throw redirect({ to: '/403' })
-  },
+  beforeLoad: guardPage(ROLES_ACCESS.view),
   loader: ({ params }) => {
     queryClient.ensureQueryData(getPermissionsResourcesSuspenseQueryOptions())
     queryClient.ensureQueryData(
@@ -100,9 +95,7 @@ export const rolesEditRoute = createRoute({
       (data) => ({ label: `#${(data as RoleItem).id}` }),
     ],
   },
-  beforeLoad: ({ context }) => {
-    if (!context.hasPermission('roles', 'edit')) throw redirect({ to: '/403' })
-  },
+  beforeLoad: guardPage(ROLES_ACCESS.edit),
   loader: ({ params }) =>
     queryClient.ensureQueryData(getRolesIdSuspenseQueryOptions(params.id)),
 })
@@ -122,10 +115,7 @@ export const rolesPermissionsRoute = createRoute({
       { label: 'nav.permissions' },
     ],
   },
-  beforeLoad: ({ context }) => {
-    if (!context.hasPermission('permissions', 'edit'))
-      throw redirect({ to: '/403' })
-  },
+  beforeLoad: guardPage(ROLES_ACCESS.permissions),
   loader: ({ params }) => {
     queryClient.ensureQueryData(getPermissionsResourcesSuspenseQueryOptions())
     queryClient.ensureQueryData(

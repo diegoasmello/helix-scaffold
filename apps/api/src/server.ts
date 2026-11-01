@@ -7,7 +7,9 @@ import { env } from './env'
 import { deleteOrphanUploads } from './lib/orphan-uploads'
 import { createStorageProvider } from './lib/storage'
 import { getUploadReferenceLoaders } from './lib/upload-references'
-import { createSubscriptionsService } from './modules/subscriptions/subscriptions-service'
+import { createAuditRecorder } from './modules/audit/audit-recorder'
+import { createAuditService } from './modules/audit/audit-service'
+import { createSubscriptionExpirationJob } from './modules/subscriptions/subscription-expiration'
 
 const app = buildApp(db, { config })
 const storage = createStorageProvider(config.uploads, env.BASE_URL)
@@ -36,24 +38,15 @@ app.listen({ port: config.server.port, host: config.server.host }).then(() => {
   }, CLEANUP_INTERVAL_MS)
 
   if (config.subscriptions.enabled) {
-    const subscriptionsService = createSubscriptionsService(db)
     const EXPIRATION_INTERVAL_MS =
       config.subscriptions.expiration.intervalHours * 60 * 60 * 1000
-
-    async function expireLapsedSubscriptions() {
-      try {
-        const { expired } = await subscriptionsService.expireLapsed()
-        if (expired > 0) {
-          app.log.info(
-            `Subscription expiration: expired ${expired} subscriptions`
-          )
-        }
-      } catch (err) {
-        app.log.error({ err }, 'Subscription expiration failed')
-      }
-    }
+    const expireLapsedSubscriptions = createSubscriptionExpirationJob(
+      db,
+      createAuditRecorder(createAuditService(db), app.log),
+      app.log
+    )
 
     void expireLapsedSubscriptions()
-    setInterval(expireLapsedSubscriptions, EXPIRATION_INTERVAL_MS)
+    setInterval(() => void expireLapsedSubscriptions(), EXPIRATION_INTERVAL_MS)
   }
 })

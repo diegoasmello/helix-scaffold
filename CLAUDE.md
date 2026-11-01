@@ -145,7 +145,7 @@ The scaffold supports optional subscription gating for products that require use
 
 **Admin bypass:** users whose role has the `subscriptions:view` permission are never blocked by `requireSubscription()`, regardless of whether they have an active subscription themselves. Operators can always access the product.
 
-**Gating by plan feature:** `requireSubscription('reports')` on an API route, and in the UI `context.hasSubscriptionAccess('reports')` in `beforeLoad` (redirects to `/upgrade`), `<RequiresSubscription feature="reports">` or `subscriptionFeature: 'reports'` on a sidebar item, allow only users whose plan lists `'reports'`. Without a feature, any active subscription passes. A feature no plan declares fails at API startup.
+**Gating by plan feature:** `requireSubscription('reports')` on an API route, and in the UI `feature: 'reports'` in the page's `PageAccess` (its `guardPage()` redirects to `/upgrade`, and the sidebar item using the same access hides it) or `<RequiresSubscription feature="reports">`, allow only users whose plan lists `'reports'`. Without a feature, any active subscription passes. A feature no plan declares fails at API startup.
 
 **Subscription period is per user:** each `subscriptions` row has its own `currentPeriodStart`/`currentPeriodEnd`, but access is decided by `status` (`active`/`trialing`) only — dates are never compared. Who moves status to `expired`/`canceled` depends on who owns the row: subscriptions with an `externalId` belong to the payment processor and are updated by its webhooks; subscriptions without one (trial auto-start, admin panel) are expired by the scaffold's job in `server.ts` (`subscriptions.expiration.intervalHours`). A user has at most one live (`active`/`trialing`) subscription — enforced by a partial unique index.
 
@@ -168,7 +168,7 @@ When `subscriptions.enabled` is `true`, the app is responsible for:
 - [ ] Setting `subscriptions.trial: { days, planId }` in `src/app.config.ts` (if trials are offered)
 - [ ] Writing a payment processor adapter and registering it in `apps/api/src/config/billing-webhook.ts` — follow the checklist in `apps/api/src/modules/billing-webhook/CLAUDE.md`
 - [ ] Adding `requireSubscription('<feature>')` to routes that should be gated (inject it alongside `requirePermission` in route options, then add to the `preHandler` array)
-- [ ] Gating the UI the same way: `context.hasSubscriptionAccess('<feature>')` in the routes' `beforeLoad` (redirect to `/upgrade?feature=<feature>`), `subscriptionFeature` on sidebar items, `<RequiresSubscription feature="..." fallback={<UpgradePrompt />}>` around premium sections
+- [ ] Gating the UI the same way: `feature: '<feature>'` in the pages' `PageAccess` (`routes/access.ts` — `guardPage()` redirects to `/upgrade?feature=<feature>` and the sidebar follows), `<RequiresSubscription feature="..." fallback={<UpgradePrompt />}>` around premium sections
 - [ ] Replacing the "contact an administrator" hint on `/upgrade` with your checkout call to action
 
 ## Creating a new module
@@ -199,7 +199,7 @@ The only exception is a `/all` endpoint for select-field use cases (e.g. `GET /r
 When a new module exposes user-facing resources, register it in the permission system as part of module creation:
 
 - **Backend**: add an entry to `apps/api/src/config/permissions.ts` — defines which actions exist for the resource
-- **Frontend**: add the `permission` field to the sidebar entry in `src/config/sidebar.ts`; wrap Create/Edit/Delete action buttons with `<HasPermission>`; add the resource's label to `permissions.resources.<resource>` in both `locales/*/roles.json` (the permission editor falls back to the API's English label otherwise)
+- **Frontend**: declare the pages' `PageAccess` in `routes/access.ts`, guard each route with `guardPage(...)` and give the sidebar entry in `src/config/sidebar.ts` the same constant (`access: XXX_ACCESS.view`); wrap Create/Edit/Delete action buttons with `<HasPermission>`; add the resource's label to `permissions.resources.<resource>` in both `locales/*/roles.json` (the permission editor falls back to the API's English label otherwise)
 
 Both workspace `CLAUDE.md` files describe the exact steps.
 
@@ -207,7 +207,9 @@ Both workspace `CLAUDE.md` files describe the exact steps.
 
 Every mutation route (POST, PATCH, DELETE) must emit an audit log entry after the service call succeeds — and only when something changed: a DELETE of an unknown id still answers 204 but writes no entry (`remove()` returns whether a row was deleted). The audit log is best-effort: a failure must never affect the HTTP response.
 
-- **Backend**: call `await request.audit(action, resource, resourceId?, metadata?)` after each successful mutation in the route handler. `request.audit` is injected globally in the authenticated scope via `registerAuditRequest` — route modules receive no extra parameter for this. See `apps/api/CLAUDE.md` → _Creating a new module_ → _Step 4_ for the exact pattern.
+- **Backend**: call `await request.audit(action, resource, resourceId?, metadata?)` after each successful mutation in the route handler. `request.audit` is injected globally in the authenticated scope via `registerAuditRequest` — route modules receive no extra parameter for this. `action` and `resource` are typed (`resource` must be in `RESOURCE_DEFINITIONS`, or `me`). See `apps/api/CLAUDE.md` → _Creating a new module_ → _Step 4_ for the exact pattern.
+- **Writes without a signed-in user** (background jobs, webhooks, bootstrap) are audited too, through the audit recorder with a system actor: `audit.record(systemActor('<id>', '<name>'), { action, resource, resourceId, metadata })` — see `apps/api/src/modules/audit/CLAUDE.md` → _Audit recorder_.
+- **Tests**: assert the entry (`findAuditLogs(action, resource, id)`) for create and edit too, not only delete.
 
 ### i18n checklist
 

@@ -68,5 +68,5 @@ Entries written by the billing webhook have `userId: 'system:<adapter>'` and `us
 ## Sidebar
 
 ```ts
-{ label: 'nav.auditLog', icon: IconClipboardList, to: '/audit', permission: { resource: 'audit', action: 'view' } }
+{ label: 'nav.auditLog', icon: IconClipboardList, to: '/audit', access: AUDIT_ACCESS.view }
 ```

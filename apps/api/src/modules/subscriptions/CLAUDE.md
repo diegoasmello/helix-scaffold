@@ -140,7 +140,7 @@ Factory `createSubscriptionsService(database)` returns:
   create(data: CreateSubscriptionInput): Promise<Subscription>
   update(id: string, data: UpdateSubscriptionInput): Promise<Subscription | null>
   remove(id: string): Promise<void>
-  expireLapsed(now?: Date): Promise<{ expired: number }>
+  expireLapsed(now?: Date): Promise<{ expired: string[] }>   // ids
   getByExternalId(externalId: string): Promise<Subscription | null>
   syncFromBilling(state: BillingSubscriptionState): Promise<{ subscription, created } | null>
 }
@@ -160,9 +160,11 @@ When a payment fails the processor moves the subscription to `past_due` and usua
 
 **`getByExternalId` / `syncFromBilling`** — used by the payment processor webhook. `syncFromBilling` upserts by `externalId` and cancels the user's other live subscription when the new state is live. See `src/modules/billing-webhook/CLAUDE.md` for the semantics and the integration guide.
 
-## Expiration job (`src/server.ts`)
+## Expiration job (`subscription-expiration.ts`)
 
-Access is decided by `status`, never by dates, so something must end lapsed subscriptions. For processor-managed rows that is the webhook. For scaffold-owned rows — trials created on sign-up and subscriptions created in the admin panel — no processor knows they exist, so `server.ts` runs `expireLapsed()` once at startup and then every `subscriptions.expiration.intervalHours` (default `1`, in `src/app.config.ts`). It only runs when `subscriptions.enabled` is `true`.
+Access is decided by `status`, never by dates, so something must end lapsed subscriptions. For processor-managed rows that is the webhook. For scaffold-owned rows — trials created on sign-up and subscriptions created in the admin panel — no processor knows they exist, so `server.ts` runs the job from `createSubscriptionExpirationJob(database, audit, logger)` once at startup and then every `subscriptions.expiration.intervalHours` (default `1`, in `src/app.config.ts`). It only runs when `subscriptions.enabled` is `true`.
+
+The job calls `expireLapsed()` (which returns the ids it expired) and records one audit entry per subscription with the system actor `system:subscription-expiration` (`action: 'edit'`, `metadata: { source: 'expiration-job', status: 'expired' }`). It never throws: a failed run is logged (`'Subscription expiration failed'`) and the next one retries. Tested in `subscription-expiration.test.ts`.
 
 A lapsed subscription keeps access until the next run — up to one interval. Lower the interval if that matters for your product.
 

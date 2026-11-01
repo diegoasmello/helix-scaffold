@@ -40,7 +40,7 @@ Flow:
 
 Returns `409 { message: 'System already bootstrapped' }` if any user exists at step 1.
 
-**No audit log** — `request.audit` is not available here (outside the authenticated scope).
+**Audited as the system** — there is no session yet, so the route records the first admin with `audit.record(systemActor('bootstrap', 'Bootstrap'), { action: 'create', resource: 'users', resourceId, metadata: { name, email } })` (never the password). `bootstrapRoutes` receives the recorder as `audit` in its options.
 
 **All or nothing.** better-auth writes the user through its own connection, so it cannot join the transaction; the user is created first and **deleted again** (sessions and accounts cascade) if the transaction fails. A failed bootstrap therefore leaves nothing behind and can be retried. If `signUpEmail` itself fails, nothing was written yet.
 

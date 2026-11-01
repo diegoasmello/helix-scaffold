@@ -50,8 +50,10 @@ rootRoute (Outlet; notFoundComponent: NotFound, errorComponent: ErrorBoundary)
 
 `authenticatedRoute.beforeLoad` redirects to `/login` without a session, then puts two functions in the **router context** for every child route's `beforeLoad`:
 
-- `context.hasPermission(resource, action)` — from `GET /me/permissions`
+- `context.hasPermission(resource, action)` — from `GET /me/permissions`, via `createPermissionChecker()` (the same function `useAuth()` uses)
 - `context.hasSubscriptionAccess(feature?)` — from `GET /subscription/status` (+ `GET /me/entitlements` when enabled); see `src/modules/subscriptions/CLAUDE.md` → _Route guards_
+
+Together they are the `AccessCheckers` that `guardPage()` reads — see _Route-level guards_.
 - `context.subscriptionEnabled` — `subscriptions.enabled` from the same status
 
 **The `/` redirect** uses them through `findHomeSidebarItem()` (`src/config/sidebar.ts`): the first item, in sidebar order, that `canSeeSidebarItem()` allows — the same function `app.tsx` filters the sidebar with, so `/` never lands on a page the sidebar hides (or on `/403`). With no visible item it goes to `/me`, which every signed-in user may open. Reordering `sidebarGroups` changes the landing page.
@@ -264,18 +266,34 @@ import { HasPermission } from '../../auth/components/has-permission'
 
 - `AuthGuard` (`src/modules/auth/components/auth-guard.tsx`) — component of `authenticatedRoute`; redirects to `/login` if the session ends mid-use.
 
-### Route-level permission guards
+### Route-level guards (`PageAccess` + `guardPage`)
 
-Every protected route must declare a `beforeLoad` that checks the required permission and redirects to `/403` if the user lacks it. `context.hasPermission` comes from `authenticatedRoute.beforeLoad` (see _Route tree_).
+What a page requires is declared **once**, as a `PageAccess` in the module's `routes/access.ts`, and enforced by `guardPage()` (`src/modules/auth/page-access.ts`) in the route's `beforeLoad`. Every protected route declares that `beforeLoad`:
 
 ```ts
+// src/modules/xxx/routes/access.ts — imports nothing but the type, so src/config/sidebar.ts can import it
+import type { PageAccess } from '@/modules/auth/page-access'
+
+export const XXX_ACCESS = {
+  view: { permission: { resource: 'xxx', action: 'view' } },     // list + detail
+  create: { permission: { resource: 'xxx', action: 'create' } },
+  edit: { permission: { resource: 'xxx', action: 'edit' } },
+} satisfies Record<string, PageAccess>
+
+// src/modules/xxx/routes/index.ts
 const xxxListRoute = createRoute({
   // ...
-  beforeLoad: ({ context }) => {
-    if (!context.hasPermission('xxx', 'view')) throw redirect({ to: '/403' })
-  },
+  beforeLoad: guardPage(XXX_ACCESS.view),
 })
 ```
+
+`PageAccess` has three optional parts, checked in the API's order by `checkPageAccess()`:
+
+| Field | Missing → |
+| --- | --- |
+| `requiresSubscriptions: true` — the page exists only while subscriptions are enabled | `/` |
+| `feature: '<key>'` — the user's plan must include it (see `src/modules/subscriptions/CLAUDE.md`) | `/upgrade?feature=<key>` |
+| `permission: { resource, action }` — the RBAC grant | `/403` |
 
 Permission per route type:
 
@@ -286,7 +304,7 @@ Permission per route type:
 | create (`/xxx/create`) | `create` |
 | edit (`/xxx/$id/edit`) | `edit`   |
 
-**Routes gated by subscription plan** also check `context.hasSubscriptionAccess('<feature>')` — before the permission check — and redirect to `/upgrade?feature=<feature>`. See `src/modules/subscriptions/CLAUDE.md` → _Route guards_.
+`guardPage()` reads `context.hasPermission`, `context.hasSubscriptionAccess` and `context.subscriptionEnabled` from `authenticatedRoute.beforeLoad` (see _Route tree_). Write a custom `beforeLoad` only for pages with their own rule (`/upgrade`, `/me/subscription`). **The sidebar uses the same constant** (`access: XXX_ACCESS.view` — see _Register the module_), and `src/routes.test.ts` checks against the real router that every sidebar item carries its route's access and that every authenticated page (except the ones open to every user: `/`, `/me/*`, `/upgrade`) is protected by `guardPage()`.
 
 The `/403` page (`src/modules/errors/forbidden.tsx`) renders inside the app layout so the user can navigate to sections they do have access to. The `/404` and generic error pages (`src/modules/errors/`) are full-screen and set on `createRootRoute`.
 
@@ -1116,8 +1134,10 @@ Export each route as a named constant and collect them in a combined array. **Ne
 
 ```ts
 import { z } from 'zod'
-import { createRoute, redirect } from '@tanstack/react-router'
+import { createRoute } from '@tanstack/react-router'
+import { guardPage } from '@/modules/auth/page-access'
 import { authenticatedRoute } from '@/routes'
+import { XXX_ACCESS } from './access'
 
 export const xxxListRoute = createRoute({
   getParentRoute: () => authenticatedRoute,
@@ -1125,9 +1145,7 @@ export const xxxListRoute = createRoute({
   component: XxxList,
   pendingComponent: XxxPending,
   staticData: { breadcrumbs: [{ label: 'Xxx' }] },
-  beforeLoad: ({ context }) => {
-    if (!context.hasPermission('xxx', 'view')) throw redirect({ to: '/403' })
-  },
+  beforeLoad: guardPage(XXX_ACCESS.view),
   // Pagination + sorting stored in URL params — provides defaults so /xxx works without query string
   validateSearch: z.object({
     page: z.number().int().min(1).default(1),
@@ -1167,45 +1185,24 @@ Each route must have:
 
 - `pendingComponent: XxxPending`
 - `staticData: { breadcrumbs: [...] }` — see breadcrumb convention below
-- `beforeLoad` — permission guard (see below)
+- `beforeLoad` — `guardPage(XXX_ACCESS.<page>)` (see below)
 - `loader` — call `queryClient.ensureQueryData(...)` for required data; fire-and-forget for secondary data (lookups, select options)
 
 The list route additionally requires `validateSearch` and `loaderDeps` — without `loaderDeps`, TanStack Router won't re-run the loader when only the search params change.
 
 For item routes (`$id`, `$id/edit`), the loader returns the item so the breadcrumb function receives it as `loaderData`.
 
-**Permission guard** — every route must check the required permission via `context.hasPermission` and redirect to `/403` if the user lacks it:
+**Access guard** — declare the module's `PageAccess` constants in `routes/access.ts` and give every route `beforeLoad: guardPage(...)` — see _Auth_ → _Route-level guards_:
 
 ```ts
-import { createRoute, redirect, type AnyRoute } from '@tanstack/react-router'
+import { guardPage } from '@/modules/auth/page-access'
 
-const xxxListRoute = createRoute({
-  // ...
-  beforeLoad: ({ context }) => {
-    if (!context.hasPermission('xxx', 'view')) throw redirect({ to: '/403' })
-  },
-})
+import { XXX_ACCESS } from './access'
 
-const xxxCreateRoute = createRoute({
-  // ...
-  beforeLoad: ({ context }) => {
-    if (!context.hasPermission('xxx', 'create')) throw redirect({ to: '/403' })
-  },
-})
-
-const xxxDetailRoute = createRoute({
-  // ...
-  beforeLoad: ({ context }) => {
-    if (!context.hasPermission('xxx', 'view')) throw redirect({ to: '/403' })
-  },
-})
-
-const xxxEditRoute = createRoute({
-  // ...
-  beforeLoad: ({ context }) => {
-    if (!context.hasPermission('xxx', 'edit')) throw redirect({ to: '/403' })
-  },
-})
+const xxxListRoute = createRoute({ /* ... */ beforeLoad: guardPage(XXX_ACCESS.view) })
+const xxxCreateRoute = createRoute({ /* ... */ beforeLoad: guardPage(XXX_ACCESS.create) })
+const xxxDetailRoute = createRoute({ /* ... */ beforeLoad: guardPage(XXX_ACCESS.view) })
+const xxxEditRoute = createRoute({ /* ... */ beforeLoad: guardPage(XXX_ACCESS.edit) })
 ```
 
 Use the same resource string registered in `apps/api/src/config/permissions.ts`.
@@ -1525,10 +1522,12 @@ import { xxxRoutes } from './modules/xxx/routes'
 **`src/config/sidebar.ts`:**
 
 ```ts
-{ label: "Xxx", icon: IconXxx, to: "/xxx", permission: { resource: "xxx", action: "view" } }
+import { XXX_ACCESS } from '@/modules/xxx/routes/access'
+
+{ label: 'nav.xxx', icon: IconXxx, to: '/xxx', access: XXX_ACCESS.view }
 ```
 
-The `permission` field controls sidebar visibility — `app.tsx` filters items with `canSeeSidebarItem()` (permission, plus `subscriptionFeature` / `requiresSubscriptionEnabled`) before passing them to `<Layout>`. The first visible item is also where `/` sends the user. Use the same resource string registered in `apps/api/src/config/permissions.ts`.
+`access` must be the **same constant** the list route's `guardPage()` enforces — never a new object (`src/routes.test.ts` fails otherwise). `app.tsx` filters items with `canSeeSidebarItem()`, which is `checkPageAccess(item.access)` — the guard's own decision — so the sidebar never offers a page that would redirect. The first visible item is also where `/` sends the user.
 
 ### 10. Delete confirmation
 

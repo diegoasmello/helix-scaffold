@@ -17,6 +17,10 @@ import { authClient } from './lib/authentication'
 import { queryClient } from './lib/query-client'
 import { auditRoutes } from './modules/audit/routes'
 import { AuthGuard } from './modules/auth/components/auth-guard'
+import {
+  type AccessCheckers,
+  createPermissionChecker,
+} from './modules/auth/page-access'
 import { authRoutes } from './modules/auth/routes'
 import { ErrorBoundary } from './modules/errors/error-boundary'
 import { Forbidden } from './modules/errors/forbidden'
@@ -56,9 +60,7 @@ export const authenticatedRoute = createRoute({
 
     const client = (context as { queryClient: typeof queryClient }).queryClient
     const perms = await client.ensureQueryData(getMePermissionsQueryOptions())
-    const grants = perms?.grants ?? {}
-    const hasPermission = (resource: string, action: string): boolean =>
-      (grants[resource] ?? []).includes(action)
+    const hasPermission = createPermissionChecker(perms?.grants ?? {})
 
     // Same queries (and cache) as useSubscriptionAccess(), so this adds no requests.
     const status = await client.ensureQueryData(
@@ -71,13 +73,15 @@ export const authenticatedRoute = createRoute({
         : null,
     }
 
-    return {
+    const checkers: AccessCheckers = {
       hasPermission,
       /** Route guard counterpart of `<RequiresSubscription feature>`. */
       hasSubscriptionAccess: (feature?: string): boolean =>
         hasSubscriptionAccess(subscriptionAccess, feature),
       subscriptionEnabled: status.enabled,
     }
+    // What every child route's `guardPage()` reads.
+    return checkers
   },
 })
 

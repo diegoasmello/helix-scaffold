@@ -179,5 +179,5 @@ The list handler is called with a `createPaginatedRoles({...})` object — not a
 ## Sidebar
 
 ```ts
-{ label: 'nav.roles', icon: IconShield, to: '/roles', permission: { resource: 'roles', action: 'view' } }
+{ label: 'nav.roles', icon: IconShield, to: '/roles', access: ROLES_ACCESS.view }
 ```

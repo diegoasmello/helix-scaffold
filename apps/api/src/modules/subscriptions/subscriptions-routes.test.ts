@@ -489,6 +489,9 @@ describe('POST /subscriptions', () => {
     expect(res.json().planId).toBe('pro')
     expect(res.json().status).toBe('active')
     expect(res.json().userId).toBe(testUser.id)
+    expect(
+      await findAuditLogs('create', 'subscriptions', res.json().id)
+    ).toHaveLength(1)
   })
 
   it('returns 400 for missing required fields', async () => {
@@ -709,6 +712,9 @@ describe('PATCH /subscriptions/:id', () => {
     expect(res.json().planId).toBe('enterprise')
     expect(res.json().status).toBe('canceled')
     expect(res.json().userId).toBe(testUser.id)
+    expect(
+      await findAuditLogs('edit', 'subscriptions', inserted.id)
+    ).toHaveLength(1)
   })
 
   it('returns 409 when reactivating while another subscription is live', async () => {

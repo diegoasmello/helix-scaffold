@@ -82,7 +82,7 @@ describe('expireLapsed', () => {
       trialEndsAt: PAST,
     })
     const { expired } = await service.expireLapsed(NOW)
-    expect(expired).toBe(1)
+    expect(expired).toEqual([sub.id])
     expect(await statusOf(sub.id)).toBe('expired')
   })
 
@@ -108,7 +108,7 @@ describe('expireLapsed', () => {
     })
     const active = await insertSubscription({})
     const { expired } = await service.expireLapsed(NOW)
-    expect(expired).toBe(0)
+    expect(expired).toEqual([])
     expect(await statusOf(trial.id)).toBe('trialing')
     expect(await statusOf(active.id)).toBe('active')
   })

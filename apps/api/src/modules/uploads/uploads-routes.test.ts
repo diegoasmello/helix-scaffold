@@ -126,6 +126,7 @@ describe('POST /uploads', () => {
     expect(upload.variants.small.url).toContain('/files/')
     expect(upload.variants.medium.url).toContain('/files/')
     expect(upload.variants.large.url).toContain('/files/')
+    expect(await findAuditLogs('create', 'uploads', upload.id)).toHaveLength(1)
   })
 
   it('returns 201 with null variants for a non-image file', async () => {

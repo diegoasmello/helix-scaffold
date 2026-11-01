@@ -1,6 +1,7 @@
 import fastify from 'fastify'
 import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest'
 
+import { createAuditRecorder } from '../modules/audit/audit-recorder'
 import type { AuditService } from '../modules/audit/audit-service'
 import { registerAuditRequest } from './audit-request'
 
@@ -17,7 +18,7 @@ function buildTestApp(auditService: AuditService) {
   app.addHook('onRequest', async (request) => {
     request.sessionUser = mockUser
   })
-  registerAuditRequest(app, auditService)
+  registerAuditRequest(app, createAuditRecorder(auditService, app.log))
 
   app.get('/test', async (request) => {
     await request.audit('create', 'todos', 'todo-1', { title: 'Buy milk' })

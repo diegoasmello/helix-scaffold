@@ -1,18 +1,38 @@
 # audit module — backend
 
-Read-only module. Exposes three endpoints (`GET /audit-logs`, `GET /audit-logs/:id`, `GET /audit-logs/export`) — no POST, PATCH, or DELETE. Entries are never written through a public endpoint: route handlers write them via `request.audit()` (the `registerAuditRequest` hook), and the billing webhook writes system entries by calling `auditService.log()` directly.
+Read-only HTTP module. Exposes three endpoints (`GET /audit-logs`, `GET /audit-logs/:id`, `GET /audit-logs/export`) — no POST, PATCH, or DELETE. Entries are never written through a public endpoint: they are written by the **audit recorder** (`audit-recorder.ts`), the only writer.
+
+## Audit recorder (`audit-recorder.ts`)
+
+`createAuditRecorder(auditService, logger)` returns `{ record(actor, entry) }` — **best-effort**: a failed write is logged (`'audit log failed'`, with `action` and `resource`) and never thrown, so auditing can never fail the action it records.
+
+```ts
+type AuditActor =
+  | { kind: 'user'; id; name; email; ip?; userAgent? }      // a signed-in user
+  | { kind: 'system'; id; name; ip?; userAgent? }           // stored as userId 'system:<id>', userEmail 'system'
+
+interface AuditEntry { action: AuditAction; resource: AuditResource; resourceId?; metadata? }
+```
+
+- `AuditAction` — `'create' | 'edit' | 'delete' | 'export'`. `AuditResource` — a resource of `RESOURCE_DEFINITIONS` (`src/config/permissions.ts`) or `'me'`.
+- `systemActor(id, name, origin?)` builds a system actor. Current system actors:
+
+| Actor (`userId`) | Name | Writes |
+| --- | --- | --- |
+| `system:<adapter>` | `Billing webhook (<adapter>)` | `create`/`edit` `subscriptions` per synced state (`billing-webhook-routes.ts`) |
+| `system:subscription-expiration` | `Subscription expiration` | `edit` `subscriptions` per expired row (`subscriptions/subscription-expiration.ts`) |
+| `system:bootstrap` | `Bootstrap` | `create` `users` for the first admin (`bootstrap-routes.ts`) |
+
+`app.ts` creates one recorder (`audit`) over `createAuditService(database)` with `app.log`, and hands it to `registerAuditRequest`, `bootstrapRoutes` and `billingWebhookRoutes`. `server.ts` builds its own for the expiration job.
+
+**Who records what:** the caller decides when — after the action succeeded, and only when something changed (a DELETE of an unknown id writes nothing). The recorder decides how: actor identity, nulls, best-effort. Self-registration (sign-ups and their trials) is not audited.
+
+Unit tests: `audit-recorder.test.ts` (user actor, system actor mapping, failure logged and swallowed).
 
 ## Dual role
 
-The audit module has two responsibilities that are implemented separately:
-
-1. **Writing logs** — `auditService.log(input)`:
-   - from `registerAuditRequest` (`src/hooks/audit-request.ts`), which runs on `onRequest` in the authenticated scope and attaches `request.audit(action, resource, resourceId?, metadata?)`. Route handlers call it after a successful mutation;
-   - from `billingWebhookRoutes` (public scope, no session), with a system actor: `userId: 'system:<adapter>'`, `userName: 'Billing webhook (<adapter>)'`, `userEmail: 'system'`.
-
-2. **Reading logs** — `auditRoutes` exposes the list, detail and export endpoints.
-
-`app.ts` creates one `auditService` and passes it to `registerAuditRequest` and `billingWebhookRoutes`. `auditRoutes` builds its own instance from `database`.
+1. **Writing logs** — the recorder, reached through `request.audit()` (route handlers, after a successful mutation) or `audit.record(systemActor(...), entry)` (no signed-in user).
+2. **Reading logs** — `auditRoutes` exposes the list, detail and export endpoints. It builds its own `auditService` from `database`.
 
 ## Data model
 
@@ -22,7 +42,7 @@ The audit module has two responsibilities that are implemented separately:
 | Column       | DB type              | Notes                                           |
 | ------------ | -------------------- | ----------------------------------------------- |
 | `id`         | `text` PK            | UUIDv7, generated at insert                     |
-| `userId`     | `text NOT NULL`      | Snapshotted at write time — no FK to `user`; `system:<adapter>` for webhook entries |
+| `userId`     | `text NOT NULL`      | Snapshotted at write time — no FK to `user`; `system:<id>` for system actors (see _Audit recorder_) |
 | `userName`   | `text NOT NULL`      | Snapshotted at write time                       |
 | `userEmail`  | `text NOT NULL`      | Snapshotted at write time                       |
 | `action`     | `text NOT NULL`      | `'create' \| 'edit' \| 'delete' \| 'export'`      |
@@ -46,7 +66,7 @@ User fields (`userId`, `userName`, `userEmail`) are snapshotted at write time �
 
 `createAuditService(database)` returns `{ log, list, getById, generateReport }`:
 
-- `log(input)` — inserts one row. Called by `registerAuditRequest` inside `.catch()` so failures are logged but never propagated.
+- `log(input)` — inserts one row. Only the audit recorder calls it (it adds the best-effort `.catch()`).
 - `list(query)` — paginated + sorted, same pattern as other modules.
 - `getById(id)` — returns `null` when not found.
 - `generateReport(query)` — queries up to 5000 rows respecting sort order, delegates to `renderAuditReport` via dynamic import.
@@ -69,11 +89,7 @@ No mutation routes. No audit calls within the audit module itself — including 
 
 ## `registerAuditRequest` hook (`src/hooks/audit-request.ts`)
 
-Registered once in the authenticated scope in `app.ts` via `registerAuditRequest(authenticated, auditService)`. It runs on `onRequest` and attaches `request.audit` to every authenticated request. The implementation:
-
-1. Reads `request.sessionUser` (id, name, email), `request.ip`, and `request.headers['user-agent']`.
-2. Calls `auditService.log(...)`.
-3. Wraps the call in `.catch((err) => request.log.error(...))` — failures are **never** re-thrown. The audit log is best-effort and must not affect the HTTP response.
+Registered once in the authenticated scope in `app.ts` via `registerAuditRequest(authenticated, audit)`. On `onRequest` it attaches `request.audit(action, resource, resourceId?, metadata?)`: `audit.record()` with the session user (id, name, email), `request.ip` and the `user-agent` header as actor. Never throws — see _Audit recorder_. Tested in `src/hooks/audit-request.test.ts`.
 
 ## Permissions config
 

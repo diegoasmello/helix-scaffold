@@ -241,6 +241,9 @@ describe('POST /users', () => {
     expect(body.roleId).toBeNull()
     expect(body.role).toBeNull()
     expect(body.password).toBeUndefined()
+    // Logged without the password
+    const [entry] = await findAuditLogs('create', 'users', body.id)
+    expect(entry.metadata).toEqual({ name: 'Carol', email: 'carol@test.com' })
   })
 
   it('creates a user with roleId and returns embedded role', async () => {
@@ -367,6 +370,7 @@ describe('PATCH /users/:id', () => {
     expect(body.name).toBe('New Name')
     expect(body.email).toBe('update@test.com')
     expect(body.role).toBeNull()
+    expect(await findAuditLogs('edit', 'users', inserted.id)).toHaveLength(1)
   })
 
   it('assigns a role to a user and returns embedded role', async () => {

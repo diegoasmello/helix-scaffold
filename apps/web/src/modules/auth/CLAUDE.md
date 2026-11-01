@@ -8,6 +8,8 @@ Provides the authentication layer consumed by the entire application: session st
 src/modules/auth/
 ├── types.ts                        ← User and AuthState types
 ├── use-auth.ts                     ← primary auth hook
+├── page-access.ts                  ← PageAccess, checkPageAccess, guardPage (route guards), createPermissionChecker
+├── page-access.test.ts
 ├── components/
 │   ├── auth-guard.tsx              ← authenticated route wrapper
 │   ├── has-permission.tsx          ← conditional render by permission
@@ -81,9 +83,18 @@ There are two places where permissions are checked, serving different purposes:
 | `authenticatedRoute.beforeLoad` in `routes.ts` | Route entry | Blocks navigation before render; uses `authClient.getSession()` + `ensureQueryData(getMePermissionsQueryOptions())` synchronously |
 | `useAuth()` / `hasPermission()` in components | Inside render | Drives `<HasPermission>` and sidebar filtering; reads from React Query cache |
 
-The `beforeLoad` injects `hasPermission` into the router context so child route `beforeLoad` hooks can call `context.hasPermission(resource, action)` and `throw redirect({ to: '/403' })` before any component renders.
+The `beforeLoad` injects `hasPermission` (plus `hasSubscriptionAccess` and `subscriptionEnabled`) into the router context. Child routes don't read it by hand: their `beforeLoad` is `guardPage(<PageAccess>)` from `page-access.ts`, which redirects (`/`, `/upgrade` or `/403`) before any component renders. Both mechanisms build `hasPermission` with `createPermissionChecker(grants)`, so they cannot disagree.
 
 The component-level `useAuth()` reads the **same** permissions from the React Query cache (populated by `beforeLoad`) — no extra network request is made.
+
+## Page access (`page-access.ts`)
+
+- `PageAccess` — `{ permission?, feature?, requiresSubscriptions? }`, declared once per page in each module's `routes/access.ts`.
+- `checkPageAccess(access, checkers)` — the decision: `{ allowed: true }` or the redirect (`/` when subscriptions are off, `/upgrade` without the plan feature, `/403` without the permission — in that order).
+- `guardPage(access)` — the `beforeLoad` that throws that redirect. It carries `.access`, so `src/routes.test.ts` can check each sidebar item against its route.
+- `createPermissionChecker(grants)` — `hasPermission` over `GET /me/permissions` grants.
+
+`page-access.test.ts` covers the decision matrix, the thrown redirects and the checker. The sidebar (`src/config/sidebar.ts`) uses `checkPageAccess` too — see `apps/web/CLAUDE.md` → _Route-level guards_.
 
 ## `AuthGuard` (`components/auth-guard.tsx`)
 

@@ -6,7 +6,12 @@ import { ALL_PERMISSIONS } from '@/config/permissions'
 import { user } from '@/db/schema/authentication'
 import { rolePermissions } from '@/db/schema/role-permissions'
 import { roles } from '@/db/schema/roles'
-import { cleanupAuth, createTestApp, testDb } from '@/test/helpers'
+import {
+  cleanupAuth,
+  createTestApp,
+  findAuditLogs,
+  testDb,
+} from '@/test/helpers'
 
 const app = createTestApp()
 const closedApp = createTestApp({ registration: { mode: 'closed' } })
@@ -68,6 +73,14 @@ describe('POST /bootstrap', () => {
     expect(users).toHaveLength(1)
     expect(users[0].email).toBe('admin@test.com')
     expect(users[0].roleId).not.toBeNull()
+
+    // No session yet, so the system is the actor
+    const [entry] = await findAuditLogs('create', 'users', users[0].id)
+    expect(entry).toMatchObject({
+      userId: 'system:bootstrap',
+      userEmail: 'system',
+      metadata: { name: 'Admin', email: 'admin@test.com' },
+    })
 
     const allRoles = await testDb.select().from(roles)
     const adminRole = allRoles.find((r) => r.name === 'Admin')

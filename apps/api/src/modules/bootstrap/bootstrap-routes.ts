@@ -1,6 +1,7 @@
 import z from 'zod'
 
 import { createAccountProvisioning } from '@/modules/accounts/account-provisioning'
+import { type AuditRecorder, systemActor } from '@/modules/audit/audit-recorder'
 
 import type { Auth } from '../../auth'
 import type { Config } from '../../config'
@@ -19,7 +20,12 @@ const bootstrapBodySchema = z.object({
 
 export async function bootstrapRoutes(
   app: FastifyTypedInstance,
-  { database, auth, config }: { database: Database; auth: Auth; config: Config }
+  {
+    database,
+    auth,
+    config,
+    audit,
+  }: { database: Database; auth: Auth; config: Config; audit: AuditRecorder }
 ) {
   const provisioning = createAccountProvisioning(database, auth, config)
 
@@ -55,6 +61,19 @@ export async function bootstrapRoutes(
           .status(409)
           .send({ message: 'System already bootstrapped' })
       }
+      // No session yet: the system records the first admin.
+      await audit.record(
+        systemActor('bootstrap', 'Bootstrap', {
+          ip: request.ip,
+          userAgent: request.headers['user-agent'] ?? null,
+        }),
+        {
+          action: 'create',
+          resource: 'users',
+          resourceId: result.userId,
+          metadata: { name: request.body.name, email: request.body.email },
+        }
+      )
       return reply
         .status(201)
         .send({ message: 'System bootstrapped successfully' })

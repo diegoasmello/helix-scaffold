@@ -23,6 +23,13 @@ Domain terms used across `apps/api` and `apps/web`. Use these names in code, doc
 | **Account kinds** | *First admin* (`POST /bootstrap`), *admin-created* (`POST /users`), *seeded* (`db:seed`) and *self-registered* (sign-up or social login in open mode). Only self-registered accounts get the default role and a trial. |
 | **Default role** | The role marked `isDefault` (at most one, DB-enforced) that self-registered users receive in open registration. `ensureDefaultRole()` makes one exist; without it a self-registered user gets no role (logged). |
 
+## Audit
+
+| Term | Meaning |
+| --- | --- |
+| **Audit recorder** | The only writer of `audit_logs` (`apps/api/src/modules/audit/audit-recorder.ts`). Best-effort: a failed write is logged, never thrown. |
+| **Audit actor** | Who did it: a signed-in **user** (`request.audit()`), or a **system actor** — a job, a webhook, the bootstrap — stored as `system:<id>`. |
+
 ## Access control
 
 | Term | Meaning |

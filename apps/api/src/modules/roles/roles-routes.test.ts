@@ -188,6 +188,7 @@ describe('POST /roles', () => {
     expect(body.id).toBeDefined()
     expect(body.name).toBe('moderator')
     expect(body.description).toBe('Moderates content')
+    expect(await findAuditLogs('create', 'roles', body.id)).toHaveLength(1)
   })
 
   it('returns 400 when body is invalid', async () => {
@@ -256,6 +257,7 @@ describe('PATCH /roles/:id', () => {
     const body = res.json()
     expect(body.name).toBe('new-name')
     expect(body.description).toBe('Old description')
+    expect(await findAuditLogs('edit', 'roles', inserted.id)).toHaveLength(1)
   })
   it('returns 409 name_taken when renaming to an existing name', async () => {
     await testDb.insert(roles).values({ name: 'taken' })

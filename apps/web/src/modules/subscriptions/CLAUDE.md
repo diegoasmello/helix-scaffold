@@ -103,19 +103,21 @@ Reads `GET /subscription/status` and, when enabled, `GET /me/entitlements → { 
 
 `access.ts` → `hasSubscriptionAccess({ enabled, entitlements }, feature?)` is the lookup, shared with the router context (see _Route guards_ below): disabled → `true`, not loaded → `false`, operator → `true`, then `features.includes(feature)` (or `subscribed` without a feature). Never add policy there — change `entitlements.ts` in the API instead.
 
-### Route guards (`context.hasSubscriptionAccess`)
+### Route guards (`feature` in `PageAccess`)
 
-`authenticatedRoute.beforeLoad` (`src/routes.ts`) injects `hasSubscriptionAccess(feature?)` next to `hasPermission`. It reads the same queries as `useSubscriptionAccess()` (`GET /subscription/status`, and `GET /me/entitlements` when enabled) through `ensureQueryData`, so it shares the cache and adds no requests. Gate a route by plan feature **before** the permission check — same order as the API:
+`authenticatedRoute.beforeLoad` (`src/routes.ts`) injects `hasSubscriptionAccess(feature?)` and `subscriptionEnabled` next to `hasPermission`. It reads the same queries as `useSubscriptionAccess()` (`GET /subscription/status`, and `GET /me/entitlements` when enabled) through `ensureQueryData`, so it shares the cache and adds no requests. A page gated by plan feature declares it in its `PageAccess`, and `guardPage()` checks it **before** the permission — same order as the API:
 
 ```ts
-beforeLoad: ({ context }) => {
-  if (!context.hasSubscriptionAccess('reports'))
-    throw redirect({ to: '/upgrade', search: { feature: 'reports' } })
-  if (!context.hasPermission('reports', 'view')) throw redirect({ to: '/403' })
-},
+// src/modules/reports/routes/access.ts
+export const REPORTS_ACCESS = {
+  view: { permission: { resource: 'reports', action: 'view' }, feature: 'reports' },
+} satisfies Record<string, PageAccess>
+
+// routes/index.ts
+beforeLoad: guardPage(REPORTS_ACCESS.view),   // no plan feature → /upgrade?feature=reports
 ```
 
-`todos` is the reference: all four routes guard on `'todos'`. Without this guard, typing the URL directly would hit the API's 403 and show the generic error page.
+`todos` is the reference (`TODOS_ACCESS` in `src/modules/todos/routes/access.ts`). Without the feature in its access, typing the URL directly would hit the API's 403 and show the generic error page.
 
 ### Importing
 
@@ -220,11 +222,7 @@ subscriptionFormValidate = createValidator<SubscriptionFormValues>()({
 
 `upgradeRoute` redirects to `/` when subscriptions are disabled or when the user already has access to `feature`. The page (`UpgradeRequired`) says whether the user has no subscription or a plan that lacks the feature, lists the plans that include it (all plans when `feature` is absent), and links to `/me/subscription`. It has no checkout — products with a payment flow replace the `upgrade.contact` hint with their own call to action.
 
-The four admin route `beforeLoad` hooks:
-1. Check RBAC permission (throws `/403` if missing)
-2. Check subscription mode via `queryClient.ensureQueryData(getSubscriptionStatusQueryOptions())` (redirects to `/` if disabled)
-
-The status check uses the React Query cache (same query key as `useSubscription()`), so navigating between subscription routes makes exactly one HTTP call for the status — not four.
+The four admin routes use `guardPage(SUBSCRIPTIONS_ACCESS.<page>)` (`routes/access.ts`): `requiresSubscriptions: true` (redirects to `/` while subscriptions are disabled) plus the RBAC permission (`/403`). The mode comes from `context.subscriptionEnabled` — the status query the router context already loaded, so no extra request. `upgradeRoute` keeps its own `beforeLoad` (subscriptions off or the user already has the feature → `/`).
 
 ### List route
 
@@ -309,36 +307,15 @@ Footer: Back button → `/subscriptions`.
 
 ## Sidebar
 
+Sidebar items carry their route's `PageAccess` (see `apps/web/CLAUDE.md` → _Route-level guards_), so subscription gating needs no sidebar-specific flag:
+
 ```ts
 // src/config/sidebar.ts
-{
-  label: 'nav.subscriptions',
-  icon: IconCreditCard,
-  to: '/subscriptions',
-  permission: { resource: 'subscriptions', action: 'view' },
-  requiresSubscriptionEnabled: true,
-}
+{ label: 'nav.subscriptions', icon: IconCreditCard, to: '/subscriptions', access: SUBSCRIPTIONS_ACCESS.view } // requiresSubscriptions: true
+{ label: 'nav.todos', icon: IconChecklist, to: '/todos', access: TODOS_ACCESS.view }                          // feature: 'todos'
 ```
 
-The `requiresSubscriptionEnabled: true` flag causes `app.tsx` to hide this item when subscriptions are disabled.
-
-Items gated by plan use `subscriptionFeature` instead — `todos` is the reference:
-
-```ts
-{ label: 'nav.todos', to: '/todos', permission: { resource: 'todos', action: 'view' }, subscriptionFeature: 'todos' }
-```
-
-The filtering logic in `app.tsx` (which also waits for `useSubscriptionAccess().isPending` before rendering the layout):
-
-```ts
-.filter((item) => {
-  if (item.requiresSubscriptionEnabled && !subscriptionEnabled) return false
-  if (item.subscriptionFeature && !hasAccess(item.subscriptionFeature)) return false
-  return item.permission
-    ? hasPermission(item.permission.resource, item.permission.action)
-    : isAuthenticated
-})
-```
+`app.tsx` waits for `useSubscriptionAccess().isPending`, then keeps the items for which `checkPageAccess(item.access, { hasPermission, hasSubscriptionAccess: hasAccess, subscriptionEnabled })` allows — exactly what the routes' guards would let through.
 
 ---
 

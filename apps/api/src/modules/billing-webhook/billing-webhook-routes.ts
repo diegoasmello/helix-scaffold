@@ -1,7 +1,7 @@
 import type { Config } from '@/config'
 import type { Database } from '@/db'
 import { getPgErrorCode, PG_FOREIGN_KEY_VIOLATION } from '@/lib/pg-errors'
-import type { AuditService } from '@/modules/audit/audit-service'
+import { type AuditRecorder, systemActor } from '@/modules/audit/audit-recorder'
 import { isKnownPlan } from '@/modules/subscriptions/subscription-plans'
 import { createSubscriptionsService } from '@/modules/subscriptions/subscriptions-service'
 import type { FastifyTypedInstance } from '@/types'
@@ -34,12 +34,12 @@ export async function billingWebhookRoutes(
     database,
     config,
     adapter,
-    auditService,
+    audit,
   }: {
     database: Database
     config: Config
     adapter: BillingWebhookAdapter
-    auditService: AuditService
+    audit: AuditRecorder
   }
 ) {
   const service = createSubscriptionsService(database)
@@ -111,20 +111,18 @@ export async function billingWebhookRoutes(
           continue
         }
 
-        // Best-effort, like request.audit: never fails the webhook.
-        await auditService
-          .log({
-            userId: `system:${adapter.name}`,
-            userName: `Billing webhook (${adapter.name})`,
-            userEmail: 'system',
+        await audit.record(
+          systemActor(adapter.name, `Billing webhook (${adapter.name})`, {
+            ip: request.ip,
+            userAgent: request.headers['user-agent'] ?? null,
+          }),
+          {
             action: result.created ? 'create' : 'edit',
             resource: 'subscriptions',
             resourceId: result.subscription.id,
             metadata: { source: 'billing-webhook', ...state },
-            ip: request.ip,
-            userAgent: request.headers['user-agent'] ?? null,
-          })
-          .catch((err) => log.error({ err }, 'audit log failed'))
+          }
+        )
       }
 
       return { received: true }

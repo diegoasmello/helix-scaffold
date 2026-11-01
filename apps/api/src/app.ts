@@ -26,6 +26,7 @@ import { createRequirePermission } from './hooks/require-permission'
 import { createRequireSubscription } from './hooks/require-subscription'
 import { createEmailProvider } from './lib/email'
 import { createStorageProvider } from './lib/storage'
+import { createAuditRecorder } from './modules/audit/audit-recorder'
 import { auditRoutes } from './modules/audit/audit-routes'
 import { createAuditService } from './modules/audit/audit-service'
 import { billingWebhookRoutes } from './modules/billing-webhook/billing-webhook-routes'
@@ -73,7 +74,7 @@ export function buildApp(database: Database, options: BuildAppOptions = {}) {
     nodeEnv: env.NODE_ENV,
   })
   const auth = createAuth(database, emailProvider, config, app.log)
-  const auditService = createAuditService(database)
+  const audit = createAuditRecorder(createAuditService(database), app.log)
 
   app.setValidatorCompiler(validatorCompiler)
   app.setSerializerCompiler(serializerCompiler)
@@ -156,7 +157,7 @@ export function buildApp(database: Database, options: BuildAppOptions = {}) {
     })
   })
 
-  app.register(bootstrapRoutes, { database, auth, config })
+  app.register(bootstrapRoutes, { database, auth, config, audit })
   app.register(registrationRoutes, { config })
   app.register(subscriptionStatusRoutes, { config })
 
@@ -165,13 +166,13 @@ export function buildApp(database: Database, options: BuildAppOptions = {}) {
       database,
       config,
       adapter: billingWebhookAdapter,
-      auditService,
+      audit,
     })
   }
 
   app.register(async (authenticated) => {
     authenticated.addHook('preHandler', createRequireAuth(auth))
-    registerAuditRequest(authenticated, auditService)
+    registerAuditRequest(authenticated, audit)
 
     const requirePermission = createRequirePermission(database)
     const requireSubscription = createRequireSubscription(database, config)

@@ -135,7 +135,7 @@ The `src/hooks/` directory contains request-lifecycle hooks injected into the au
 | `require-auth.ts` | `createRequireAuth(auth)` | Validates the session cookie; attaches `request.sessionUser` |
 | `require-permission.ts` | `createRequirePermission(database)` | Returns `requirePermission(resource, action) → PreHandler`; enforces RBAC per route |
 | `require-subscription.ts` | `createRequireSubscription(database, config)` | Returns `requireSubscription(feature?) → PreHandler`; enforces active subscription (and plan feature) per route |
-| `audit-request.ts` | `registerAuditRequest(app, auditService)` | Attaches `request.audit(action, resource, id?, metadata?)` globally |
+| `audit-request.ts` | `registerAuditRequest(app, recorder)` | Attaches `request.audit(action, resource, id?, metadata?)` globally — the audit recorder with the session user as actor |
 
 ### `requireSubscription` — subscription gate
 
@@ -723,7 +723,7 @@ request.audit(action, resource, resourceId?, metadata?)
 - `resourceId` — the id of the affected record (omit or pass `undefined` if not applicable)
 - `metadata` — pass `request.body` for create/edit; omit for delete (no body)
 
-Failures are caught and logged server-side automatically — never call `.catch()` yourself.
+Failures are caught and logged server-side automatically (by the audit recorder, `src/modules/audit/audit-recorder.ts`) — never call `.catch()` yourself. `action` is `AuditAction` and `resource` is `AuditResource` (a resource of `src/config/permissions.ts`, or `me`), so a typo does not compile. Assert the entry in the route tests — `findAuditLogs(action, resource, id)` — for create and edit as well as delete.
 
 ```ts
 import z from 'zod'
@@ -861,7 +861,7 @@ import { featureRoutes } from './modules/feature/feature-routes'
 // buildApp() — the authenticated scope already exists; only add the register call:
 app.register(async (authenticated) => {
   authenticated.addHook('preHandler', createRequireAuth(auth))
-  registerAuditRequest(authenticated, auditService)
+  registerAuditRequest(authenticated, audit)
 
   const requirePermission = createRequirePermission(database)
   const requireSubscription = createRequireSubscription(database, config)

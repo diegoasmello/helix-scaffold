@@ -4,10 +4,10 @@ import {
   getMeSuspense,
   getMeSuspenseQueryKey,
 } from '@helix/api-client/hooks'
-import type { PermissionAction } from '@helix/api-client/types'
 import { useQuery } from '@tanstack/react-query'
 
 import { authClient } from '../../lib/authentication'
+import { createPermissionChecker } from './page-access'
 import type { AuthState, User } from './types'
 
 export function useAuth(): AuthState {
@@ -38,10 +38,7 @@ export function useAuth(): AuthState {
   })
 
   const grants = permissionsData?.grants ?? {}
-
-  function hasPermission(resource: string, action: PermissionAction): boolean {
-    return grants[resource]?.includes(action) ?? false
-  }
+  const hasPermission = createPermissionChecker(grants)
 
   return {
     user,

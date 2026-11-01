@@ -9,6 +9,8 @@ import type {
 } from 'fastify'
 import type { ZodTypeProvider } from 'fastify-type-provider-zod'
 
+import type { AuditAction, AuditResource } from './modules/audit/audit-recorder'
+
 export type FastifyTypedInstance = FastifyInstance<
   RawServerDefault,
   RawRequestDefaultExpression,
@@ -34,9 +36,10 @@ declare module 'fastify' {
       email: string
       roleId: string | null
     }
+    /** Best-effort: never throws. See `modules/audit/audit-recorder.ts`. */
     audit: (
-      action: 'create' | 'edit' | 'delete' | 'export',
-      resource: string,
+      action: AuditAction,
+      resource: AuditResource,
       resourceId?: string | null,
       metadata?: unknown
     ) => Promise<void>

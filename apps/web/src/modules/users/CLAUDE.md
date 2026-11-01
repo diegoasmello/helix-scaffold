@@ -127,7 +127,7 @@ View icon is always visible.
 ## Sidebar
 
 ```ts
-{ label: 'nav.users', icon: IconUsers, to: '/users', permission: { resource: 'users', action: 'view' } }
+{ label: 'nav.users', icon: IconUsers, to: '/users', access: USERS_ACCESS.view }
 ```
 
 ## Notes

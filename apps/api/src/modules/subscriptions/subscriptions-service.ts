@@ -149,7 +149,8 @@ export function createSubscriptionsService(database: Database) {
    * Marks as `expired` the lapsed subscriptions the scaffold owns (no
    * `externalId`): trials past `trialEndsAt` (or `currentPeriodEnd` when unset)
    * and active subscriptions past `currentPeriodEnd`. Rows with an
-   * `externalId` are managed by the payment processor's webhooks.
+   * `externalId` are managed by the payment processor's webhooks. Returns
+   * the ids of the rows it expired.
    */
   async function expireLapsed(now = new Date()) {
     const expired = await database
@@ -174,7 +175,7 @@ export function createSubscriptionsService(database: Database) {
         )
       )
       .returning({ id: subscriptions.id })
-    return { expired: expired.length }
+    return { expired: expired.map((row) => row.id) }
   }
 
   async function getByExternalId(externalId: string) {

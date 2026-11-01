@@ -4,14 +4,15 @@ import type { Database } from '@/db'
 import { auditLogs } from '@/db/schema'
 import { getPaginationParams } from '@/lib/pagination'
 
+import type { AuditAction, AuditResource } from './audit-recorder'
 import type { AuditLogsExportQuery, AuditLogsListQuery } from './audit-schema'
 
 interface AuditLogInput {
   userId: string
   userName: string
   userEmail: string
-  action: 'create' | 'edit' | 'delete' | 'export'
-  resource: string
+  action: AuditAction
+  resource: AuditResource
   resourceId?: string | null
   metadata?: unknown
   ip?: string | null

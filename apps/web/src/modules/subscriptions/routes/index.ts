@@ -1,23 +1,17 @@
 import {
   getSubscriptionsIdSuspenseQueryOptions,
   getSubscriptionsSuspenseQueryOptions,
-  getSubscriptionStatusQueryOptions,
   getUsersAllSuspenseQueryOptions,
 } from '@helix/api-client/hooks'
 import { createRoute, redirect } from '@tanstack/react-router'
 import { z } from 'zod'
 
+import { guardPage } from '@/modules/auth/page-access'
 import { authenticatedRoute } from '@/routes'
 
 import { queryClient } from '../../../lib/query-client'
 import type { SubscriptionItem } from '../types'
-
-async function assertSubscriptionEnabled() {
-  const { enabled } = await queryClient.ensureQueryData(
-    getSubscriptionStatusQueryOptions()
-  )
-  if (!enabled) throw redirect({ to: '/' })
-}
+import { SUBSCRIPTIONS_ACCESS } from './access'
 import { SubscriptionsCreate } from './subscriptions-create'
 import { SubscriptionsDetail } from './subscriptions-detail'
 import { SubscriptionsEdit } from './subscriptions-edit'
@@ -33,11 +27,7 @@ export const subscriptionsListRoute = createRoute({
   staticData: {
     breadcrumbs: [{ label: 'nav.subscriptions' }],
   },
-  beforeLoad: async ({ context }) => {
-    if (!context.hasPermission('subscriptions', 'view'))
-      throw redirect({ to: '/403' })
-    await assertSubscriptionEnabled()
-  },
+  beforeLoad: guardPage(SUBSCRIPTIONS_ACCESS.view),
   validateSearch: z.object({
     page: z.number().int().min(1).default(1),
     pageSize: z.number().int().min(1).max(100).default(10),
@@ -67,11 +57,7 @@ export const subscriptionsCreateRoute = createRoute({
       { label: 'actions.create' },
     ],
   },
-  beforeLoad: async ({ context }) => {
-    if (!context.hasPermission('subscriptions', 'create'))
-      throw redirect({ to: '/403' })
-    await assertSubscriptionEnabled()
-  },
+  beforeLoad: guardPage(SUBSCRIPTIONS_ACCESS.create),
   loader: () => {
     queryClient.ensureQueryData(getUsersAllSuspenseQueryOptions())
   },
@@ -89,11 +75,7 @@ export const subscriptionsDetailRoute = createRoute({
       (data) => ({ label: `#${(data as SubscriptionItem).id}` }),
     ],
   },
-  beforeLoad: async ({ context }) => {
-    if (!context.hasPermission('subscriptions', 'view'))
-      throw redirect({ to: '/403' })
-    await assertSubscriptionEnabled()
-  },
+  beforeLoad: guardPage(SUBSCRIPTIONS_ACCESS.view),
   loader: ({ params }) =>
     queryClient.ensureQueryData(
       getSubscriptionsIdSuspenseQueryOptions(params.id)
@@ -112,11 +94,7 @@ export const subscriptionsEditRoute = createRoute({
       (data) => ({ label: `#${(data as SubscriptionItem).id}` }),
     ],
   },
-  beforeLoad: async ({ context }) => {
-    if (!context.hasPermission('subscriptions', 'edit'))
-      throw redirect({ to: '/403' })
-    await assertSubscriptionEnabled()
-  },
+  beforeLoad: guardPage(SUBSCRIPTIONS_ACCESS.edit),
   loader: ({ params }) =>
     queryClient.ensureQueryData(
       getSubscriptionsIdSuspenseQueryOptions(params.id)
@@ -130,8 +108,8 @@ export const upgradeRoute = createRoute({
   path: '/upgrade',
   component: UpgradeRequired,
   validateSearch: z.object({ feature: z.string().optional() }),
-  beforeLoad: async ({ context, search }) => {
-    await assertSubscriptionEnabled()
+  beforeLoad: ({ context, search }) => {
+    if (!context.subscriptionEnabled) throw redirect({ to: '/' })
     if (context.hasSubscriptionAccess(search.feature)) {
       throw redirect({ to: '/' })
     }

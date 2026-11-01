@@ -1,15 +1,14 @@
 import { describe, expect, it } from 'vitest'
 
-import {
-  canSeeSidebarItem,
-  findHomeSidebarItem,
-  type SidebarAccess,
-} from './sidebar'
+import type { AccessCheckers } from '@/modules/auth/page-access'
+import { SUBSCRIPTIONS_ACCESS } from '@/modules/subscriptions/routes/access'
 
-function access(
+import { canSeeSidebarItem, findHomeSidebarItem } from './sidebar'
+
+function checkers(
   grants: Record<string, string[]>,
-  overrides: Partial<SidebarAccess> = {}
-): SidebarAccess {
+  overrides: Partial<AccessCheckers> = {}
+): AccessCheckers {
   return {
     hasPermission: (resource, action) =>
       (grants[resource] ?? []).includes(action),
@@ -22,17 +21,19 @@ function access(
 describe('findHomeSidebarItem', () => {
   it('returns the first item the user may open, in sidebar order', () => {
     expect(
-      findHomeSidebarItem(access({ todos: ['view'], users: ['view'] }))?.to
+      findHomeSidebarItem(checkers({ todos: ['view'], users: ['view'] }))?.to
     ).toBe('/todos')
   })
 
   it('skips items the user has no permission for', () => {
-    expect(findHomeSidebarItem(access({ roles: ['view'] }))?.to).toBe('/roles')
+    expect(findHomeSidebarItem(checkers({ roles: ['view'] }))?.to).toBe(
+      '/roles'
+    )
   })
 
   it('skips items whose plan feature the user lacks', () => {
     const home = findHomeSidebarItem(
-      access(
+      checkers(
         { todos: ['view'], audit: ['view'] },
         { hasSubscriptionAccess: (feature) => feature !== 'todos' }
       )
@@ -41,7 +42,7 @@ describe('findHomeSidebarItem', () => {
   })
 
   it('returns undefined when the user can open nothing', () => {
-    expect(findHomeSidebarItem(access({}))).toBeUndefined()
+    expect(findHomeSidebarItem(checkers({}))).toBeUndefined()
   })
 })
 
@@ -50,13 +51,15 @@ describe('canSeeSidebarItem', () => {
     label: 'nav.subscriptions',
     icon: () => null,
     to: '/subscriptions' as const,
-    permission: { resource: 'subscriptions', action: 'view' as const },
-    requiresSubscriptionEnabled: true as const,
+    access: SUBSCRIPTIONS_ACCESS.view,
   }
 
   it('hides an item that requires subscriptions while they are disabled', () => {
     expect(
-      canSeeSidebarItem(subscriptionsItem, access({ subscriptions: ['view'] }))
+      canSeeSidebarItem(
+        subscriptionsItem,
+        checkers({ subscriptions: ['view'] })
+      )
     ).toBe(false)
   })
 
@@ -64,7 +67,16 @@ describe('canSeeSidebarItem', () => {
     expect(
       canSeeSidebarItem(
         subscriptionsItem,
-        access({ subscriptions: ['view'] }, { subscriptionEnabled: true })
+        checkers({ subscriptions: ['view'] }, { subscriptionEnabled: true })
+      )
+    ).toBe(true)
+  })
+
+  it('shows an item without access to every signed-in user', () => {
+    expect(
+      canSeeSidebarItem(
+        { label: 'nav.profile', icon: () => null, to: '/me' as const },
+        checkers({})
       )
     ).toBe(true)
   })

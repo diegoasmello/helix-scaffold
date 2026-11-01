@@ -15,7 +15,7 @@ Processor ──POST /webhooks/billing──▶ adapter.verify()   signature ok?
                                        for each state:
                                          plan in catalog?  user known?        no → logged, skipped
                                          subscriptionsService.syncFromBilling(state)
-                                         audit log (actor: "Billing webhook (<adapter>)")
+                                         audit log (system actor "Billing webhook (<adapter>)", via the audit recorder)
                                        200 { received: true }
 ```
 
