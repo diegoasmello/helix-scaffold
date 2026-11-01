@@ -51,7 +51,6 @@ export function SubscriptionsCreate() {
     onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: getSubscriptionsSuspenseQueryKey(),
-        exact: true,
       })
     },
   })

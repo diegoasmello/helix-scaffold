@@ -53,7 +53,6 @@ export function RolesList() {
     onSuccess: (_, id) => {
       queryClient.invalidateQueries({
         queryKey: getRolesSuspenseQueryKey(),
-        exact: true,
       })
       queryClient.removeQueries({ queryKey: getRolesIdSuspenseQueryKey(id) })
       notify({ status: 'success', message: t('notifications.deleted') })

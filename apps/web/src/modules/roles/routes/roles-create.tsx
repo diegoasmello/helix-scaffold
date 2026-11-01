@@ -19,7 +19,6 @@ export function RolesCreate() {
     onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: getRolesSuspenseQueryKey(),
-        exact: true,
       })
     },
   })

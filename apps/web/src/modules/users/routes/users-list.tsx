@@ -50,7 +50,6 @@ export function UsersList() {
     onSuccess: (_, id) => {
       queryClient.invalidateQueries({
         queryKey: getUsersSuspenseQueryKey(),
-        exact: true,
       })
       queryClient.removeQueries({ queryKey: getUsersIdSuspenseQueryKey(id) })
       notify({ status: 'success', message: t('notifications.deleted') })

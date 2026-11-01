@@ -19,7 +19,6 @@ export function UsersCreate() {
     onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: getUsersSuspenseQueryKey(),
-        exact: true,
       })
     },
   })

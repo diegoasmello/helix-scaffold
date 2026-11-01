@@ -55,7 +55,6 @@ export function SubscriptionsList() {
     onSuccess: (_, id) => {
       queryClient.invalidateQueries({
         queryKey: getSubscriptionsSuspenseQueryKey(),
-        exact: true,
       })
       queryClient.removeQueries({
         queryKey: getSubscriptionsIdSuspenseQueryKey(id),

@@ -28,7 +28,6 @@ export function UsersEdit() {
     onSuccess: (updatedItem) => {
       queryClient.invalidateQueries({
         queryKey: getUsersSuspenseQueryKey(),
-        exact: true,
       })
       queryClient.setQueryData(
         getUsersIdSuspenseQueryKey(updatedItem.id),

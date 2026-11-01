@@ -5,6 +5,7 @@ import {
   deleteUsersIdHandlerResponse204,
   getMePermissionsHandler,
   getUsersHandler,
+  getUsersHandlerResponse200,
 } from '@helix/api-client/mocks'
 import {
   MantineEmotionProvider,
@@ -151,6 +152,38 @@ describe('UsersList', () => {
       within(dialog).getByRole('button', { name: 'Delete' })
     )
     await waitFor(() => expect(deletedId).toBe('1'))
+  })
+
+  it('refetches the list after deleting, so the row disappears', async () => {
+    let users = mockUsers
+    server.use(
+      getUsersHandler(() =>
+        getUsersHandlerResponse200(
+          createPaginatedUsers({
+            data: users,
+            total: users.length,
+            page: 1,
+            pageSize: 10,
+            totalPages: 1,
+          })
+        )
+      ),
+      deleteUsersIdHandler(({ params }) => {
+        users = users.filter((u) => u.id !== params.id)
+        return deleteUsersIdHandlerResponse204()
+      })
+    )
+    renderUsersList()
+    const deleteButtons = await screen.findAllByLabelText('Delete')
+    await userEvent.click(deleteButtons[0])
+    const dialog = await screen.findByRole('dialog')
+    await userEvent.click(
+      within(dialog).getByRole('button', { name: 'Delete' })
+    )
+    await waitFor(() =>
+      expect(screen.queryByText('Alice Silva')).not.toBeInTheDocument()
+    )
+    expect(screen.getByText('Bob Santos')).toBeInTheDocument()
   })
 
   it('closes delete modal on cancel', async () => {

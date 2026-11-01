@@ -51,7 +51,6 @@ export function SubscriptionsEdit() {
     onSuccess: (updated) => {
       queryClient.invalidateQueries({
         queryKey: getSubscriptionsSuspenseQueryKey(),
-        exact: true,
       })
       queryClient.setQueryData(getSubscriptionsIdSuspenseQueryKey(id), updated)
     },

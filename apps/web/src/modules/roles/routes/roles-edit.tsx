@@ -27,7 +27,6 @@ export function RolesEdit() {
     onSuccess: (updatedItem) => {
       queryClient.invalidateQueries({
         queryKey: getRolesSuspenseQueryKey(),
-        exact: true,
       })
       queryClient.setQueryData(
         getRolesIdSuspenseQueryKey(updatedItem.id),
