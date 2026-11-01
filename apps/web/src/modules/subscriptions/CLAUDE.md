@@ -15,7 +15,7 @@ The admin routes are **only accessible when `subscriptions.enabled` is `true`** 
 ```
 src/modules/subscriptions/
 ├── types.ts
-├── access.ts                         ← hasSubscriptionAccess() — the access rule, shared by hook and router
+├── access.ts                         ← hasSubscriptionAccess() — reads the API's entitlements, shared by hook and router
 ├── access.test.ts
 ├── api-errors.ts                     ← conflictMessageKey() — 409 code → i18n key
 ├── api-errors.test.ts
@@ -23,9 +23,9 @@ src/modules/subscriptions/
 ├── validation.ts
 ├── validation.test.ts
 ├── hooks/
-│   ├── use-subscription.ts           ← reads status (incl. plan catalog) + user subscription
+│   ├── use-subscription.ts           ← reads status (incl. plan catalog) + user subscription (display)
 │   ├── use-subscription.test.tsx
-│   ├── use-subscription-access.ts    ← hasAccess(feature?) — mirrors the API's requireSubscription()
+│   ├── use-subscription-access.ts    ← hasAccess(feature?) + graceEndsAt — from GET /me/entitlements
 │   └── use-subscription-access.test.tsx
 ├── components/
 │   ├── requires-subscription.tsx     ← conditional render guard (like HasPermission)
@@ -73,7 +73,6 @@ const { subscription, plan, plans, getPlanName, isActive, isTrialing, isPending,
 - `isActive: boolean` — `subscription.status === 'active'`
 - `isTrialing: boolean` — `subscription.status === 'trialing'`
 - `isPastDue: boolean` — `subscription.status === 'past_due'` (only returned by the API while inside the grace period)
-- `graceEndsAt: Date | null` — for a past_due subscription, `pastDueSince + pastDueGraceDays` (from `GET /subscription/status`): when access ends
 - `isPending: boolean` — `true` while `GET /subscription/status` **or** `GET /me/subscription` is in flight
 
 **When `enabled=false`:** the `GET /me/subscription` query is skipped entirely. The hook makes exactly one HTTP request (`GET /subscription/status`) and returns `subscription: null` with no further cost.
@@ -93,21 +92,20 @@ const { enabled } = useSubscriptionMode()
 ### `useSubscriptionAccess()`
 
 ```ts
-const { hasAccess, isPending } = useSubscriptionAccess()
+const { hasAccess, graceEndsAt, isPending } = useSubscriptionAccess()
 
-hasAccess()          // any active/trialing subscription
+hasAccess()          // any access-granting subscription
 hasAccess('reports') // ...and the plan lists 'reports' in its features
+graceEndsAt          // Date | null — past_due: when access ends
 ```
 
-Mirrors `requireSubscription()` in the API so the UI hides exactly what the API would reject: always `true` when subscriptions are disabled, and for users with `subscriptions:view` (operators). `isPending` also waits for the user's permissions, so operators never see a fallback flash. Kept separate from `useSubscription()` because it depends on `useAuth()`.
+Reads `GET /subscription/status` and, when enabled, `GET /me/entitlements → { operator, subscribed, features, graceEndsAt }`: the API's own access decision, the one `requireSubscription()` enforces (`apps/api/src/modules/subscriptions/entitlements.ts`). The operator bypass, which statuses count, the past_due grace period and plan → features are all decided there, so the UI hides exactly what the API would reject without recomputing any of it. Always `true` when subscriptions are disabled (no entitlements request is made). `isPending` covers both queries.
 
-`past_due` counts as access: `GET /me/subscription` only returns it while inside the API's grace period (`subscriptions.pastDueGraceDays`), so the client never re-checks dates.
-
-The rule itself lives in `access.ts` → `hasSubscriptionAccess(state, feature?)`, a pure function also used by the router context (see _Route guards_ below). Change the rule there, never in the callers.
+`access.ts` → `hasSubscriptionAccess({ enabled, entitlements }, feature?)` is the lookup, shared with the router context (see _Route guards_ below): disabled → `true`, not loaded → `false`, operator → `true`, then `features.includes(feature)` (or `subscribed` without a feature). Never add policy there — change `entitlements.ts` in the API instead.
 
 ### Route guards (`context.hasSubscriptionAccess`)
 
-`authenticatedRoute.beforeLoad` (`src/routes.ts`) injects `hasSubscriptionAccess(feature?)` next to `hasPermission`. It reads the same queries as `useSubscription()` (`GET /subscription/status`, and `GET /me/subscription` when enabled) through `ensureQueryData`, so it shares the cache and adds no requests. Gate a route by plan feature **before** the permission check — same order as the API:
+`authenticatedRoute.beforeLoad` (`src/routes.ts`) injects `hasSubscriptionAccess(feature?)` next to `hasPermission`. It reads the same queries as `useSubscriptionAccess()` (`GET /subscription/status`, and `GET /me/entitlements` when enabled) through `ensureQueryData`, so it shares the cache and adds no requests. Gate a route by plan feature **before** the permission check — same order as the API:
 
 ```ts
 beforeLoad: ({ context }) => {
@@ -146,7 +144,7 @@ import { RequiresSubscription } from '../components/requires-subscription'
 ```
 
 - **`feature`** — optional; when set, the user's plan must list it in `features`
-- **`children`** — rendered when `useSubscriptionAccess().hasAccess(feature)` is `true`
+- **`children`** — rendered when `useSubscriptionAccess().hasAccess(feature)` is `true` (operators always pass)
 - **`fallback`** — rendered otherwise; defaults to `null`. Nothing renders while `isPending`.
 
 **When `enabled=false`:** always renders children. Safe to add to components now and enable enforcement later.
@@ -305,7 +303,7 @@ Footer: Back button → `/subscriptions`.
 
 ## Me-page subscription tab
 
-`/me/subscription` lives in the `me` module and consumes `useSubscription()`, `<PlanCatalog>` and `SUBSCRIPTION_STATUS_COLORS` from here. It is documented in `src/modules/me/CLAUDE.md` → _MeSubscription_.
+`/me/subscription` lives in the `me` module and consumes `useSubscription()`, `useSubscriptionAccess().graceEndsAt`, `<PlanCatalog>` and `SUBSCRIPTION_STATUS_COLORS` from here. It is documented in `src/modules/me/CLAUDE.md` → _MeSubscription_.
 
 ---
 
@@ -376,7 +374,9 @@ deleteSubscriptionsIdHandler(() => deleteSubscriptionsIdHandlerResponse204())
 Integration tests for this module also need:
 ```ts
 // Override subscription status to enabled
-getSubscriptionStatusHandler(() => getSubscriptionStatusHandlerResponse200({ enabled: true, plans, pastDueGraceDays: 0 }))
+getSubscriptionStatusHandler(() => getSubscriptionStatusHandlerResponse200({ enabled: true, plans }))
 // Provide subscription mode to allow subscriptions list to render
 getMeSubscriptionHandler(() => getMeSubscriptionHandlerResponse204())
 ```
+
+`GET /me/entitlements` defaults to "no subscription" (`{ operator: false, subscribed: false, features: [], graceEndsAt: null }`). Tests of gated UI (`RequiresSubscription`, the sidebar in `app.test.tsx`) override it with what the API would answer — never with permissions or a subscription row, which the frontend no longer interprets.

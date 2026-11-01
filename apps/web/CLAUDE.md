@@ -51,12 +51,12 @@ rootRoute (Outlet; notFoundComponent: NotFound, errorComponent: ErrorBoundary)
 `authenticatedRoute.beforeLoad` redirects to `/login` without a session, then puts two functions in the **router context** for every child route's `beforeLoad`:
 
 - `context.hasPermission(resource, action)` — from `GET /me/permissions`
-- `context.hasSubscriptionAccess(feature?)` — from `GET /subscription/status` (+ `GET /me/subscription` when enabled); see `src/modules/subscriptions/CLAUDE.md` → _Route guards_
+- `context.hasSubscriptionAccess(feature?)` — from `GET /subscription/status` (+ `GET /me/entitlements` when enabled); see `src/modules/subscriptions/CLAUDE.md` → _Route guards_
 - `context.subscriptionEnabled` — `subscriptions.enabled` from the same status
 
 **The `/` redirect** uses them through `findHomeSidebarItem()` (`src/config/sidebar.ts`): the first item, in sidebar order, that `canSeeSidebarItem()` allows — the same function `app.tsx` filters the sidebar with, so `/` never lands on a page the sidebar hides (or on `/403`). With no visible item it goes to `/me`, which every signed-in user may open. Reordering `sidebarGroups` changes the landing page.
 
-Both are loaded with `queryClient.ensureQueryData`, the same cache the `useAuth()` / `useSubscription()` hooks read, so components make no extra requests. Route files import `queryClient` from `src/lib/query-client.ts` (a plain `new QueryClient()` — default `staleTime: 0`, so data refetches when a component mounts).
+Both are loaded with `queryClient.ensureQueryData`, the same cache the `useAuth()` / `useSubscriptionAccess()` hooks read, so components make no extra requests. Route files import `queryClient` from `src/lib/query-client.ts` (a plain `new QueryClient()` — default `staleTime: 0`, so data refetches when a component mounts).
 
 ## Pagination and sorting
 

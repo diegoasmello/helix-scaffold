@@ -1,28 +1,36 @@
-import { useAuth } from '../../auth/use-auth'
+import {
+  getMeEntitlementsQueryOptions,
+  getSubscriptionStatusQueryOptions,
+} from '@helix/api-client/hooks'
+import { useQuery } from '@tanstack/react-query'
+import { parseISO } from 'date-fns'
+
 import { hasSubscriptionAccess } from '../access'
-import { useSubscription } from './use-subscription'
 
 export function useSubscriptionAccess() {
-  const {
+  const { data: status, isPending: statusPending } = useQuery({
+    ...getSubscriptionStatusQueryOptions(),
+    staleTime: Infinity,
+  })
+  const enabled = status?.enabled ?? false
+
+  const { data, isPending: entitlementsPending } = useQuery({
+    ...getMeEntitlementsQueryOptions(),
     enabled,
-    plans,
-    subscription,
-    isPending: subscriptionPending,
-  } = useSubscription()
-  const { hasPermission, isPending: authPending } = useAuth()
+  })
+
+  // React Query v5 reports isPending=true for disabled queries that never fetched.
+  const isPending = statusPending || (enabled && entitlementsPending)
+  const entitlements = enabled ? (data ?? null) : null
 
   /** See `hasSubscriptionAccess` in `../access.ts` for the rules. */
   const hasAccess = (feature?: string) =>
-    hasSubscriptionAccess(
-      {
-        enabled,
-        plans,
-        subscription,
-        isOperator: hasPermission('subscriptions', 'view'),
-      },
-      feature
-    )
+    hasSubscriptionAccess({ enabled, entitlements }, feature)
 
-  // Wait for permissions too, so operators never see a fallback flash.
-  return { hasAccess, isPending: subscriptionPending || authPending }
+  // When a past_due subscription loses access (end of the grace period).
+  const graceEndsAt = entitlements?.graceEndsAt
+    ? parseISO(entitlements.graceEndsAt)
+    : null
+
+  return { hasAccess, graceEndsAt, isPending }
 }

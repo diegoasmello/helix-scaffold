@@ -1,9 +1,6 @@
 import {
-  createSubscription,
+  getMeEntitlementsHandler,
   getMePermissionsHandler,
-  getMeSubscriptionHandler,
-  getMeSubscriptionHandlerResponse200,
-  getMeSubscriptionHandlerResponse204,
   getSubscriptionStatusHandler,
   getSubscriptionStatusHandlerResponse200,
 } from '@helix/api-client/mocks'
@@ -92,22 +89,24 @@ function mockPermissions(grants: Grants) {
   server.use(getMePermissionsHandler({ grants }))
 }
 
-function mockSubscriptionsEnabled(planId: string | null) {
+// GET /me/entitlements answers for a user on `planId` (or without a plan).
+function mockSubscriptionsEnabled(
+  planId: string | null,
+  options: { operator?: boolean } = {}
+) {
   server.use(
     getSubscriptionStatusHandler(() =>
       getSubscriptionStatusHandlerResponse200({
         enabled: true,
         plans,
-        pastDueGraceDays: 0,
       })
     ),
-    getMeSubscriptionHandler(() =>
-      planId
-        ? getMeSubscriptionHandlerResponse200(
-            createSubscription({ planId, status: 'active' })
-          )
-        : getMeSubscriptionHandlerResponse204()
-    )
+    getMeEntitlementsHandler({
+      operator: options.operator ?? false,
+      subscribed: planId !== null,
+      features: plans.find((plan) => plan.id === planId)?.features ?? [],
+      graceEndsAt: null,
+    })
   )
 }
 
@@ -227,7 +226,7 @@ describe('App', () => {
     })
 
     it('shows feature-gated items to operators without a subscription', async () => {
-      mockSubscriptionsEnabled(null)
+      mockSubscriptionsEnabled(null, { operator: true })
       mockPermissions({ ...ALL_GRANTS, subscriptions: ['view'] })
       renderApp()
       await screen.findByTestId('user-name')

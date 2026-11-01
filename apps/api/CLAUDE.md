@@ -148,6 +148,7 @@ app.get('/feature', {
 })
 ```
 
+- The decision comes from the entitlements (`src/modules/subscriptions/entitlements.ts`), the same answer `GET /me/entitlements` gives the frontend. A denial is a 403 `{ message, code }` with `code` `subscription_required` or `feature_not_in_plan`; `requirePermission()` answers 403 `{ message: 'Forbidden', code: 'permission_denied' }`, so tests (and clients) can tell the two gates apart.
 - `requireSubscription()` alone requires any active subscription; `requireSubscription('feature')` also requires the user's plan to list `'feature'` in `subscriptions.plans` (`src/app.config.ts`). A feature no plan declares throws at startup.
 - With `subscriptions.enabled: false` it is a no-op, so adding it early is safe.
 - Users whose role has `subscriptions:view` always pass.
@@ -1072,6 +1073,8 @@ describe('Permission enforcement', () => {
   })
 })
 ```
+
+Assert `res.json().code` too when the route has more than one gate (`permission_denied` vs `subscription_required` / `feature_not_in_plan`) — the status alone cannot say which one answered.
 
 The pattern for each test is: create a restricted session that has _just enough_ permission to reach the route (e.g. `view` only), then hit the route that requires the _next_ permission and assert 403. The `GET` test uses an empty grants list.
 

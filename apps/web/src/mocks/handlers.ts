@@ -25,6 +25,7 @@ import {
   getAuditLogsIdHandler,
   getAuditLogsIdHandlerResponse404,
   getBootstrapStatusHandler,
+  getMeEntitlementsHandler,
   getMeHandler,
   getMeHandlerResponse200,
   getMePermissionsHandler,
@@ -179,10 +180,15 @@ export const handlers = [
     getSubscriptionStatusHandlerResponse200({
       enabled: false,
       plans: [],
-      pastDueGraceDays: 0,
     })
   ),
   getMeSubscriptionHandler(() => getMeSubscriptionHandlerResponse204()),
+  getMeEntitlementsHandler({
+    operator: false,
+    subscribed: false,
+    features: [],
+    graceEndsAt: null,
+  }),
   getSubscriptionsHandler(
     createPaginatedSubscriptions({
       data: [],

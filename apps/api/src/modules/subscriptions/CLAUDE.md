@@ -9,7 +9,7 @@ The scaffold provides:
 - A plan catalog in `src/app.config.ts` (`subscriptions.plans`), each plan listing the features it unlocks
 - A `requireSubscription(feature?)` preHandler (analogous to `requirePermission()`) that gates routes by active subscription and, optionally, by plan feature
 - Admin CRUD routes for manual subscription management
-- A user-facing `GET /me/subscription` endpoint
+- User-facing `GET /me/subscription` and `GET /me/entitlements` endpoints
 - Optional trial auto-start on self-registration
 
 The scaffold does **not** provide:
@@ -20,9 +20,9 @@ The scaffold does **not** provide:
 
 ## Feature flag
 
-All admin routes and `GET /me/subscription` are **only registered when `subscriptions.enabled` is `true`** in `src/app.config.ts`. When `false` (the default), the module has zero overhead — no routes, no DB queries. The `requireSubscription()` hook is always created but returns a no-op preHandler when subscriptions are disabled, so apps can freely decorate routes without worrying about mode.
+All admin routes, `GET /me/subscription` and `GET /me/entitlements` are **only registered when `subscriptions.enabled` is `true`** in `src/app.config.ts`. When `false` (the default), the module has zero overhead — no routes, no DB queries. The `requireSubscription()` hook is always created but returns a no-op preHandler when subscriptions are disabled, so apps can freely decorate routes without worrying about mode.
 
-`GET /subscription/status` is always registered at root scope (unauthenticated), like `GET /registration/status`. It returns `{ enabled, plans, pastDueGraceDays }` and is the single source of truth the frontend reads to decide whether to show subscription UI.
+`GET /subscription/status` is always registered at root scope (unauthenticated), like `GET /registration/status`. It returns `{ enabled, plans }` and is the single source of truth the frontend reads to decide whether to show subscription UI.
 
 ---
 
@@ -62,7 +62,7 @@ All admin routes and `GET /me/subscription` are **only registered when `subscrip
 | `past_due` | Payment failed; grace period |
 | `expired` | Period ended with no renewal |
 
-**The `status` field is the source of truth.** `requireSubscription()` checks `status IN ('active', 'trialing')` — it does not compare dates. Apps are responsible for updating status via payment webhook handlers when billing events occur (renewal, cancellation, payment failure). The trial plan ID is set in `subscriptions.trial.planId` in `src/app.config.ts`.
+**The `status` field is the source of truth.** Access requires a live subscription (`status IN ('active', 'trialing')`) or a past_due one within the grace period — dates are never compared. Apps are responsible for updating status via payment webhook handlers when billing events occur (renewal, cancellation, payment failure). The trial plan ID is set in `subscriptions.trial.planId` in `src/app.config.ts`.
 
 ---
 
@@ -82,8 +82,9 @@ Resource registered in `src/config/permissions.ts`:
 
 | Method | Path | Auth | Notes |
 | --- | --- | --- | --- |
-| `GET` | `/subscription/status` | None | Always available; returns `{ enabled, plans, pastDueGraceDays }` — `plans` is the catalog (id, name, features), `[]` when disabled; `pastDueGraceDays` lets the UI show when a past_due user loses access |
-| `GET` | `/me/subscription` | Session | Returns current user's active/trialing subscription or 204 |
+| `GET` | `/subscription/status` | None | Always available; returns `{ enabled, plans }` — `plans` is the catalog (id, name, features), `[]` when disabled |
+| `GET` | `/me/subscription` | Session | Returns current user's access-granting subscription or 204 |
+| `GET` | `/me/entitlements` | Session | What the current user may use — see _Entitlements_ |
 | `GET` | `/subscriptions` | `subscriptions:view` | Paginated list of all subscriptions |
 | `GET` | `/subscriptions/:id` | `subscriptions:view` | Single subscription |
 | `POST` | `/subscriptions` | `subscriptions:create` | Create subscription manually |
@@ -100,7 +101,7 @@ Rows whose `planId` was later removed from the catalog keep working: they still 
 
 ### `GET /me/subscription`
 
-Returns the subscription that currently grants access to the session user — `active`/`trialing`, or `past_due` still inside the grace period (see `getActiveByUserId` below). Returns **200** with the subscription object when found, **204** when there is none.
+Returns the subscription that currently grants access to the session user — `active`/`trialing`, or `past_due` still inside the grace period (see `getAccessGrantingByUserId` below). Returns **200** with the subscription object when found, **204** when there is none.
 
 The frontend `useSubscription()` hook (`src/modules/subscriptions/hooks/use-subscription.ts`) calls this endpoint and treats 204 as "no subscription."
 
@@ -133,7 +134,7 @@ Factory `createSubscriptionsService(database)` returns:
 
 ```ts
 {
-  getActiveByUserId(userId: string, options?: { now?: Date; pastDueGraceDays?: number }): Promise<Subscription | null>
+  getAccessGrantingByUserId(userId: string, options?: { now?: Date; pastDueGraceDays?: number }): Promise<Subscription | null>
   list(query: SubscriptionsListQuery): Promise<{ data: Subscription[], total: number }>
   getById(id: string): Promise<Subscription | null>
   create(data: CreateSubscriptionInput): Promise<Subscription>
@@ -145,11 +146,11 @@ Factory `createSubscriptionsService(database)` returns:
 }
 ```
 
-**`getActiveByUserId(userId, { now?, pastDueGraceDays? })`** — the subscription that grants access: `status IN ('active', 'trialing')`, or `past_due` with `pastDueSince` within `subscriptions.pastDueGraceDays` (options default to the current time and the config; tests pass them explicitly). Live rows win over a past_due one, then the most recent. Returns `null` if none qualifies. Period dates are intentionally not checked — status is authoritative; `pastDueSince` only bounds the grace period.
+**`getAccessGrantingByUserId(userId, { now?, pastDueGraceDays? })`** — the access-granting subscription (not just the live one): `status IN ('active', 'trialing')`, or `past_due` with `pastDueSince` within `subscriptions.pastDueGraceDays` (options default to the current time and the config; tests pass them explicitly). Live rows win over a past_due one, then the most recent. Returns `null` if none qualifies. Period dates are intentionally not checked — status is authoritative; `pastDueSince` only bounds the grace period.
 
 ### Past-due grace period
 
-When a payment fails the processor moves the subscription to `past_due` and usually retries the charge for a while before canceling. `subscriptions.pastDueGraceDays` (`src/app.config.ts`, default `0`) decides whether the user keeps access meanwhile: a `past_due` subscription counts as active for that many days after `pastDueSince`. No job is involved — access simply stops qualifying once the window passes. Set it to roughly your processor's retry window. `GET /me/subscription` returns the past_due row while it is in the window, and the frontend shows a "payment failed" warning with the access end date. Migration `0007` backfills `pastDueSince = updatedAt` for rows already past_due.
+When a payment fails the processor moves the subscription to `past_due` and usually retries the charge for a while before canceling. `subscriptions.pastDueGraceDays` (`src/app.config.ts`, default `0`) decides whether the user keeps access meanwhile: a `past_due` subscription counts as active for that many days after `pastDueSince`. No job is involved — access simply stops qualifying once the window passes. Set it to roughly your processor's retry window. `GET /me/subscription` returns the past_due row while it is in the window, `GET /me/entitlements` returns `graceEndsAt` (when access ends), and the frontend shows a "payment failed" warning with that date. Migration `0007` backfills `pastDueSince = updatedAt` for rows already past_due.
 
 **`update`** — applies the `canceledAt` auto-set logic before writing to the DB.
 
@@ -202,11 +203,32 @@ app.get('/feature', {
 | `disabled` | Any | Any | Pass (no-op) |
 | `enabled` | Yes | Any | Pass (admin bypass) |
 | `enabled` | No | Yes, plan includes the feature (or no feature requested) | Pass |
-| `enabled` | No | Yes, plan lacks the feature | 403 `Your plan does not include this feature` |
+| `enabled` | No | Yes, plan lacks the feature | 403 `feature_not_in_plan` |
 | `enabled` | No | `past_due` within `pastDueGraceDays` of `pastDueSince` | Same as an active subscription (feature still checked) |
-| `enabled` | No | No (or `past_due` past the grace period) | 403 `Active subscription required` |
+| `enabled` | No | No (or `past_due` past the grace period) | 403 `subscription_required` |
 
-The admin bypass is implemented by calling `permissionsService.hasPermission(roleId, 'subscriptions', 'view')`. Users without a role (`roleId === null`) are never bypassed.
+403 bodies are `{ message, code }` — `code` is the `EntitlementDenial` from `denialFor()`.
+
+The hook resolves the user's entitlements (below) and asks `denialFor(entitlements, feature)`. The admin bypass is the `operator` flag: `hasPermission(roleId, 'subscriptions', 'view')`. Users without a role (`roleId === null`) are never bypassed.
+
+## Entitlements (`entitlements.ts`)
+
+The one place that decides what the subscription axis lets a user do. `requireSubscription()` enforces it and `GET /me/entitlements` returns it, so the frontend reads the API's answer instead of recomputing the rule.
+
+```ts
+interface Entitlements {
+  operator: boolean          // role has subscriptions:view — never blocked
+  subscribed: boolean        // holds an access-granting subscription
+  features: string[]         // the features of that subscription's plan
+  graceEndsAt: Date | null   // past_due: when the grace period (and access) ends
+}
+```
+
+- `createEntitlementsService(database).forUser(sessionUser)` — loads the operator flag and `getAccessGrantingByUserId()` in parallel, then calls `resolveEntitlements()`.
+- `resolveEntitlements({ operator, subscription, pastDueGraceDays })` — pure: plan → features (a plan removed from the catalog unlocks none), grace end.
+- `denialFor(entitlements, feature?)` — `null` (allowed), `'subscription_required'` or `'feature_not_in_plan'`. Operators always pass.
+
+The pure functions are unit-tested in `entitlements.test.ts` (no database); `GET /me/entitlements` and the gate are covered by the route tests.
 
 **Reference implementation:** `todos-routes.ts` uses `requireSubscription('todos')` on every route as a working example of how apps gate their features.
 
@@ -271,7 +293,9 @@ Route integration tests against the real test database (`helix_test`).
 The `requireSubscription (via GET /todos)` block covers the behavior matrix above plus the registration-time error for unknown features. Individual tests that need to verify "no subscription" behavior call `cleanupSubscriptions()` explicitly before the assertion.
 
 **Coverage:**
-- `GET /subscription/status` — always 200 with `{ enabled, plans, pastDueGraceDays }`
+- `GET /subscription/status` — always 200 with `{ enabled, plans }`
+- `GET /me/entitlements` — nothing without a subscription; plan features; operator flag; `graceEndsAt` for past_due within grace; nothing after it
+- `requireSubscription` — each denial asserts its `code`
 - `GET /me/subscription` — 204 when no active sub; 200 when active sub exists; 204 when only canceled sub exists
 - `GET /subscriptions` — empty list, paginated list with multiple subs
 - `GET /subscriptions/:id` — 404 for unknown; 200 for existing

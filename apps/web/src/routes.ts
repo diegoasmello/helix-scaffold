@@ -1,9 +1,8 @@
 import {
+  getMeEntitlementsQueryOptions,
   getMePermissionsQueryOptions,
-  getMeSubscriptionQueryOptions,
   getSubscriptionStatusQueryOptions,
 } from '@helix/api-client/hooks'
-import type { Subscription } from '@helix/api-client/types'
 import {
   createRootRoute,
   createRoute,
@@ -61,20 +60,15 @@ export const authenticatedRoute = createRoute({
     const hasPermission = (resource: string, action: string): boolean =>
       (grants[resource] ?? []).includes(action)
 
-    // Same queries (and cache) as useSubscription(), so this adds no requests.
+    // Same queries (and cache) as useSubscriptionAccess(), so this adds no requests.
     const status = await client.ensureQueryData(
       getSubscriptionStatusQueryOptions()
     )
-    const subscription = status.enabled
-      ? ((await client.ensureQueryData(
-          getMeSubscriptionQueryOptions()
-        )) as Subscription | null)
-      : null
     const subscriptionAccess = {
       enabled: status.enabled,
-      plans: status.plans,
-      subscription,
-      isOperator: hasPermission('subscriptions', 'view'),
+      entitlements: status.enabled
+        ? await client.ensureQueryData(getMeEntitlementsQueryOptions())
+        : null,
     }
 
     return {

@@ -23,6 +23,8 @@ Each workspace has its own `CLAUDE.md` with patterns, conventions, and step-by-s
 
 `todos` is the reference implementation on both sides.
 
+Domain terms (plan, feature, live vs. access-granting subscription, entitlements, operator…) are defined in `GLOSSARY.md` — use those names.
+
 ## Commands
 
 All root scripts run via **Turborepo** — they execute across all workspaces in parallel, with output cached where applicable.
@@ -137,7 +139,9 @@ The scaffold supports optional subscription gating for products that require use
 | `subscriptions.pastDueGraceDays` | `0` | Days a `past_due` subscription (failed payment) keeps access while the processor retries. `0` cuts access immediately. |
 | `subscriptions.trial` | `false` | `{ days, planId }`. When set (and registration is open and subscriptions are enabled), a trialing subscription is auto-created when a user **self-registers** (not for accounts created by an admin, bootstrap or the seed). |
 
-**Single source of truth:** the mode lives only in the backend config. The frontend reads `GET /subscription/status → { enabled, plans, pastDueGraceDays }` once and caches it for the session (`staleTime: Infinity`) — no `VITE_*` duplication.
+**Single source of truth:** the mode lives only in the backend config. The frontend reads `GET /subscription/status → { enabled, plans }` once and caches it for the session (`staleTime: Infinity`) — no `VITE_*` duplication.
+
+**One access decision:** the API decides what a user may use (operator bypass, statuses, grace period, plan features) in `apps/api/src/modules/subscriptions/entitlements.ts`. `requireSubscription()` enforces it, and `GET /me/entitlements → { operator, subscribed, features, graceEndsAt }` hands the same answer to the frontend, which only looks it up — never re-derive the rule in the web. Its 403s carry a `code` (`subscription_required`, `feature_not_in_plan`); `requirePermission()`'s carry `permission_denied`.
 
 **Admin bypass:** users whose role has the `subscriptions:view` permission are never blocked by `requireSubscription()`, regardless of whether they have an active subscription themselves. Operators can always access the product.
 

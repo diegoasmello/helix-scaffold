@@ -4,7 +4,6 @@ import {
 } from '@helix/api-client/hooks'
 import type { Subscription } from '@helix/api-client/types'
 import { useQuery } from '@tanstack/react-query'
-import { addDays, parseISO } from 'date-fns'
 
 export function useSubscription() {
   const { data: statusData, isPending: statusPending } = useQuery({
@@ -14,7 +13,6 @@ export function useSubscription() {
 
   const enabled = statusData?.enabled ?? false
   const plans = statusData?.plans ?? []
-  const pastDueGraceDays = statusData?.pastDueGraceDays ?? 0
 
   const { data, isPending: subscriptionPending } = useQuery({
     ...getMeSubscriptionQueryOptions(),
@@ -34,15 +32,8 @@ export function useSubscription() {
   const getPlanName = (planId: string) =>
     plans.find((p) => p.id === planId)?.name ?? planId
 
-  // When a past_due subscription loses access (end of the grace period).
-  const graceEndsAt =
-    subscription?.status === 'past_due' && subscription.pastDueSince
-      ? addDays(parseISO(subscription.pastDueSince), pastDueGraceDays)
-      : null
-
   return {
     subscription,
-    graceEndsAt,
     plan,
     plans,
     getPlanName,

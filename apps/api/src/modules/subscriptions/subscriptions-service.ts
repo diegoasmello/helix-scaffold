@@ -46,11 +46,12 @@ function pastDueSinceFor(status: SubscriptionStatus) {
 
 export function createSubscriptionsService(database: Database) {
   /**
-   * The subscription that grants access: `active`/`trialing`, or `past_due`
-   * still within `subscriptions.pastDueGraceDays` of `pastDueSince`.
-   * Live rows win over a past_due one; then the most recent.
+   * The access-granting subscription: live (`active`/`trialing`), or
+   * `past_due` still within `subscriptions.pastDueGraceDays` of `pastDueSince`.
+   * Live rows win over a past_due one; then the most recent. Turned into the
+   * user's entitlements by `entitlements.ts`.
    */
-  async function getActiveByUserId(
+  async function getAccessGrantingByUserId(
     userId: string,
     options: { now?: Date; pastDueGraceDays?: number } = {}
   ) {
@@ -259,7 +260,7 @@ export function createSubscriptionsService(database: Database) {
   }
 
   return {
-    getActiveByUserId,
+    getAccessGrantingByUserId,
     getByExternalId,
     syncFromBilling,
     list,

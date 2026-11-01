@@ -132,7 +132,7 @@ describe('expireLapsed', () => {
   })
 })
 
-describe('getActiveByUserId — past_due grace', () => {
+describe('getAccessGrantingByUserId — past_due grace', () => {
   const DAY = 24 * 60 * 60 * 1000
 
   it('returns a past_due subscription inside the grace window', async () => {
@@ -140,7 +140,7 @@ describe('getActiveByUserId — past_due grace', () => {
       status: 'past_due',
       pastDueSince: new Date(NOW.getTime() - 2 * DAY),
     })
-    const found = await service.getActiveByUserId(sub.userId, {
+    const found = await service.getAccessGrantingByUserId(sub.userId, {
       now: NOW,
       pastDueGraceDays: 3,
     })
@@ -152,7 +152,7 @@ describe('getActiveByUserId — past_due grace', () => {
       status: 'past_due',
       pastDueSince: new Date(NOW.getTime() - 4 * DAY),
     })
-    const found = await service.getActiveByUserId(sub.userId, {
+    const found = await service.getAccessGrantingByUserId(sub.userId, {
       now: NOW,
       pastDueGraceDays: 3,
     })
@@ -164,7 +164,7 @@ describe('getActiveByUserId — past_due grace', () => {
       status: 'past_due',
       pastDueSince: NOW,
     })
-    const found = await service.getActiveByUserId(sub.userId, {
+    const found = await service.getAccessGrantingByUserId(sub.userId, {
       now: NOW,
       pastDueGraceDays: 0,
     })
@@ -187,7 +187,7 @@ describe('getActiveByUserId — past_due grace', () => {
         createdAt: new Date(NOW.getTime() - 10 * DAY),
       })
       .returning()
-    const found = await service.getActiveByUserId(pastDue.userId, {
+    const found = await service.getAccessGrantingByUserId(pastDue.userId, {
       now: NOW,
       pastDueGraceDays: 3,
     })

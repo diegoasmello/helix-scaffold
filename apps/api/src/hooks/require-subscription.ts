@@ -1,19 +1,23 @@
 import { config } from '@/config'
 import { isSpecExport } from '@/config/spec-overrides'
 import type { Database } from '@/db'
-import { createPermissionsService } from '@/modules/permissions/permissions-service'
 import {
-  isKnownFeature,
-  planHasFeature,
-} from '@/modules/subscriptions/subscription-plans'
-import { createSubscriptionsService } from '@/modules/subscriptions/subscriptions-service'
+  createEntitlementsService,
+  denialFor,
+  type EntitlementDenial,
+} from '@/modules/subscriptions/entitlements'
+import { isKnownFeature } from '@/modules/subscriptions/subscription-plans'
 import type { PreHandler, RequireSubscription } from '@/types'
+
+const DENIAL_MESSAGES: Record<EntitlementDenial, string> = {
+  subscription_required: 'Active subscription required',
+  feature_not_in_plan: 'Your plan does not include this feature',
+}
 
 export function createRequireSubscription(
   database: Database
 ): RequireSubscription {
-  const subscriptionsService = createSubscriptionsService(database)
-  const permissionsService = createPermissionsService(database)
+  const entitlementsService = createEntitlementsService(database)
 
   return function requireSubscription(feature?: string): PreHandler {
     if (!config.subscriptions.enabled) {
@@ -29,30 +33,14 @@ export function createRequireSubscription(
     }
 
     return async (request, reply) => {
-      // Users who can manage subscriptions are operators/admins — bypass the check.
-      const { roleId } = request.sessionUser
-      if (roleId) {
-        const isAdmin = await permissionsService.hasPermission(
-          roleId,
-          'subscriptions',
-          'view'
-        )
-        if (isAdmin) return
-      }
-
-      const sub = await subscriptionsService.getActiveByUserId(
-        request.sessionUser.id
+      const entitlements = await entitlementsService.forUser(
+        request.sessionUser
       )
-      if (!sub) {
+      const denial = denialFor(entitlements, feature)
+      if (denial) {
         return reply
           .status(403)
-          .send({ message: 'Active subscription required' })
-      }
-
-      if (feature && !planHasFeature(sub.planId, feature)) {
-        return reply
-          .status(403)
-          .send({ message: 'Your plan does not include this feature' })
+          .send({ message: DENIAL_MESSAGES[denial], code: denial })
       }
     }
   }

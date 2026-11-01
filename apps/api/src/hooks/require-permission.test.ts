@@ -42,7 +42,10 @@ describe('requirePermission', () => {
     currentRoleId = null
     const res = await app.inject({ method: 'GET', url: '/test' })
     expect(res.statusCode).toBe(403)
-    expect(res.json()).toEqual({ message: 'Forbidden' })
+    expect(res.json()).toEqual({
+      message: 'Forbidden',
+      code: 'permission_denied',
+    })
   })
 
   it('returns 403 when role has no matching permission', async () => {
@@ -50,7 +53,10 @@ describe('requirePermission', () => {
     currentRoleId = role.id
     const res = await app.inject({ method: 'GET', url: '/test' })
     expect(res.statusCode).toBe(403)
-    expect(res.json()).toEqual({ message: 'Forbidden' })
+    expect(res.json()).toEqual({
+      message: 'Forbidden',
+      code: 'permission_denied',
+    })
   })
 
   it('calls the route handler when role has the required permission', async () => {

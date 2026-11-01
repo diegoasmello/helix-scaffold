@@ -1,50 +1,29 @@
 import {
-  createSubscription,
-  getMePermissionsHandler,
-  getMeSubscriptionHandler,
-  getMeSubscriptionHandlerResponse204,
+  getMeEntitlementsHandler,
   getSubscriptionStatusHandler,
   getSubscriptionStatusHandlerResponse200,
 } from '@helix/api-client/mocks'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it } from 'vitest'
 
 import { server } from '../../../mocks/server'
 import { RequiresSubscription } from './requires-subscription'
-
-vi.mock('../../../lib/authentication', () => ({
-  authClient: {
-    useSession: () => ({
-      data: {
-        user: {
-          id: 'test-user',
-          name: 'Test',
-          email: 'test@example.com',
-          image: null,
-          roleId: 'test-role',
-        },
-      },
-      isPending: false,
-    }),
-  },
-}))
 
 const plans = [
   { id: 'starter', name: 'Starter', features: [] },
   { id: 'pro', name: 'Pro', features: ['reports'] },
 ]
 
+// What GET /me/entitlements answers for a user on that plan (or none).
 function mockSubscription(planId: string | null) {
   server.use(
-    getMeSubscriptionHandler(() =>
-      planId
-        ? new Response(
-            JSON.stringify(createSubscription({ planId, status: 'active' })),
-            { status: 200, headers: { 'Content-Type': 'application/json' } }
-          )
-        : getMeSubscriptionHandlerResponse204()
-    )
+    getMeEntitlementsHandler({
+      operator: false,
+      subscribed: planId !== null,
+      features: plans.find((plan) => plan.id === planId)?.features ?? [],
+      graceEndsAt: null,
+    })
   )
 }
 
@@ -67,10 +46,8 @@ beforeEach(() => {
       getSubscriptionStatusHandlerResponse200({
         enabled: true,
         plans,
-        pastDueGraceDays: 0,
       })
-    ),
-    getMePermissionsHandler({ grants: {} })
+    )
   )
 })
 
@@ -81,7 +58,6 @@ describe('RequiresSubscription', () => {
         getSubscriptionStatusHandlerResponse200({
           enabled: false,
           plans: [],
-          pastDueGraceDays: 0,
         })
       )
     )
@@ -113,9 +89,15 @@ describe('RequiresSubscription', () => {
     expect(await screen.findByText('Premium')).toBeInTheDocument()
   })
 
-  it('renders children for users with subscriptions:view', async () => {
-    mockSubscription(null)
-    server.use(getMePermissionsHandler({ grants: { subscriptions: ['view'] } }))
+  it('renders children for operators', async () => {
+    server.use(
+      getMeEntitlementsHandler({
+        operator: true,
+        subscribed: false,
+        features: [],
+        graceEndsAt: null,
+      })
+    )
     renderGate('reports')
     expect(await screen.findByText('Premium')).toBeInTheDocument()
   })

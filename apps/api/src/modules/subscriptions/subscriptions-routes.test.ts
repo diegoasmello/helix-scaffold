@@ -100,7 +100,6 @@ describe('GET /subscription/status', () => {
     expect(res.json()).toEqual({
       enabled: true,
       plans: config.subscriptions.plans,
-      pastDueGraceDays: config.subscriptions.pastDueGraceDays,
     })
   })
 })
@@ -116,7 +115,10 @@ describe('requireSubscription (via GET /todos)', () => {
       headers: { cookie },
     })
     expect(res.statusCode).toBe(403)
-    expect(res.json().message).toBe('Active subscription required')
+    expect(res.json()).toEqual({
+      message: 'Active subscription required',
+      code: 'subscription_required',
+    })
   })
 
   it("returns 403 when the user's plan lacks the feature", async () => {
@@ -129,7 +131,10 @@ describe('requireSubscription (via GET /todos)', () => {
       headers: { cookie },
     })
     expect(res.statusCode).toBe(403)
-    expect(res.json().message).toBe('Your plan does not include this feature')
+    expect(res.json()).toEqual({
+      message: 'Your plan does not include this feature',
+      code: 'feature_not_in_plan',
+    })
   })
 
   it("allows access when the user's plan includes the feature", async () => {
@@ -170,6 +175,7 @@ describe('requireSubscription (via GET /todos)', () => {
       headers: { cookie },
     })
     expect(res.statusCode).toBe(403)
+    expect(res.json().code).toBe('subscription_required')
   })
 
   it('lets users with subscriptions:view through without a subscription', async () => {
@@ -190,6 +196,76 @@ describe('requireSubscription (via GET /todos)', () => {
     expect(() => requireSubscription('nonexistent')).toThrow(
       /requireSubscription\('nonexistent'\)/
     )
+  })
+})
+
+describe('GET /me/entitlements', () => {
+  const DAY_MS = 24 * 60 * 60 * 1000
+
+  async function getEntitlements(cookie: string) {
+    const res = await app.inject({
+      method: 'GET',
+      url: '/me/entitlements',
+      headers: { cookie },
+    })
+    expect(res.statusCode).toBe(200)
+    return res.json()
+  }
+
+  it('grants nothing without a subscription', async () => {
+    const cookie = await createRestrictedSession([])
+    expect(await getEntitlements(cookie)).toEqual({
+      operator: false,
+      subscribed: false,
+      features: [],
+      graceEndsAt: null,
+    })
+  })
+
+  it("lists the features of the user's plan", async () => {
+    const cookie = await createRestrictedSession([], { planId: 'pro' })
+    expect(await getEntitlements(cookie)).toEqual({
+      operator: false,
+      subscribed: true,
+      features: ['todos'],
+      graceEndsAt: null,
+    })
+  })
+
+  it('flags operators (subscriptions:view)', async () => {
+    const cookie = await createRestrictedSession([
+      { resource: 'subscriptions', action: 'view' },
+    ])
+    const entitlements = await getEntitlements(cookie)
+    expect(entitlements.operator).toBe(true)
+    expect(entitlements.subscribed).toBe(false)
+  })
+
+  it('returns when a past_due subscription loses access', async () => {
+    const pastDueSince = new Date(Date.now() - 2 * DAY_MS)
+    const cookie = await createRestrictedSession([], {
+      planId: 'pro',
+      status: 'past_due',
+      pastDueSince,
+    })
+    const entitlements = await getEntitlements(cookie)
+    expect(entitlements.subscribed).toBe(true)
+    expect(new Date(entitlements.graceEndsAt)).toEqual(
+      new Date(
+        pastDueSince.getTime() + config.subscriptions.pastDueGraceDays * DAY_MS
+      )
+    )
+  })
+
+  it('treats a past_due subscription after the grace period as none', async () => {
+    const cookie = await createRestrictedSession([], {
+      planId: 'pro',
+      status: 'past_due',
+      pastDueSince: new Date(Date.now() - 8 * DAY_MS),
+    })
+    const entitlements = await getEntitlements(cookie)
+    expect(entitlements.subscribed).toBe(false)
+    expect(entitlements.features).toEqual([])
   })
 })
 

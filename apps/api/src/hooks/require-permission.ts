@@ -2,6 +2,9 @@ import type { Database } from '@/db'
 import { createPermissionsService } from '@/modules/permissions/permissions-service'
 import type { RequirePermission } from '@/types'
 
+// `code` tells this 403 apart from requireSubscription()'s (ApiError.code).
+const FORBIDDEN = { message: 'Forbidden', code: 'permission_denied' } as const
+
 export function createRequirePermission(database: Database): RequirePermission {
   const permissionsService = createPermissionsService(database)
 
@@ -10,7 +13,7 @@ export function createRequirePermission(database: Database): RequirePermission {
       const roleId = request.sessionUser?.roleId
 
       if (!roleId) {
-        return reply.status(403).send({ message: 'Forbidden' })
+        return reply.status(403).send(FORBIDDEN)
       }
 
       const allowed = await permissionsService.hasPermission(
@@ -20,7 +23,7 @@ export function createRequirePermission(database: Database): RequirePermission {
       )
 
       if (!allowed) {
-        return reply.status(403).send({ message: 'Forbidden' })
+        return reply.status(403).send(FORBIDDEN)
       }
     }
   }

@@ -18,10 +18,11 @@ import { formatDate } from '@/utils/date'
 
 import { PlanCatalog } from '../../subscriptions/components/plan-catalog'
 import { useSubscription } from '../../subscriptions/hooks/use-subscription'
+import { useSubscriptionAccess } from '../../subscriptions/hooks/use-subscription-access'
 
 export function MeSubscription() {
-  const { subscription, plan, plans, graceEndsAt, isPending } =
-    useSubscription()
+  const { subscription, plan, plans, isPending } = useSubscription()
+  const { graceEndsAt, isPending: accessPending } = useSubscriptionAccess()
   const { t } = useTranslation('subscription')
   const plansHeadingId = useId()
 
@@ -42,7 +43,7 @@ export function MeSubscription() {
       </Stack>
     ) : null
 
-  if (isPending) {
+  if (isPending || accessPending) {
     return (
       <Center h={120}>
         <Loader size="sm" />

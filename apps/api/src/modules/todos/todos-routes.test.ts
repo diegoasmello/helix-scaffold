@@ -583,6 +583,7 @@ describe('Permission enforcement', () => {
       headers: { cookie },
     })
     expect(res.statusCode).toBe(403)
+    expect(res.json().code).toBe('permission_denied')
   })
 
   it('returns 403 on POST /todos without todo:create', async () => {
@@ -604,6 +605,7 @@ describe('Permission enforcement', () => {
       headers: { cookie },
     })
     expect(res.statusCode).toBe(403)
+    expect(res.json().code).toBe('permission_denied')
   })
 
   it('returns 403 on PATCH /todos/:id without todo:edit', async () => {
@@ -626,6 +628,7 @@ describe('Permission enforcement', () => {
       headers: { cookie },
     })
     expect(res.statusCode).toBe(403)
+    expect(res.json().code).toBe('permission_denied')
   })
 
   it('returns 403 on DELETE /todos/:id without todo:delete', async () => {
@@ -647,5 +650,6 @@ describe('Permission enforcement', () => {
       headers: { cookie },
     })
     expect(res.statusCode).toBe(403)
+    expect(res.json().code).toBe('permission_denied')
   })
 })

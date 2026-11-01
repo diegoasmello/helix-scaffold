@@ -25,9 +25,7 @@ function mockStatus(enabled: boolean) {
   server.use(
     getSubscriptionStatusHandler(() =>
       getSubscriptionStatusHandlerResponse200(
-        enabled
-          ? { enabled: true, plans, pastDueGraceDays: 0 }
-          : { enabled: false, plans: [], pastDueGraceDays: 0 }
+        enabled ? { enabled: true, plans } : { enabled: false, plans: [] }
       )
     )
   )
@@ -120,42 +118,6 @@ describe('useSubscription', () => {
       expect(result.current.isTrialing).toBe(false)
     })
 
-    it('computes when a past_due subscription loses access', async () => {
-      server.use(
-        getSubscriptionStatusHandler(() =>
-          getSubscriptionStatusHandlerResponse200({
-            enabled: true,
-            plans,
-            pastDueGraceDays: 7,
-          })
-        )
-      )
-      mockMeSubscription(
-        createSubscription({
-          planId: 'pro',
-          status: 'past_due',
-          pastDueSince: '2026-03-01T12:00:00.000Z',
-        })
-      )
-      const result = await renderSettled()
-      expect(result.current.isPastDue).toBe(true)
-      expect(result.current.graceEndsAt).toEqual(
-        new Date('2026-03-08T12:00:00.000Z')
-      )
-    })
-
-    it('has no grace end for subscriptions that are not past_due', async () => {
-      mockMeSubscription(
-        createSubscription({
-          planId: 'pro',
-          status: 'active',
-          pastDueSince: null,
-        })
-      )
-      const result = await renderSettled()
-      expect(result.current.graceEndsAt).toBeNull()
-    })
-
     it('flags a trialing subscription', async () => {
       mockMeSubscription(
         createSubscription({ planId: 'starter', status: 'trialing' })
@@ -195,7 +157,6 @@ describe('useSubscription', () => {
           return getSubscriptionStatusHandlerResponse200({
             enabled: false,
             plans: [],
-            pastDueGraceDays: 0,
           })
         })
       )

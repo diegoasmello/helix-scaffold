@@ -192,7 +192,7 @@ Three settings, none of them sent to the API:
 
 ## `MeSubscription` (`routes/me-subscription.tsx`)
 
-A read-only view of the current user's subscription. It uses `useSubscription()` from `src/modules/subscriptions/hooks/use-subscription` and has no mutations. Status changes come from payment webhooks, and plan management lives in the admin `/subscriptions` section.
+A read-only view of the current user's subscription. It uses `useSubscription()` from `src/modules/subscriptions/hooks/use-subscription`, plus `useSubscriptionAccess().graceEndsAt` (from `GET /me/entitlements`) for the past_due warning, and has no mutations. Status changes come from payment webhooks, and plan management lives in the admin `/subscriptions` section.
 
 - `<Loader>` while `isPending` (status or subscription fetching)
 - "No active subscription" when `subscription` is `null`
@@ -250,3 +250,4 @@ vi.mock('../../../lib/authentication', () => ({
 | `GET /me/providers` | `getMeProvidersHandler` | `{ providers: [] }` |
 | `POST /me/set-password` | `postMeSetPasswordHandler` | `204` |
 | `GET /me/subscription` | `getMeSubscriptionHandler` | `204` (no subscription) |
+| `GET /me/entitlements` | `getMeEntitlementsHandler` | No subscription (`subscribed: false`, `graceEndsAt: null`) |

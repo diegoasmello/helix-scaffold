@@ -10,8 +10,10 @@ import {
 } from '@/lib/pg-errors'
 import type { FastifyTypedInstance, RequirePermission } from '@/types'
 
+import { createEntitlementsService } from './entitlements'
 import {
   createSubscriptionSchema,
+  entitlementsSchema,
   paginatedSubscriptionsSchema,
   subscriptionSchema,
   subscriptionsListQuerySchema,
@@ -47,6 +49,7 @@ export async function subscriptionsRoutes(
   }: { database: Database; requirePermission: RequirePermission }
 ) {
   const service = createSubscriptionsService(database)
+  const entitlementsService = createEntitlementsService(database)
 
   app.get(
     '/me/subscription',
@@ -62,10 +65,26 @@ export async function subscriptionsRoutes(
       },
     },
     async (request, reply) => {
-      const sub = await service.getActiveByUserId(request.sessionUser.id)
+      const sub = await service.getAccessGrantingByUserId(
+        request.sessionUser.id
+      )
       if (!sub) return reply.status(204).send(null)
       return sub
     }
+  )
+
+  app.get(
+    '/me/entitlements',
+    {
+      schema: {
+        operationId: 'getMeEntitlements',
+        tags: ['subscriptions'],
+        description:
+          'What the current user may use: the same decision requireSubscription() enforces',
+        response: { 200: entitlementsSchema },
+      },
+    },
+    async (request) => entitlementsService.forUser(request.sessionUser)
   )
 
   app.get(

@@ -1,5 +1,6 @@
 import {
   createSubscription,
+  getMeEntitlementsHandler,
   getMeSubscriptionHandler,
   getMeSubscriptionHandlerResponse200,
   getMeSubscriptionHandlerResponse204,
@@ -67,7 +68,6 @@ beforeEach(() => {
       getSubscriptionStatusHandlerResponse200({
         enabled: true,
         plans,
-        pastDueGraceDays: 0,
       })
     )
   )
@@ -170,13 +170,12 @@ describe('MeSubscription', () => {
   describe('past_due within the grace period', () => {
     beforeEach(() => {
       server.use(
-        getSubscriptionStatusHandler(() =>
-          getSubscriptionStatusHandlerResponse200({
-            enabled: true,
-            plans,
-            pastDueGraceDays: 7,
-          })
-        )
+        getMeEntitlementsHandler({
+          operator: false,
+          subscribed: true,
+          features: ['todos'],
+          graceEndsAt: '2026-03-08T12:00:00.000Z',
+        })
       )
       mockMeSubscription({
         ...mockSubscription,

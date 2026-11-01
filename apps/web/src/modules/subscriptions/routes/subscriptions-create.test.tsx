@@ -95,7 +95,6 @@ beforeEach(() => {
       getSubscriptionStatusHandlerResponse200({
         enabled: true,
         plans,
-        pastDueGraceDays: 0,
       })
     ),
     postSubscriptionsHandler(async (info) => {

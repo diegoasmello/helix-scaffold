@@ -44,6 +44,16 @@ export const subscriptionPlanSchema = z
   })
   .meta({ id: 'SubscriptionPlan', title: 'SubscriptionPlan' })
 
+// GET /me/entitlements — see `Entitlements` in ./entitlements.ts
+export const entitlementsSchema = z
+  .object({
+    operator: z.boolean(),
+    subscribed: z.boolean(),
+    features: z.array(z.string()),
+    graceEndsAt: z.date().nullable(),
+  })
+  .meta({ id: 'SubscriptionEntitlements', title: 'SubscriptionEntitlements' })
+
 // Validated against `subscriptions.plans` in src/app.config.ts. Kept as a plain
 // string in the OpenAPI spec so the catalog can change without regenerating
 // the client — the frontend reads it from GET /subscription/status.
