@@ -74,7 +74,8 @@ pnpm --filter api test:watch
 **Git hooks** (Husky):
 
 - `commit-msg` — commitlint with `@commitlint/config-conventional` (`feat(web): …`, `fix(api): …`).
-- `pre-commit` — lint-staged per workspace: `eslint --fix` on staged `*.ts`/`*.js` (not `*.tsx`, and no Prettier — run `pnpm lint` / `pnpm format` yourself). In `apps/api`, any staged `src/**/*.ts` (tests excluded) also re-exports `packages/api-client/openapi.json` and stages it.
+- `pre-commit` — one `pnpm lint-staged` run. For each staged file lint-staged uses the closest config (`lint-staged` in `apps/web`, `packages/ui` and `packages/api-client` `package.json`; `apps/api/lint-staged.config.js`) and runs `eslint --fix` then `prettier --write` on `*.ts`/`*.tsx`/`*.js` (Prettier only on `*.css`/`*.cjs`/`*.mjs`), with that workspace's ESLint and Prettier config; the fixes are staged automatically. `*.json` and `*.md` are in every `.prettierignore`, so `openapi.json` and the docs are never reformatted. In `apps/api`, a staged non-test file under `src/` also re-exports `packages/api-client/openapi.json` and stages it — after Prettier, since the config is a function that runs its commands in order.
+- A new workspace needs its own `lint-staged` config (copy `packages/ui`'s), or its files are committed unformatted.
 - `pre-push` — `pnpm type-check`, then re-exports the spec and blocks the push if it changed (skipped while `apps/api` or the spec have uncommitted changes).
 
 ## Tests

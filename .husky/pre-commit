@@ -1,4 +1,4 @@
+# One run covers every workspace: lint-staged picks, for each staged file, the
+# config closest to it (apps/web, apps/api, packages/ui, packages/api-client)
+# and formats it with that workspace's ESLint and Prettier setup.
 pnpm lint-staged
-pnpm lint-staged --cwd apps/web
-pnpm lint-staged --cwd apps/api
-pnpm lint-staged --cwd packages/ui

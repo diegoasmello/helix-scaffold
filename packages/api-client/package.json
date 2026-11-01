@@ -42,5 +42,11 @@
   },
   "peerDependencies": {
     "@tanstack/react-query": "5.100.1"
+  },
+  "lint-staged": {
+    "**/*.{ts,js}": [
+      "eslint --fix",
+      "prettier --write"
+    ]
   }
 }
