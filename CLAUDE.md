@@ -201,7 +201,7 @@ Both workspace `CLAUDE.md` files describe the exact steps.
 
 ### Audit logging checklist
 
-Every mutation route (POST, PATCH, DELETE) must emit an audit log entry after the service call succeeds. The audit log is best-effort: a failure must never affect the HTTP response.
+Every mutation route (POST, PATCH, DELETE) must emit an audit log entry after the service call succeeds — and only when something changed: a DELETE of an unknown id still answers 204 but writes no entry (`remove()` returns whether a row was deleted). The audit log is best-effort: a failure must never affect the HTTP response.
 
 - **Backend**: call `await request.audit(action, resource, resourceId?, metadata?)` after each successful mutation in the route handler. `request.audit` is injected globally in the authenticated scope via `registerAuditRequest` — route modules receive no extra parameter for this. See `apps/api/CLAUDE.md` → _Creating a new module_ → _Step 4_ for the exact pattern.
 

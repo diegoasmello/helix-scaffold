@@ -20,8 +20,9 @@ Run from `apps/api` (or from the root with the `pnpm db:*` / `pnpm spec:*` alias
 | Script | Does |
 | --- | --- |
 | `pnpm dev` | `tsx watch` on `src/server.ts` with `.env` |
-| `pnpm build` | `tsdown` (`tsdown.config.ts`) bundles `src/server.ts` into `dist/server.js` — `src/` only, with the `@/` alias and the PDF templates' JSX resolved; dependencies stay external (`node_modules` must be installed where it runs). `app.config.ts` is bundled, so a config change needs a rebuild |
-| `pnpm start` | `node dist/server.js` (with source maps). Does **not** load `.env` — the deploy provides the environment. Does not run migrations either: run `pnpm db:migrate` (`drizzle-kit`, a dev dependency) before starting a new version |
+| `pnpm build` | `tsdown` (`tsdown.config.ts`) bundles `src/server.ts` into `dist/server.js` and `src/db/migrate.ts` into `dist/migrate.js` — `src/` only, with the `@/` alias and the PDF templates' JSX resolved; dependencies stay external (`node_modules` must be installed where it runs). `app.config.ts` is bundled, so a config change needs a rebuild |
+| `pnpm start` | `node dist/server.js` (with source maps). Does **not** load `.env` — the deploy provides the environment. Does not run migrations: run `pnpm migrate` first |
+| `pnpm migrate` | `node dist/migrate.js` — applies pending migrations with drizzle-orm's runtime migrator (`src/db/migrate.ts` → `run-migrations.ts`). Needs only `DATABASE_URL` from the environment: no `.env`, no `drizzle-kit`, no dev dependencies. The build copies `src/db/migrations` to `dist/migrations`. Same journal as `drizzle-kit`, so it can follow `pnpm db:migrate` on any database |
 | `pnpm db:generate` | Generate a migration from the Drizzle schema (`src/db/schema/`) into `src/db/migrations/` |
 | `pnpm db:migrate` / `pnpm db:migrate:test` | Apply migrations to the dev DB (`.env`) / test DB (`.env.test`) |
 | `pnpm db:studio` | Drizzle Studio |
@@ -679,8 +680,13 @@ export function createFeatureService(database: Database) {
     return item ?? null
   }
 
-  async function remove(id: string) {
-    await database.delete(features).where(eq(features.id, id))
+  // `false` when the id did not exist — the route then skips the audit entry
+  async function remove(id: string): Promise<boolean> {
+    const deleted = await database
+      .delete(features)
+      .where(eq(features.id, id))
+      .returning({ id: features.id })
+    return deleted.length > 0
   }
 
   return { list, getById, create, update, remove }
@@ -830,8 +836,10 @@ export async function featureRoutes(
       preHandler: requirePermission('features', 'delete'),
     },
     async (request, reply) => {
-      await service.remove(request.params.id)
-      await request.audit('delete', 'features', request.params.id)
+      // 204 either way (idempotent), but only a real deletion is audited
+      if (await service.remove(request.params.id)) {
+        await request.audit('delete', 'features', request.params.id)
+      }
       return reply.status(204).send(null)
     }
   )
@@ -900,6 +908,7 @@ The helpers in `src/test/helpers.ts` provide:
 - `createTestSession(app)` — signs up `test@test.com` with the `__test_admin__` role (every permission in `ALL_PERMISSIONS`) and an active `pro` subscription; returns the cookie string
 - `getTestUser()` — the user created by `createTestSession()` (look it up by email, never by row order)
 - `createRoleWithPermissions(grants)` — a fresh role with exactly the given permissions, for permission enforcement tests
+- `findAuditLogs(action, resource, resourceId)` — the audit entries written for one record
 - `grantActiveSubscription(email, planId = 'pro')` — an active subscription for that user. Restricted users on a **subscription-gated** route need it (see _Permission enforcement tests_)
 - Cleanup: `cleanupAuth()` (session, account, verification, user **and all roles**), `cleanupUsers()` / `cleanupRoles()` (everything except the test user / test role), `cleanupAuditLogs()`, `cleanupSubscriptions()`, `cleanupTodos()`, `cleanupUploads()`
 
@@ -963,7 +972,7 @@ it('returns 401 on any route when not authenticated', async () => {
 | `GET /features/:id`    | 404 for unknown id; returns correct item                                                                                                                                                                                 |
 | `POST /features`       | 201 with correct body; 400 for invalid body                                                                                                                                                                              |
 | `PATCH /features/:id`  | 404 for unknown id; updates and returns correct fields (fields not sent remain unchanged)                                                                                                                                |
-| `DELETE /features/:id` | 204 for existing item; 204 for unknown id                                                                                                                                                                                |
+| `DELETE /features/:id` | 204 for existing item (one audit entry — `findAuditLogs`); 204 for unknown id and no audit entry (use a fresh id, e.g. `missing-${crypto.randomUUID()}`)                                                                                                                                                                                |
 
 ### Permission enforcement tests
 
