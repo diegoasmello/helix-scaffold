@@ -79,7 +79,7 @@ When registering a new module that uses `requireSubscription`, mirror this patte
 
 When subscription mode is disabled, `requireSubscription('todos')` returns a no-op preHandler. Todos routes work exactly as before — the `[requireSubscription('todos'), requirePermission(...)]` array simply runs the permission check only. No code changes are needed to toggle this behavior.
 
-`DELETE` returns `204` even when the id does not exist (Drizzle `delete().where()` is a no-op on missing rows).
+`DELETE` returns `204` even when the id does not exist, but audits only a real deletion (`remove()` returns `false` for an unknown id).
 
 ## PDF template (`src/modules/todos/templates/todos-report.tsx`)
 

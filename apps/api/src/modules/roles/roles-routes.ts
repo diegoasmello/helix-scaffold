@@ -176,8 +176,10 @@ export async function rolesRoutes(
           .status(409)
           .send({ message: 'Cannot delete a role that has assigned users' })
       }
-      await service.remove(request.params.id)
-      await request.audit('delete', 'roles', request.params.id)
+      // 204 either way (idempotent), but only a real deletion is audited
+      if (await service.remove(request.params.id)) {
+        await request.audit('delete', 'roles', request.params.id)
+      }
       return reply.status(204).send(null)
     }
   )

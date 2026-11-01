@@ -50,7 +50,7 @@ Factory signature: `createUsersService(database: Database, auth: Auth)` — rece
 2. Updates the `user` row directly. Returns `null` when the user id does not exist (callers handle 404).
 3. Returns the full `UserWithRole` via `getById`.
 
-**`remove`** — hard deletes the `user` row. Sessions and accounts cascade via FK.
+**`remove`** — hard deletes the `user` row and returns whether one existed. Sessions and accounts cascade via FK.
 
 **`listAll`** — every user with its role, no pagination. Backs `GET /users/all`.
 
@@ -76,7 +76,7 @@ Receives `{ database, auth, requirePermission }` — `auth` is an extra paramete
 
 **Audit on POST**: password is stripped before logging — `const { password: _, ...meta } = request.body`.
 
-`DELETE` returns `204` even when the id does not exist.
+`DELETE` returns `204` even when the id does not exist, but audits only a real deletion.
 
 ## Permissions config
 

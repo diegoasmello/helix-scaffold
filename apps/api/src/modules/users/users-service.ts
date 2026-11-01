@@ -131,8 +131,13 @@ export function createUsersService(database: Database, auth: Auth) {
     return getById(id)
   }
 
-  async function remove(id: string) {
-    await database.delete(user).where(eq(user.id, id))
+  /** Deletes the row; `false` when the id did not exist (nothing to audit). */
+  async function remove(id: string): Promise<boolean> {
+    const deleted = await database
+      .delete(user)
+      .where(eq(user.id, id))
+      .returning({ id: user.id })
+    return deleted.length > 0
   }
 
   async function listAll() {

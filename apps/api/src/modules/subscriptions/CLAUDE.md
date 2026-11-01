@@ -277,5 +277,5 @@ The `requireSubscription (via GET /todos)` block covers the behavior matrix abov
 - `GET /subscriptions/:id` — 404 for unknown; 200 for existing
 - `POST /subscriptions` — 201 with correct body; 400 for invalid body; 400 for non-existent userId
 - `PATCH /subscriptions/:id` — 404 for unknown; 200 with updated fields; unchanged fields persist
-- `DELETE /subscriptions/:id` — 204 for existing; 204 for unknown
+- `DELETE /subscriptions/:id` — 204 + one audit entry for existing; 204 and no audit entry for unknown
 - Permission enforcement — 403 for each route when session lacks the required grant

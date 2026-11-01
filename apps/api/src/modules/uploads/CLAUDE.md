@@ -67,9 +67,11 @@ SVG files are stored as-is (no variants generated).
 ## Cascade deletion
 
 `service.remove(id)`:
-1. Fetches the upload record (no-op if missing)
-2. Deletes the DB row
-3. Deletes all storage keys — original + variant keys — best-effort (`Promise.allSettled`), after the row is gone
+1. Fetches the upload record — returns `false` if missing
+2. Deletes the DB row — returns `false` if a concurrent delete got there first
+3. Deletes all storage keys — original + variant keys — best-effort (`Promise.allSettled`), after the row is gone, and returns `true`
+
+The route answers 204 either way and audits only when `remove()` returned `true`.
 
 Always call `service.remove()` instead of a raw DB delete when storage cleanup is needed.
 

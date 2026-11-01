@@ -232,9 +232,10 @@ export function createTodosService(
     }
   }
 
-  async function remove(id: string) {
+  /** Deletes the row; `false` when the id did not exist (nothing to audit). */
+  async function remove(id: string): Promise<boolean> {
     const [todo] = await database.select().from(todos).where(eq(todos.id, id))
-    if (!todo) return
+    if (!todo) return false
 
     const singleUploadIds = [todo.fileId, todo.imageId].filter(
       Boolean
@@ -254,12 +255,18 @@ export function createTodosService(
     const allUploads = [...attachmentList, ...singleUploads]
     const allUploadIds = allUploads.map((u) => u.id)
 
-    await database.delete(todos).where(eq(todos.id, id))
+    const deleted = await database
+      .delete(todos)
+      .where(eq(todos.id, id))
+      .returning({ id: todos.id })
+    // A concurrent delete got there first: it owns the upload cleanup.
+    if (deleted.length === 0) return false
 
     if (allUploadIds.length > 0) {
       await database.delete(uploads).where(inArray(uploads.id, allUploadIds))
       await deleteUploadKeys(storage, allUploads)
     }
+    return true
   }
 
   async function generateReport(query: TodosExportQuery): Promise<Buffer> {

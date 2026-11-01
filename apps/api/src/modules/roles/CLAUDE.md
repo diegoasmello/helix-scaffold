@@ -58,7 +58,7 @@ Receives `{ database, requirePermission }` — no `auth` parameter.
 1. `role?.isDefault` → `409 { message: 'Cannot delete the default registration role' }` — prevents silently breaking open registration.
 2. `service.hasUsers(id)` → `409 { message: 'Cannot delete a role that has assigned users' }`.
 
-No audit call on 409 — audit only fires after `service.remove` succeeds. Returns 204 even when the role id does not exist (Drizzle delete is a no-op on missing rows).
+No audit call on 409. Returns 204 even when the role id does not exist, but audits only when `service.remove` actually deleted a row (it returns a boolean).
 
 **`GET /roles/all`** — no pagination schema, no `buildPaginatedResponse`. Response is `z.array(roleSchema)`. The route handler is a one-liner: `async () => service.listAll()`.
 

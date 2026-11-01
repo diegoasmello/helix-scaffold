@@ -22,6 +22,7 @@ import {
   createRoleWithPermissions,
   createTestApp,
   createTestSession,
+  findAuditLogs,
   testDb,
 } from '@/test/helpers'
 
@@ -283,6 +284,9 @@ describe('DELETE /uploads/:id', () => {
       headers: { cookie: authCookie },
     })
     expect(res.statusCode).toBe(204)
+    expect(await findAuditLogs('delete', 'uploads', inserted.id)).toHaveLength(
+      1
+    )
 
     const [gone] = await testDb
       .select()
@@ -292,12 +296,15 @@ describe('DELETE /uploads/:id', () => {
   })
 
   it('returns 204 for unknown id (idempotent)', async () => {
+    const id = `missing-${crypto.randomUUID()}`
     const res = await app.inject({
       method: 'DELETE',
-      url: '/uploads/nonexistent',
+      url: `/uploads/${id}`,
       headers: { cookie: authCookie },
     })
     expect(res.statusCode).toBe(204)
+    // Nothing was deleted, so nothing is audited
+    expect(await findAuditLogs('delete', 'uploads', id)).toHaveLength(0)
   })
 })
 

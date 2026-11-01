@@ -11,6 +11,7 @@ import {
   createRoleWithPermissions,
   createTestApp,
   createTestSession,
+  findAuditLogs,
   testDb,
 } from '@/test/helpers'
 
@@ -528,15 +529,19 @@ describe('DELETE /users/:id', () => {
       headers: { cookie: authCookie },
     })
     expect(res.statusCode).toBe(204)
+    expect(await findAuditLogs('delete', 'users', inserted.id)).toHaveLength(1)
   })
 
   it('returns 204 for non-existing user', async () => {
+    const id = `missing-${crypto.randomUUID()}`
     const res = await app.inject({
       method: 'DELETE',
-      url: '/users/nonexistent-id',
+      url: `/users/${id}`,
       headers: { cookie: authCookie },
     })
     expect(res.statusCode).toBe(204)
+    // Nothing was deleted, so nothing is audited
+    expect(await findAuditLogs('delete', 'users', id)).toHaveLength(0)
   })
 })
 

@@ -177,8 +177,10 @@ export async function uploadsRoutes(
       preHandler: requirePermission('uploads', 'delete'),
     },
     async (request, reply) => {
-      await service.remove(request.params.id)
-      await request.audit('delete', 'uploads', request.params.id)
+      // 204 either way (idempotent), but only a real deletion is audited
+      if (await service.remove(request.params.id)) {
+        await request.audit('delete', 'uploads', request.params.id)
+      }
       return reply.status(204).send(null)
     }
   )

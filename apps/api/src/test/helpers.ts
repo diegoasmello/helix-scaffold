@@ -1,4 +1,4 @@
-import { eq, ne } from 'drizzle-orm'
+import { and, eq, ne } from 'drizzle-orm'
 import { drizzle } from 'drizzle-orm/node-postgres'
 
 import { buildApp } from '@/app'
@@ -141,6 +141,24 @@ export async function grantActiveSubscription(email: string, planId = 'pro') {
     currentPeriodStart: new Date(),
     currentPeriodEnd: new Date('2099-01-01'),
   })
+}
+
+/** Audit entries written for one action on one record. */
+export async function findAuditLogs(
+  action: string,
+  resource: string,
+  resourceId: string
+) {
+  return testDb
+    .select()
+    .from(auditLogs)
+    .where(
+      and(
+        eq(auditLogs.action, action),
+        eq(auditLogs.resource, resource),
+        eq(auditLogs.resourceId, resourceId)
+      )
+    )
 }
 
 export async function createRoleWithPermissions(

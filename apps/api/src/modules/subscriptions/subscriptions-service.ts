@@ -139,8 +139,13 @@ export function createSubscriptionsService(database: Database) {
     return sub ?? null
   }
 
-  async function remove(id: string) {
-    await database.delete(subscriptions).where(eq(subscriptions.id, id))
+  /** Deletes the row; `false` when the id did not exist (nothing to audit). */
+  async function remove(id: string): Promise<boolean> {
+    const deleted = await database
+      .delete(subscriptions)
+      .where(eq(subscriptions.id, id))
+      .returning({ id: subscriptions.id })
+    return deleted.length > 0
   }
 
   /**

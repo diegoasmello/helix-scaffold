@@ -178,8 +178,10 @@ export async function todosRoutes(
       ],
     },
     async (request, reply) => {
-      await service.remove(request.params.id)
-      await request.audit('delete', 'todos', request.params.id)
+      // 204 either way (idempotent), but only a real deletion is audited
+      if (await service.remove(request.params.id)) {
+        await request.audit('delete', 'todos', request.params.id)
+      }
       return reply.status(204).send(null)
     }
   )

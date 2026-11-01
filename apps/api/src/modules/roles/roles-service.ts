@@ -80,8 +80,13 @@ export function createRolesService(database: Database) {
     })
   }
 
-  async function remove(id: string) {
-    await database.delete(roles).where(eq(roles.id, id))
+  /** Deletes the row; `false` when the id did not exist (nothing to audit). */
+  async function remove(id: string): Promise<boolean> {
+    const deleted = await database
+      .delete(roles)
+      .where(eq(roles.id, id))
+      .returning({ id: roles.id })
+    return deleted.length > 0
   }
 
   return { list, listAll, getById, hasUsers, create, update, remove }

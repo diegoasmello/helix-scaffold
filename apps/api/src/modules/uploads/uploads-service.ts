@@ -56,9 +56,10 @@ export function createUploadsService(
     return item
   }
 
-  async function remove(id: string) {
+  /** Deletes the row; `false` when the id did not exist (nothing to audit). */
+  async function remove(id: string): Promise<boolean> {
     const item = await getById(id)
-    if (!item) return
+    if (!item) return false
 
     const keysToDelete = [item.storageKey]
     if (item.variants) {
@@ -70,9 +71,14 @@ export function createUploadsService(
       )
     }
 
-    await database.delete(uploads).where(eq(uploads.id, id))
+    const deleted = await database
+      .delete(uploads)
+      .where(eq(uploads.id, id))
+      .returning({ id: uploads.id })
+    if (deleted.length === 0) return false
 
     await Promise.allSettled(keysToDelete.map((key) => storage.delete(key)))
+    return true
   }
 
   return { list, getById, create, remove }
