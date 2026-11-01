@@ -20,15 +20,17 @@ Run from `apps/api` (or from the root with the `pnpm db:*` / `pnpm spec:*` alias
 | Script | Does |
 | --- | --- |
 | `pnpm dev` | `tsx watch` on `src/server.ts` with `.env` |
+| `pnpm build` | `tsdown` (`tsdown.config.ts`) bundles `src/server.ts` into `dist/server.js` — `src/` only, with the `@/` alias and the PDF templates' JSX resolved; dependencies stay external (`node_modules` must be installed where it runs). `app.config.ts` is bundled, so a config change needs a rebuild |
+| `pnpm start` | `node dist/server.js` (with source maps). Does **not** load `.env` — the deploy provides the environment. Does not run migrations either: run `pnpm db:migrate` (`drizzle-kit`, a dev dependency) before starting a new version |
 | `pnpm db:generate` | Generate a migration from the Drizzle schema (`src/db/schema/`) into `src/db/migrations/` |
 | `pnpm db:migrate` / `pnpm db:migrate:test` | Apply migrations to the dev DB (`.env`) / test DB (`.env.test`) |
 | `pnpm db:studio` | Drizzle Studio |
-| `pnpm db:seed` | Dev data (`src/db/seed.ts`). **Refuses to run if any user exists.** Wipes `uploads.dir`, creates Admin/Moderator/User roles (none marked `isDefault`), an admin login (credentials hard-coded in the file), 20 extra users and sample todos with uploads |
+| `pnpm db:seed` | Dev data (`src/db/seed.ts`). **Refuses to run if any user exists.** Wipes `uploads.dir`, creates Admin/Moderator/User roles (none marked `isDefault`), an admin login (`admin@example.com` / `pass1234`), 20 extra users (same password) and sample todos with uploads |
 | `pnpm db:reset` | Truncates every table in the schema (`drizzle-seed` `reset`). Does not touch `uploads.dir` |
 | `pnpm spec:export <file>` | Writes the OpenAPI spec — see _OpenAPI spec export_ |
 | `pnpm test` / `pnpm test:watch` | Vitest against the test DB |
 
-There is no `build` script yet (`tsconfig.json` has `noEmit: true`), so `pnpm start` (`node dist/server.js`) has nothing to run. Production builds are an open decision.
+`tsc` never emits (`noEmit: true`) — it only type-checks; `tsdown` produces the build. The seed and the other `src/db/*.ts` scripts are not part of the build: they run through `tsx`.
 
 **Background jobs** start in `src/server.ts` after `listen` (not in `buildApp`, so tests never run them): orphan upload cleanup (every `uploads.orphanCleanup.intervalHours`) and, when subscriptions are enabled, subscription expiration (at startup and every `subscriptions.expiration.intervalHours`).
 

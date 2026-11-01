@@ -125,7 +125,17 @@ This starts `apps/api` on `http://localhost:3333` and `apps/web` on `http://loca
 
 Open `http://localhost:5173` — you will be redirected to `/bootstrap` on the first run. Create the admin account there.
 
-Alternatively, `pnpm db:seed` fills an empty database with sample roles, users and todos (the admin credentials are in `apps/api/src/db/seed.ts`).
+Alternatively, `pnpm db:seed` fills an empty database with sample roles, users and todos — sign in as `admin@example.com` / `pass1234` (every seeded user shares that password).
+
+## Building for production
+
+```bash
+pnpm build                       # apps/web → apps/web/dist (static files), apps/api → apps/api/dist
+pnpm --filter api db:migrate     # apply migrations to the target database
+pnpm --filter api start          # node dist/server.js
+```
+
+`pnpm start` does not read `apps/api/.env`: give the API its environment (`DATABASE_URL`, `AUTH_SECRET`, …) from the host. The API bundle contains only `src/`, so its dependencies must be installed where it runs. Migrations use `drizzle-kit`, a dev dependency, so run them from an environment with dev dependencies installed (e.g. CI) with `DATABASE_URL` pointing at the target database. The product config (`app.config.ts`) is bundled in, so changing it needs a rebuild.
 
 ## Testing
 

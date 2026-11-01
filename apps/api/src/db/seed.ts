@@ -30,8 +30,6 @@ const auth = createAuth(
 )
 
 const MODERATOR_PERMISSIONS = [
-  { resource: 'me', action: 'view' },
-  { resource: 'me', action: 'edit' },
   { resource: 'todos', action: 'view' },
   { resource: 'todos', action: 'create' },
   { resource: 'todos', action: 'edit' },
@@ -42,8 +40,6 @@ const MODERATOR_PERMISSIONS = [
 ]
 
 const USER_PERMISSIONS = [
-  { resource: 'me', action: 'view' },
-  { resource: 'me', action: 'edit' },
   { resource: 'todos', action: 'view' },
   { resource: 'todos', action: 'create' },
   { resource: 'todos', action: 'edit' },
@@ -130,8 +126,8 @@ async function main() {
   console.log('Creating admin user...')
   const adminResult = await auth.api.signUpEmail({
     body: {
-      name: 'Diego Mello',
-      email: 'diegoasmello@gmail.com',
+      name: 'Admin',
+      email: 'admin@example.com',
       password: 'pass1234',
     },
   })
@@ -196,6 +192,7 @@ async function main() {
     `Seed complete: 3 roles, ${1 + EXTRA_USERS.length} users, ${TODO_COUNT} todos, ` +
       `${imageUploads.imageIds.length + fileUploads.fileIds.length + attachmentUploads.fileIds.length} uploads.`
   )
+  console.log('Sign in as admin@example.com / pass1234.')
   process.exit(0)
 }
 
