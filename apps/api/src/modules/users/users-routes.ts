@@ -1,7 +1,7 @@
-import { APIError } from 'better-auth'
 import z from 'zod'
 
 import type { Config } from '@/config'
+import { DomainError, errorSchema } from '@/lib/domain-errors'
 import { buildPaginatedResponse } from '@/lib/pagination'
 
 import type { Auth } from '../../auth'
@@ -92,34 +92,18 @@ export async function usersRoutes(
         body: createUserSchema,
         response: {
           201: userWithRoleSchema,
-          404: z.object({ message: z.string() }),
-          409: z.object({ message: z.string() }),
+          404: errorSchema('role_not_found'),
+          409: errorSchema('email_taken'),
         },
       },
       preHandler: requirePermission('users', 'create'),
     },
     async (request, reply) => {
-      try {
-        const item = await service.create(request.body)
-        if (!item) throw new Error('Unexpected: user not found after creation')
-        const { password: _, ...meta } = request.body
-        await request.audit('create', 'users', item.id, meta)
-        return reply.status(201).send(item)
-      } catch (error) {
-        if (
-          error instanceof APIError &&
-          error.body?.code === 'USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL'
-        ) {
-          return reply.status(409).send({ message: 'Email already in use' })
-        }
-        if (
-          error instanceof Error &&
-          (error as NodeJS.ErrnoException).code === 'ROLE_NOT_FOUND'
-        ) {
-          return reply.status(404).send({ message: 'Role not found' })
-        }
-        throw error
-      }
+      const item = await service.create(request.body)
+      if (!item) throw new Error('Unexpected: user not found after creation')
+      const { password: _, ...meta } = request.body
+      await request.audit('create', 'users', item.id, meta)
+      return reply.status(201).send(item)
     }
   )
 
@@ -133,26 +117,19 @@ export async function usersRoutes(
         body: updateUserSchema,
         response: {
           200: userWithRoleSchema,
-          404: z.object({ message: z.string() }),
+          404: errorSchema('user_not_found', 'role_not_found'),
+          409: errorSchema('email_taken'),
         },
       },
       preHandler: requirePermission('users', 'edit'),
     },
-    async (request, reply) => {
-      try {
-        const item = await service.update(request.params.id, request.body)
-        if (!item) return reply.status(404).send({ message: 'User not found' })
-        await request.audit('edit', 'users', request.params.id, request.body)
-        return item
-      } catch (error) {
-        if (
-          error instanceof Error &&
-          (error as NodeJS.ErrnoException).code === 'ROLE_NOT_FOUND'
-        ) {
-          return reply.status(404).send({ message: 'Role not found' })
-        }
-        throw error
+    async (request) => {
+      const item = await service.update(request.params.id, request.body)
+      if (!item) {
+        throw new DomainError(404, 'user_not_found', 'User not found')
       }
+      await request.audit('edit', 'users', request.params.id, request.body)
+      return item
     }
   )
 

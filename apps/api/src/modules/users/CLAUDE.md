@@ -39,12 +39,12 @@ Factory signature: `createUsersService(database: Database, auth: Auth, config)` 
 
 **`create`** flow:
 
-1. `provisionAccount(data)` (account provisioning, `src/modules/accounts/`) — validates the role (throws `RoleNotFoundError`, `code: 'ROLE_NOT_FOUND'`, before anything is written), signs the user up through better-auth (never a direct insert) and assigns the role. A failed assignment deletes the user again, so no user is left without the role that was asked for.
+1. `provisionAccount(data)` (account provisioning, `src/modules/accounts/`) — validates the role (throws `RoleNotFoundError` — 404 `role_not_found` — before anything is written; a used email throws `EmailTakenError`, 409 `email_taken`), signs the user up through better-auth (never a direct insert) and assigns the role. A failed assignment deletes the user again, so no user is left without the role that was asked for.
 2. Returns the full `UserWithRole` via `getById`.
 
 **`update`** flow:
 
-1. If `roleId` is provided (and not `null`), validates the role exists. Throws `RoleNotFoundError` (`code: 'ROLE_NOT_FOUND'`) if not.
+1. If `roleId` is provided (and not `null`), validates the role exists. Throws `RoleNotFoundError` (404 `role_not_found`) if not.
 2. Updates the `user` row directly. Returns `null` when the user id does not exist (callers handle 404).
 3. Returns the full `UserWithRole` via `getById`.
 
@@ -69,8 +69,11 @@ Receives `{ database, auth, requirePermission }` — `auth` is an extra paramete
 
 **Extra response codes** (beyond the standard 200/201/204/404):
 
-- `POST`: `409 { message: 'Email already in use' }` — caught from `better-auth`'s `APIError` with code `USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL`.
-- `POST` / `PATCH`: `404 { message: 'Role not found' }` — caught from the service's `ROLE_NOT_FOUND` error code.
+Errors are `DomainError`s (see `apps/api/CLAUDE.md` → _Errors the client can act on_) — the handlers have no `try/catch`:
+
+- `POST` / `PATCH`: `409 { message: 'Email already in use', code: 'email_taken' }` — `EmailTakenError`. On `POST`, account provisioning maps better-auth's `USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL`; on `PATCH`, the service maps the `user_email_unique` violation (it used to be a 500).
+- `POST` / `PATCH`: `404 { message: 'Role not found', code: 'role_not_found' }` — `RoleNotFoundError`.
+- `PATCH`: `404 { message: 'User not found', code: 'user_not_found' }` for an unknown id.
 
 **Audit on POST**: password is stripped before logging — `const { password: _, ...meta } = request.body`.
 

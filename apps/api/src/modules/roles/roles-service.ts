@@ -2,13 +2,34 @@ import { asc, count, desc, eq, sql } from 'drizzle-orm'
 
 import type { Database } from '@/db'
 import { roles, user } from '@/db/schema'
+import { DomainError } from '@/lib/domain-errors'
 import { getPaginationParams } from '@/lib/pagination'
+import {
+  getPgErrorCode,
+  getPgErrorConstraint,
+  PG_UNIQUE_VIOLATION,
+} from '@/lib/pg-errors'
 
 import type {
   CreateRoleInput,
   RolesListQuery,
   UpdateRoleInput,
 } from './roles-schema'
+
+/** `roles.name` is unique: another role already has this name. */
+function nameTaken(error: unknown): never {
+  if (
+    getPgErrorCode(error) === PG_UNIQUE_VIOLATION &&
+    getPgErrorConstraint(error) === 'roles_name_unique'
+  ) {
+    throw new DomainError(
+      409,
+      'name_taken',
+      'A role with this name already exists'
+    )
+  }
+  throw error
+}
 
 const SORT_COLUMNS = {
   name: roles.name,
@@ -50,38 +71,63 @@ export function createRolesService(database: Database) {
     return !!found
   }
 
+  /** Throws `name_taken` (409) for a duplicate name. */
   async function create(data: CreateRoleInput) {
-    return database.transaction(async (tx) => {
-      if (data.isDefault) {
-        await tx
-          .update(roles)
-          .set({ isDefault: false })
-          .where(sql`is_default = true`)
-      }
-      const [role] = await tx.insert(roles).values(data).returning()
-      return role
-    })
+    return database
+      .transaction(async (tx) => {
+        if (data.isDefault) {
+          await tx
+            .update(roles)
+            .set({ isDefault: false })
+            .where(sql`is_default = true`)
+        }
+        const [role] = await tx.insert(roles).values(data).returning()
+        return role
+      })
+      .catch(nameTaken)
   }
 
+  /** Throws `name_taken` (409) for a duplicate name. */
   async function update(id: string, data: UpdateRoleInput) {
-    return database.transaction(async (tx) => {
-      if (data.isDefault) {
-        await tx
+    return database
+      .transaction(async (tx) => {
+        if (data.isDefault) {
+          await tx
+            .update(roles)
+            .set({ isDefault: false })
+            .where(sql`is_default = true`)
+        }
+        const [role] = await tx
           .update(roles)
-          .set({ isDefault: false })
-          .where(sql`is_default = true`)
-      }
-      const [role] = await tx
-        .update(roles)
-        .set(data)
-        .where(eq(roles.id, id))
-        .returning()
-      return role ?? null
-    })
+          .set(data)
+          .where(eq(roles.id, id))
+          .returning()
+        return role ?? null
+      })
+      .catch(nameTaken)
   }
 
-  /** Deletes the row; `false` when the id did not exist (nothing to audit). */
+  /**
+   * Deletes the row; `false` when the id did not exist (nothing to audit).
+   * Refuses (409) the default registration role (`default_role`) and a role
+   * that still has users (`role_in_use`).
+   */
   async function remove(id: string): Promise<boolean> {
+    const role = await getById(id)
+    if (role?.isDefault) {
+      throw new DomainError(
+        409,
+        'default_role',
+        'Cannot delete the default registration role'
+      )
+    }
+    if (await hasUsers(id)) {
+      throw new DomainError(
+        409,
+        'role_in_use',
+        'Cannot delete a role that has assigned users'
+      )
+    }
     const deleted = await database
       .delete(roles)
       .where(eq(roles.id, id))

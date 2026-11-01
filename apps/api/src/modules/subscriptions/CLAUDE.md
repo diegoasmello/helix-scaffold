@@ -107,20 +107,20 @@ The frontend `useSubscription()` hook (`src/modules/subscriptions/hooks/use-subs
 
 ### `POST /subscriptions` — FK validation
 
-The `userId` field is validated by the DB FK constraint. If the provided `userId` does not refer to an existing user, PostgreSQL raises error code `23503` (FOREIGN_KEY_VIOLATION). The route catches this code specifically and returns **400 `{ message: 'User not found' }`**. All other DB errors re-throw as 500.
+The `userId` field is validated by the DB FK constraint. If the provided `userId` does not refer to an existing user, PostgreSQL raises error code `23503` (FOREIGN_KEY_VIOLATION). `toDomainError()` in the route turns it into **400 `{ message: 'User not found', code: 'user_not_found' }`** (a `DomainError` — see `apps/api/CLAUDE.md` → _Errors the client can act on_). All other DB errors re-throw as 500.
 
 Postgres codes are read with `getPgErrorCode(error)` from `src/lib/pg-errors.ts` — Drizzle wraps driver errors, so the code may be on the error or on its `cause`. Never read `error.code` directly.
 
 ### `POST` / `PATCH` — one live subscription per user
 
-Both unique indexes raise `23505`; the routes tell them apart with `getPgErrorConstraint()` and return **409 `{ message, code }`**:
+Both unique indexes raise `23505`; `toDomainError()` tells them apart with `getPgErrorConstraint()` and throws a `DomainError` — **409 `{ message, code }`**:
 
 | Violated index | When | `code` |
 | --- | --- | --- |
 | `subscriptions_one_live_per_user` | Creating a live (`active`/`trialing`) subscription for a user who already has one, or reactivating a row while another is live | `live_subscription_exists` |
 | `subscriptions_external_id_unique` | Reusing an `externalId` that another subscription has | `external_id_taken` |
 
-The frontend maps `code` to a translated message (`apps/web/src/modules/subscriptions/api-errors.ts`).
+The frontend translates `code` from `errors.<code>` in the `subscription` locale (`apiErrorMessage`, `apps/web/src/lib/api-errors.ts`).
 
 ### `PATCH /subscriptions/:id` — automatic `canceledAt`
 

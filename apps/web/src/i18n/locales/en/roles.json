@@ -70,5 +70,10 @@
     "updateFailed": "Failed to update role",
     "deleted": "Role deleted successfully",
     "deleteFailed": "Failed to delete role"
+  },
+  "errors": {
+    "default_role": "The default registration role cannot be deleted. Make another role the default first.",
+    "role_in_use": "This role still has users. Move them to another role first.",
+    "role_not_found": "This role no longer exists."
   }
 }

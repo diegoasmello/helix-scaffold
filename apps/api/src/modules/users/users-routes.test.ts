@@ -282,7 +282,10 @@ describe('POST /users', () => {
       headers: { cookie: authCookie },
     })
     expect(res.statusCode).toBe(404)
-    expect(res.json()).toEqual({ message: 'Role not found' })
+    expect(res.json()).toEqual({
+      message: 'Role not found',
+      code: 'role_not_found',
+    })
   })
 
   it('returns 409 when email is already in use', async () => {
@@ -308,7 +311,10 @@ describe('POST /users', () => {
       headers: { cookie: authCookie },
     })
     expect(res.statusCode).toBe(409)
-    expect(res.json()).toEqual({ message: 'Email already in use' })
+    expect(res.json()).toEqual({
+      message: 'Email already in use',
+      code: 'email_taken',
+    })
   })
 
   it('returns 400 for invalid body', async () => {
@@ -337,6 +343,28 @@ describe('POST /users', () => {
 })
 
 describe('PATCH /users/:id', () => {
+  it('returns 409 email_taken when the email belongs to another user', async () => {
+    const [first, second] = await testDb
+      .insert(user)
+      .values([
+        { id: uuidv7(), name: 'A', email: 'a@test.com', emailVerified: false },
+        { id: uuidv7(), name: 'B', email: 'b@test.com', emailVerified: false },
+      ])
+      .returning()
+
+    const res = await app.inject({
+      method: 'PATCH',
+      url: `/users/${second.id}`,
+      payload: { email: first.email },
+      headers: { cookie: authCookie },
+    })
+    expect(res.statusCode).toBe(409)
+    expect(res.json()).toEqual({
+      message: 'Email already in use',
+      code: 'email_taken',
+    })
+  })
+
   it('returns 404 for unknown id', async () => {
     const res = await app.inject({
       method: 'PATCH',
@@ -345,7 +373,10 @@ describe('PATCH /users/:id', () => {
       headers: { cookie: authCookie },
     })
     expect(res.statusCode).toBe(404)
-    expect(res.json()).toEqual({ message: 'User not found' })
+    expect(res.json()).toEqual({
+      message: 'User not found',
+      code: 'user_not_found',
+    })
   })
 
   it('updates name and preserves other fields', async () => {
@@ -444,7 +475,10 @@ describe('PATCH /users/:id', () => {
       headers: { cookie: authCookie },
     })
     expect(res.statusCode).toBe(404)
-    expect(res.json()).toEqual({ message: 'Role not found' })
+    expect(res.json()).toEqual({
+      message: 'Role not found',
+      code: 'role_not_found',
+    })
   })
 })
 

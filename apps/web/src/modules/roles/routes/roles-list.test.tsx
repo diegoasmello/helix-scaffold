@@ -20,6 +20,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { server } from '../../../mocks/server'
 import { RolesList } from './roles-list'
 
+const mockNotify = vi.hoisted(() => vi.fn())
+
+vi.mock('@helix/ui', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@helix/ui')>()),
+  notify: mockNotify,
+}))
+
 vi.mock('.', () => ({
   rolesListRoute: {
     useNavigate: () => vi.fn(),
@@ -148,6 +155,38 @@ describe('RolesList', () => {
       within(dialog).getByRole('button', { name: 'Delete' })
     )
     await waitFor(() => expect(deletedId).toBe('1'))
+  })
+
+  it('explains why the API refused the deletion', async () => {
+    server.use(
+      deleteRolesIdHandler(
+        () =>
+          new Response(
+            JSON.stringify({
+              message: 'Cannot delete a role that has assigned users',
+              code: 'role_in_use',
+            }),
+            { status: 409 }
+          )
+      )
+    )
+    renderRolesList()
+    const menuButtons = await screen.findAllByLabelText('Actions')
+    await userEvent.click(menuButtons[0])
+    await userEvent.click(
+      await screen.findByRole('menuitem', { name: 'Delete' })
+    )
+    const dialog = await screen.findByRole('dialog')
+    await userEvent.click(
+      within(dialog).getByRole('button', { name: 'Delete' })
+    )
+
+    await waitFor(() =>
+      expect(mockNotify).toHaveBeenCalledWith({
+        status: 'danger',
+        message: 'This role still has users. Move them to another role first.',
+      })
+    )
   })
 
   it('closes delete modal on cancel', async () => {

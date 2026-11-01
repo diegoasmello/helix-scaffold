@@ -2,6 +2,7 @@ import {
   createUserWithRole,
   postUsersHandler,
   postUsersHandlerResponse201,
+  postUsersHandlerResponse409,
 } from '@helix/api-client/mocks'
 import {
   MantineEmotionProvider,
@@ -19,6 +20,13 @@ import type { CreateUserInput, UserFormValues } from '../types'
 import { UsersCreate } from './users-create'
 
 const mockNavigate = vi.fn()
+
+const mockNotify = vi.hoisted(() => vi.fn())
+
+vi.mock('@helix/ui', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@helix/ui')>()),
+  notify: mockNotify,
+}))
 
 vi.mock('.', () => ({
   usersCreateRoute: { useNavigate: () => mockNavigate },
@@ -139,6 +147,38 @@ describe('UsersCreate', () => {
       expect(capturedBody).not.toHaveProperty('roleId')
       expect(mockNavigate).toHaveBeenCalledWith({ to: '/users' })
     })
+  })
+
+  it('explains a 409 when the email is already in use', async () => {
+    server.use(
+      postUsersHandler(() =>
+        postUsersHandlerResponse409({
+          message: 'Email already in use',
+          code: 'email_taken',
+        })
+      )
+    )
+
+    renderUsersCreate()
+    await screen.findByRole('heading', { name: 'Create User' })
+    await userEvent.type(screen.getByPlaceholderText('Full name'), 'Alice')
+    await userEvent.type(
+      screen.getByPlaceholderText('email@example.com'),
+      'alice@example.com'
+    )
+    await userEvent.type(
+      screen.getByPlaceholderText('Min 8 characters'),
+      'password123'
+    )
+    await userEvent.click(screen.getByRole('button', { name: 'Save' }))
+
+    await waitFor(() =>
+      expect(mockNotify).toHaveBeenCalledWith({
+        status: 'danger',
+        message: 'This email is already used by another user.',
+      })
+    )
+    expect(mockNavigate).not.toHaveBeenCalled()
   })
 
   it('does not navigate when API returns error', async () => {

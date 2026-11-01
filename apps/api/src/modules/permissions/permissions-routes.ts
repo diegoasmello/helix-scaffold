@@ -1,6 +1,7 @@
 import z from 'zod'
 
 import { findUnknownGrants, RESOURCE_DEFINITIONS } from '@/config/permissions'
+import { DomainError, errorSchema } from '@/lib/domain-errors'
 import { getPgErrorCode, PG_FOREIGN_KEY_VIOLATION } from '@/lib/pg-errors'
 
 import type { Database } from '../../db'
@@ -77,18 +78,20 @@ export async function permissionsRoutes(
         body: rolePermissionsResponseSchema,
         response: {
           200: rolePermissionsResponseSchema,
-          400: z.object({ message: z.string() }),
-          404: z.object({ message: z.string() }),
+          400: errorSchema('unknown_permissions'),
+          404: errorSchema('role_not_found'),
         },
       },
       preHandler: requirePermission('permissions', 'edit'),
     },
-    async (request, reply) => {
+    async (request) => {
       const unknown = findUnknownGrants(request.body.grants)
       if (unknown.length > 0) {
-        return reply
-          .status(400)
-          .send({ message: `Unknown permissions: ${unknown.join(', ')}` })
+        throw new DomainError(
+          400,
+          'unknown_permissions',
+          `Unknown permissions: ${unknown.join(', ')}`
+        )
       }
 
       let grants: Awaited<ReturnType<typeof service.replaceForRole>>
@@ -99,7 +102,7 @@ export async function permissionsRoutes(
         )
       } catch (error) {
         if (getPgErrorCode(error) === PG_FOREIGN_KEY_VIOLATION) {
-          return reply.status(404).send({ message: 'Role not found' })
+          throw new DomainError(404, 'role_not_found', 'Role not found')
         }
         throw error
       }

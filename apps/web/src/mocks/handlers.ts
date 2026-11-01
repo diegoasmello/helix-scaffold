@@ -149,7 +149,10 @@ export const handlers = [
   ),
   postUsersHandler(() => postUsersHandlerResponse201(createUserWithRole())),
   patchUsersIdHandler(() =>
-    patchUsersIdHandlerResponse404({ message: 'Not found' })
+    patchUsersIdHandlerResponse404({
+      message: 'User not found',
+      code: 'user_not_found',
+    })
   ),
   deleteUsersIdHandler(() => deleteUsersIdHandlerResponse204()),
 

@@ -3,9 +3,9 @@ import { Button, Drawer, Group, notify, Stack, useForm } from '@helix/ui'
 import { useMutation } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 
+import { apiErrorCode } from '@/lib/api-errors'
 import { useResourceCache } from '@/lib/resource-cache'
 
-import { isRoleNameTaken } from '../api-errors'
 import type { CreateRoleInput, RoleFormValues } from '../types'
 import { roleFormValidate } from '../validation'
 import { RolesForm } from './roles-form'
@@ -54,7 +54,7 @@ export function RoleCreateDrawer(props: Readonly<RoleCreateDrawerProps>) {
           onSuccess(created.id)
         },
         onError: (error) => {
-          if (isRoleNameTaken(error)) {
+          if (apiErrorCode(error) === 'name_taken') {
             form.setFieldError('name', t('form.name.taken'))
             return
           }

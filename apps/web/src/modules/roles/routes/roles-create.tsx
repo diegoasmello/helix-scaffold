@@ -3,9 +3,9 @@ import { Button, Form, Group, notify, PageCreate, useForm } from '@helix/ui'
 import { useMutation } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 
+import { apiErrorCode } from '@/lib/api-errors'
 import { useResourceCache } from '@/lib/resource-cache'
 
-import { isRoleNameTaken } from '../api-errors'
 import { RolesForm } from '../components/roles-form'
 import type { CreateRoleInput, RoleFormValues } from '../types'
 import { roleFormValidate } from '../validation'
@@ -46,7 +46,7 @@ export function RolesCreate() {
           navigate({ to: '/roles' })
         },
         onError: (error) => {
-          if (isRoleNameTaken(error)) {
+          if (apiErrorCode(error) === 'name_taken') {
             form.setFieldError('name', t('form.name.taken'))
             return
           }

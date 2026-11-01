@@ -15,6 +15,7 @@ import { IconPlus } from '@helix/ui'
 import { useMutation } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 
+import { apiErrorMessage } from '@/lib/api-errors'
 import { useResourceCache } from '@/lib/resource-cache'
 
 import { HasPermission } from '../../auth/components/has-permission'
@@ -51,8 +52,12 @@ export function RolesList() {
       void resourceCache.removed('roles', id)
       notify({ status: 'success', message: t('notifications.deleted') })
     },
-    onError: () => {
-      notify({ status: 'danger', message: t('notifications.deleteFailed') })
+    onError: (error) => {
+      // e.g. the default registration role, or a role that still has users
+      notify({
+        status: 'danger',
+        message: apiErrorMessage(error, 'roles', 'notifications.deleteFailed'),
+      })
     },
   })
 

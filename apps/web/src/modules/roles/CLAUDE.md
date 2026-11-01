@@ -7,7 +7,6 @@ Full CRUD module. Also owns the permission editor (`/roles/$id/permissions`) —
 ```
 src/modules/roles/
 ├── types.ts
-├── api-errors.ts                    ← isRoleNameTaken() — 409 name_taken from POST/PATCH /roles
 ├── validation.ts
 ├── validation.test.ts
 ├── components/
@@ -126,7 +125,9 @@ No `/roles/all` route — `GET /roles/all` is only consumed internally by `RoleS
 
 Inline in each component — no `hooks.ts`.
 
-**Duplicate name**: create, edit and `RoleCreateDrawer` check `isRoleNameTaken(error)` in `onError` and put `form.name.taken` on the name field (`form.setFieldError`) instead of the generic notification.
+**Duplicate name**: create, edit and `RoleCreateDrawer` check `apiErrorCode(error) === 'name_taken'` (`src/lib/api-errors.ts`) in `onError` and put `form.name.taken` on the name field (`form.setFieldError`) instead of the generic notification.
+
+**Refused deletion**: `RolesList` notifies `apiErrorMessage(error, 'roles', 'notifications.deleteFailed')` — `errors.default_role` / `errors.role_in_use` explain why. `errors.role_not_found` covers a role deleted meanwhile (permission editor).
 
 **Create**: `resourceCache.changed('roles')`.  
 **Update**: `resourceCache.saved('roles', updated)`.  

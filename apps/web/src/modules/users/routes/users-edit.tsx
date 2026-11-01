@@ -3,6 +3,7 @@ import { Button, Form, Group, notify, PageEdit, useForm } from '@helix/ui'
 import { useMutation } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 
+import { apiErrorMessage } from '@/lib/api-errors'
 import { useResourceCache } from '@/lib/resource-cache'
 
 import { UsersForm } from '../components/users-form'
@@ -52,8 +53,15 @@ export function UsersEdit() {
           notify({ status: 'success', message: t('notifications.updated') })
           navigate({ to: '/users' })
         },
-        onError: () => {
-          notify({ status: 'danger', message: t('notifications.updateFailed') })
+        onError: (error) => {
+          notify({
+            status: 'danger',
+            message: apiErrorMessage(
+              error,
+              'users',
+              'notifications.updateFailed'
+            ),
+          })
         },
       }
     )

@@ -6,7 +6,13 @@ import type { Database } from '@/db'
 import { roles, user } from '@/db/schema'
 import { getPaginationParams } from '@/lib/pagination'
 import {
+  getPgErrorCode,
+  getPgErrorConstraint,
+  PG_UNIQUE_VIOLATION,
+} from '@/lib/pg-errors'
+import {
   createAccountProvisioning,
+  EmailTakenError,
   RoleNotFoundError,
 } from '@/modules/accounts/account-provisioning'
 
@@ -117,6 +123,15 @@ export function createUsersService(
       .set(data)
       .where(eq(user.id, id))
       .returning({ id: user.id })
+      .catch((error: unknown) => {
+        if (
+          getPgErrorCode(error) === PG_UNIQUE_VIOLATION &&
+          getPgErrorConstraint(error) === 'user_email_unique'
+        ) {
+          throw new EmailTakenError()
+        }
+        throw error
+      })
     if (!updated) return null
     return getById(id)
   }

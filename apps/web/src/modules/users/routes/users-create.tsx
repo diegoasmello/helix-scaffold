@@ -3,6 +3,7 @@ import { Button, Form, Group, notify, PageCreate, useForm } from '@helix/ui'
 import { useMutation } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 
+import { apiErrorMessage } from '@/lib/api-errors'
 import { useResourceCache } from '@/lib/resource-cache'
 
 import { UsersForm } from '../components/users-form'
@@ -46,8 +47,15 @@ export function UsersCreate() {
           notify({ status: 'success', message: t('notifications.created') })
           navigate({ to: '/users' })
         },
-        onError: () => {
-          notify({ status: 'danger', message: t('notifications.createFailed') })
+        onError: (error) => {
+          notify({
+            status: 'danger',
+            message: apiErrorMessage(
+              error,
+              'users',
+              'notifications.createFailed'
+            ),
+          })
         },
       }
     )

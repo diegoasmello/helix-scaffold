@@ -10,6 +10,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
+import { apiErrorMessage } from '@/lib/api-errors'
 import { useResourceCache } from '@/lib/resource-cache'
 
 import { PermissionsTree } from './permissions-tree'
@@ -44,10 +45,14 @@ export function PermissionsEditor(props: Readonly<PermissionsEditorProps>) {
         message: t('permissions.notifications.saved'),
       })
     },
-    onError: () => {
+    onError: (error) => {
       notify({
         status: 'danger',
-        message: t('permissions.notifications.saveFailed'),
+        message: apiErrorMessage(
+          error,
+          'roles',
+          'permissions.notifications.saveFailed'
+        ),
       })
     },
   })

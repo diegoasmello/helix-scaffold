@@ -53,5 +53,10 @@
     "updateFailed": "Failed to update user",
     "deleted": "User deleted successfully",
     "deleteFailed": "Failed to delete user"
+  },
+  "errors": {
+    "email_taken": "This email is already used by another user.",
+    "role_not_found": "The selected role no longer exists.",
+    "user_not_found": "This user no longer exists."
   }
 }

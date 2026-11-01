@@ -1076,7 +1076,7 @@ const { mutate: deleteXxx } = useMutation({
 **Separation of concerns in mutations:**
 
 - `useMutation` (`onSuccess`) — reserved for cache operations (`resourceCache.changed / saved / removed`). Always fires, even if the component has unmounted.
-- `mutate(data, { onSuccess, onError })` — component-dependent side effects: `notify()` and `navigate()`. Only fires if the component is still mounted. **Always declare both `onSuccess` and `onError` with `notify()`** in this scenario. When the API returns a meaningful error status (e.g. 409), branch on `error instanceof ApiError && error.status === 409` (`ApiError` from `@helix/api-client`) to show a specific translated message — never display the API's raw English `error.message`.
+- `mutate(data, { onSuccess, onError })` — component-dependent side effects: `notify()` and `navigate()`. Only fires if the component is still mounted. **Always declare both `onSuccess` and `onError` with `notify()`** in this scenario. For the message, use `apiErrorMessage(error, '<namespace>', '<fallbackKey>')` (`src/lib/api-errors.ts`): the translation of the API's `code` (`errors.<code>` in the namespace) when there is one, else the fallback (`notifications.createFailed`). Never display the API's raw English `error.message`. To put a code on a field instead (e.g. `name_taken`), compare `apiErrorCode(error)`. A new API code becomes translatable by adding `errors.<code>` to the module's `en` and `pt-BR` locale files — no component change.
 
 ```ts
 const { t } = useTranslation('xxx')

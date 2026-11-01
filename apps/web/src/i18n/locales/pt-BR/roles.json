@@ -70,5 +70,10 @@
     "updateFailed": "Falha ao atualizar perfil",
     "deleted": "Perfil excluído com sucesso",
     "deleteFailed": "Falha ao excluir perfil"
+  },
+  "errors": {
+    "default_role": "O perfil padrão de cadastro não pode ser excluído. Defina outro perfil como padrão antes.",
+    "role_in_use": "Este perfil ainda tem usuários. Mova-os para outro perfil antes.",
+    "role_not_found": "Este perfil não existe mais."
   }
 }

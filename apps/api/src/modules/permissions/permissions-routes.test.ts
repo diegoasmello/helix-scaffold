@@ -244,7 +244,10 @@ describe('PUT /roles/:id/permissions', () => {
       headers: { cookie: authCookie },
     })
     expect(res.statusCode).toBe(404)
-    expect(res.json()).toEqual({ message: 'Role not found' })
+    expect(res.json()).toEqual({
+      message: 'Role not found',
+      code: 'role_not_found',
+    })
   })
 
   it('ignores duplicate actions instead of failing', async () => {

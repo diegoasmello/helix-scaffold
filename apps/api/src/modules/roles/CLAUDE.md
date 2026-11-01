@@ -15,7 +15,7 @@ Full CRUD module. Used as a dependency by the users module (assigns `roleId` to 
 | `createdAt`   | `timestamp NOT NULL` | `defaultNow()`                                               |
 | `updatedAt`   | `timestamp NOT NULL` | `$onUpdateFn(() => new Date())`                              |
 
-`name` has a unique constraint (`roles_name_unique`). `POST` and `PATCH` catch its violation and answer **409** `{ message: 'A role with this name already exists', code: 'name_taken' }` (`isNameTaken()` in `roles-routes.ts`, via `getPgErrorConstraint`). The frontend shows it on the name field.
+`name` has a unique constraint (`roles_name_unique`). The service's `create()` and `update()` turn its violation into a `DomainError` — **409** `{ message: 'A role with this name already exists', code: 'name_taken' }` (via `getPgErrorConstraint`). The frontend shows it on the name field.
 
 ### `isDefault` invariant
 
@@ -54,9 +54,9 @@ Receives `{ database, requirePermission }` — no `auth` parameter.
 | `PATCH`  | `/roles/:id` | `roles:edit`    | **409** `name_taken` on a duplicate name. Audit: `request.audit('edit', 'roles', id, body)` |
 | `DELETE` | `/roles/:id` | `roles:delete`  | Returns **409** when role has assigned users; audit on success |
 
-**`DELETE` guard**: two sequential 409 checks before `service.remove`:
-1. `role?.isDefault` → `409 { message: 'Cannot delete the default registration role' }` — prevents silently breaking open registration.
-2. `service.hasUsers(id)` → `409 { message: 'Cannot delete a role that has assigned users' }`.
+**`DELETE` guard** — in `service.remove()`, which throws a `DomainError` before deleting:
+1. `role?.isDefault` → `409 { message: 'Cannot delete the default registration role', code: 'default_role' }` — prevents silently breaking open registration.
+2. `hasUsers(id)` → `409 { message: 'Cannot delete a role that has assigned users', code: 'role_in_use' }`.
 
 No audit call on 409. Returns 204 even when the role id does not exist, but audits only when `service.remove` actually deleted a row (it returns a boolean).
 

@@ -533,7 +533,10 @@ describe('POST /subscriptions', () => {
       headers: { cookie: authCookie },
     })
     expect(res.statusCode).toBe(400)
-    expect(res.json().message).toBe('User not found')
+    expect(res.json()).toMatchObject({
+      message: 'User not found',
+      code: 'user_not_found',
+    })
   })
 
   it('returns 409 when the user already has a live subscription', async () => {

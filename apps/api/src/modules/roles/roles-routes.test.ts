@@ -327,7 +327,27 @@ describe('DELETE /roles/:id', () => {
     expect(res.statusCode).toBe(409)
     expect(res.json()).toEqual({
       message: 'Cannot delete a role that has assigned users',
+      code: 'role_in_use',
     })
+  })
+
+  it('returns 409 default_role for the default registration role', async () => {
+    const [inserted] = await testDb
+      .insert(roles)
+      .values({ name: 'default-role', isDefault: true })
+      .returning()
+
+    const res = await app.inject({
+      method: 'DELETE',
+      url: `/roles/${inserted.id}`,
+      headers: { cookie: authCookie },
+    })
+    expect(res.statusCode).toBe(409)
+    expect(res.json()).toEqual({
+      message: 'Cannot delete the default registration role',
+      code: 'default_role',
+    })
+    expect(await findAuditLogs('delete', 'roles', inserted.id)).toHaveLength(0)
   })
 })
 

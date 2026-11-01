@@ -1,3 +1,4 @@
+import { APIError } from 'better-auth'
 import { and, eq, isNotNull, ne, sql } from 'drizzle-orm'
 
 import type { Auth } from '@/auth'
@@ -5,6 +6,7 @@ import type { Config } from '@/config'
 import { ALL_PERMISSIONS } from '@/config/permissions'
 import type { Database } from '@/db'
 import { rolePermissions, roles, subscriptions, user } from '@/db/schema'
+import { DomainError } from '@/lib/domain-errors'
 import { getPgErrorCode, PG_FOREIGN_KEY_VIOLATION } from '@/lib/pg-errors'
 
 /**
@@ -37,12 +39,17 @@ export interface ProvisioningLogger {
   warn: (obj: object, msg: string) => void
 }
 
-/** `provisionAccount()` was given a `roleId` that does not exist. */
-export class RoleNotFoundError extends Error {
-  readonly code = 'ROLE_NOT_FOUND'
-
+/** `provisionAccount()` was given a `roleId` that does not exist (404 `role_not_found`). */
+export class RoleNotFoundError extends DomainError {
   constructor() {
-    super('Role not found')
+    super(404, 'role_not_found', 'Role not found')
+  }
+}
+
+/** Another account already uses the email (409 `email_taken`). */
+export class EmailTakenError extends DomainError {
+  constructor() {
+    super(409, 'email_taken', 'Email already in use')
   }
 }
 
@@ -154,14 +161,24 @@ export function createAccountProvisioning(
   // Server-side sign-ups carry no request, so the better-auth hook gives them
   // no default role and no trial — see applySelfRegistrationDefaults().
   async function signUp(account: NewAccount) {
-    const { user: created } = await auth.api.signUpEmail({
-      body: {
-        name: account.name,
-        email: account.email,
-        password: account.password,
-      },
-    })
-    return created.id
+    try {
+      const { user: created } = await auth.api.signUpEmail({
+        body: {
+          name: account.name,
+          email: account.email,
+          password: account.password,
+        },
+      })
+      return created.id
+    } catch (error) {
+      if (
+        error instanceof APIError &&
+        error.body?.code === 'USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL'
+      ) {
+        throw new EmailTakenError()
+      }
+      throw error
+    }
   }
 
   // Sessions and accounts cascade from the user row.
@@ -243,7 +260,7 @@ export function createAccountProvisioning(
   /**
    * An account created by the server — by an admin (POST /users) or the
    * seed — with `roleId` (or no role). Throws `RoleNotFoundError` for an
-   * unknown role; a failed role assignment deletes the user again.
+   * unknown role and `EmailTakenError` for a used email; a failed role assignment deletes the user again.
    */
   async function provisionAccount(
     account: NewAccount & { roleId?: string | null }

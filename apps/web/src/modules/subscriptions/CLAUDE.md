@@ -17,8 +17,6 @@ src/modules/subscriptions/
 ├── types.ts
 ├── access.ts                         ← hasSubscriptionAccess() — reads the API's entitlements, shared by hook and router
 ├── access.test.ts
-├── api-errors.ts                     ← conflictMessageKey() — 409 code → i18n key
-├── api-errors.test.ts
 ├── constants.ts                      ← SUBSCRIPTION_STATUS_COLORS
 ├── validation.ts
 ├── validation.test.ts
@@ -276,7 +274,7 @@ Fields rendered:
 - `useForm<SubscriptionFormValues>` with default `status: 'active'`, `currentPeriodStart: now`, `currentPeriodEnd: now + 30d`, `trialEndsAt: null`, `externalId: ''`
 - Mutation: `postSubscriptions(...)` → `resourceCache.changed('subscriptions')` on success (also refreshes `/me/subscription` and `/me/entitlements`)
 - On 400 from the API (invalid `userId`) the mutation's `onError` fires and shows a danger notification
-- On **409** the notification explains the conflict instead of the generic `createFailed`: `conflictMessageKey(error)` (`api-errors.ts`) maps `ApiError.code` — `live_subscription_exists` → `notifications.alreadyLive`, `external_id_taken` → `notifications.externalIdTaken`
+- On **409** (and a 400 `user_not_found`) the notification explains the problem instead of the generic `createFailed`: `apiErrorMessage(error, 'subscription', 'notifications.createFailed')` (`src/lib/api-errors.ts`) reads `errors.<code>` — `live_subscription_exists`, `external_id_taken`, `user_not_found`
 
 ---
 
@@ -285,7 +283,7 @@ Fields rendered:
 - Pre-fills form from `useGetSubscriptionsIdSuspense(id)`
 - `SubscriptionsForm` rendered with `isEditing` — `userId` field hidden
 - Mutation: `patchSubscriptionsId(id, ...)` → `resourceCache.saved('subscriptions', updated)`
-- On **409** (reactivating while another subscription is live, or a taken `externalId`) the notification comes from `conflictMessageKey(error)`, like the create screen
+- On **409** (reactivating while another subscription is live, or a taken `externalId`) the notification comes from `apiErrorMessage(error, 'subscription', 'notifications.updateFailed')`, like the create screen
 - **Setting `status: 'canceled'` without `canceledAt`**: the backend service automatically sets `canceledAt = now()` in this case. The edit form does not expose `canceledAt` directly — if a precise cancellation date is needed, it can be set via the API directly.
 
 ---

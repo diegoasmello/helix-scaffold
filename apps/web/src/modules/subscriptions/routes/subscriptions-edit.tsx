@@ -6,9 +6,9 @@ import { Button, Form, Group, notify, PageEdit, useForm } from '@helix/ui'
 import { useMutation } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 
+import { apiErrorMessage } from '@/lib/api-errors'
 import { useResourceCache } from '@/lib/resource-cache'
 
-import { conflictMessageKey } from '../api-errors'
 import { SubscriptionsForm } from '../components/subscriptions-form'
 import { useSubscription } from '../hooks/use-subscription'
 import type { SubscriptionFormValues } from '../types'
@@ -62,7 +62,11 @@ export function SubscriptionsEdit() {
       onError: (error) => {
         notify({
           status: 'danger',
-          message: t(conflictMessageKey(error) ?? 'notifications.updateFailed'),
+          message: apiErrorMessage(
+            error,
+            'subscription',
+            'notifications.updateFailed'
+          ),
         })
       },
     })

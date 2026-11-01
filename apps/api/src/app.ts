@@ -24,6 +24,7 @@ import { registerAuditRequest } from './hooks/audit-request'
 import { createRequireAuth } from './hooks/require-auth'
 import { createRequirePermission } from './hooks/require-permission'
 import { createRequireSubscription } from './hooks/require-subscription'
+import { registerDomainErrorHandler } from './lib/domain-errors'
 import { createEmailProvider } from './lib/email'
 import { createStorageProvider } from './lib/storage'
 import { createAuditRecorder } from './modules/audit/audit-recorder'
@@ -78,6 +79,8 @@ export function buildApp(database: Database, options: BuildAppOptions = {}) {
 
   app.setValidatorCompiler(validatorCompiler)
   app.setSerializerCompiler(serializerCompiler)
+  // Before any route: every plugin inherits it.
+  registerDomainErrorHandler(app)
 
   app.register(fastifyMultipart, {
     limits: { fileSize: config.uploads.maxSizeMb * 1024 * 1024 },

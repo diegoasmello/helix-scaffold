@@ -481,35 +481,34 @@ app.get(
 
 ---
 
-## Mapping database errors to HTTP responses
+## Errors the client can act on (`DomainError`)
 
-Never let a constraint violation surface as a 500 when the client can act on it. Catch it in the route and read the Postgres code with the helpers in `src/lib/pg-errors.ts` — Drizzle wraps driver errors, so the code may be on the error or on its `cause`; never read `error.code` directly:
+Throw a `DomainError` (`src/lib/domain-errors.ts`) — from the service or the handler — instead of building the response by hand. `registerDomainErrorHandler()` (installed by `buildApp` before any route) answers it with its status and `{ message, code }`; everything else goes on to Fastify's default handler (validation 400s, 500s).
 
 ```ts
-import {
-  getPgErrorCode,
-  getPgErrorConstraint,
-  PG_FOREIGN_KEY_VIOLATION,
-  PG_UNIQUE_VIOLATION,
-} from '@/lib/pg-errors'
+import { DomainError, errorSchema } from '@/lib/domain-errors'
 
-try {
-  item = await service.create(request.body)
-} catch (error) {
-  if (getPgErrorCode(error) === PG_FOREIGN_KEY_VIOLATION) {
-    return reply.status(400).send({ message: 'User not found' })
-  }
-  if (getPgErrorCode(error) === PG_UNIQUE_VIOLATION) {
-    return reply.status(409).send({ message: 'Already exists', code: 'already_exists' })
-  }
-  throw error
-}
+// service or handler
+throw new DomainError(409, 'name_taken', 'A role with this name already exists')
+
+// route schema — declare every status a DomainError can answer
+response: { 201: roleSchema, 409: errorSchema('name_taken') },
 ```
 
-- Declare every status you return in the route's `response` schema, or serialization fails.
-- When one status has several causes (two unique indexes), tell them apart with `getPgErrorConstraint(error)` and give each a stable `code` the frontend can translate — see `subscriptions-routes.ts` (409 `live_subscription_exists` / `external_id_taken`) and `packages/api-client/CLAUDE.md` → `ApiError`.
-- References: `subscriptions-routes.ts` (400 on FK, 409 on unique), `roles-routes.ts` (409 `name_taken` on the unique `name`), `permissions-routes.ts` (404 on FK).
+- `code` is stable snake_case — the frontend translates it from `errors.<code>` in the module's locale (`apps/web/src/lib/api-errors.ts`). `message` is English, for logs and API users. Add the translation in both web locales when you add a code.
+- `errorSchema(...codes)` documents the codes in the OpenAPI spec. Its `code` stays a plain string, because the same status may also carry Fastify's codes (a validation 400 is `FST_ERR_VALIDATION`). A missing status in `response` makes serialization fail.
+- **Database constraints:** never let a violation surface as a 500 when the client can act on it. Read the Postgres code with `src/lib/pg-errors.ts` (Drizzle wraps driver errors, so the code may be on the error or on its `cause`; never read `error.code` directly) and turn it into a `DomainError`; when one status has several causes (two unique indexes), tell them apart with `getPgErrorConstraint(error)`.
+- Current codes:
 
+| Module | Status | Codes |
+| --- | --- | --- |
+| roles | 409 | `name_taken` (service, unique `name`), `default_role`, `role_in_use` (service `remove()`) |
+| users / accounts | 404, 409 | `role_not_found`, `user_not_found`, `email_taken` (`RoleNotFoundError`, `EmailTakenError` in account provisioning; PATCH maps `user_email_unique`) |
+| subscriptions | 400, 409 | `user_not_found` (FK), `live_subscription_exists`, `external_id_taken` (`toDomainError()` in `subscriptions-routes.ts`) |
+| permissions | 400, 404 | `unknown_permissions`, `role_not_found` |
+| requireSubscription / requirePermission | 403 | `subscription_required`, `feature_not_in_plan`, `permission_denied` (sent by the hooks) |
+
+Plain "not found" 404s of `GET /xxx/:id` stay `reply.status(404).send({ message })` — nothing for the client to do but show "not found". Tested in `src/lib/domain-errors.test.ts` (status + body, inside plugins; validation 400 and 500 untouched).
 ---
 
 ## Creating a new module (CRUD)

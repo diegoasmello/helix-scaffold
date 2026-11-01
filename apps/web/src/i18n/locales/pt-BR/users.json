@@ -53,5 +53,10 @@
     "updateFailed": "Falha ao atualizar usuário",
     "deleted": "Usuário excluído com sucesso",
     "deleteFailed": "Falha ao excluir usuário"
+  },
+  "errors": {
+    "email_taken": "Este email já está em uso por outro usuário.",
+    "role_not_found": "O perfil selecionado não existe mais.",
+    "user_not_found": "Este usuário não existe mais."
   }
 }
