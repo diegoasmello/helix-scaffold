@@ -3,6 +3,7 @@ import { Button, Drawer, Group, notify, Stack, useForm } from '@helix/ui'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 
+import { isRoleNameTaken } from '../api-errors'
 import type { CreateRoleInput, RoleFormValues } from '../types'
 import { roleFormValidate } from '../validation'
 import { RolesForm } from './roles-form'
@@ -52,7 +53,11 @@ export function RoleCreateDrawer(props: Readonly<RoleCreateDrawerProps>) {
           handleClose()
           onSuccess(created.id)
         },
-        onError: () => {
+        onError: (error) => {
+          if (isRoleNameTaken(error)) {
+            form.setFieldError('name', t('form.name.taken'))
+            return
+          }
           notify({ status: 'danger', message: t('notifications.createFailed') })
         },
       }

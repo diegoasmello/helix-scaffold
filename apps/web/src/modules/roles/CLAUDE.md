@@ -7,6 +7,7 @@ Full CRUD module. Also owns the permission editor (`/roles/$id/permissions`) —
 ```
 src/modules/roles/
 ├── types.ts
+├── api-errors.ts                    ← isRoleNameTaken() — 409 name_taken from POST/PATCH /roles
 ├── validation.ts
 ├── validation.test.ts
 ├── components/
@@ -125,6 +126,8 @@ No `/roles/all` route — `GET /roles/all` is only consumed internally by `RoleS
 
 Inline in each component — no `hooks.ts`.
 
+**Duplicate name**: create, edit and `RoleCreateDrawer` check `isRoleNameTaken(error)` in `onError` and put `form.name.taken` on the name field (`form.setFieldError`) instead of the generic notification.
+
 **Create**: invalidates list (`getRolesSuspenseQueryKey()` — never with `exact: true`, which would skip the cached pages).  
 **Update**: invalidates list + `setQueryData` on item cache.  
 **Delete** (in `RolesList`): `onError` on `useMutation` itself (not on `mutate`) — notifies on failure. Confirm message includes the role's name: `Are you sure you want to delete "${name}"?`. Invalidates list + `removeQueries` on item cache.
@@ -171,7 +174,7 @@ The list handler is called with a `createPaginatedRoles({...})` object — not a
 - Save → `putRolesIdPermissions(roleId, { grants })` (full replacement). `onSuccess` writes the result with `setQueryData(getRolesIdPermissionsSuspenseQueryKey(roleId), …)` and notifies; `onError` notifies. Both live on `useMutation` itself. No navigation — the user stays on the page.
 - The API rejects grants outside the catalog with 400 and audits every save, so the editor only ever sends what the catalog offers.
 
-**`PermissionsTree`** (`components/permissions-tree.tsx`): pure controlled component — `definitions`, `grants`, `onChange`, `disabled?`. One block per resource with a parent checkbox (checked when all actions are granted, indeterminate when some are) and one checkbox per action the resource declares. Actions come from the catalog, so a new action in `RESOURCE_DEFINITIONS` shows up with no frontend change. Action labels come from a local `ACTION_LABELS` map (English only — not yet translated).
+**`PermissionsTree`** (`components/permissions-tree.tsx`): pure controlled component — `definitions`, `grants`, `onChange`, `disabled?`. One block per resource with a parent checkbox (checked when all actions are granted, indeterminate when some are) and one checkbox per action the resource declares. Actions come from the catalog, so a new action in `RESOURCE_DEFINITIONS` shows up with no frontend change. Resource labels are translated via `roles:permissions.resources.<resource>`, falling back to the catalog's English `label` for a resource without a key — add one in both locales when you add a resource to `RESOURCE_DEFINITIONS`. Action labels reuse `common:actions.<action>`.
 
 ## Sidebar
 

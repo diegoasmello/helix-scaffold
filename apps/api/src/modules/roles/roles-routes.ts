@@ -1,6 +1,11 @@
 import z from 'zod'
 
 import { buildPaginatedResponse } from '@/lib/pagination'
+import {
+  getPgErrorCode,
+  getPgErrorConstraint,
+  PG_UNIQUE_VIOLATION,
+} from '@/lib/pg-errors'
 
 import type { Database } from '../../db'
 import type { FastifyTypedInstance, RequirePermission } from '../../types'
@@ -12,6 +17,24 @@ import {
   updateRoleSchema,
 } from './roles-schema'
 import { createRolesService } from './roles-service'
+
+// `roles.name` is unique. `code` lets the frontend show a translated message.
+const nameTakenSchema = z.object({
+  message: z.string(),
+  code: z.enum(['name_taken']),
+})
+
+function isNameTaken(error: unknown): boolean {
+  return (
+    getPgErrorCode(error) === PG_UNIQUE_VIOLATION &&
+    getPgErrorConstraint(error) === 'roles_name_unique'
+  )
+}
+
+const NAME_TAKEN = {
+  message: 'A role with this name already exists',
+  code: 'name_taken',
+} as const
 
 export async function rolesRoutes(
   app: FastifyTypedInstance,
@@ -80,12 +103,18 @@ export async function rolesRoutes(
         tags: ['roles'],
         description: 'Create a role',
         body: createRoleSchema,
-        response: { 201: roleSchema },
+        response: { 201: roleSchema, 409: nameTakenSchema },
       },
       preHandler: requirePermission('roles', 'create'),
     },
     async (request, reply) => {
-      const role = await service.create(request.body)
+      let role
+      try {
+        role = await service.create(request.body)
+      } catch (error) {
+        if (isNameTaken(error)) return reply.status(409).send(NAME_TAKEN)
+        throw error
+      }
       await request.audit('create', 'roles', role.id, request.body)
       return reply.status(201).send(role)
     }
@@ -102,12 +131,19 @@ export async function rolesRoutes(
         response: {
           200: roleSchema,
           404: z.object({ message: z.string() }),
+          409: nameTakenSchema,
         },
       },
       preHandler: requirePermission('roles', 'edit'),
     },
     async (request, reply) => {
-      const role = await service.update(request.params.id, request.body)
+      let role
+      try {
+        role = await service.update(request.params.id, request.body)
+      } catch (error) {
+        if (isNameTaken(error)) return reply.status(409).send(NAME_TAKEN)
+        throw error
+      }
       if (!role) return reply.status(404).send({ message: 'Role not found' })
       await request.audit('edit', 'roles', request.params.id, request.body)
       return role

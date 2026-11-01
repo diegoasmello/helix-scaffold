@@ -15,7 +15,7 @@ Full CRUD module. Used as a dependency by the users module (assigns `roleId` to 
 | `createdAt`   | `timestamp NOT NULL` | `defaultNow()`                                               |
 | `updatedAt`   | `timestamp NOT NULL` | `$onUpdateFn(() => new Date())`                              |
 
-`name` has a unique index. Inserting a duplicate name causes a DB constraint error — currently not caught by the route handler (results in a 500). If deduplication feedback is needed, add a try/catch for the constraint violation.
+`name` has a unique constraint (`roles_name_unique`). `POST` and `PATCH` catch its violation and answer **409** `{ message: 'A role with this name already exists', code: 'name_taken' }` (`isNameTaken()` in `roles-routes.ts`, via `getPgErrorConstraint`). The frontend shows it on the name field.
 
 ### `isDefault` invariant
 
@@ -24,7 +24,7 @@ Only one role can have `isDefault = true` at a time. This is enforced at two lay
 1. **DB**: partial unique index `roles_is_default_unique` on `(is_default) WHERE is_default = true` — the database rejects a second `true` row.
 2. **Service**: `create()` and `update()` wrap in a transaction that first sets all existing `isDefault = true` rows to `false`, then applies the new value. This prevents the unique index from rejecting the new row before the old one is cleared.
 
-When `registration.mode` is `'open'`, the User role created during bootstrap has `isDefault = true`. Self-registered users automatically receive this role via `databaseHooks.user.create.after` in `auth.ts`.
+When `registration.mode` is `'open'`, the User role created during bootstrap has `isDefault = true`. Self-registered users (HTTP sign-ups only — not `POST /users`) automatically receive this role via `databaseHooks.user.create.after` in `auth.ts`.
 
 ## Schema (`roles-schema.ts`)
 
@@ -50,8 +50,8 @@ Receives `{ database, requirePermission }` — no `auth` parameter.
 | `GET`    | `/roles`     | `roles:view`    | Paginated + sortable                                         |
 | `GET`    | `/roles/all` | `roles:view`    | Plain array, sorted by name, no pagination params            |
 | `GET`    | `/roles/:id` | `roles:view`    |                                                              |
-| `POST`   | `/roles`     | `roles:create`  | Audit: `request.audit('create', 'roles', id, body)`          |
-| `PATCH`  | `/roles/:id` | `roles:edit`    | Audit: `request.audit('edit', 'roles', id, body)`            |
+| `POST`   | `/roles`     | `roles:create`  | **409** `name_taken` on a duplicate name. Audit: `request.audit('create', 'roles', id, body)` |
+| `PATCH`  | `/roles/:id` | `roles:edit`    | **409** `name_taken` on a duplicate name. Audit: `request.audit('edit', 'roles', id, body)` |
 | `DELETE` | `/roles/:id` | `roles:delete`  | Returns **409** when role has assigned users; audit on success |
 
 **`DELETE` guard**: two sequential 409 checks before `service.remove`:

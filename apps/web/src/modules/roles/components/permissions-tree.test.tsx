@@ -6,8 +6,9 @@ import { MantineProvider } from '@helix/ui'
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 
+import i18n from '../../../i18n'
 import { PermissionsTree } from './permissions-tree'
 
 type Grants = Record<string, PermissionAction[]>
@@ -18,7 +19,8 @@ const definitions: ResourceDefinition[] = [
     label: 'Todos',
     actions: ['view', 'create', 'edit', 'delete'],
   },
-  { resource: 'audit', label: 'Audit Log', actions: ['view'] },
+  // `label` is the API catalog's English label; the UI shows the translation
+  { resource: 'audit', label: 'Audit', actions: ['view'] },
 ]
 
 function renderTree(grants: Grants, options: { disabled?: boolean } = {}) {
@@ -61,14 +63,40 @@ function actionCheckbox(resourceLabel: string, action: string) {
 }
 
 describe('PermissionsTree', () => {
+  afterEach(async () => {
+    await i18n.changeLanguage('en')
+  })
+
+  it('falls back to the catalog label for a resource without a translation', () => {
+    render(
+      <MantineProvider>
+        <PermissionsTree
+          definitions={[
+            { resource: 'reports', label: 'Reports', actions: ['view'] },
+          ]}
+          grants={{}}
+          onChange={vi.fn()}
+        />
+      </MantineProvider>
+    )
+    expect(resourceCheckbox('Reports')).toBeInTheDocument()
+  })
+
+  it('translates resource and action labels', async () => {
+    await i18n.changeLanguage('pt-BR')
+    renderTree({})
+    expect(resourceCheckbox('Tarefas')).toBeInTheDocument()
+    expect(actionCheckbox('Tarefas', 'Excluir')).toBeInTheDocument()
+  })
+
   it('renders one group per resource with its actions', () => {
     renderTree({})
     expect(resourceCheckbox('Todos')).toBeInTheDocument()
-    expect(resourceCheckbox('Audit Log')).toBeInTheDocument()
+    expect(resourceCheckbox('Audit log')).toBeInTheDocument()
     for (const action of ['View', 'Create', 'Edit', 'Delete']) {
       expect(actionCheckbox('Todos', action)).toBeInTheDocument()
     }
-    expect(actionCheckbox('Audit Log', 'View')).toBeInTheDocument()
+    expect(actionCheckbox('Audit log', 'View')).toBeInTheDocument()
     expect(screen.getAllByRole('checkbox')).toHaveLength(7)
   })
 
@@ -83,13 +111,13 @@ describe('PermissionsTree', () => {
   it('checks the resource checkbox only when every action is granted', () => {
     renderTree({ todos: ['view', 'edit'], audit: ['view'] })
     expect(resourceCheckbox('Todos')).not.toBeChecked()
-    expect(resourceCheckbox('Audit Log')).toBeChecked()
+    expect(resourceCheckbox('Audit log')).toBeChecked()
   })
 
   it('marks the resource checkbox indeterminate when some actions are granted', () => {
     renderTree({ todos: ['view'] })
     expect(resourceCheckbox('Todos')).toHaveAttribute('data-indeterminate')
-    expect(resourceCheckbox('Audit Log')).not.toHaveAttribute(
+    expect(resourceCheckbox('Audit log')).not.toHaveAttribute(
       'data-indeterminate'
     )
   })
@@ -131,9 +159,9 @@ describe('PermissionsTree', () => {
         <StatefulTree initial={{ audit: [] }} />
       </MantineProvider>
     )
-    expect(resourceCheckbox('Audit Log')).not.toBeChecked()
-    await userEvent.click(actionCheckbox('Audit Log', 'View'))
-    expect(resourceCheckbox('Audit Log')).toBeChecked()
+    expect(resourceCheckbox('Audit log')).not.toBeChecked()
+    await userEvent.click(actionCheckbox('Audit log', 'View'))
+    expect(resourceCheckbox('Audit log')).toBeChecked()
   })
 
   it('disables every checkbox and ignores clicks when disabled', async () => {

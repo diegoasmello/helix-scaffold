@@ -2,6 +2,7 @@ import {
   createRole,
   postRolesHandler,
   postRolesHandlerResponse201,
+  postRolesHandlerResponse409,
 } from '@helix/api-client/mocks'
 import {
   MantineEmotionProvider,
@@ -130,6 +131,32 @@ describe('RolesCreate', () => {
       })
       expect(mockNavigate).toHaveBeenCalledWith({ to: '/roles' })
     })
+  })
+
+  it('shows the name error when the name is taken', async () => {
+    server.use(
+      postRolesHandler(() =>
+        postRolesHandlerResponse409({
+          message: 'A role with this name already exists',
+          code: 'name_taken',
+        })
+      )
+    )
+
+    renderRolesCreate()
+    await screen.findByRole('heading', { name: 'Create Role' })
+
+    await userEvent.type(screen.getByPlaceholderText('Role name'), 'Admin')
+    await userEvent.type(
+      screen.getByPlaceholderText('Role description'),
+      'Full access'
+    )
+    await userEvent.click(screen.getByRole('button', { name: 'Save' }))
+
+    expect(
+      await screen.findByText('A role with this name already exists')
+    ).toBeInTheDocument()
+    expect(mockNavigate).not.toHaveBeenCalled()
   })
 
   it('does not navigate when API returns error', async () => {

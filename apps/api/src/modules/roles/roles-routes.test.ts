@@ -199,6 +199,22 @@ describe('POST /roles', () => {
     expect(res.statusCode).toBe(400)
   })
 
+  it('returns 409 name_taken for a duplicate name', async () => {
+    await testDb.insert(roles).values({ name: 'moderator' })
+
+    const res = await app.inject({
+      method: 'POST',
+      url: '/roles',
+      payload: { name: 'moderator' },
+      headers: { cookie: authCookie },
+    })
+    expect(res.statusCode).toBe(409)
+    expect(res.json()).toEqual({
+      message: 'A role with this name already exists',
+      code: 'name_taken',
+    })
+  })
+
   it('returns 400 when fields exceed max length', async () => {
     const res = await app.inject({
       method: 'POST',
@@ -239,6 +255,22 @@ describe('PATCH /roles/:id', () => {
     const body = res.json()
     expect(body.name).toBe('new-name')
     expect(body.description).toBe('Old description')
+  })
+  it('returns 409 name_taken when renaming to an existing name', async () => {
+    await testDb.insert(roles).values({ name: 'taken' })
+    const [inserted] = await testDb
+      .insert(roles)
+      .values({ name: 'free' })
+      .returning()
+
+    const res = await app.inject({
+      method: 'PATCH',
+      url: `/roles/${inserted.id}`,
+      payload: { name: 'taken' },
+      headers: { cookie: authCookie },
+    })
+    expect(res.statusCode).toBe(409)
+    expect(res.json().code).toBe('name_taken')
   })
 })
 

@@ -3,13 +3,7 @@ import type {
   ResourceDefinition,
 } from '@helix/api-client/types'
 import { Checkbox, Group, Paper, Stack, Text } from '@helix/ui'
-
-const ACTION_LABELS: Record<PermissionAction, string> = {
-  view: 'View',
-  create: 'Create',
-  edit: 'Edit',
-  delete: 'Delete',
-}
+import { useTranslation } from 'react-i18next'
 
 export interface PermissionsTreeProps {
   definitions: ResourceDefinition[]
@@ -20,6 +14,19 @@ export interface PermissionsTreeProps {
 
 export function PermissionsTree(props: Readonly<PermissionsTreeProps>) {
   const { definitions, grants, onChange, disabled } = props
+
+  const { t } = useTranslation('roles')
+  const { t: tc } = useTranslation('common')
+
+  // Resources come from the API catalog: a resource without a translation
+  // (e.g. a module added later) falls back to the catalog's English label.
+  const resourceLabel = (def: ResourceDefinition) =>
+    t(
+      `permissions.resources.${def.resource}` as 'permissions.resources.todos',
+      {
+        defaultValue: def.label,
+      }
+    )
 
   return (
     <Stack gap="sm">
@@ -50,7 +57,7 @@ export function PermissionsTree(props: Readonly<PermissionsTreeProps>) {
             <Checkbox
               label={
                 <Text component="span" fw={600} size="sm">
-                  {def.label}
+                  {resourceLabel(def)}
                 </Text>
               }
               checked={allChecked}
@@ -62,7 +69,7 @@ export function PermissionsTree(props: Readonly<PermissionsTreeProps>) {
               {def.actions.map((action) => (
                 <Checkbox
                   key={action}
-                  label={ACTION_LABELS[action]}
+                  label={tc(`actions.${action}`)}
                   checked={resourceGrants.includes(action)}
                   onChange={() => handleToggleAction(action)}
                   disabled={disabled}

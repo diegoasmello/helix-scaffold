@@ -18,7 +18,8 @@
   "form": {
     "name": {
       "label": "Name",
-      "placeholder": "Role name"
+      "placeholder": "Role name",
+      "taken": "A role with this name already exists"
     },
     "description": {
       "label": "Description",
@@ -48,6 +49,15 @@
     "title": "Permissions",
     "editTitle": "Edit Permissions",
     "editButton": "Edit Permissions",
+    "resources": {
+      "todos": "Todos",
+      "users": "Users",
+      "roles": "Roles",
+      "permissions": "Permissions",
+      "audit": "Audit log",
+      "uploads": "Uploads",
+      "subscriptions": "Subscriptions"
+    },
     "notifications": {
       "saved": "Permissions saved successfully",
       "saveFailed": "Failed to save permissions"

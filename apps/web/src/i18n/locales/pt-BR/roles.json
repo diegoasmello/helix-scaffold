@@ -18,7 +18,8 @@
   "form": {
     "name": {
       "label": "Nome",
-      "placeholder": "Nome do perfil"
+      "placeholder": "Nome do perfil",
+      "taken": "Já existe um perfil com este nome"
     },
     "description": {
       "label": "Descrição",
@@ -48,6 +49,15 @@
     "title": "Permissões",
     "editTitle": "Editar Permissões",
     "editButton": "Editar Permissões",
+    "resources": {
+      "todos": "Tarefas",
+      "users": "Usuários",
+      "roles": "Perfis",
+      "permissions": "Permissões",
+      "audit": "Auditoria",
+      "uploads": "Arquivos",
+      "subscriptions": "Assinaturas"
+    },
     "notifications": {
       "saved": "Permissões salvas com sucesso",
       "saveFailed": "Falha ao salvar permissões"

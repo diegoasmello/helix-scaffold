@@ -8,6 +8,7 @@ import { Button, Form, Group, notify, PageEdit, useForm } from '@helix/ui'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 
+import { isRoleNameTaken } from '../api-errors'
 import { RolesForm } from '../components/roles-form'
 import type { RoleFormValues, UpdateRoleInput } from '../types'
 import { roleFormValidate } from '../validation'
@@ -59,7 +60,11 @@ export function RolesEdit() {
           notify({ status: 'success', message: t('notifications.updated') })
           navigate({ to: '/roles' })
         },
-        onError: () => {
+        onError: (error) => {
+          if (isRoleNameTaken(error)) {
+            form.setFieldError('name', t('form.name.taken'))
+            return
+          }
           notify({ status: 'danger', message: t('notifications.updateFailed') })
         },
       }
