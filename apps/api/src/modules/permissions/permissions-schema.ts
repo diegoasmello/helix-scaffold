@@ -1,10 +1,13 @@
 import z from 'zod'
 
-import { permissionActionSchema } from '@/config/permissions'
+import {
+  permissionActionSchema,
+  permissionResourceSchema,
+} from '@/config/permissions'
 
 export const resourceDefinitionSchema = z
   .object({
-    resource: z.string(),
+    resource: permissionResourceSchema,
     label: z.string(),
     actions: z.array(permissionActionSchema),
   })

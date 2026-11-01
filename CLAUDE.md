@@ -198,7 +198,7 @@ The only exception is a `/all` endpoint for select-field use cases (e.g. `GET /r
 
 When a new module exposes user-facing resources, register it in the permission system as part of module creation:
 
-- **Backend**: add an entry to `apps/api/src/config/permissions.ts` — defines which actions exist for the resource
+- **Backend**: add an entry to `apps/api/src/config/permissions.ts` — defines which actions exist for the resource. `requirePermission()`, `request.audit()` and the web's permission checks (via the generated `PermissionResource`) accept only names declared there — a typo does not compile, and an undeclared pair stops the API at startup
 - **Frontend**: declare the pages' `PageAccess` in `routes/access.ts`, guard each route with `guardPage(...)` and give the sidebar entry in `src/config/sidebar.ts` the same constant (`access: XXX_ACCESS.view`); wrap Create/Edit/Delete action buttons with `<HasPermission>`; add the resource's label to `permissions.resources.<resource>` in both `locales/*/roles.json` (the permission editor falls back to the API's English label otherwise)
 
 Both workspace `CLAUDE.md` files describe the exact steps.

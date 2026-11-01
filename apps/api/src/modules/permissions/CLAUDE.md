@@ -21,11 +21,11 @@ Unique index on `(roleId, resource, action)` — no duplicate grants per role.
 
 No entity schema for a "permission" object. The schemas are:
 
-- `resourceDefinitionSchema` — `{ resource, label, actions: PermissionAction[] }`. Used for the catalog endpoint.
-- `grantsSchema` — `Record<string, string[]>` — the shape `{ [resource]: action[] }`. Named ref `Grants`.
+- `resourceDefinitionSchema` — `{ resource: PermissionResource, label, actions: PermissionAction[] }`. Used for the catalog endpoint. `PermissionResource` is a named enum of the catalog's resources, so the generated client types the frontend's permission checks with it.
+- `grantsSchema` — `Record<string, string[]>` — the shape `{ [resource]: action[] }`. Named ref `Grants`. Keys stay `string`: a role may still hold rows for a resource a fork has since removed from the catalog.
 - `rolePermissionsResponseSchema` — `{ grants: Grants }`. Named ref `RolePermissionsResponse`. Used for all read/write endpoints on role permissions.
 
-`PermissionAction` is imported from `src/config/permissions.ts`, not declared here.
+`PermissionAction` and `PermissionResource` are imported from `src/config/permissions.ts`, not declared here.
 
 ## Service (`permissions-service.ts`)
 
@@ -62,6 +62,8 @@ Four endpoints across two URL namespaces:
 
 `createRequirePermission(database)` returns the `requirePermission` factory used as `preHandler` on every protected route across all modules. It calls `permissionsService.hasPermission(roleId, resource, action)` on each request — one DB query per protected route hit.
 
+The `RequirePermission` type (`src/types.ts`) accepts only pairs `RESOURCE_DEFINITIONS` declares (`<R extends PermissionResource>(resource: R, action: ResourceAction<R>)`). The factory also checks the pair with `isDeclaredPermission()` when the route registers and throws otherwise, so an undeclared pair stops the API at startup, like `requireSubscription()` with an unknown feature.
+
 Returns `403` in two cases:
 1. `request.sessionUser.roleId` is `null` or falsy — the user has no role at all.
 2. The role exists but the specific `(resource, action)` row is absent.
@@ -89,3 +91,5 @@ Only `view` and `edit` — there is no `create` or `delete` action. Permissions 
 **Permission enforcement** is tested inline within the relevant `describe` blocks rather than in a separate `Permission enforcement` block — `GET /roles/:id/permissions` tests 403, `PUT /roles/:id/permissions` tests 403. The pattern differs slightly from other modules: some tests insert users directly via `testDb.insert(user)` instead of using the sign-up endpoint.
 
 **`Bootstrap status` describe block** — a single sanity test verifying that `GET /bootstrap/status` returns `bootstrapped: true` while the test session user exists. This is an integration-level check that the bootstrap module still works alongside the permissions module, not a permissions-specific test.
+
+**`src/hooks/require-permission.test.ts`** — the hook on a bare Fastify app with a real catalog pair (`todos:view`): 403 `permission_denied` without a role or without the grant, the handler runs with it, and an undeclared pair (`todo:view`, `audit:edit`, through a cast) throws at registration.

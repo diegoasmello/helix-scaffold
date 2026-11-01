@@ -70,7 +70,7 @@ The file a developer edits to shape the app. Written with `defineConfig()` (Vite
 | `test-overrides.ts` | Pinned values for the test suite — see below |
 | `spec-overrides.ts` | Profile for `pnpm spec:export` (`src/scripts/export-spec.ts`): every optional route registered, placeholder plan, social providers off. Only settings that decide which routes exist belong here — see _OpenAPI spec export_ |
 | `billing-webhook.ts` | Registry, not config: the payment processor adapter (`null` = webhook off). See `src/modules/billing-webhook/CLAUDE.md` |
-| `permissions.ts` | Registry: `RESOURCE_DEFINITIONS` (RBAC resources and actions), `ALL_PERMISSIONS`, `findUnknownGrants()` — see _Creating a new module_ → _Step 0_ |
+| `permissions.ts` | Registry: `RESOURCE_DEFINITIONS` (RBAC resources and actions, `as const`), the types derived from it (`PermissionResource`, `ResourceAction<R>`, `Permission`), `ALL_PERMISSIONS`, `isDeclaredPermission()`, `findUnknownGrants()` — see _Creating a new module_ → _Step 0_ |
 | `upload-references.ts` | Registry: every column that references `uploads.id`, so orphan cleanup keeps those uploads — see `src/modules/uploads/CLAUDE.md`. Imported for its side effects by `server.ts` |
 
 **Modules receive the config, they never import it.** `buildApp(database, { config })` (default: `config` from `@/config`) hands it to every route plugin through its options (`{ database, config, … }`) and to the factories that need it (`createAuth(database, emailProvider, config, logger)`, `createRequireSubscription(database, config)`, `createEntitlementsService(database, config.subscriptions)`). Pure helpers take the slice they read (`getUsableSocialProviders(config)`, `isKnownPlan(config.subscriptions.plans, id)`). Only the entry points import `config`: `server.ts`, `src/db/seed.ts`, `src/scripts/export-spec.ts` (through `buildApp`'s default) and the test helpers. That is what lets one test file run the app in several modes.
@@ -133,7 +133,7 @@ The `src/hooks/` directory contains request-lifecycle hooks injected into the au
 | Hook | Factory | Purpose |
 | --- | --- | --- |
 | `require-auth.ts` | `createRequireAuth(auth)` | Validates the session cookie; attaches `request.sessionUser` |
-| `require-permission.ts` | `createRequirePermission(database)` | Returns `requirePermission(resource, action) → PreHandler`; enforces RBAC per route |
+| `require-permission.ts` | `createRequirePermission(database)` | Returns `requirePermission(resource, action) → PreHandler`; enforces RBAC per route. Only catalog pairs compile, and an undeclared one throws at registration |
 | `require-subscription.ts` | `createRequireSubscription(database, config)` | Returns `requireSubscription(feature?) → PreHandler`; enforces active subscription (and plan feature) per route |
 | `audit-request.ts` | `registerAuditRequest(app, recorder)` | Attaches `request.audit(action, resource, id?, metadata?)` globally — the audit recorder with the session user as actor |
 
@@ -532,6 +532,12 @@ Declaring the resource is enough for the rest of the system: bootstrap grants it
 
 `PermissionAction = "view" | "create" | "edit" | "delete"` is the full set of supported actions. TypeScript enforces this via `satisfies` — adding an unsupported action is a compile error. If the module genuinely needs a new action type, extend `PermissionAction` first.
 
+The catalog is `as const`, so the names are typed from it:
+
+- `requirePermission(resource, action)` accepts only pairs the catalog declares — `requirePermission('feature', 'view')` (typo) and `requirePermission('audit', 'edit')` (undeclared action) do not compile. A pair that slips past the types (a cast) throws when the route registers, so the API does not start — never a route that answers 403 to everyone.
+- `request.audit()`'s `resource`, the seed's permission lists (`satisfies Permission[]`) and `ALL_PERMISSIONS` use the same types.
+- The resource names go into the spec as the `PermissionResource` enum (`GET /permissions/resources`), so the frontend's `PageAccess`, `hasPermission()` and `<HasPermission>` reject a typo too — after `pnpm spec:export && pnpm spec:generate`.
+
 ### 1. Schema (`<feature>-schema.ts`)
 
 Declare all Zod schemas for the module. The main schema (`featureSchema`) describes the object returned by the API. The others describe request bodies and the paginated list:
@@ -718,7 +724,7 @@ request.audit(action, resource, resourceId?, metadata?)
 ```
 
 - `action` — `"create"`, `"edit"`, or `"delete"`
-- `resource` — the resource string from `src/config/permissions.ts`
+- `resource` — a resource of `src/config/permissions.ts` (`PermissionResource`), or `me`
 - `resourceId` — the id of the affected record (omit or pass `undefined` if not applicable)
 - `metadata` — pass `request.body` for create/edit; omit for delete (no body)
 

@@ -1,5 +1,6 @@
 import type {
   PermissionAction,
+  PermissionResource,
   ResourceDefinition,
 } from '@helix/api-client/types'
 import { MantineProvider } from '@helix/ui'
@@ -72,7 +73,12 @@ describe('PermissionsTree', () => {
       <MantineProvider>
         <PermissionsTree
           definitions={[
-            { resource: 'reports', label: 'Reports', actions: ['view'] },
+            {
+              // A resource just added to the API catalog, with no label yet
+              resource: 'reports' as PermissionResource,
+              label: 'Reports',
+              actions: ['view'],
+            },
           ]}
           grants={{}}
           onChange={vi.fn()}

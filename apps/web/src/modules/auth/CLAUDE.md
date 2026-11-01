@@ -60,9 +60,11 @@ type AuthState = {
   grants: Grants               // { [resource]: action[] }
   isPending: boolean           // true while session OR permissions are loading
   isAuthenticated: boolean     // true when user is not null
-  hasPermission: (resource: string, action: PermissionAction) => boolean
+  hasPermission: (resource: PermissionResource, action: PermissionAction) => boolean
 }
 ```
+
+`PermissionResource` (`@helix/api-client/types`) is the enum of the API's catalog (`RESOURCE_DEFINITIONS`), so `hasPermission('user', 'view')`, `<HasPermission resource="user">` and a `PageAccess` with a typo do not compile. A resource added in the API reaches it after `pnpm spec:export && pnpm spec:generate`. The action is not checked per resource here — the API's `requirePermission()` is.
 
 **Two async pieces composed together:**
 

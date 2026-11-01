@@ -22,7 +22,7 @@ app.get(
           roleId: currentRoleId,
         }
       },
-      requirePermission('foo', 'bar'),
+      requirePermission('todos', 'view'),
     ],
   },
   async () => ({ ok: true })
@@ -38,6 +38,16 @@ afterAll(async () => {
 })
 
 describe('requirePermission', () => {
+  it('throws at registration for a pair the catalog does not declare', () => {
+    const undeclared = requirePermission as (r: string, a: string) => unknown
+    expect(() => undeclared('todo', 'view')).toThrow(
+      "requirePermission('todo', 'view')"
+    )
+    expect(() => undeclared('audit', 'edit')).toThrow(
+      'does not declare this action on this resource'
+    )
+  })
+
   it('returns 403 when sessionUser has no roleId', async () => {
     currentRoleId = null
     const res = await app.inject({ method: 'GET', url: '/test' })
@@ -61,7 +71,7 @@ describe('requirePermission', () => {
 
   it('calls the route handler when role has the required permission', async () => {
     const role = await createRoleWithPermissions([
-      { resource: 'foo', action: 'bar' },
+      { resource: 'todos', action: 'view' },
     ])
     currentRoleId = role.id
     const res = await app.inject({ method: 'GET', url: '/test' })

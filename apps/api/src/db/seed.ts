@@ -5,7 +5,7 @@ import { sql } from 'drizzle-orm'
 
 import { createAuth } from '@/auth'
 import { config } from '@/config'
-import { ALL_PERMISSIONS } from '@/config/permissions'
+import { ALL_PERMISSIONS, type Permission } from '@/config/permissions'
 import { db } from '@/db'
 import {
   rolePermissions,
@@ -43,14 +43,14 @@ const MODERATOR_PERMISSIONS = [
   { resource: 'users', action: 'view' },
   { resource: 'roles', action: 'view' },
   { resource: 'audit', action: 'view' },
-]
+] satisfies Permission[]
 
 const USER_PERMISSIONS = [
   { resource: 'todos', action: 'view' },
   { resource: 'todos', action: 'create' },
   { resource: 'todos', action: 'edit' },
   { resource: 'todos', action: 'delete' },
-]
+] satisfies Permission[]
 
 const EXTRA_USERS = [
   { name: 'Alice Oliveira', email: 'alice.oliveira@example.com' },

@@ -48,24 +48,54 @@ export const RESOURCE_DEFINITIONS = [
     label: 'Subscriptions',
     actions: ['view', 'create', 'edit', 'delete'],
   },
-] satisfies readonly ResourceDefinition[]
+] as const satisfies readonly ResourceDefinition[]
 
+type Definitions = (typeof RESOURCE_DEFINITIONS)[number]
+
+/** A resource the catalog declares. */
+export type PermissionResource = Definitions['resource']
+
+/** The actions the catalog declares for `R` — `ResourceAction<'audit'>` is `'view'`. */
+export type ResourceAction<R extends PermissionResource> = Extract<
+  Definitions,
+  { resource: R }
+>['actions'][number]
+
+/** A `resource:action` pair the catalog declares. */
+export type Permission = {
+  [R in PermissionResource]: { resource: R; action: ResourceAction<R> }
+}[PermissionResource]
+
+export const permissionResourceSchema = z
+  .enum(RESOURCE_DEFINITIONS.map((def) => def.resource))
+  .meta({ id: 'PermissionResource', title: 'PermissionResource' })
+
+// TypeScript can't pair each resource with its own actions through flatMap.
 export const ALL_PERMISSIONS = RESOURCE_DEFINITIONS.flatMap(
-  ({ resource, actions }) => actions.map((action) => ({ resource, action }))
-)
+  ({ resource, actions }) =>
+    actions.map((action: PermissionAction) => ({ resource, action }))
+) as Permission[]
+
+/** True when the catalog declares `action` on `resource`. */
+export function isDeclaredPermission(
+  resource: string,
+  action: string
+): boolean {
+  const definition = RESOURCE_DEFINITIONS.find(
+    (def) => def.resource === resource
+  )
+  const declared: readonly string[] = definition?.actions ?? []
+  return declared.includes(action)
+}
 
 /**
  * `resource:action` pairs in `grants` that `RESOURCE_DEFINITIONS` does not
  * declare. Empty when every grant is known.
  */
 export function findUnknownGrants(grants: Record<string, string[]>): string[] {
-  return Object.entries(grants).flatMap(([resource, actions]) => {
-    const definition = RESOURCE_DEFINITIONS.find(
-      (def) => def.resource === resource
-    )
-    const declared: readonly string[] = definition?.actions ?? []
-    return actions
-      .filter((action) => !declared.includes(action))
+  return Object.entries(grants).flatMap(([resource, actions]) =>
+    actions
+      .filter((action) => !isDeclaredPermission(resource, action))
       .map((action) => `${resource}:${action}`)
-  })
+  )
 }

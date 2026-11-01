@@ -1,10 +1,13 @@
-import type { PermissionAction } from '@helix/api-client/types'
+import type {
+  PermissionAction,
+  PermissionResource,
+} from '@helix/api-client/types'
 import type { ReactNode } from 'react'
 
 import { useAuth } from '../use-auth'
 
 interface HasPermissionProps {
-  resource: string
+  resource: PermissionResource
   action: PermissionAction
   children: ReactNode
 }

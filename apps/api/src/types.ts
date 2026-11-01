@@ -9,6 +9,7 @@ import type {
 } from 'fastify'
 import type { ZodTypeProvider } from 'fastify-type-provider-zod'
 
+import type { PermissionResource, ResourceAction } from './config/permissions'
 import type { AuditAction, AuditResource } from './modules/audit/audit-recorder'
 
 export type FastifyTypedInstance = FastifyInstance<
@@ -24,7 +25,16 @@ export type PreHandler = (
   reply: FastifyReply
 ) => Promise<void>
 
-export type RequirePermission = (resource: string, action: string) => PreHandler
+/**
+ * Only pairs `RESOURCE_DEFINITIONS` declares compile — `('todo', 'view')` and
+ * `('audit', 'edit')` do not. An undeclared pair that slips past the types
+ * (a cast) throws when the route registers.
+ */
+export type RequirePermission = <R extends PermissionResource>(
+  resource: R,
+  action: ResourceAction<R>
+) => PreHandler
+
 /** Pass a feature to also require that the user's plan includes it. */
 export type RequireSubscription = (feature?: string) => PreHandler
 

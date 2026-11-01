@@ -1,4 +1,8 @@
-import type { Grants, PermissionAction } from '@helix/api-client/types'
+import type {
+  Grants,
+  PermissionAction,
+  PermissionResource,
+} from '@helix/api-client/types'
 import { redirect } from '@tanstack/react-router'
 
 /**
@@ -8,7 +12,7 @@ import { redirect } from '@tanstack/react-router'
  */
 export interface PageAccess {
   /** RBAC permission (`src/config/permissions.ts` in the API). Missing → `/403`. */
-  permission?: { resource: string; action: PermissionAction }
+  permission?: { resource: PermissionResource; action: PermissionAction }
   /** Plan feature (`subscriptions.plans` in the API config). Missing → `/upgrade?feature=…`. */
   feature?: string
   /** The page only exists while subscriptions are enabled. Off → `/`. */
@@ -17,7 +21,10 @@ export interface PageAccess {
 
 /** What the router context (`authenticatedRoute.beforeLoad`) and `App` provide. */
 export interface AccessCheckers {
-  hasPermission: (resource: string, action: PermissionAction) => boolean
+  hasPermission: (
+    resource: PermissionResource,
+    action: PermissionAction
+  ) => boolean
   hasSubscriptionAccess: (feature?: string) => boolean
   subscriptionEnabled: boolean
 }
@@ -78,6 +85,6 @@ export function guardPage(access: PageAccess): PageGuard {
 
 /** `hasPermission` over the grants of `GET /me/permissions` — shared by `useAuth()` and the router context. */
 export function createPermissionChecker(grants: Grants) {
-  return (resource: string, action: PermissionAction): boolean =>
+  return (resource: PermissionResource, action: PermissionAction): boolean =>
     grants[resource]?.includes(action) ?? false
 }

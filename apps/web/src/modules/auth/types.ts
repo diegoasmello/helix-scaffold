@@ -1,4 +1,8 @@
-import type { Grants, PermissionAction } from '@helix/api-client/types'
+import type {
+  Grants,
+  PermissionAction,
+  PermissionResource,
+} from '@helix/api-client/types'
 
 export type User = {
   id: string
@@ -13,5 +17,8 @@ export type AuthState = {
   grants: Grants
   isPending: boolean
   isAuthenticated: boolean
-  hasPermission: (resource: string, action: PermissionAction) => boolean
+  hasPermission: (
+    resource: PermissionResource,
+    action: PermissionAction
+  ) => boolean
 }
