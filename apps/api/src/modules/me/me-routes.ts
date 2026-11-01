@@ -3,6 +3,7 @@ import { fromNodeHeaders } from 'better-auth/node'
 import z from 'zod'
 
 import type { Auth } from '../../auth'
+import type { Config } from '../../config'
 import type { Database } from '../../db'
 import type { EmailProvider } from '../../lib/email'
 import { getUsableSocialProviders } from '../../lib/social-providers'
@@ -21,8 +22,14 @@ export async function meRoutes(
   {
     database,
     auth,
+    config,
     emailProvider,
-  }: { database: Database; auth: Auth; emailProvider: EmailProvider }
+  }: {
+    database: Database
+    auth: Auth
+    config: Config
+    emailProvider: EmailProvider
+  }
 ) {
   const service = createMeService(database, auth, emailProvider)
 
@@ -51,7 +58,7 @@ export async function meRoutes(
         },
       },
     },
-    async () => ({ providers: getUsableSocialProviders() })
+    async () => ({ providers: getUsableSocialProviders(config) })
   )
 
   app.patch(

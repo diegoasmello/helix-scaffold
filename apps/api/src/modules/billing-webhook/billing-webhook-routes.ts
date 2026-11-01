@@ -1,3 +1,4 @@
+import type { Config } from '@/config'
 import type { Database } from '@/db'
 import { getPgErrorCode, PG_FOREIGN_KEY_VIOLATION } from '@/lib/pg-errors'
 import type { AuditService } from '@/modules/audit/audit-service'
@@ -31,10 +32,12 @@ export async function billingWebhookRoutes(
   app: FastifyTypedInstance,
   {
     database,
+    config,
     adapter,
     auditService,
   }: {
     database: Database
+    config: Config
     adapter: BillingWebhookAdapter
     auditService: AuditService
   }
@@ -78,7 +81,7 @@ export async function billingWebhookRoutes(
       for (const state of states) {
         const context = { externalId: state.externalId, planId: state.planId }
 
-        if (!isKnownPlan(state.planId)) {
+        if (!isKnownPlan(config.subscriptions.plans, state.planId)) {
           log.error(
             context,
             'Billing webhook skipped: planId is not in subscriptions.plans — map the processor price to a plan id in the adapter'

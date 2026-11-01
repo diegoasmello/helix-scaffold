@@ -66,14 +66,16 @@ The file a developer edits to shape the app. Written with `defineConfig()` (Vite
 | File | Purpose |
 | --- | --- |
 | `define-config.ts` | `AppConfig` interface (the JSDoc users see), `defineConfig()` (identity, typing only), `appConfigSchema` (Zod: defaults + runtime validation, strict objects reject unknown keys) |
-| `index.ts` | Resolves the config once: calls the factory with `{ mode }`, merges `spec-overrides.ts` when exporting the spec or `test-overrides.ts` in test mode, parses, cross-validates against `env` (enabled social provider without credentials → startup error), deep-freezes. Exports `config`. |
+| `index.ts` | Resolves the config once: calls the factory with `{ mode }`, merges `spec-overrides.ts` when exporting the spec or `test-overrides.ts` in test mode, parses, cross-validates against `env` (enabled social provider without credentials → startup error), deep-freezes. Exports `config` (the default), the `Config` type, and `overrideConfig(base, overrides)` — the same merge + validation on top of another config, used by tests to build an app in another mode. |
 | `test-overrides.ts` | Pinned values for the test suite — see below |
 | `spec-overrides.ts` | Profile for `pnpm spec:export` (`src/scripts/export-spec.ts`): every optional route registered, placeholder plan, social providers off. Only settings that decide which routes exist belong here — see _OpenAPI spec export_ |
 | `billing-webhook.ts` | Registry, not config: the payment processor adapter (`null` = webhook off). See `src/modules/billing-webhook/CLAUDE.md` |
 | `permissions.ts` | Registry: `RESOURCE_DEFINITIONS` (RBAC resources and actions), `ALL_PERMISSIONS`, `findUnknownGrants()` — see _Creating a new module_ → _Step 0_ |
 | `upload-references.ts` | Registry: every column that references `uploads.id`, so orphan cleanup keeps those uploads — see `src/modules/uploads/CLAUDE.md`. Imported for its side effects by `server.ts` |
 
-Consumers import `config` from `@/config`. **Adding a setting:** add the field with JSDoc to `AppConfig`, the matching entry (with `.default()`) to `appConfigSchema`, then the value to `app.config.ts`. Keep the two shapes in sync — a key missing from the schema is rejected at startup.
+**Modules receive the config, they never import it.** `buildApp(database, { config })` (default: `config` from `@/config`) hands it to every route plugin through its options (`{ database, config, … }`) and to the factories that need it (`createAuth(database, emailProvider, config, logger)`, `createRequireSubscription(database, config)`, `createEntitlementsService(database, config.subscriptions)`). Pure helpers take the slice they read (`getUsableSocialProviders(config)`, `isKnownPlan(config.subscriptions.plans, id)`). Only the entry points import `config`: `server.ts`, `src/db/seed.ts`, `src/scripts/export-spec.ts` (through `buildApp`'s default) and the test helpers. That is what lets one test file run the app in several modes.
+
+**Adding a setting:** add the field with JSDoc to `AppConfig`, the matching entry (with `.default()`) to `appConfigSchema`, then the value to `app.config.ts`. Keep the two shapes in sync — a key missing from the schema is rejected at startup.
 
 ### `.env` — secrets and per-deploy values
 
@@ -98,6 +100,8 @@ Validated with Zod in `src/env.ts` at startup. If a required variable is missing
 
 The suite therefore never depends on what a product sets in `app.config.ts`. Social providers are not overridden — status endpoints assert on shape, not content.
 
+**Other modes:** `createTestApp(overrides)` builds the app with `overrideConfig(config, overrides)` — e.g. `createTestApp({ registration: { mode: 'closed' } })` or `createTestApp({ subscriptions: { enabled: false } })`, the defaults a product ships with. Keep the default `app` for the session (`createTestSession()` signs up over HTTP, so it needs open registration): sessions live in the shared database and are signed with the same secret, so its cookies work on the second app too. Close every extra app in `afterAll`. References: `registration-routes.test.ts` and `bootstrap-routes.test.ts` (closed), `subscriptions-routes.test.ts` → _with subscriptions disabled_, `billing-webhook-routes.test.ts` (webhook not registered when disabled).
+
 ### OpenAPI spec export
 
 `pnpm spec:export <file>` (`src/scripts/export-spec.ts`) writes the spec `@helix/api-client` is generated from — `pnpm export-spec` in `packages/api-client` calls it. It builds the app in memory with `src/config/spec-overrides.ts` applied (via `enableSpecExport()`, before `@/config` is imported), so the spec lists every route the codebase can expose regardless of `app.config.ts`. It needs no database (building the app opens no connection) and no `.env` (placeholder values only pass `src/env.ts`). The pre-commit hook runs it whenever a staged non-test file under `src/` changes and stages the result (`lint-staged.config.js` — a function, so the export starts only after ESLint and Prettier have rewritten the sources), so the committed spec never lags behind the routes. `pre-push` (`.husky/pre-push`) re-exports it once more and blocks the push if it changed — this catches dependency bumps, rebases and `--no-verify` commits. The check is skipped while `apps/api` or the spec have uncommitted changes, since the export reads the working tree.
@@ -106,8 +110,8 @@ The suite therefore never depends on what a product sets in `app.config.ts`. Soc
 
 ## Shared social provider utility (`src/lib/social-providers.ts`)
 
-- `getConfiguredSocialProviders(): string[]` — the social providers enabled in `config.auth.socialProviders` (credentials are guaranteed by config validation), whatever the mode.
-- `getUsableSocialProviders(): string[]` — the same list in open mode, `[]` in closed mode (email/password only). Backs both `GET /registration/status` (login/sign-up buttons) and `GET /me/providers` (account linking on `/me/security`), so the two never disagree. Tested in `social-providers.test.ts` with a mocked config.
+- `getConfiguredSocialProviders(config): string[]` — the social providers enabled in `config.auth.socialProviders` (credentials are guaranteed by config validation), whatever the mode.
+- `getUsableSocialProviders(config): string[]` — the same list in open mode, `[]` in closed mode (email/password only). Backs both `GET /registration/status` (login/sign-up buttons) and `GET /me/providers` (account linking on `/me/security`), so the two never disagree. Both take only `{ registration, auth }`, so `social-providers.test.ts` passes plain objects — no mocking.
 
 **When adding a new social provider:** update `auth.ts` (socialProviders config), `AppConfig` + `appConfigSchema` in `src/config/define-config.ts`, the credential map in `src/config/index.ts`, `env.ts` and `.env.example`.
 
@@ -120,7 +124,7 @@ src/modules/<feature>/
 └── <feature>-routes.ts   ← Fastify route registrations
 ```
 
-The entry point is `src/app.ts`, which exports `buildApp(database: Database, options?)` (`options.billingWebhookAdapter` overrides `src/config/billing-webhook.ts` — used by tests). Each route module is registered there via `app.register(featureRoutes, { database })`.
+The entry point is `src/app.ts`, which exports `buildApp(database: Database, options?)` (`options.config` replaces the default settings and `options.billingWebhookAdapter` overrides `src/config/billing-webhook.ts` — both used by tests). Each route module is registered there via `app.register(featureRoutes, { database })`, plus `config` when the module reads a setting.
 
 ## Hooks (`src/hooks/`)
 
@@ -130,7 +134,7 @@ The `src/hooks/` directory contains request-lifecycle hooks injected into the au
 | --- | --- | --- |
 | `require-auth.ts` | `createRequireAuth(auth)` | Validates the session cookie; attaches `request.sessionUser` |
 | `require-permission.ts` | `createRequirePermission(database)` | Returns `requirePermission(resource, action) → PreHandler`; enforces RBAC per route |
-| `require-subscription.ts` | `createRequireSubscription(database)` | Returns `requireSubscription(feature?) → PreHandler`; enforces active subscription (and plan feature) per route |
+| `require-subscription.ts` | `createRequireSubscription(database, config)` | Returns `requireSubscription(feature?) → PreHandler`; enforces active subscription (and plan feature) per route |
 | `audit-request.ts` | `registerAuditRequest(app, auditService)` | Attaches `request.audit(action, resource, id?, metadata?)` globally |
 
 ### `requireSubscription` — subscription gate
@@ -860,14 +864,14 @@ app.register(async (authenticated) => {
   registerAuditRequest(authenticated, auditService)
 
   const requirePermission = createRequirePermission(database)
-  const requireSubscription = createRequireSubscription(database)
+  const requireSubscription = createRequireSubscription(database, config)
 
   // ...existing modules
   authenticated.register(featureRoutes, { database, requirePermission }) // ← add here
 })
 ```
 
-Routes that must exist only under a config flag are registered conditionally (`if (config.subscriptions.enabled) …`) — and the flag must then be turned on in `src/config/spec-overrides.ts`, or the routes disappear from the generated client (see _OpenAPI spec export_).
+A module that reads a setting receives `config` in its options (`{ database, config, requirePermission }`) — never `import { config } from '@/config'` inside a module, or tests cannot run it in another mode. Routes that must exist only under a config flag are registered conditionally (`if (config.subscriptions.enabled) …`) — and the flag must then be turned on in `src/config/spec-overrides.ts`, or the routes disappear from the generated client (see _OpenAPI spec export_).
 
 Registering at the root instead of inside `authenticated` will leave the routes publicly accessible.
 
@@ -903,7 +907,7 @@ Test files run **serially** (`fileParallelism: false` in `vitest.config.ts`) aga
 The helpers in `src/test/helpers.ts` provide:
 
 - `testDb` — Drizzle instance on the test database
-- `createTestApp()` — `buildApp(testDb)`. For a custom billing adapter, call `buildApp(testDb, { billingWebhookAdapter })` directly
+- `createTestApp(overrides?)` — `buildApp(testDb)` with the test config, or with `overrides` merged on top (another mode — see _Test config_ → _Other modes_). For a custom billing adapter, call `buildApp(testDb, { billingWebhookAdapter })` directly
 - `createTestSession(app)` — signs up `test@test.com` with the `__test_admin__` role (every permission in `ALL_PERMISSIONS`) and an active `pro` subscription; returns the cookie string
 - `getTestUser()` — the user created by `createTestSession()` (look it up by email, never by row order)
 - `createRoleWithPermissions(grants)` — a fresh role with exactly the given permissions, for permission enforcement tests

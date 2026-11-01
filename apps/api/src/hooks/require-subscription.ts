@@ -1,4 +1,4 @@
-import { config } from '@/config'
+import type { Config } from '@/config'
 import { isSpecExport } from '@/config/spec-overrides'
 import type { Database } from '@/db'
 import {
@@ -15,9 +15,13 @@ const DENIAL_MESSAGES: Record<EntitlementDenial, string> = {
 }
 
 export function createRequireSubscription(
-  database: Database
+  database: Database,
+  config: Config
 ): RequireSubscription {
-  const entitlementsService = createEntitlementsService(database)
+  const entitlementsService = createEntitlementsService(
+    database,
+    config.subscriptions
+  )
 
   return function requireSubscription(feature?: string): PreHandler {
     if (!config.subscriptions.enabled) {
@@ -26,7 +30,11 @@ export function createRequireSubscription(
 
     // Runs at route registration, so a typo fails at startup. Skipped when
     // exporting the spec, whose placeholder catalog declares no features.
-    if (feature && !isSpecExport() && !isKnownFeature(feature)) {
+    if (
+      feature &&
+      !isSpecExport() &&
+      !isKnownFeature(config.subscriptions.plans, feature)
+    ) {
       throw new Error(
         `requireSubscription('${feature}'): no plan in subscriptions.plans (src/app.config.ts) includes this feature`
       )

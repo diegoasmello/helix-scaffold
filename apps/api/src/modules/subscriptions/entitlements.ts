@@ -1,9 +1,9 @@
-import { config } from '@/config'
+import type { Config } from '@/config'
 import type { Database } from '@/db'
 import type { subscriptions } from '@/db/schema'
 import { createPermissionsService } from '@/modules/permissions/permissions-service'
 
-import { getPlan } from './subscription-plans'
+import { getPlan, type PlanCatalog } from './subscription-plans'
 import { createSubscriptionsService } from './subscriptions-service'
 
 const DAY_MS = 24 * 60 * 60 * 1000
@@ -40,9 +40,10 @@ type AccessGrantingSubscription = Pick<
 export function resolveEntitlements(input: {
   operator: boolean
   subscription: AccessGrantingSubscription | null
+  plans: PlanCatalog
   pastDueGraceDays: number
 }): Entitlements {
-  const { operator, subscription, pastDueGraceDays } = input
+  const { operator, subscription, plans, pastDueGraceDays } = input
 
   const graceEndsAt =
     subscription?.status === 'past_due' && subscription.pastDueSince
@@ -55,7 +56,7 @@ export function resolveEntitlements(input: {
     operator,
     subscribed: subscription !== null,
     features: subscription
-      ? [...(getPlan(subscription.planId)?.features ?? [])]
+      ? [...(getPlan(plans, subscription.planId)?.features ?? [])]
       : [],
     graceEndsAt,
   }
@@ -74,7 +75,10 @@ export function denialFor(
   return null
 }
 
-export function createEntitlementsService(database: Database) {
+export function createEntitlementsService(
+  database: Database,
+  settings: Config['subscriptions']
+) {
   const subscriptionsService = createSubscriptionsService(database)
   const permissionsService = createPermissionsService(database)
 
@@ -87,12 +91,15 @@ export function createEntitlementsService(database: Database) {
       user.roleId
         ? permissionsService.hasPermission(user.roleId, 'subscriptions', 'view')
         : false,
-      subscriptionsService.getAccessGrantingByUserId(user.id),
+      subscriptionsService.getAccessGrantingByUserId(user.id, {
+        pastDueGraceDays: settings.pastDueGraceDays,
+      }),
     ])
     return resolveEntitlements({
       operator,
       subscription,
-      pastDueGraceDays: config.subscriptions.pastDueGraceDays,
+      plans: settings.plans,
+      pastDueGraceDays: settings.pastDueGraceDays,
     })
   }
 

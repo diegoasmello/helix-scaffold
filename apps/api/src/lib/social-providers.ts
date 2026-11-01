@@ -1,7 +1,11 @@
-import { config } from '@/config'
+import type { Config } from '@/config'
+
+type ProviderSettings = Pick<Config, 'registration' | 'auth'>
 
 /** Providers enabled in `config.auth.socialProviders`, whatever the mode. */
-export function getConfiguredSocialProviders(): string[] {
+export function getConfiguredSocialProviders(
+  config: ProviderSettings
+): string[] {
   return Object.entries(config.auth.socialProviders)
     .filter(([, provider]) => provider.enabled)
     .map(([name]) => name)
@@ -13,8 +17,8 @@ export function getConfiguredSocialProviders(): string[] {
  * social button there, so a linked provider could never be used. Backs both
  * `GET /registration/status` and `GET /me/providers`.
  */
-export function getUsableSocialProviders(): string[] {
+export function getUsableSocialProviders(config: ProviderSettings): string[] {
   return config.registration.mode === 'open'
-    ? getConfiguredSocialProviders()
+    ? getConfiguredSocialProviders(config)
     : []
 }

@@ -54,7 +54,7 @@ Receives `{ database, auth, emailProvider }` — no `requirePermission` paramete
 
 **`POST /me/set-password`** — calls `service.setPassword(body, headers, sessionUser.email)`. Catches `APIError` → 400 `{ message }` (better-auth rejects if the user already has a credential account). Returns 204 on success. Audit: `{ passwordSet: true }`.
 
-**`GET /me/providers`** — calls `getUsableSocialProviders()` from `src/lib/social-providers.ts`: the providers enabled in `config.auth.socialProviders` in open mode, `[]` in closed mode. Same list as `GET /registration/status` — closed mode is email/password only, and a provider linked there could never be used to sign in. With `[]` the frontend hides the "link another account" section; already linked accounts are still listed.
+**`GET /me/providers`** — calls `getUsableSocialProviders(config)` from `src/lib/social-providers.ts` (`config` comes in the route options): the providers enabled in `config.auth.socialProviders` in open mode, `[]` in closed mode. Same list as `GET /registration/status` — closed mode is email/password only, and a provider linked there could never be used to sign in. With `[]` the frontend hides the "link another account" section; already linked accounts are still listed.
 
 ## Shared utility: `src/lib/social-providers.ts`
 

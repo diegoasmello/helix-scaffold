@@ -4,7 +4,7 @@ import z from 'zod'
 import { ALL_PERMISSIONS } from '@/config/permissions'
 
 import type { Auth } from '../../auth'
-import { config } from '../../config'
+import type { Config } from '../../config'
 import type { Database } from '../../db'
 import { rolePermissions, roles, user } from '../../db/schema'
 import type { FastifyTypedInstance } from '../../types'
@@ -28,7 +28,7 @@ async function isBootstrapped(database: Database): Promise<boolean> {
 
 export async function bootstrapRoutes(
   app: FastifyTypedInstance,
-  { database, auth }: { database: Database; auth: Auth }
+  { database, auth, config }: { database: Database; auth: Auth; config: Config }
 ) {
   app.get(
     '/bootstrap/status',

@@ -12,7 +12,6 @@ import {
   sql,
 } from 'drizzle-orm'
 
-import { config } from '@/config'
 import type { Database } from '@/db'
 import { subscriptions } from '@/db/schema'
 import { getPaginationParams } from '@/lib/pagination'
@@ -47,18 +46,15 @@ function pastDueSinceFor(status: SubscriptionStatus) {
 export function createSubscriptionsService(database: Database) {
   /**
    * The access-granting subscription: live (`active`/`trialing`), or
-   * `past_due` still within `subscriptions.pastDueGraceDays` of `pastDueSince`.
+   * `past_due` still within `pastDueGraceDays` (`subscriptions.pastDueGraceDays`) of `pastDueSince`.
    * Live rows win over a past_due one; then the most recent. Turned into the
    * user's entitlements by `entitlements.ts`.
    */
   async function getAccessGrantingByUserId(
     userId: string,
-    options: { now?: Date; pastDueGraceDays?: number } = {}
+    options: { pastDueGraceDays: number; now?: Date }
   ) {
-    const {
-      now = new Date(),
-      pastDueGraceDays = config.subscriptions.pastDueGraceDays,
-    } = options
+    const { pastDueGraceDays, now = new Date() } = options
     const graceCutoff = new Date(now.getTime() - pastDueGraceDays * DAY_MS)
 
     const [sub] = await database

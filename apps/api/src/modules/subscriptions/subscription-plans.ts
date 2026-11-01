@@ -1,23 +1,21 @@
-import { config } from '@/config'
+import type { Config } from '@/config'
 
-export type SubscriptionPlan = (typeof config.subscriptions.plans)[number]
+/** The plan catalog: `config.subscriptions.plans`. */
+export type PlanCatalog = Config['subscriptions']['plans']
+export type SubscriptionPlan = PlanCatalog[number]
 
-export function getPlan(planId: string): SubscriptionPlan | undefined {
-  return config.subscriptions.plans.find((plan) => plan.id === planId)
+export function getPlan(
+  plans: PlanCatalog,
+  planId: string
+): SubscriptionPlan | undefined {
+  return plans.find((plan) => plan.id === planId)
 }
 
-export function isKnownPlan(planId: string): boolean {
-  return getPlan(planId) !== undefined
+export function isKnownPlan(plans: PlanCatalog, planId: string): boolean {
+  return getPlan(plans, planId) !== undefined
 }
 
 /** True when at least one plan declares the feature. */
-export function isKnownFeature(feature: string): boolean {
-  return config.subscriptions.plans.some((plan) =>
-    plan.features.includes(feature)
-  )
-}
-
-/** Unknown plans (e.g. removed from the catalog) unlock no features. */
-export function planHasFeature(planId: string, feature: string): boolean {
-  return getPlan(planId)?.features.includes(feature) ?? false
+export function isKnownFeature(plans: PlanCatalog, feature: string): boolean {
+  return plans.some((plan) => plan.features.includes(feature))
 }

@@ -101,9 +101,9 @@ Backend settings are split in two places:
 | `apps/api/src/app.config.ts` | **Product decisions**, committed: registration mode, subscriptions and trial, social providers on/off, email sender, uploads, server port, logger. Written with `defineConfig()` (Vite-style: a plain object or `({ mode }) => ({ ... })`). |
 | `apps/api/.env` | **Secrets and per-deploy values**, never committed: `DATABASE_URL`, `AUTH_SECRET`, `BASE_URL`, `CLIENT_URL`, `RESEND_API_KEY`, OAuth client IDs/secrets. |
 
-Read settings via `import { config } from '@/config'` (validated, defaulted, frozen) and secrets via `import { env } from '@/env'`. Never put a secret in `app.config.ts`, and never add a new product setting to `.env`. To add a setting: extend the `AppConfig` interface (with JSDoc) and `appConfigSchema` in `src/config/define-config.ts`, then set it in `app.config.ts`.
+Settings are resolved once (validated, defaulted, frozen) and passed down from `buildApp(database, { config })`: route plugins get `config` in their options, factories (`createAuth`, `createRequireSubscription`, …) as a parameter. Only the entry points (`server.ts`, the seed, test helpers) import `config` from `@/config`. Secrets come from `import { env } from '@/env'`. Never put a secret in `app.config.ts`, and never add a new product setting to `.env`. To add a setting: extend the `AppConfig` interface (with JSDoc) and `appConfigSchema` in `src/config/define-config.ts`, then set it in `app.config.ts`.
 
-Tests (`NODE_ENV=test`) apply `src/config/test-overrides.ts` on top of `app.config.ts`: registration open, subscriptions enabled, uploads in a temp dir. The suite never depends on what a fork configures.
+Tests (`NODE_ENV=test`) apply `src/config/test-overrides.ts` on top of `app.config.ts`: registration open, subscriptions enabled, uploads in a temp dir. The suite never depends on what a fork configures. To test another mode — such as the shipped defaults — build a second app with `createTestApp({ registration: { mode: 'closed' }, subscriptions: { enabled: false } })`.
 
 See `apps/api/CLAUDE.md` → _Application config_ for the full reference.
 

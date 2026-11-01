@@ -92,17 +92,10 @@ function validateAgainstEnv(resolved: ResolvedAppConfig) {
   }
 }
 
-function resolveConfig(): DeepReadonly<ResolvedAppConfig> {
-  const mode = env.NODE_ENV
-  const raw: AppConfig =
-    typeof appConfig === 'function' ? appConfig({ mode }) : appConfig
-  const overrides = isSpecExport()
-    ? specConfigOverrides
-    : mode === 'test'
-      ? testConfigOverrides
-      : undefined
-  const merged = overrides ? deepMerge(raw, overrides) : raw
+/** The resolved, validated and frozen settings — what every module receives. */
+export type Config = DeepReadonly<ResolvedAppConfig>
 
+function parseConfig(merged: AppConfig): Config {
   const parsed = appConfigSchema.safeParse(merged)
   if (!parsed.success) {
     throw new Error(
@@ -114,6 +107,32 @@ function resolveConfig(): DeepReadonly<ResolvedAppConfig> {
   return deepFreeze(parsed.data)
 }
 
+function resolveConfig(): Config {
+  const mode = env.NODE_ENV
+  const raw: AppConfig =
+    typeof appConfig === 'function' ? appConfig({ mode }) : appConfig
+  const overrides = isSpecExport()
+    ? specConfigOverrides
+    : mode === 'test'
+      ? testConfigOverrides
+      : undefined
+  return parseConfig(overrides ? deepMerge(raw, overrides) : raw)
+}
+
+/**
+ * The default settings: `src/app.config.ts` (plus the test or spec-export
+ * overrides). `buildApp()` uses it unless given another `Config`; modules
+ * receive the config through `buildApp`, never by importing this.
+ */
 export const config = resolveConfig()
+
+/**
+ * `base` with `overrides` deep-merged on top (arrays are replaced), validated
+ * like `app.config.ts`. Lets tests build an app in another mode:
+ * `createTestApp({ registration: { mode: 'closed' } })`.
+ */
+export function overrideConfig(base: Config, overrides: AppConfig): Config {
+  return parseConfig(deepMerge(base as AppConfig, overrides))
+}
 
 export type { AppConfig, ResolvedAppConfig } from './define-config'

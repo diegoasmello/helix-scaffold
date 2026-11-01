@@ -11,7 +11,7 @@ The frontend (login page, sign-up route guard) cannot read the backend config. T
 Registered at the **root scope** in `app.ts` — outside the `authenticated` scope, no session required:
 
 ```ts
-app.register(registrationRoutes)
+app.register(registrationRoutes, { config })
 ```
 
 ## Endpoint
@@ -27,7 +27,7 @@ Returns `{ open: boolean, providers: string[] }`. No auth, no permissions.
 
 **`providers` values:** `"google"` | `"facebook"` | `"apple"` — only providers enabled in `config.auth.socialProviders` (their credentials are guaranteed by config validation at startup).
 
-**Why `providers` is empty when closed:** returning a non-empty list in closed mode would leak which OAuth services are configured without giving users a way to act on it. The list comes from `getUsableSocialProviders()` (`src/lib/social-providers.ts`), which `GET /me/providers` uses too.
+**Why `providers` is empty when closed:** returning a non-empty list in closed mode would leak which OAuth services are configured without giving users a way to act on it. The list comes from `getUsableSocialProviders(config)` (`src/lib/social-providers.ts`), which `GET /me/providers` uses too.
 
 ## Configuration
 
@@ -68,7 +68,7 @@ socialProviders: {
 
 **Important:** `socialProviders` in `betterAuth()` expects **raw options objects**, not the result of calling the provider helper functions (`google()`, `facebook()`, etc.). Those helpers are for standalone use.
 
-**`getConfiguredSocialProviders()`** in `src/lib/social-providers.ts` derives the enabled list from `config.auth.socialProviders`, the same source `auth.ts` uses; `getUsableSocialProviders()` filters it by mode. See `apps/api/CLAUDE.md` → _Shared social provider utility_ for the steps to add a new provider.
+**`getConfiguredSocialProviders(config)`** in `src/lib/social-providers.ts` derives the enabled list from `config.auth.socialProviders`, the same source `auth.ts` uses; `getUsableSocialProviders()` filters it by mode. See `apps/api/CLAUDE.md` → _Shared social provider utility_ for the steps to add a new provider.
 
 ## Sign-up guard (email/password)
 

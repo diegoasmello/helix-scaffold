@@ -16,7 +16,7 @@ import {
 } from 'fastify-type-provider-zod'
 
 import { createAuth } from './auth'
-import { config } from './config'
+import { type Config, config as defaultConfig } from './config'
 import { billingWebhookAdapter as configuredBillingWebhookAdapter } from './config/billing-webhook'
 import type { Database } from './db'
 import { env } from './env'
@@ -42,12 +42,21 @@ import { uploadsRoutes } from './modules/uploads/uploads-routes'
 import { usersRoutes } from './modules/users/users-routes'
 
 interface BuildAppOptions {
+  /**
+   * The settings every module receives. Defaults to `src/app.config.ts`
+   * (`config` from `@/config`); tests pass another one built with
+   * `overrideConfig()` to run in a different mode.
+   */
+  config?: Config
   /** Overrides src/config/billing-webhook.ts — used by tests. */
   billingWebhookAdapter?: BillingWebhookAdapter | null
 }
 
 export function buildApp(database: Database, options: BuildAppOptions = {}) {
-  const { billingWebhookAdapter = configuredBillingWebhookAdapter } = options
+  const {
+    config = defaultConfig,
+    billingWebhookAdapter = configuredBillingWebhookAdapter,
+  } = options
 
   const app = fastify({
     logger: {
@@ -63,7 +72,7 @@ export function buildApp(database: Database, options: BuildAppOptions = {}) {
     from: config.email.from,
     nodeEnv: env.NODE_ENV,
   })
-  const auth = createAuth(database, emailProvider, app.log)
+  const auth = createAuth(database, emailProvider, config, app.log)
   const auditService = createAuditService(database)
 
   app.setValidatorCompiler(validatorCompiler)
@@ -147,13 +156,14 @@ export function buildApp(database: Database, options: BuildAppOptions = {}) {
     })
   })
 
-  app.register(bootstrapRoutes, { database, auth })
-  app.register(registrationRoutes)
-  app.register(subscriptionStatusRoutes)
+  app.register(bootstrapRoutes, { database, auth, config })
+  app.register(registrationRoutes, { config })
+  app.register(subscriptionStatusRoutes, { config })
 
   if (config.subscriptions.enabled && billingWebhookAdapter) {
     app.register(billingWebhookRoutes, {
       database,
+      config,
       adapter: billingWebhookAdapter,
       auditService,
     })
@@ -164,11 +174,16 @@ export function buildApp(database: Database, options: BuildAppOptions = {}) {
     registerAuditRequest(authenticated, auditService)
 
     const requirePermission = createRequirePermission(database)
-    const requireSubscription = createRequireSubscription(database)
+    const requireSubscription = createRequireSubscription(database, config)
 
     authenticated.register(permissionsRoutes, { database, requirePermission })
     authenticated.register(auditRoutes, { database, requirePermission })
-    authenticated.register(meRoutes, { database, auth, emailProvider })
+    authenticated.register(meRoutes, {
+      database,
+      auth,
+      config,
+      emailProvider,
+    })
     authenticated.register(rolesRoutes, { database, requirePermission })
     authenticated.register(usersRoutes, { database, auth, requirePermission })
 
@@ -187,6 +202,7 @@ export function buildApp(database: Database, options: BuildAppOptions = {}) {
     if (config.subscriptions.enabled) {
       authenticated.register(subscriptionsRoutes, {
         database,
+        config,
         requirePermission,
       })
     }

@@ -1,6 +1,6 @@
 import z from 'zod'
 
-import { config } from '../../config'
+import type { Config } from '../../config'
 import { getUsableSocialProviders } from '../../lib/social-providers'
 import type { FastifyTypedInstance } from '../../types'
 
@@ -11,7 +11,10 @@ const registrationStatusSchema = z
   })
   .meta({ id: 'RegistrationStatus', title: 'RegistrationStatus' })
 
-export async function registrationRoutes(app: FastifyTypedInstance) {
+export async function registrationRoutes(
+  app: FastifyTypedInstance,
+  { config }: { config: Config }
+) {
   app.get(
     '/registration/status',
     {
@@ -23,7 +26,7 @@ export async function registrationRoutes(app: FastifyTypedInstance) {
     },
     async () => ({
       open: config.registration.mode === 'open',
-      providers: getUsableSocialProviders(),
+      providers: getUsableSocialProviders(config),
     })
   )
 }

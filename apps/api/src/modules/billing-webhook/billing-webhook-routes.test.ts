@@ -4,6 +4,7 @@ import { eq } from 'drizzle-orm'
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 
 import { buildApp } from '@/app'
+import { config, overrideConfig } from '@/config'
 import { auditLogs, subscriptions, user } from '@/db/schema'
 import {
   cleanupAuditLogs,
@@ -284,4 +285,23 @@ describe('POST /webhooks/billing — skipped states (200, nothing written)', () 
     expect(await findByExternalId('sub_bad')).toHaveLength(0)
     expect(await findByExternalId('sub_good')).toHaveLength(1)
   })
+})
+
+it('is not registered when subscriptions are disabled', async () => {
+  const disabledApp = buildApp(testDb, {
+    config: overrideConfig(config, { subscriptions: { enabled: false } }),
+    billingWebhookAdapter: createHmacJsonAdapter({ secret: SECRET }),
+  })
+  const body = JSON.stringify(state())
+  const res = await disabledApp.inject({
+    method: 'POST',
+    url: '/webhooks/billing',
+    payload: body,
+    headers: {
+      'content-type': 'application/json',
+      'x-billing-signature': sign(body),
+    },
+  })
+  await disabledApp.close()
+  expect(res.statusCode).toBe(404)
 })

@@ -192,7 +192,7 @@ describe('requireSubscription (via GET /todos)', () => {
   })
 
   it('throws at registration for a feature no plan declares', () => {
-    const requireSubscription = createRequireSubscription(testDb)
+    const requireSubscription = createRequireSubscription(testDb, config)
     expect(() => requireSubscription('nonexistent')).toThrow(
       /requireSubscription\('nonexistent'\)/
     )
@@ -500,6 +500,23 @@ describe('POST /subscriptions', () => {
     })
     expect(res.statusCode).toBe(400)
   })
+  it('returns 400 for a plan that is not in the catalog', async () => {
+    const testUser = await getTestUser()
+    const res = await app.inject({
+      method: 'POST',
+      url: '/subscriptions',
+      payload: {
+        userId: testUser.id,
+        planId: 'legacy',
+        currentPeriodStart: new Date().toISOString(),
+        currentPeriodEnd: new Date('2099-01-01').toISOString(),
+      },
+      headers: { cookie: authCookie },
+    })
+    expect(res.statusCode).toBe(400)
+    expect(res.json().message).toMatch(/Unknown plan/)
+  })
+
   it('returns 400 when the user does not exist', async () => {
     const res = await app.inject({
       method: 'POST',
@@ -849,5 +866,48 @@ describe('DELETE /subscriptions/:id', () => {
     expect(res.statusCode).toBe(204)
     // Nothing was deleted, so nothing is audited
     expect(await findAuditLogs('delete', 'subscriptions', id)).toHaveLength(0)
+  })
+})
+
+// The mode app.config.ts ships with. Sessions are shared with `app` (same
+// database and secret), so its cookies work here too.
+describe('with subscriptions disabled', () => {
+  const disabledApp = createTestApp({ subscriptions: { enabled: false } })
+
+  afterAll(async () => {
+    await disabledApp.close()
+  })
+
+  it('reports the feature off, with no plans', async () => {
+    const res = await disabledApp.inject({
+      method: 'GET',
+      url: '/subscription/status',
+    })
+    expect(res.statusCode).toBe(200)
+    expect(res.json()).toEqual({ enabled: false, plans: [] })
+  })
+
+  it.each(['/subscriptions', '/me/subscription', '/me/entitlements'])(
+    'registers no %s route',
+    async (url) => {
+      const res = await disabledApp.inject({
+        method: 'GET',
+        url,
+        headers: { cookie: authCookie },
+      })
+      expect(res.statusCode).toBe(404)
+    }
+  )
+
+  it('lets requireSubscription() through without a subscription', async () => {
+    const cookie = await createRestrictedSession([
+      { resource: 'todos', action: 'view' },
+    ])
+    const res = await disabledApp.inject({
+      method: 'GET',
+      url: '/todos',
+      headers: { cookie },
+    })
+    expect(res.statusCode).toBe(200)
   })
 })

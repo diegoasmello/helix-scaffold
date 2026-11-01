@@ -1,5 +1,6 @@
 import z from 'zod'
 
+import type { Config } from '@/config'
 import type { Database } from '@/db'
 import { buildPaginatedResponse } from '@/lib/pagination'
 import {
@@ -12,12 +13,11 @@ import type { FastifyTypedInstance, RequirePermission } from '@/types'
 
 import { createEntitlementsService } from './entitlements'
 import {
-  createSubscriptionSchema,
   entitlementsSchema,
   paginatedSubscriptionsSchema,
+  subscriptionBodySchemas,
   subscriptionSchema,
   subscriptionsListQuerySchema,
-  updateSubscriptionSchema,
 } from './subscriptions-schema'
 import { createSubscriptionsService } from './subscriptions-service'
 
@@ -45,11 +45,20 @@ export async function subscriptionsRoutes(
   app: FastifyTypedInstance,
   {
     database,
+    config,
     requirePermission,
-  }: { database: Database; requirePermission: RequirePermission }
+  }: {
+    database: Database
+    config: Config
+    requirePermission: RequirePermission
+  }
 ) {
   const service = createSubscriptionsService(database)
-  const entitlementsService = createEntitlementsService(database)
+  const entitlementsService = createEntitlementsService(
+    database,
+    config.subscriptions
+  )
+  const bodies = subscriptionBodySchemas(config.subscriptions.plans)
 
   app.get(
     '/me/subscription',
@@ -66,7 +75,8 @@ export async function subscriptionsRoutes(
     },
     async (request, reply) => {
       const sub = await service.getAccessGrantingByUserId(
-        request.sessionUser.id
+        request.sessionUser.id,
+        { pastDueGraceDays: config.subscriptions.pastDueGraceDays }
       )
       if (!sub) return reply.status(204).send(null)
       return sub
@@ -132,7 +142,7 @@ export async function subscriptionsRoutes(
       schema: {
         tags: ['subscriptions'],
         description: 'Create a subscription',
-        body: createSubscriptionSchema,
+        body: bodies.create,
         response: {
           201: subscriptionSchema,
           400: z.object({ message: z.string() }),
@@ -166,7 +176,7 @@ export async function subscriptionsRoutes(
         tags: ['subscriptions'],
         description: 'Update a subscription',
         params: z.object({ id: z.string() }),
-        body: updateSubscriptionSchema,
+        body: bodies.update,
         response: {
           200: subscriptionSchema,
           404: z.object({ message: z.string() }),

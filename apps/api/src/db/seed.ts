@@ -26,7 +26,8 @@ const auth = createAuth(
     resendApiKey: env.RESEND_API_KEY,
     from: config.email.from,
     nodeEnv: env.NODE_ENV,
-  })
+  }),
+  config
 )
 
 const MODERATOR_PERMISSIONS = [

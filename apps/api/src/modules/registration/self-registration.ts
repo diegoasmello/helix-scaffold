@@ -1,13 +1,10 @@
 import { eq } from 'drizzle-orm'
 
-import type { config } from '@/config'
+import type { Config } from '@/config'
 import type { Database } from '@/db'
 import { roles, subscriptions, user } from '@/db/schema'
 
-type SubscriptionsConfig = Pick<
-  (typeof config)['subscriptions'],
-  'enabled' | 'trial'
->
+type SubscriptionsConfig = Pick<Config['subscriptions'], 'enabled' | 'trial'>
 
 /** The slice of a pino/Fastify logger this module needs. */
 export interface ErrorLogger {

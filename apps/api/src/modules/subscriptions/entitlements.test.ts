@@ -6,11 +6,15 @@ import {
   resolveEntitlements,
 } from './entitlements'
 
-// Plans come from src/config/test-overrides.ts: `starter` (no features),
-// `pro` and `enterprise` (both ['todos']).
+const plans = [
+  { id: 'starter', name: 'Starter', features: [] },
+  { id: 'pro', name: 'Pro', features: ['todos'] },
+]
+
 const none = {
   operator: false,
   subscription: null,
+  plans,
   pastDueGraceDays: 7,
 }
 

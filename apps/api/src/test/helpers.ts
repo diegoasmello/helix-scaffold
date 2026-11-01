@@ -2,7 +2,7 @@ import { and, eq, ne } from 'drizzle-orm'
 import { drizzle } from 'drizzle-orm/node-postgres'
 
 import { buildApp } from '@/app'
-import { config } from '@/config'
+import { type AppConfig, config, overrideConfig } from '@/config'
 import { ALL_PERMISSIONS } from '@/config/permissions'
 import * as schema from '@/db/schema'
 import {
@@ -36,8 +36,16 @@ export async function getTestUser() {
   return testUser
 }
 
-export function createTestApp() {
-  return buildApp(testDb)
+/**
+ * `buildApp(testDb)` with the test config (src/config/test-overrides.ts:
+ * open registration, subscriptions on). Pass overrides to run another mode —
+ * e.g. the defaults a product ships with:
+ * `createTestApp({ registration: { mode: 'closed' }, subscriptions: { enabled: false } })`.
+ */
+export function createTestApp(overrides?: AppConfig) {
+  return buildApp(testDb, {
+    config: overrides ? overrideConfig(config, overrides) : config,
+  })
 }
 
 export async function cleanupAuditLogs() {
@@ -73,6 +81,7 @@ export async function cleanupUploads() {
   await testDb.delete(uploads)
 }
 
+/** Signs up the test admin over HTTP, so `app` needs open registration. */
 export async function createTestSession(
   app: ReturnType<typeof buildApp>
 ): Promise<string> {
@@ -114,11 +123,9 @@ export async function createTestSession(
     .set({ roleId: testRole.id })
     .where(eq(user.email, TEST_USER_EMAIL))
 
-  // When subscription mode is enabled, give the test user an active subscription
-  // so routes protected by requireSubscription() pass without extra setup per test.
-  if (config.subscriptions.enabled) {
-    await grantActiveSubscription(TEST_USER_EMAIL)
-  }
+  // An active subscription, so routes protected by requireSubscription() pass
+  // without extra setup per test. Harmless when the app has subscriptions off.
+  await grantActiveSubscription(TEST_USER_EMAIL)
 
   const setCookie = res.headers['set-cookie']
   const cookies = Array.isArray(setCookie) ? setCookie : [setCookie ?? '']

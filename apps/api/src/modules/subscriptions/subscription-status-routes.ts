@@ -1,11 +1,14 @@
 import z from 'zod'
 
-import { config } from '@/config'
+import type { Config } from '@/config'
 import type { FastifyTypedInstance } from '@/types'
 
 import { subscriptionPlanSchema } from './subscriptions-schema'
 
-export async function subscriptionStatusRoutes(app: FastifyTypedInstance) {
+export async function subscriptionStatusRoutes(
+  app: FastifyTypedInstance,
+  { config }: { config: Config }
+) {
   app.get(
     '/subscription/status',
     {

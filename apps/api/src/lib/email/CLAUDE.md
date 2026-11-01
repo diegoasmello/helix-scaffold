@@ -28,7 +28,7 @@ The Resend provider uses Resend's REST API directly via `fetch` (no SDK dependen
 ## Factory
 
 ```ts
-import { config } from '@/config'
+// app.ts — `config` is the one buildApp() received
 import { env } from '@/env'
 import { createEmailProvider } from '@/lib/email'
 

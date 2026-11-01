@@ -1,7 +1,7 @@
 import { betterAuth } from 'better-auth'
 import { drizzleAdapter } from 'better-auth/adapters/drizzle'
 
-import { config } from '@/config'
+import type { Config } from '@/config'
 import type { Database } from '@/db'
 import { env } from '@/env'
 import type { EmailProvider } from '@/lib/email'
@@ -18,6 +18,7 @@ const consoleLogger: ErrorLogger = {
 export function createAuth(
   database: Database,
   emailProvider: EmailProvider,
+  config: Config,
   logger: ErrorLogger = consoleLogger
 ) {
   const { google, facebook, apple } = config.auth.socialProviders

@@ -95,7 +95,7 @@ Resource registered in `src/config/permissions.ts`:
 
 ### Plan validation
 
-`planId` on `POST`/`PATCH /subscriptions` is refined against the catalog — an unknown plan returns **400** (`Unknown plan`). The OpenAPI spec keeps `planId` as a plain string, so changing the catalog never requires regenerating `@helix/api-client`; the frontend reads the catalog from `GET /subscription/status`.
+`planId` on `POST`/`PATCH /subscriptions` is refined against the catalog — an unknown plan returns **400** (`Unknown plan`). The route builds the bodies with `subscriptionBodySchemas(config.subscriptions.plans)`, so the check follows the app's own catalog. The OpenAPI spec keeps `planId` as a plain string, so changing the catalog never requires regenerating `@helix/api-client`; the frontend reads the catalog from `GET /subscription/status`.
 
 Rows whose `planId` was later removed from the catalog keep working: they still satisfy `requireSubscription()` (no feature), but unlock no features.
 
@@ -134,7 +134,7 @@ Factory `createSubscriptionsService(database)` returns:
 
 ```ts
 {
-  getAccessGrantingByUserId(userId: string, options?: { now?: Date; pastDueGraceDays?: number }): Promise<Subscription | null>
+  getAccessGrantingByUserId(userId: string, options: { pastDueGraceDays: number; now?: Date }): Promise<Subscription | null>
   list(query: SubscriptionsListQuery): Promise<{ data: Subscription[], total: number }>
   getById(id: string): Promise<Subscription | null>
   create(data: CreateSubscriptionInput): Promise<Subscription>
@@ -146,7 +146,7 @@ Factory `createSubscriptionsService(database)` returns:
 }
 ```
 
-**`getAccessGrantingByUserId(userId, { now?, pastDueGraceDays? })`** — the access-granting subscription (not just the live one): `status IN ('active', 'trialing')`, or `past_due` with `pastDueSince` within `subscriptions.pastDueGraceDays` (options default to the current time and the config; tests pass them explicitly). Live rows win over a past_due one, then the most recent. Returns `null` if none qualifies. Period dates are intentionally not checked — status is authoritative; `pastDueSince` only bounds the grace period.
+**`getAccessGrantingByUserId(userId, { pastDueGraceDays, now? })`** — the access-granting subscription (not just the live one): `status IN ('active', 'trialing')`, or `past_due` with `pastDueSince` within `subscriptions.pastDueGraceDays` (`pastDueGraceDays` is required — callers pass `config.subscriptions.pastDueGraceDays`; `now` defaults to the current time). Live rows win over a past_due one, then the most recent. Returns `null` if none qualifies. Period dates are intentionally not checked — status is authoritative; `pastDueSince` only bounds the grace period.
 
 ### Past-due grace period
 
@@ -170,7 +170,7 @@ A lapsed subscription keeps access until the next run — up to one interval. Lo
 
 ## `requireSubscription` hook (`src/hooks/require-subscription.ts`)
 
-`createRequireSubscription(database)` returns a `RequireSubscription` function:
+`createRequireSubscription(database, config)` returns a `RequireSubscription` function:
 
 ```ts
 export type RequireSubscription = (feature?: string) => PreHandler
@@ -179,7 +179,7 @@ export type RequireSubscription = (feature?: string) => PreHandler
 - `requireSubscription()` — requires any active/trialing subscription.
 - `requireSubscription('reports')` — also requires the subscription's plan to list `'reports'` in `features`.
 
-A feature that no plan declares throws **at route registration**, so a typo stops the API from starting instead of silently locking everyone out. Feature checks live in `src/modules/subscriptions/subscription-plans.ts` (`getPlan`, `isKnownPlan`, `isKnownFeature`, `planHasFeature`).
+A feature that no plan declares throws **at route registration**, so a typo stops the API from starting instead of silently locking everyone out. Catalog lookups live in `src/modules/subscriptions/subscription-plans.ts` (`getPlan`, `isKnownPlan`, `isKnownFeature`), which take the catalog (`config.subscriptions.plans`) as their first argument.
 
 **Usage in route modules:**
 
@@ -224,8 +224,8 @@ interface Entitlements {
 }
 ```
 
-- `createEntitlementsService(database).forUser(sessionUser)` — loads the operator flag and `getAccessGrantingByUserId()` in parallel, then calls `resolveEntitlements()`.
-- `resolveEntitlements({ operator, subscription, pastDueGraceDays })` — pure: plan → features (a plan removed from the catalog unlocks none), grace end.
+- `createEntitlementsService(database, config.subscriptions).forUser(sessionUser)` — loads the operator flag and `getAccessGrantingByUserId()` in parallel, then calls `resolveEntitlements()`.
+- `resolveEntitlements({ operator, subscription, plans, pastDueGraceDays })` — pure: plan → features (a plan removed from the catalog unlocks none), grace end.
 - `denialFor(entitlements, feature?)` — `null` (allowed), `'subscription_required'` or `'feature_not_in_plan'`. Operators always pass.
 
 The pure functions are unit-tested in `entitlements.test.ts` (no database); `GET /me/entitlements` and the gate are covered by the route tests.
@@ -276,7 +276,7 @@ Startup fails when `enabled: true` and `plans` is empty, when plan ids repeat, o
 
 - `subscriptionSchema` — full entity returned by the API; `.meta({ id: 'Subscription' })` so Swagger emits it as a `$ref` and kubb generates a clean `Subscription` type
 - `subscriptionPlanSchema` — `{ id, name, features }`, `.meta({ id: 'SubscriptionPlan' })`, used by `GET /subscription/status`
-- `createSubscriptionSchema` — `userId`, `planId` (refined against the catalog), `status` (default `'active'`), `currentPeriodStart`, `currentPeriodEnd`, `trialEndsAt?`, `externalId?`, `metadata?`
+- `createSubscriptionSchema` — `userId`, `planId` (refined against the catalog by `subscriptionBodySchemas(plans)`, which wraps it and `updateSubscriptionSchema`), `status` (default `'active'`), `currentPeriodStart`, `currentPeriodEnd`, `trialEndsAt?`, `externalId?`, `metadata?`
 - `updateSubscriptionSchema` — all fields optional (partial update); `canceledAt` can be explicitly set or auto-derived
 - `SUBSCRIPTION_SORT_COLUMNS` — `['planId', 'status', 'currentPeriodEnd', 'createdAt']`; default sort: `createdAt`
 
@@ -294,6 +294,8 @@ The `requireSubscription (via GET /todos)` block covers the behavior matrix abov
 
 **Coverage:**
 - `GET /subscription/status` — always 200 with `{ enabled, plans }`
+- `POST /subscriptions` with a plan not in the catalog — 400 `Unknown plan`
+- _with subscriptions disabled_ (`createTestApp({ subscriptions: { enabled: false } })`) — status reports `{ enabled: false, plans: [] }`; `/subscriptions`, `/me/subscription` and `/me/entitlements` are 404; `requireSubscription()` lets a user without a subscription through
 - `GET /me/entitlements` — nothing without a subscription; plan features; operator flag; `graceEndsAt` for past_due within grace; nothing after it
 - `requireSubscription` — each denial asserts its `code`
 - `GET /me/subscription` — 204 when no active sub; 200 when active sub exists; 204 when only canceled sub exists

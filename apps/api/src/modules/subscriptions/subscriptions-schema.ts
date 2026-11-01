@@ -6,7 +6,7 @@ import {
 } from '@/lib/pagination'
 import { sortingQuerySchema } from '@/lib/sorting'
 
-import { isKnownPlan } from './subscription-plans'
+import { isKnownPlan, type PlanCatalog } from './subscription-plans'
 
 export const SUBSCRIPTION_STATUSES = [
   'active',
@@ -54,14 +54,10 @@ export const entitlementsSchema = z
   })
   .meta({ id: 'SubscriptionEntitlements', title: 'SubscriptionEntitlements' })
 
-// Validated against `subscriptions.plans` in src/app.config.ts. Kept as a plain
+// Checked against the plan catalog by `subscriptionBodySchemas()`. A plain
 // string in the OpenAPI spec so the catalog can change without regenerating
 // the client — the frontend reads it from GET /subscription/status.
-const planIdSchema = z
-  .string()
-  .min(1)
-  .max(100)
-  .refine(isKnownPlan, { message: 'Unknown plan' })
+const planIdSchema = z.string().min(1).max(100)
 
 export const createSubscriptionSchema = z.object({
   userId: z.string().min(1),
@@ -84,6 +80,21 @@ export const updateSubscriptionSchema = z.object({
   externalId: z.string().max(255).nullable().optional(),
   metadata: z.record(z.string(), z.unknown()).nullable().optional(),
 })
+
+/** The create/update bodies, with `planId` refined against the catalog (400 `Unknown plan`). */
+export function subscriptionBodySchemas(plans: PlanCatalog) {
+  const knownPlan = { message: 'Unknown plan', path: ['planId'] }
+  return {
+    create: createSubscriptionSchema.refine(
+      (body) => isKnownPlan(plans, body.planId),
+      knownPlan
+    ),
+    update: updateSubscriptionSchema.refine(
+      (body) => body.planId === undefined || isKnownPlan(plans, body.planId),
+      knownPlan
+    ),
+  }
+}
 
 export const SUBSCRIPTION_SORT_COLUMNS = [
   'planId',

@@ -9,6 +9,7 @@ import { roles } from '@/db/schema/roles'
 import { cleanupAuth, createTestApp, testDb } from '@/test/helpers'
 
 const app = createTestApp()
+const closedApp = createTestApp({ registration: { mode: 'closed' } })
 
 beforeEach(async () => {
   await cleanupAuth()
@@ -19,6 +20,7 @@ beforeEach(async () => {
 afterAll(async () => {
   await cleanupAuth()
   await app.close()
+  await closedApp.close()
 })
 
 describe('GET /bootstrap/status', () => {
@@ -89,6 +91,24 @@ describe('POST /bootstrap', () => {
       .from(rolePermissions)
       .where(eq(rolePermissions.roleId, userRole!.id))
     expect(userPerms).toHaveLength(0)
+  })
+
+  it('creates no default role in closed registration mode', async () => {
+    const res = await closedApp.inject({
+      method: 'POST',
+      url: '/bootstrap',
+      payload: {
+        name: 'Admin',
+        email: 'admin@test.com',
+        password: 'Password123!',
+      },
+      headers: { 'content-type': 'application/json' },
+    })
+
+    expect(res.statusCode).toBe(201)
+    const allRoles = await testDb.select().from(roles)
+    expect(allRoles.map((r) => r.name)).toEqual(['Admin'])
+    expect(allRoles.some((r) => r.isDefault)).toBe(false)
   })
 
   it('returns 409 when system is already bootstrapped', async () => {

@@ -9,7 +9,7 @@ import { createStorageProvider } from './lib/storage'
 import { getUploadReferenceLoaders } from './lib/upload-references'
 import { createSubscriptionsService } from './modules/subscriptions/subscriptions-service'
 
-const app = buildApp(db)
+const app = buildApp(db, { config })
 const storage = createStorageProvider(config.uploads, env.BASE_URL)
 
 const { intervalHours, graceHours } = config.uploads.orphanCleanup
