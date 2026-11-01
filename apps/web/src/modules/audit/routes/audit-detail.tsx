@@ -3,6 +3,8 @@ import type { AuditLog } from '@helix/api-client/types'
 import {
   Badge,
   Button,
+  createStyles,
+  css,
   Grid,
   Group,
   LabeledValue,
@@ -27,6 +29,7 @@ export function AuditDetail() {
   const navigate = auditDetailRoute.useNavigate()
   const { t } = useTranslation('audit')
   const { t: tc } = useTranslation('common')
+  const { classes } = useStyles()
 
   const { data: log } = useGetAuditLogsIdSuspense(id)
 
@@ -93,11 +96,7 @@ export function AuditDetail() {
         {log.metadata != null && (
           <Grid.Col span={12}>
             <LabeledValue label={t('labels.metadata')}>
-              <Text
-                size="md"
-                component="pre"
-                style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}
-              >
+              <Text size="md" component="pre" className={classes.metadata}>
                 {JSON.stringify(log.metadata, null, 2)}
               </Text>
             </LabeledValue>
@@ -107,3 +106,11 @@ export function AuditDetail() {
     </PageView>
   )
 }
+
+const useStyles = createStyles(() => ({
+  // Long values (URLs, ids) must wrap instead of widening the page
+  metadata: css`
+    white-space: pre-wrap;
+    word-break: break-all;
+  `,
+}))

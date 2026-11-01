@@ -63,7 +63,7 @@ Entries written by the billing webhook have `userId: 'system:<adapter>'` and `us
 `userAgent` and `metadata` are conditionally rendered:
 
 - `userAgent` — rendered only when truthy.
-- `metadata` — rendered only when `!= null`, as `JSON.stringify(log.metadata, null, 2)` inside `<Text component="pre">`. It currently uses an inline `style` for `white-space`/`word-break`, against the styling convention — move it to `createStyles` when touching this file.
+- `metadata` — rendered only when `!= null`, as `JSON.stringify(log.metadata, null, 2)` inside `<Text component="pre">`. `useStyles().classes.metadata` sets `white-space: pre-wrap` and `word-break: break-all` so long values wrap.
 
 ## Sidebar
 

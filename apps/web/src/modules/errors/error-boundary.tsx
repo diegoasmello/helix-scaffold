@@ -1,4 +1,14 @@
-import { Button, Center, Code, Group, Stack, Text, Title } from '@helix/ui'
+import {
+  Button,
+  Center,
+  Code,
+  createStyles,
+  css,
+  Group,
+  Stack,
+  Text,
+  Title,
+} from '@helix/ui'
 import { useRouter } from '@tanstack/react-router'
 import { useTranslation } from 'react-i18next'
 
@@ -12,6 +22,7 @@ export function ErrorBoundary(props: Readonly<ErrorBoundaryProps>) {
 
   const router = useRouter()
   const { t } = useTranslation('errors')
+  const { classes } = useStyles()
 
   return (
     <Center h="100vh">
@@ -24,7 +35,7 @@ export function ErrorBoundary(props: Readonly<ErrorBoundaryProps>) {
           {t('boundary.description')}
         </Text>
         {error.message && (
-          <Code block w="100%" style={{ wordBreak: 'break-word' }}>
+          <Code block w="100%" className={classes.message}>
             {error.message}
           </Code>
         )}
@@ -38,3 +49,9 @@ export function ErrorBoundary(props: Readonly<ErrorBoundaryProps>) {
     </Center>
   )
 }
+
+const useStyles = createStyles(() => ({
+  message: css`
+    word-break: break-word;
+  `,
+}))
