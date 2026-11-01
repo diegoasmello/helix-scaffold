@@ -10,7 +10,7 @@ export interface FormProps<Values, TransformedValues = Values> extends Omit<
   form: UseFormReturnType<Values, TransformedValues>
   onSubmit: (values: TransformedValues) => void
   focusOnError?: boolean
-  blockNavitationOnDirty?: boolean
+  blockNavigationOnDirty?: boolean
 }
 
 export function Form<Values, TransformedValues = Values>(
@@ -20,12 +20,12 @@ export function Form<Values, TransformedValues = Values>(
     children,
     form,
     focusOnError = true,
-    blockNavitationOnDirty = true,
+    blockNavigationOnDirty = true,
     onSubmit,
     ...rest
   } = props
 
-  useFormBlocker(blockNavitationOnDirty, form.isDirty())
+  useFormBlocker(blockNavigationOnDirty, form.isDirty())
 
   const handleSubmit = form.onSubmit(
     (values) => {

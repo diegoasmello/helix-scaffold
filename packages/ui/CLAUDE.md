@@ -106,7 +106,7 @@ interface LogicalFilterFormProps<T extends string = string> {
 - `isNull` / `isNotNull` operators hide the value input and omit `value` from the condition
 - Clicking **Clear** calls `onApply({ logic: 'AND', conditions: [] })` — the parent is responsible for updating the URL
 - Clicking **Apply** with conditions that have no value set silently skips them
-- Uses `<Form blockNavitationOnDirty={false}>` — never blocks navigation
+- Uses `<Form blockNavigationOnDirty={false}>` — never blocks navigation
 
 **Value input rendered per type:**
 

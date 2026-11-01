@@ -262,7 +262,7 @@ export function LogicalFilterForm<T extends string = string>(
   }
 
   return (
-    <Form form={form} onSubmit={handleSubmit} blockNavitationOnDirty={false}>
+    <Form form={form} onSubmit={handleSubmit} blockNavigationOnDirty={false}>
       <Stack gap="xs">
         <Group justify="space-between" align="center">
           <Group gap="xs" align="center">
