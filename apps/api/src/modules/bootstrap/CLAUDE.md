@@ -28,17 +28,19 @@ Body: `{ name, email, password (min 8) }`.
 
 Flow:
 1. Calls `isBootstrapped` — returns `409` if any user exists.
-2. Inserts an `'Admin'` role with `description: 'Full system access'`.
-3. Inserts one `rolePermission` row for **every entry in `ALL_PERMISSIONS`** (reads from `src/config/permissions.ts`) — the admin role gets all permissions across all resources.
-4. Calls `auth.api.signUpEmail({ body: { name, email, password } })`.
-5. Updates the newly created user's `roleId` to the admin role.
-6. Returns `201 { message: 'System bootstrapped successfully' }`.
+2. Calls `auth.api.signUpEmail({ body: { name, email, password } })`. It runs on the server (no request), so the self-registration hook skips it — no default role, no trial.
+3. In **one transaction**:
+   1. `pg_advisory_xact_lock(hashtext('helix:bootstrap'))`, then counts users — more than one means a concurrent bootstrap won: roll back and answer `409`.
+   2. Inserts an `'Admin'` role (`description: 'Full system access'`) and one `rolePermission` row for **every entry in `ALL_PERMISSIONS`** (`src/config/permissions.ts`).
+   3. Sets the new user's `roleId` to the Admin role.
+   4. In open mode, inserts the default User role (see below).
+4. Returns `201 { message: 'System bootstrapped successfully' }`.
 
 Returns `409 { message: 'System already bootstrapped' }` if any user exists at step 1.
 
 **No audit log** — `request.audit` is not available here (outside the authenticated scope).
 
-**Not transactional.** If `signUpEmail` fails after step 3 (e.g. an invalid email that slipped past validation), the `Admin` role stays behind with no user, and every retry fails on the unique `roles.name` until that row is deleted by hand.
+**All or nothing.** better-auth writes the user through its own connection, so it cannot join the transaction; the user is created first and **deleted again** (sessions and accounts cascade) if the transaction fails. A failed bootstrap therefore leaves nothing behind and can be retried. If `signUpEmail` itself fails, nothing was written yet.
 
 There is deliberately no other public way to create an admin — a dev-only `POST /bootstrap/e2e-user` used to exist and was removed; `bootstrap-routes.test.ts` asserts it stays gone. E2E tests sign in with an existing user instead (`apps/web/e2e/auth.setup.ts`).
 
@@ -47,13 +49,9 @@ There is deliberately no other public way to create an admin — a dev-only `POS
 When `registration.mode` is `'open'`, `POST /bootstrap` creates a second role after the admin user is fully set up:
 
 ```
-1. INSERT Admin role + ALL_PERMISSIONS
-2. auth.api.signUpEmail(admin)        ← hook fires, finds no isDefault role → no-op ✓
-3. UPDATE user SET roleId = adminRole.id
-4. INSERT User role (isDefault = true, no permissions)
+1. auth.api.signUpEmail(admin)        ← server-side call: the self-registration hook skips it
+2. transaction: Admin role + ALL_PERMISSIONS, admin.roleId, User role (isDefault = true, no permissions)
 ```
-
-The User role is always created **after** the admin is assigned the Admin role. This is intentional — the `databaseHooks.user.create.after` in `auth.ts` fires during step 2, before the User role exists, so the admin never accidentally gets the User role.
 
 The User role starts with **no permissions**: what regular users may do is a product decision, granted on `/roles/$id/permissions`. Until then a self-registered user can reach only `/me` (the profile needs just a session) — the frontend's `/` sends them there. The bootstrap test asserts the role has zero permissions.
 
@@ -67,7 +65,7 @@ The User role starts with **no permissions**: what regular users may do is a pro
 
 No `createTestSession` — routes are public. `beforeEach` calls `cleanupAuth()` then manually deletes `rolePermissions` and `roles` (in that order, since `rolePermissions` has a FK to `roles`).
 
-**`POST /bootstrap`** coverage: creates user + role + all permissions (asserts `perms.length === ALL_PERMISSIONS.length`); returns 409 on second call; returns 400 for invalid body. A top-level test asserts `POST /bootstrap/e2e-user` returns 404.
+**`POST /bootstrap`** coverage: creates user + role + all permissions (asserts `perms.length === ALL_PERMISSIONS.length`) and an empty default role; returns 409 on second call; a failure while setting up the roles (a leftover `Admin` role) answers 500 and leaves no user; two concurrent bootstraps end with one 201, one 409 and a single admin; returns 400 for invalid body. A top-level test asserts `POST /bootstrap/e2e-user` returns 404.
 
 **`GET /bootstrap/status`** coverage: `false` when no users; `true` after a successful bootstrap.
 

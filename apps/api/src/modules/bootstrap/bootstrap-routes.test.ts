@@ -116,6 +116,48 @@ describe('POST /bootstrap', () => {
     expect(res.json()).toEqual({ message: 'System already bootstrapped' })
   })
 
+  it('leaves no user behind when setting up the roles fails', async () => {
+    // A leftover "Admin" role makes the role insert hit the unique name index
+    await testDb.insert(roles).values({ name: 'Admin' })
+
+    const res = await app.inject({
+      method: 'POST',
+      url: '/bootstrap',
+      payload: {
+        name: 'Admin',
+        email: 'admin@test.com',
+        password: 'Password123!',
+      },
+      headers: { 'content-type': 'application/json' },
+    })
+    expect(res.statusCode).toBe(500)
+
+    expect(await testDb.select().from(user)).toHaveLength(0)
+    const status = await app.inject({ method: 'GET', url: '/bootstrap/status' })
+    expect(status.json()).toEqual({ bootstrapped: false })
+  })
+
+  it('creates a single admin when two bootstraps race', async () => {
+    const bootstrap = (email: string) =>
+      app.inject({
+        method: 'POST',
+        url: '/bootstrap',
+        payload: { name: 'Admin', email, password: 'Password123!' },
+        headers: { 'content-type': 'application/json' },
+      })
+
+    const results = await Promise.all([
+      bootstrap('first@test.com'),
+      bootstrap('second@test.com'),
+    ])
+
+    expect(results.map((r) => r.statusCode).sort()).toEqual([201, 409])
+    expect(await testDb.select().from(user)).toHaveLength(1)
+    expect(
+      await testDb.select().from(roles).where(eq(roles.name, 'Admin'))
+    ).toHaveLength(1)
+  })
+
   it('returns 400 for invalid body', async () => {
     const res = await app.inject({
       method: 'POST',

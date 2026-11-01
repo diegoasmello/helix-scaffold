@@ -10,7 +10,7 @@ The scaffold provides:
 - A `requireSubscription(feature?)` preHandler (analogous to `requirePermission()`) that gates routes by active subscription and, optionally, by plan feature
 - Admin CRUD routes for manual subscription management
 - A user-facing `GET /me/subscription` endpoint
-- Optional trial auto-start on registration
+- Optional trial auto-start on self-registration
 
 The scaffold does **not** provide:
 - Pricing, billing intervals or proration (they belong to the payment processor)
@@ -212,9 +212,9 @@ The admin bypass is implemented by calling `permissionsService.hasPermission(rol
 
 ---
 
-## Trial auto-start (`src/auth.ts`)
+## Trial auto-start (`src/modules/registration/self-registration.ts`)
 
-When `registration.mode` is `'open'`, `subscriptions.enabled` is `true` and `subscriptions.trial` is set (all in `src/app.config.ts`), a trialing subscription is automatically created in `databaseHooks.user.create.after` immediately after new user registration.
+When `registration.mode` is `'open'`, `subscriptions.enabled` is `true` and `subscriptions.trial` is set (all in `src/app.config.ts`), `applySelfRegistrationDefaults()` creates a trialing subscription for a user who **self-registers**. It runs from `databaseHooks.user.create.after` in `src/auth.ts`.
 
 The trial subscription uses:
 - `planId: trial.planId` — from `subscriptions.trial.planId` (set it to match your plan catalog)
@@ -225,7 +225,7 @@ The trial subscription uses:
 
 **This operation is best-effort.** The INSERT is followed by `.catch(() => {})` so a DB failure does not cause user creation to fail. If the insert silently fails, the user will exist without a trial subscription and will see "no active subscription" on the me-page.
 
-The hook fires for **every** user created through better-auth while `registration.mode` is `'open'` — self sign-up, social sign-up, but also the admin created by `POST /bootstrap` and users created via `POST /users` (both call `auth.api.signUpEmail`). In `closed` mode no trial is ever created. Admins are unaffected in practice (`subscriptions:view` bypasses `requireSubscription()`), but an admin-created user in open mode starts with a trial.
+**Self-registration only:** the hook acts only on sign-ups that arrive over HTTP (`/sign-up/email`, a social callback). `POST /bootstrap`, `POST /users` and the seed call `auth.api.signUpEmail()` on the server, with no request, so they get no trial (and no default role). In `closed` mode no trial is ever created. Covered by `registration/self-registration.test.ts`, which also calls `applySelfRegistrationDefaults()` directly with a trial config, since the test config has trials off.
 
 ---
 

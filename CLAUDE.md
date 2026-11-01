@@ -135,7 +135,7 @@ The scaffold supports optional subscription gating for products that require use
 | `subscriptions.enabled` | `false` | `true` activates all subscription infrastructure. `false` means zero overhead — no routes, no DB queries, no UI. |
 | `subscriptions.plans` | `[]` | The plan catalog: `{ id, name, features }[]`. Each plan lists the **features** (free keys, usually module names) it unlocks. Required when enabled. |
 | `subscriptions.pastDueGraceDays` | `0` | Days a `past_due` subscription (failed payment) keeps access while the processor retries. `0` cuts access immediately. |
-| `subscriptions.trial` | `false` | `{ days, planId }`. When set (and registration is open and subscriptions are enabled), a trialing subscription is auto-created on user registration. |
+| `subscriptions.trial` | `false` | `{ days, planId }`. When set (and registration is open and subscriptions are enabled), a trialing subscription is auto-created when a user **self-registers** (not for accounts created by an admin, bootstrap or the seed). |
 
 **Single source of truth:** the mode lives only in the backend config. The frontend reads `GET /subscription/status → { enabled, plans, pastDueGraceDays }` once and caches it for the session (`staleTime: Infinity`) — no `VITE_*` duplication.
 
@@ -195,7 +195,7 @@ The only exception is a `/all` endpoint for select-field use cases (e.g. `GET /r
 When a new module exposes user-facing resources, register it in the permission system as part of module creation:
 
 - **Backend**: add an entry to `apps/api/src/config/permissions.ts` — defines which actions exist for the resource
-- **Frontend**: add the `permission` field to the sidebar entry in `src/config/sidebar.ts`; wrap Create/Edit/Delete action buttons with `<HasPermission>`
+- **Frontend**: add the `permission` field to the sidebar entry in `src/config/sidebar.ts`; wrap Create/Edit/Delete action buttons with `<HasPermission>`; add the resource's label to `permissions.resources.<resource>` in both `locales/*/roles.json` (the permission editor falls back to the API's English label otherwise)
 
 Both workspace `CLAUDE.md` files describe the exact steps.
 

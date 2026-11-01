@@ -189,7 +189,7 @@ export default defineConfig(({ mode }) => ({
 | `subscriptions.enabled`          | `false`     | Activates the full subscription infrastructure                    |
 | `subscriptions.plans`            | `[]`        | Plan catalog; each plan lists the features it unlocks             |
 | `subscriptions.pastDueGraceDays` | `0`         | Days a past_due subscription keeps access after a failed payment  |
-| `subscriptions.trial`            | `false`     | `{ days, planId }` auto-creates a trial on registration           |
+| `subscriptions.trial`            | `false`     | `{ days, planId }` auto-creates a trial on self-registration      |
 | `email.from`                     | `noreply@…` | Sender address for outgoing email                                 |
 | `uploads.*`                      | —           | Storage backend, directory, max size, orphan cleanup schedule     |
 | `server.port` / `logger.*`       | `3333`      | HTTP port, log level, pretty logs                                 |

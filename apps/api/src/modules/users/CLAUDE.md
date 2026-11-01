@@ -54,7 +54,7 @@ Factory signature: `createUsersService(database: Database, auth: Auth)` — rece
 
 **`listAll`** — every user with its role, no pagination. Backs `GET /users/all`.
 
-**Side effect in open registration mode:** `create` goes through `auth.api.signUpEmail`, which fires the `databaseHooks.user.create.after` hook in `auth.ts`. In `open` mode that hook assigns the default role, so an admin-created user **without** `roleId` ends up with the default role, not `null`. (The trial auto-start runs in the same hook, so such a user also gets a trial subscription when trials are configured.)
+**No self-registration side effects:** `create` goes through `auth.api.signUpEmail`, which fires the `databaseHooks.user.create.after` hook in `auth.ts` — but a server-side call carries no request, so the hook skips it. An admin-created user gets exactly the `roleId` sent (`null` when omitted) and never a trial, in either registration mode. Covered by `registration/self-registration.test.ts`.
 
 ## Routes (`users-routes.ts`)
 

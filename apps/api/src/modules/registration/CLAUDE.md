@@ -1,6 +1,6 @@
 # registration module — backend
 
-Thin, stateless module that exposes the current registration mode and configured social providers to the frontend. Has no database table, no service, and no mutations — only a single `GET` endpoint that reads from `config` (`src/app.config.ts`).
+Thin module with two parts: a single `GET` endpoint that exposes the registration mode and configured social providers to the frontend (reads `config`, no table), and `self-registration.ts` — what a self-registered user gets in open mode (default role, trial), called from the better-auth hook in `src/auth.ts`.
 
 ## Purpose
 
@@ -88,30 +88,26 @@ instance.addHook('onRequest', async (request, reply) => {
 
 Social sign-up is guarded differently: `disableSignUp` on each provider in `auth.ts` (see above).
 
-## Auto-assign role on sign-up
+## Self-registration defaults (default role + trial)
 
-When mode is `open`, `auth.ts` uses Better Auth's `databaseHooks.user.create.after` to assign the default role to every new user — **this fires for both email/password and social sign-ups**, since both go through the same user creation path:
+When mode is `open`, `auth.ts` runs `applySelfRegistrationDefaults()` (`self-registration.ts`) from Better Auth's `databaseHooks.user.create.after`. It assigns the default role (`roles.isDefault`) and, when `subscriptions.trial` is set, starts a trial:
 
 ```ts
 databaseHooks: {
   user: {
     create: {
-      after: async (user) => {
-        if (config.registration.mode !== 'open') return
-        const [defaultRole] = await database.select().from(roles)
-          .where(eq(roles.isDefault, true)).limit(1)
-        if (defaultRole) {
-          await database.update(userTable)
-            .set({ roleId: defaultRole.id })
-            .where(eq(userTable.id, user.id))
-        }
+      after: async (user, ctx) => {
+        if (config.registration.mode !== 'open' || !ctx?.request) return
+        await applySelfRegistrationDefaults(database, user.id, config.subscriptions)
       },
     },
   },
 },
 ```
 
-**Why the hook is safe during bootstrap:** bootstrap creates the User role (with `isDefault = true`) *after* `auth.api.signUpEmail()`. When the hook fires for the admin user, the User role doesn't exist yet → the SELECT returns nothing → the admin is not assigned the User role. Bootstrap then explicitly assigns the Admin role.
+**Only sign-ups that arrive over HTTP** — `POST /api/auth/sign-up/email` and social callbacks, both of which carry `ctx.request`. Accounts the server creates with `auth.api.signUpEmail()` (`POST /users`, `POST /bootstrap`, the seed) have no request, so the hook skips them: they get the role their caller sets and never a trial. Verified empirically — better-auth passes a context without `request`/`headers` to server-side calls.
+
+`self-registration.test.ts` covers both paths (self sign-up gets the default role; `POST /users` without `roleId` gets `null` and no subscription) and the trial, by calling the function directly with a trial config.
 
 ## Frontend counterpart
 

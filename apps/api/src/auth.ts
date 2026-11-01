@@ -1,12 +1,11 @@
 import { betterAuth } from 'better-auth'
 import { drizzleAdapter } from 'better-auth/adapters/drizzle'
-import { eq } from 'drizzle-orm'
 
 import { config } from '@/config'
 import type { Database } from '@/db'
-import { roles, subscriptions, user as userTable } from '@/db/schema'
 import { env } from '@/env'
 import type { EmailProvider } from '@/lib/email'
+import { applySelfRegistrationDefaults } from '@/modules/registration/self-registration'
 
 export function createAuth(database: Database, emailProvider: EmailProvider) {
   const { google, facebook, apple } = config.auth.socialProviders
@@ -19,38 +18,16 @@ export function createAuth(database: Database, emailProvider: EmailProvider) {
     databaseHooks: {
       user: {
         create: {
-          after: async (user) => {
-            if (config.registration.mode !== 'open') return
-
-            const [defaultRole] = await database
-              .select()
-              .from(roles)
-              .where(eq(roles.isDefault, true))
-              .limit(1)
-            if (defaultRole) {
-              await database
-                .update(userTable)
-                .set({ roleId: defaultRole.id })
-                .where(eq(userTable.id, user.id))
-            }
-
-            const { enabled, trial } = config.subscriptions
-            if (enabled && trial) {
-              const now = new Date()
-              const trialEndsAt = new Date(now)
-              trialEndsAt.setDate(trialEndsAt.getDate() + trial.days)
-              await database
-                .insert(subscriptions)
-                .values({
-                  userId: user.id,
-                  planId: trial.planId,
-                  status: 'trialing',
-                  trialEndsAt,
-                  currentPeriodStart: now,
-                  currentPeriodEnd: trialEndsAt,
-                })
-                .catch(() => {})
-            }
+          after: async (user, ctx) => {
+            // Self-registration only. `auth.api.signUpEmail()` called by the
+            // server (POST /users, bootstrap, seed) carries no request: those
+            // callers set the role themselves and must not start a trial.
+            if (config.registration.mode !== 'open' || !ctx?.request) return
+            await applySelfRegistrationDefaults(
+              database,
+              user.id,
+              config.subscriptions
+            )
           },
         },
       },
