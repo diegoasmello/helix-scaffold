@@ -114,6 +114,13 @@ export interface AppConfig {
      */
     trial?: TrialConfig | false
     /**
+     * Days a `past_due` subscription (failed payment) keeps access, counted
+     * from when it entered `past_due` (`pastDueSince`). Set it to roughly the
+     * payment processor's retry window. `0` blocks access immediately.
+     * @default 0
+     */
+    pastDueGraceDays?: number
+    /**
      * Periodic job that marks lapsed subscriptions as `expired`: trials past
      * `trialEndsAt` and active subscriptions past `currentPeriodEnd`.
      * Only touches subscriptions **without `externalId`** — the ones the
@@ -121,13 +128,6 @@ export interface AppConfig {
      * `externalId` belong to the payment processor and are updated by its
      * webhooks. Access may outlive the period by up to one interval.
      */
-    /**
-     * Days a `past_due` subscription (failed payment) keeps access, counted
-     * from when it entered `past_due` (`pastDueSince`). Set it to roughly the
-     * payment processor's retry window. `0` blocks access immediately.
-     * @default 0
-     */
-    pastDueGraceDays?: number
     expiration?: {
       /**
        * How often the job runs. It also runs once at startup.
