@@ -44,12 +44,7 @@ export function UsersForm(props: Readonly<UsersFormProps>) {
         </Grid.Col>
       )}
       <Grid.Col span={12}>
-        <RoleSelectField
-          allowCreate
-          value={form.values.roleId}
-          onChange={(value) => form.setFieldValue('roleId', value)}
-          error={form.errors.roleId}
-        />
+        <RoleSelectField allowCreate {...form.getInputProps('roleId')} />
       </Grid.Col>
     </Grid>
   )
