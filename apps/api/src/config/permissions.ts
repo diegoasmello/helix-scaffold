@@ -58,3 +58,19 @@ export const RESOURCE_DEFINITIONS = [
 export const ALL_PERMISSIONS = RESOURCE_DEFINITIONS.flatMap(
   ({ resource, actions }) => actions.map((action) => ({ resource, action }))
 )
+
+/**
+ * `resource:action` pairs in `grants` that `RESOURCE_DEFINITIONS` does not
+ * declare. Empty when every grant is known.
+ */
+export function findUnknownGrants(grants: Record<string, string[]>): string[] {
+  return Object.entries(grants).flatMap(([resource, actions]) => {
+    const definition = RESOURCE_DEFINITIONS.find(
+      (def) => def.resource === resource
+    )
+    const declared: readonly string[] = definition?.actions ?? []
+    return actions
+      .filter((action) => !declared.includes(action))
+      .map((action) => `${resource}:${action}`)
+  })
+}

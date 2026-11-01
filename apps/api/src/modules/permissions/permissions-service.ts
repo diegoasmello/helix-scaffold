@@ -27,8 +27,9 @@ export function createPermissionsService(database: Database) {
     await database.transaction(async (tx) => {
       await tx.delete(rolePermissions).where(eq(rolePermissions.roleId, roleId))
 
+      // Deduplicated: a repeated action would hit role_permissions_unique.
       const rows = Object.entries(grants).flatMap(([resource, actions]) =>
-        actions.map((action) => ({ roleId, resource, action }))
+        [...new Set(actions)].map((action) => ({ roleId, resource, action }))
       )
 
       if (rows.length > 0) {

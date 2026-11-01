@@ -2,8 +2,10 @@ import { eq } from 'drizzle-orm'
 import { uuidv7 } from 'uuidv7'
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 
+import { auditLogs } from '@/db/schema'
 import { user } from '@/db/schema/authentication'
 import {
+  cleanupAuditLogs,
   cleanupAuth,
   cleanupRoles,
   cleanupUsers,
@@ -22,6 +24,7 @@ beforeAll(async () => {
 })
 
 beforeEach(async () => {
+  await cleanupAuditLogs()
   await cleanupUsers()
   await cleanupRoles()
 })
@@ -195,6 +198,89 @@ describe('PUT /roles/:id/permissions', () => {
     })
     expect(res.statusCode).toBe(200)
     expect(res.json().grants).toEqual({})
+  })
+
+  it('returns 400 for a resource not in RESOURCE_DEFINITIONS', async () => {
+    const role = await createRoleWithPermissions([
+      { resource: 'users', action: 'view' },
+    ])
+
+    const res = await app.inject({
+      method: 'PUT',
+      url: `/roles/${role.id}/permissions`,
+      payload: { grants: { users: ['view'], unknown: ['view'] } },
+      headers: { cookie: authCookie },
+    })
+    expect(res.statusCode).toBe(400)
+    expect(res.json().message).toContain('unknown:view')
+
+    // Rejected as a whole: the existing grants are untouched
+    const after = await app.inject({
+      method: 'GET',
+      url: `/roles/${role.id}/permissions`,
+      headers: { cookie: authCookie },
+    })
+    expect(after.json().grants).toEqual({ users: ['view'] })
+  })
+
+  it('returns 400 for an action the resource does not declare', async () => {
+    const role = await createRoleWithPermissions([])
+
+    const res = await app.inject({
+      method: 'PUT',
+      url: `/roles/${role.id}/permissions`,
+      payload: { grants: { audit: ['view', 'delete'] } },
+      headers: { cookie: authCookie },
+    })
+    expect(res.statusCode).toBe(400)
+    expect(res.json().message).toContain('audit:delete')
+  })
+
+  it('returns 404 when the role does not exist', async () => {
+    const res = await app.inject({
+      method: 'PUT',
+      url: `/roles/${uuidv7()}/permissions`,
+      payload: { grants: { users: ['view'] } },
+      headers: { cookie: authCookie },
+    })
+    expect(res.statusCode).toBe(404)
+    expect(res.json()).toEqual({ message: 'Role not found' })
+  })
+
+  it('ignores duplicate actions instead of failing', async () => {
+    const role = await createRoleWithPermissions([])
+
+    const res = await app.inject({
+      method: 'PUT',
+      url: `/roles/${role.id}/permissions`,
+      payload: { grants: { users: ['view', 'view'] } },
+      headers: { cookie: authCookie },
+    })
+    expect(res.statusCode).toBe(200)
+    expect(res.json().grants).toEqual({ users: ['view'] })
+  })
+
+  it('writes an audit log entry with the new grants', async () => {
+    const role = await createRoleWithPermissions([])
+    const grants = { users: ['view'], roles: ['view', 'edit'] }
+
+    const res = await app.inject({
+      method: 'PUT',
+      url: `/roles/${role.id}/permissions`,
+      payload: { grants },
+      headers: { cookie: authCookie },
+    })
+    expect(res.statusCode).toBe(200)
+
+    const [entry] = await testDb
+      .select()
+      .from(auditLogs)
+      .where(eq(auditLogs.resourceId, role.id))
+    expect(entry).toMatchObject({
+      action: 'edit',
+      resource: 'permissions',
+      metadata: { grants },
+    })
   })
 
   it('returns 403 when user lacks permissions:edit', async () => {

@@ -1,6 +1,7 @@
 import z from 'zod'
 
-import { RESOURCE_DEFINITIONS } from '@/config/permissions'
+import { findUnknownGrants, RESOURCE_DEFINITIONS } from '@/config/permissions'
+import { getPgErrorCode, PG_FOREIGN_KEY_VIOLATION } from '@/lib/pg-errors'
 
 import type { Database } from '../../db'
 import type { FastifyTypedInstance, RequirePermission } from '../../types'
@@ -74,15 +75,38 @@ export async function permissionsRoutes(
         description: 'Replace permissions for a role',
         params: z.object({ id: z.string() }),
         body: rolePermissionsResponseSchema,
-        response: { 200: rolePermissionsResponseSchema },
+        response: {
+          200: rolePermissionsResponseSchema,
+          400: z.object({ message: z.string() }),
+          404: z.object({ message: z.string() }),
+        },
       },
       preHandler: requirePermission('permissions', 'edit'),
     },
-    async (request) => {
-      const grants = await service.replaceForRole(
-        request.params.id,
-        request.body.grants
-      )
+    async (request, reply) => {
+      const unknown = findUnknownGrants(request.body.grants)
+      if (unknown.length > 0) {
+        return reply
+          .status(400)
+          .send({ message: `Unknown permissions: ${unknown.join(', ')}` })
+      }
+
+      let grants: Awaited<ReturnType<typeof service.replaceForRole>>
+      try {
+        grants = await service.replaceForRole(
+          request.params.id,
+          request.body.grants
+        )
+      } catch (error) {
+        if (getPgErrorCode(error) === PG_FOREIGN_KEY_VIOLATION) {
+          return reply.status(404).send({ message: 'Role not found' })
+        }
+        throw error
+      }
+
+      await request.audit('edit', 'permissions', request.params.id, {
+        grants: request.body.grants,
+      })
       return { grants }
     }
   )
