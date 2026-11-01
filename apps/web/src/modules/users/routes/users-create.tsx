@@ -1,7 +1,9 @@
-import { getUsersSuspenseQueryKey, postUsers } from '@helix/api-client/hooks'
+import { postUsers } from '@helix/api-client/hooks'
 import { Button, Form, Group, notify, PageCreate, useForm } from '@helix/ui'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
+
+import { useResourceCache } from '@/lib/resource-cache'
 
 import { UsersForm } from '../components/users-form'
 import type { CreateUserInput, UserFormValues } from '../types'
@@ -9,7 +11,7 @@ import { userCreateFormValidate } from '../validation'
 import { usersCreateRoute } from '.'
 
 export function UsersCreate() {
-  const queryClient = useQueryClient()
+  const resourceCache = useResourceCache()
   const navigate = usersCreateRoute.useNavigate()
   const { t } = useTranslation('users')
   const { t: tc } = useTranslation('common')
@@ -17,9 +19,7 @@ export function UsersCreate() {
   const { mutate: createUser, isPending } = useMutation({
     mutationFn: (data: CreateUserInput) => postUsers(data),
     onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: getUsersSuspenseQueryKey(),
-      })
+      void resourceCache.changed('users')
     },
   })
 

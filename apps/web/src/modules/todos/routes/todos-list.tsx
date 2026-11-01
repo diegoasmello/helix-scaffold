@@ -1,9 +1,4 @@
-import {
-  deleteTodosId,
-  getTodosIdSuspenseQueryKey,
-  getTodosSuspenseQueryKey,
-  useGetTodosSuspense,
-} from '@helix/api-client/hooks'
+import { deleteTodosId, useGetTodosSuspense } from '@helix/api-client/hooks'
 import {
   Badge,
   Button,
@@ -23,11 +18,12 @@ import {
 } from '@helix/ui'
 import { IconDownload, IconFilter, IconPlus } from '@helix/ui'
 import { PageList } from '@helix/ui'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation } from '@tanstack/react-query'
 import { parseISO } from 'date-fns'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
+import { useResourceCache } from '@/lib/resource-cache'
 import { useExportPdf } from '@/lib/use-export-pdf'
 import { formatDate } from '@/utils/date'
 
@@ -40,7 +36,7 @@ export function TodoList() {
   const navigate = todoListRoute.useNavigate()
   const search = todoListRoute.useSearch()
   const { page, pageSize, sortBy, sortOrder, filters, filterLogic } = search
-  const queryClient = useQueryClient()
+  const resourceCache = useResourceCache()
 
   const [filtersOpen, setFiltersOpen] = useState<boolean>(!!filters)
   const { isExporting, handleExport } = useExportPdf(
@@ -92,10 +88,7 @@ export function TodoList() {
   const { mutate: deleteTodo } = useMutation({
     mutationFn: (id: string) => deleteTodosId(id),
     onSuccess: (_, id) => {
-      queryClient.invalidateQueries({
-        queryKey: getTodosSuspenseQueryKey(),
-      })
-      queryClient.removeQueries({ queryKey: getTodosIdSuspenseQueryKey(id) })
+      void resourceCache.removed('todos', id)
       notify({
         status: 'success',
         message: t('notifications.deleted'),

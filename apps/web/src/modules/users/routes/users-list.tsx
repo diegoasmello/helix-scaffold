@@ -1,9 +1,4 @@
-import {
-  deleteUsersId,
-  getUsersIdSuspenseQueryKey,
-  getUsersSuspenseQueryKey,
-  useGetUsersSuspense,
-} from '@helix/api-client/hooks'
+import { deleteUsersId, useGetUsersSuspense } from '@helix/api-client/hooks'
 import {
   Button,
   confirm,
@@ -16,15 +11,17 @@ import {
   PageList,
 } from '@helix/ui'
 import { IconPlus } from '@helix/ui'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
+
+import { useResourceCache } from '@/lib/resource-cache'
 
 import { HasPermission } from '../../auth/components/has-permission'
 import type { UserItem } from '../types'
 import { usersListRoute } from '.'
 
 export function UsersList() {
-  const queryClient = useQueryClient()
+  const resourceCache = useResourceCache()
   const navigate = usersListRoute.useNavigate()
   const search = usersListRoute.useSearch()
   const { page, pageSize, sortBy, sortOrder } = search
@@ -48,10 +45,7 @@ export function UsersList() {
   const { mutate: deleteUser } = useMutation({
     mutationFn: (id: string) => deleteUsersId(id),
     onSuccess: (_, id) => {
-      queryClient.invalidateQueries({
-        queryKey: getUsersSuspenseQueryKey(),
-      })
-      queryClient.removeQueries({ queryKey: getUsersIdSuspenseQueryKey(id) })
+      void resourceCache.removed('users', id)
       notify({ status: 'success', message: t('notifications.deleted') })
     },
     onError: () => {

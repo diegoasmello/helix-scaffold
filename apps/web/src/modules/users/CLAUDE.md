@@ -110,9 +110,9 @@ Inline in each component — no `hooks.ts`.
 
 **Create**: sends `name`, `email`, `password`, and `roleId` only when non-null — `...(values.roleId ? { roleId: values.roleId } : {})`. Invalidates list on success.
 
-**Update**: always sends `roleId` (including `null` to remove the role). Does not send `password`. Invalidates list + `setQueryData` on item cache.
+**Update**: always sends `roleId` (including `null` to remove the role). Does not send `password`. `resourceCache.saved('users', updated)` — seeds the item cache, refetches the lists (`/users/all` included) and `/me/permissions`.
 
-**Delete** (in `UsersList`): has `onError` on the `useMutation` call itself (not just on `mutate`) — notifies on failure without navigating. Confirm message includes the user's name: `Are you sure you want to delete "${name}"?`. Invalidates list + `removeQueries` on item cache.
+**Delete** (in `UsersList`): has `onError` on the `useMutation` call itself (not just on `mutate`) — notifies on failure without navigating. Confirm message includes the user's name: `Are you sure you want to delete "${name}"?`. `resourceCache.removed('users', id)` — drops the item cache, refetches the lists (`/users/all` included, the subscriptions form's select).
 
 ## RBAC in the list screen
 

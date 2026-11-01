@@ -10,6 +10,8 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
+import { useResourceCache } from '@/lib/resource-cache'
+
 import { PermissionsTree } from './permissions-tree'
 
 export interface PermissionsEditorProps {
@@ -21,6 +23,7 @@ export function PermissionsEditor(props: Readonly<PermissionsEditorProps>) {
   const { roleId, onCancel } = props
 
   const queryClient = useQueryClient()
+  const resourceCache = useResourceCache()
   const { t } = useTranslation('roles')
   const { t: tc } = useTranslation('common')
   const { data: saved } = useGetRolesIdPermissionsSuspense(roleId)
@@ -34,6 +37,8 @@ export function PermissionsEditor(props: Readonly<PermissionsEditorProps>) {
         getRolesIdPermissionsSuspenseQueryKey(roleId),
         updated
       )
+      // The role's users — maybe the signed-in user — now have other permissions.
+      void resourceCache.changed('roles')
       notify({
         status: 'success',
         message: t('permissions.notifications.saved'),

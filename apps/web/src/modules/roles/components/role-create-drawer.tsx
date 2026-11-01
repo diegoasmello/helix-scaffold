@@ -1,7 +1,9 @@
-import { getRolesAllSuspenseQueryKey, postRoles } from '@helix/api-client/hooks'
+import { postRoles } from '@helix/api-client/hooks'
 import { Button, Drawer, Group, notify, Stack, useForm } from '@helix/ui'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
+
+import { useResourceCache } from '@/lib/resource-cache'
 
 import { isRoleNameTaken } from '../api-errors'
 import type { CreateRoleInput, RoleFormValues } from '../types'
@@ -17,16 +19,14 @@ export interface RoleCreateDrawerProps {
 export function RoleCreateDrawer(props: Readonly<RoleCreateDrawerProps>) {
   const { opened, onClose, onSuccess } = props
 
-  const queryClient = useQueryClient()
+  const resourceCache = useResourceCache()
   const { t } = useTranslation('roles')
   const { t: tc } = useTranslation('common')
 
   const { mutate: createRole, isPending } = useMutation({
     mutationFn: (data: CreateRoleInput) => postRoles(data),
     onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: getRolesAllSuspenseQueryKey(),
-      })
+      void resourceCache.changed('roles')
     },
   })
 

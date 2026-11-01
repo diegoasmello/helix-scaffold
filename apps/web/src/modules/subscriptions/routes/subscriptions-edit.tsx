@@ -1,12 +1,12 @@
 import {
-  getSubscriptionsIdSuspenseQueryKey,
-  getSubscriptionsSuspenseQueryKey,
   patchSubscriptionsId,
   useGetSubscriptionsIdSuspense,
 } from '@helix/api-client/hooks'
 import { Button, Form, Group, notify, PageEdit, useForm } from '@helix/ui'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
+
+import { useResourceCache } from '@/lib/resource-cache'
 
 import { conflictMessageKey } from '../api-errors'
 import { SubscriptionsForm } from '../components/subscriptions-form'
@@ -18,7 +18,7 @@ import { subscriptionsEditRoute, subscriptionsListRoute } from '.'
 export function SubscriptionsEdit() {
   const { id } = subscriptionsEditRoute.useParams()
   const navigate = subscriptionsListRoute.useNavigate()
-  const queryClient = useQueryClient()
+  const resourceCache = useResourceCache()
   const { t } = useTranslation('subscription')
   const { t: tc } = useTranslation('common')
   const { plans } = useSubscription()
@@ -49,10 +49,7 @@ export function SubscriptionsEdit() {
         externalId: data.externalId || null,
       }),
     onSuccess: (updated) => {
-      queryClient.invalidateQueries({
-        queryKey: getSubscriptionsSuspenseQueryKey(),
-      })
-      queryClient.setQueryData(getSubscriptionsIdSuspenseQueryKey(id), updated)
+      void resourceCache.saved('subscriptions', updated)
     },
   })
 

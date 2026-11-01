@@ -1,9 +1,4 @@
-import {
-  deleteRolesId,
-  getRolesIdSuspenseQueryKey,
-  getRolesSuspenseQueryKey,
-  useGetRolesSuspense,
-} from '@helix/api-client/hooks'
+import { deleteRolesId, useGetRolesSuspense } from '@helix/api-client/hooks'
 import {
   ActionsMenu,
   type ActionsMenuItemConfig,
@@ -17,8 +12,10 @@ import {
   PageList,
 } from '@helix/ui'
 import { IconPlus } from '@helix/ui'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
+
+import { useResourceCache } from '@/lib/resource-cache'
 
 import { HasPermission } from '../../auth/components/has-permission'
 import { useAuth } from '../../auth/use-auth'
@@ -26,7 +23,7 @@ import type { RoleItem } from '../types'
 import { rolesListRoute } from '.'
 
 export function RolesList() {
-  const queryClient = useQueryClient()
+  const resourceCache = useResourceCache()
   const navigate = rolesListRoute.useNavigate()
   const search = rolesListRoute.useSearch()
   const { page, pageSize, sortBy, sortOrder } = search
@@ -51,10 +48,7 @@ export function RolesList() {
   const { mutate: deleteRole } = useMutation({
     mutationFn: (id: string) => deleteRolesId(id),
     onSuccess: (_, id) => {
-      queryClient.invalidateQueries({
-        queryKey: getRolesSuspenseQueryKey(),
-      })
-      queryClient.removeQueries({ queryKey: getRolesIdSuspenseQueryKey(id) })
+      void resourceCache.removed('roles', id)
       notify({ status: 'success', message: t('notifications.deleted') })
     },
     onError: () => {

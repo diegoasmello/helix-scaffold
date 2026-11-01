@@ -100,7 +100,7 @@ Always `searchable` and `clearable`. Selecting nothing returns `null`. Callers m
 
 Cross-module drawer that renders a full role creation form (`RolesForm`) inside a Mantine `Drawer`. Used internally by `RoleSelectField` when `allowCreate` is true — consuming modules do not import it directly.
 
-Props: `opened`, `onClose`, `onSuccess(roleId)`. On success: invalidates `getRolesAllSuspenseQueryKey()` so `RoleSelectField` refreshes, then calls `onSuccess` with the created role's ID.
+Props: `opened`, `onClose`, `onSuccess(roleId)`. On success: `resourceCache.changed('roles')` — refreshes `/roles/all` behind `RoleSelectField` (and the `/roles` pages), then calls `onSuccess` with the created role's ID.
 
 ## Routes (`routes/index.ts`)
 
@@ -128,11 +128,11 @@ Inline in each component — no `hooks.ts`.
 
 **Duplicate name**: create, edit and `RoleCreateDrawer` check `isRoleNameTaken(error)` in `onError` and put `form.name.taken` on the name field (`form.setFieldError`) instead of the generic notification.
 
-**Create**: invalidates list (`getRolesSuspenseQueryKey()` — never with `exact: true`, which would skip the cached pages).  
-**Update**: invalidates list + `setQueryData` on item cache.  
-**Delete** (in `RolesList`): `onError` on `useMutation` itself (not on `mutate`) — notifies on failure. Confirm message includes the role's name: `Are you sure you want to delete "${name}"?`. Invalidates list + `removeQueries` on item cache.
+**Create**: `resourceCache.changed('roles')`.  
+**Update**: `resourceCache.saved('roles', updated)`.  
+**Delete** (in `RolesList`): `onError` on `useMutation` itself (not on `mutate`) — notifies on failure. Confirm message includes the role's name: `Are you sure you want to delete "${name}"?`. `resourceCache.removed('roles', id)`.
 
-**`/roles/all` cache invalidation** — the standard CRUD mutations (create/edit/delete in the routes) do not invalidate `getRolesAllSuspenseQueryKey()`. Only `RoleCreateDrawer` invalidates it, because that is the one creation path that must immediately refresh the select options.
+**Cache** — every role mutation goes through the resource cache (`src/lib/resource-cache.ts`), which refreshes all role queries (`/roles` pages, `/roles/all`, details, `/roles/:id/permissions`) plus `/users` (users embed the role name) and `/me/permissions`. The create screen and `RoleCreateDrawer` therefore refresh the same queries.
 
 ## RBAC in the list screen
 
@@ -171,7 +171,7 @@ The list handler is called with a `createPaginatedRoles({...})` object — not a
 
 - Reads `useGetRolesIdPermissionsSuspense(roleId)` (saved grants) and `useGetPermissionsResourcesSuspense()` (the `RESOURCE_DEFINITIONS` catalog).
 - Holds edits in local state (`useState(saved.grants)`); nothing is sent until Save.
-- Save → `putRolesIdPermissions(roleId, { grants })` (full replacement). `onSuccess` writes the result with `setQueryData(getRolesIdPermissionsSuspenseQueryKey(roleId), …)` and notifies; `onError` notifies. Both live on `useMutation` itself. No navigation — the user stays on the page.
+- Save → `putRolesIdPermissions(roleId, { grants })` (full replacement). `onSuccess` writes the result with `setQueryData(getRolesIdPermissionsSuspenseQueryKey(roleId), …)`, calls `resourceCache.changed('roles')` (the signed-in user may hold that role, so `/me/permissions` refetches and the sidebar and guards follow) and notifies; `onError` notifies. Both live on `useMutation` itself. No navigation — the user stays on the page.
 - The API rejects grants outside the catalog with 400 and audits every save, so the editor only ever sends what the catalog offers.
 
 **`PermissionsTree`** (`components/permissions-tree.tsx`): pure controlled component — `definitions`, `grants`, `onChange`, `disabled?`. One block per resource with a parent checkbox (checked when all actions are granted, indeterminate when some are) and one checkbox per action the resource declares. Actions come from the catalog, so a new action in `RESOURCE_DEFINITIONS` shows up with no frontend change. Resource labels are translated via `roles:permissions.resources.<resource>`, falling back to the catalog's English `label` for a resource without a key — add one in both locales when you add a resource to `RESOURCE_DEFINITIONS`. Action labels reuse `common:actions.<action>`.

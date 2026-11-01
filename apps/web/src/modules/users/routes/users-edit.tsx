@@ -1,12 +1,9 @@
-import {
-  getUsersIdSuspenseQueryKey,
-  getUsersSuspenseQueryKey,
-  patchUsersId,
-  useGetUsersIdSuspense,
-} from '@helix/api-client/hooks'
+import { patchUsersId, useGetUsersIdSuspense } from '@helix/api-client/hooks'
 import { Button, Form, Group, notify, PageEdit, useForm } from '@helix/ui'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
+
+import { useResourceCache } from '@/lib/resource-cache'
 
 import { UsersForm } from '../components/users-form'
 import type { UpdateUserInput, UserFormValues } from '../types'
@@ -16,7 +13,7 @@ import { usersEditRoute } from '.'
 export function UsersEdit() {
   const { id } = usersEditRoute.useParams()
   const navigate = usersEditRoute.useNavigate()
-  const queryClient = useQueryClient()
+  const resourceCache = useResourceCache()
   const { t } = useTranslation('users')
   const { t: tc } = useTranslation('common')
 
@@ -26,13 +23,7 @@ export function UsersEdit() {
     mutationFn: ({ id, data }: { id: string; data: UpdateUserInput }) =>
       patchUsersId(id, data),
     onSuccess: (updatedItem) => {
-      queryClient.invalidateQueries({
-        queryKey: getUsersSuspenseQueryKey(),
-      })
-      queryClient.setQueryData(
-        getUsersIdSuspenseQueryKey(updatedItem.id),
-        updatedItem
-      )
+      void resourceCache.saved('users', updatedItem)
     },
   })
 

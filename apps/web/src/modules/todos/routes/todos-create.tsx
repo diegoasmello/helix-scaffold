@@ -1,7 +1,9 @@
-import { getTodosSuspenseQueryKey, postTodos } from '@helix/api-client/hooks'
+import { postTodos } from '@helix/api-client/hooks'
 import { Button, Form, Group, notify, PageCreate, useForm } from '@helix/ui'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
+
+import { useResourceCache } from '@/lib/resource-cache'
 
 import { TodoForm } from '../components/todos-form'
 import type { CreateTodoInput, TodoFormValues } from '../types'
@@ -10,16 +12,14 @@ import { todoCreateRoute } from '.'
 
 export function TodoCreate() {
   const navigate = todoCreateRoute.useNavigate()
-  const queryClient = useQueryClient()
+  const resourceCache = useResourceCache()
   const { t } = useTranslation('todos')
   const { t: tc } = useTranslation('common')
 
   const { mutate: createTodo, isPending } = useMutation({
     mutationFn: (data: CreateTodoInput) => postTodos(data),
     onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: getTodosSuspenseQueryKey(),
-      })
+      void resourceCache.changed('todos')
     },
   })
 

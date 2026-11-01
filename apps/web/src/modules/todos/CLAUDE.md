@@ -117,9 +117,9 @@ Every route's `beforeLoad` is `guardPage(TODOS_ACCESS.<page>)` (`routes/access.t
 
 Inline in each component — no `hooks.ts`. Cache operations in `useMutation.onSuccess`; notifications and navigation in `mutate(data, { onSuccess, onError })`.
 
-**Create**: invalidates `getTodosSuspenseQueryKey()`. Does NOT send `status`.  
-**Update**: invalidates list + `setQueryData` on the item cache.  
-**Delete**: invalidates list + `removeQueries` on the item cache. Delete mutation lives in `TodoList` (not the detail screen).
+**Create**: `resourceCache.changed('todos')`. Does NOT send `status`.  
+**Update**: `resourceCache.saved('todos', updated)` — seeds the item cache, refetches the lists.  
+**Delete**: `resourceCache.removed('todos', id)` — drops the item cache, refetches the lists. Delete mutation lives in `TodoList` (not the detail screen).
 
 ## Sidebar
 

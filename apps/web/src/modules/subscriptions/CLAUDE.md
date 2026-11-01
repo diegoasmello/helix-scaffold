@@ -274,7 +274,7 @@ Fields rendered:
 ## Create screen (`subscriptions-create.tsx`)
 
 - `useForm<SubscriptionFormValues>` with default `status: 'active'`, `currentPeriodStart: now`, `currentPeriodEnd: now + 30d`, `trialEndsAt: null`, `externalId: ''`
-- Mutation: `postSubscriptions(...)` → invalidates `getSubscriptionsSuspenseQueryKey()` on success
+- Mutation: `postSubscriptions(...)` → `resourceCache.changed('subscriptions')` on success (also refreshes `/me/subscription` and `/me/entitlements`)
 - On 400 from the API (invalid `userId`) the mutation's `onError` fires and shows a danger notification
 - On **409** the notification explains the conflict instead of the generic `createFailed`: `conflictMessageKey(error)` (`api-errors.ts`) maps `ApiError.code` — `live_subscription_exists` → `notifications.alreadyLive`, `external_id_taken` → `notifications.externalIdTaken`
 
@@ -284,7 +284,7 @@ Fields rendered:
 
 - Pre-fills form from `useGetSubscriptionsIdSuspense(id)`
 - `SubscriptionsForm` rendered with `isEditing` — `userId` field hidden
-- Mutation: `patchSubscriptionsId(id, ...)` → invalidates list + `setQueryData` on item cache
+- Mutation: `patchSubscriptionsId(id, ...)` → `resourceCache.saved('subscriptions', updated)`
 - On **409** (reactivating while another subscription is live, or a taken `externalId`) the notification comes from `conflictMessageKey(error)`, like the create screen
 - **Setting `status: 'canceled'` without `canceledAt`**: the backend service automatically sets `canceledAt = now()` in this case. The edit form does not expose `canceledAt` directly — if a precise cancellation date is needed, it can be set via the API directly.
 

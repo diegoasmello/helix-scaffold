@@ -420,13 +420,13 @@ export interface XxxCreateDrawerProps {
 export function XxxCreateDrawer(props: Readonly<XxxCreateDrawerProps>) {
   const { opened, onClose, onSuccess } = props
 
-  const queryClient = useQueryClient()
+  const resourceCache = useResourceCache()
 
   const { mutate: createXxx, isPending } = useMutation({
     mutationFn: (data: CreateXxxInput) => postXxx(data),
     onSuccess: () => {
-      // Invalidate the /all query so the select refreshes after creation
-      queryClient.invalidateQueries({ queryKey: getXxxAllSuspenseQueryKey() })
+      // Refreshes the /all query behind the select — and the list pages
+      void resourceCache.changed('xxx')
     },
   })
 
@@ -1035,52 +1035,47 @@ loader: ({ deps }) => queryClient.ensureQueryData(getXxxsSuspenseQueryOptions(de
 loader: ({ params }) => queryClient.ensureQueryData(getXxxsIdSuspenseQueryOptions(params.id)),
 ```
 
-**Mutations** — inline in the component that uses them, with cache invalidation:
+**Mutations** — inline in the component that uses them. The cache bookkeeping is one call to the resource cache (`src/lib/resource-cache.ts`), never hand-picked query keys:
 
 ```ts
-import { useMutation, useQueryClient } from '@tanstack/react-query'
-import {
-  postXxxs,
-  patchXxxsId,
-  deleteXxxsId,
-  getXxxsSuspenseQueryKey,
-  getXxxsIdSuspenseQueryKey,
-} from '@helix/api-client/hooks'
+import { useMutation } from '@tanstack/react-query'
+import { postXxxs, patchXxxsId, deleteXxxsId } from '@helix/api-client/hooks'
+import { useResourceCache } from '@/lib/resource-cache'
 import type { CreateXxxInput, UpdateXxxInput } from '../types'
 
-// Create — invalidates the list. No params and NO `exact: true`: the key
-// without params is the prefix of every cached page (page/sort/filters).
-const queryClient = useQueryClient()
+const resourceCache = useResourceCache()
+
+// Create — refetches every list page, the /all list and anything that shows the resource
 const { mutate: createXxx } = useMutation({
   mutationFn: (data: CreateXxxInput) => postXxxs(data),
   onSuccess: () => {
-    queryClient.invalidateQueries({ queryKey: getXxxsSuspenseQueryKey() })
+    void resourceCache.changed('xxx')
   },
 })
 
-// Update — invalidates the list and updates the item cache
+// Update — seeds the item's detail with the response, refetches the rest
 const { mutate: updateXxx } = useMutation({
   mutationFn: ({ id, data }: { id: string; data: UpdateXxxInput }) =>
     patchXxxsId(id, data),
   onSuccess: (updated) => {
-    queryClient.invalidateQueries({ queryKey: getXxxsSuspenseQueryKey() })
-    queryClient.setQueryData(getXxxsIdSuspenseQueryKey(updated.id), updated)
+    void resourceCache.saved('xxx', updated)
   },
 })
 
-// Delete — invalidates the list and removes the item from cache
+// Delete — drops the item's detail (and its sub-resources), refetches the rest
 const { mutate: deleteXxx } = useMutation({
   mutationFn: (id: string) => deleteXxxsId(id),
   onSuccess: (_, id) => {
-    queryClient.invalidateQueries({ queryKey: getXxxsSuspenseQueryKey() })
-    queryClient.removeQueries({ queryKey: getXxxsIdSuspenseQueryKey(id) })
+    void resourceCache.removed('xxx', id)
   },
 })
 ```
 
+**Resource cache (`src/lib/resource-cache.ts`)** — knows the generated key format (`[{ url, params? }, query?]`): a resource owns every query under its path (`/xxx`, `/xxx/all`, `/xxx/:id`, `/xxx/:id/...`) — a plain key prefix would miss `/xxx/all`. Its `RESOURCES` table also lists the queries that **show** a resource's data (`shownBy`): users embed their role's name, so `roles` refreshes `/users`; a role's grants are someone's `/me/permissions`; an admin may edit their own subscription, so `subscriptions` refreshes `/me/subscription` and `/me/entitlements`. **When adding a module, add its entry there** (`xxx: { path: '/xxx', shownBy: [] }`) and list in other entries' `shownBy` the queries of yours that embed them. Tested in `resource-cache.test.ts` against the generated key functions.
+
 **Separation of concerns in mutations:**
 
-- `useMutation` (`onSuccess`) — reserved for cache operations (invalidation, `setQueryData`, `removeQueries`). Always fires, even if the component has unmounted.
+- `useMutation` (`onSuccess`) — reserved for cache operations (`resourceCache.changed / saved / removed`). Always fires, even if the component has unmounted.
 - `mutate(data, { onSuccess, onError })` — component-dependent side effects: `notify()` and `navigate()`. Only fires if the component is still mounted. **Always declare both `onSuccess` and `onError` with `notify()`** in this scenario. When the API returns a meaningful error status (e.g. 409), branch on `error instanceof ApiError && error.status === 409` (`ApiError` from `@helix/api-client`) to show a specific translated message — never display the API's raw English `error.message`.
 
 ```ts

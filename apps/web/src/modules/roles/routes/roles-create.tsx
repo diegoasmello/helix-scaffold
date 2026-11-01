@@ -1,7 +1,9 @@
-import { getRolesSuspenseQueryKey, postRoles } from '@helix/api-client/hooks'
+import { postRoles } from '@helix/api-client/hooks'
 import { Button, Form, Group, notify, PageCreate, useForm } from '@helix/ui'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
+
+import { useResourceCache } from '@/lib/resource-cache'
 
 import { isRoleNameTaken } from '../api-errors'
 import { RolesForm } from '../components/roles-form'
@@ -11,16 +13,14 @@ import { rolesCreateRoute } from '.'
 
 export function RolesCreate() {
   const navigate = rolesCreateRoute.useNavigate()
-  const queryClient = useQueryClient()
+  const resourceCache = useResourceCache()
   const { t } = useTranslation('roles')
   const { t: tc } = useTranslation('common')
 
   const { mutate: createRole, isPending } = useMutation({
     mutationFn: (data: CreateRoleInput) => postRoles(data),
     onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: getRolesSuspenseQueryKey(),
-      })
+      void resourceCache.changed('roles')
     },
   })
 

@@ -1,7 +1,5 @@
 import {
   deleteSubscriptionsId,
-  getSubscriptionsIdSuspenseQueryKey,
-  getSubscriptionsSuspenseQueryKey,
   useGetSubscriptionsSuspense,
 } from '@helix/api-client/hooks'
 import {
@@ -18,8 +16,10 @@ import {
   notify,
   PageList,
 } from '@helix/ui'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
+
+import { useResourceCache } from '@/lib/resource-cache'
 
 import { HasPermission } from '../../auth/components/has-permission'
 import { SUBSCRIPTION_STATUS_COLORS } from '../constants'
@@ -28,7 +28,7 @@ import type { SubscriptionItem } from '../types'
 import { subscriptionsListRoute } from '.'
 
 export function SubscriptionsList() {
-  const queryClient = useQueryClient()
+  const resourceCache = useResourceCache()
   const navigate = subscriptionsListRoute.useNavigate()
   const search = subscriptionsListRoute.useSearch()
   const { page, pageSize, sortBy, sortOrder } = search
@@ -53,12 +53,7 @@ export function SubscriptionsList() {
   const { mutate: deleteSubscription } = useMutation({
     mutationFn: (id: string) => deleteSubscriptionsId(id),
     onSuccess: (_, id) => {
-      queryClient.invalidateQueries({
-        queryKey: getSubscriptionsSuspenseQueryKey(),
-      })
-      queryClient.removeQueries({
-        queryKey: getSubscriptionsIdSuspenseQueryKey(id),
-      })
+      void resourceCache.removed('subscriptions', id)
     },
     onError: () => {
       notify({ status: 'danger', message: t('notifications.deleteFailed') })

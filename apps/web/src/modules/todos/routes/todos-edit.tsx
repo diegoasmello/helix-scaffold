@@ -1,12 +1,9 @@
-import {
-  getTodosIdSuspenseQueryKey,
-  getTodosSuspenseQueryKey,
-  patchTodosId,
-  useGetTodosIdSuspense,
-} from '@helix/api-client/hooks'
+import { patchTodosId, useGetTodosIdSuspense } from '@helix/api-client/hooks'
 import { Button, Form, Group, notify, PageEdit, useForm } from '@helix/ui'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
+
+import { useResourceCache } from '@/lib/resource-cache'
 
 import { TodoForm } from '../components/todos-form'
 import type { TodoFormValues, UpdateTodoInput } from '../types'
@@ -19,7 +16,7 @@ export function TodoEdit() {
   const { t } = useTranslation('todos')
   const { t: tc } = useTranslation('common')
 
-  const queryClient = useQueryClient()
+  const resourceCache = useResourceCache()
 
   const { data: item } = useGetTodosIdSuspense(id)
 
@@ -27,13 +24,7 @@ export function TodoEdit() {
     mutationFn: ({ id, data }: { id: string; data: UpdateTodoInput }) =>
       patchTodosId(id, data),
     onSuccess: (updatedItem) => {
-      queryClient.invalidateQueries({
-        queryKey: getTodosSuspenseQueryKey(),
-      })
-      queryClient.setQueryData(
-        getTodosIdSuspenseQueryKey(updatedItem.id),
-        updatedItem
-      )
+      void resourceCache.saved('todos', updatedItem)
     },
   })
 

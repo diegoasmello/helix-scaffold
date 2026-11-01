@@ -1,12 +1,9 @@
-import {
-  getRolesIdSuspenseQueryKey,
-  getRolesSuspenseQueryKey,
-  patchRolesId,
-  useGetRolesIdSuspense,
-} from '@helix/api-client/hooks'
+import { patchRolesId, useGetRolesIdSuspense } from '@helix/api-client/hooks'
 import { Button, Form, Group, notify, PageEdit, useForm } from '@helix/ui'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
+
+import { useResourceCache } from '@/lib/resource-cache'
 
 import { isRoleNameTaken } from '../api-errors'
 import { RolesForm } from '../components/roles-form'
@@ -17,7 +14,7 @@ import { rolesEditRoute } from '.'
 export function RolesEdit() {
   const { id } = rolesEditRoute.useParams()
   const navigate = rolesEditRoute.useNavigate()
-  const queryClient = useQueryClient()
+  const resourceCache = useResourceCache()
   const { t } = useTranslation('roles')
   const { t: tc } = useTranslation('common')
 
@@ -26,13 +23,7 @@ export function RolesEdit() {
     mutationFn: ({ id, data }: { id: string; data: UpdateRoleInput }) =>
       patchRolesId(id, data),
     onSuccess: (updatedItem) => {
-      queryClient.invalidateQueries({
-        queryKey: getRolesSuspenseQueryKey(),
-      })
-      queryClient.setQueryData(
-        getRolesIdSuspenseQueryKey(updatedItem.id),
-        updatedItem
-      )
+      void resourceCache.saved('roles', updatedItem)
     },
   })
 
