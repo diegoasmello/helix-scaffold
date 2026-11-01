@@ -5,9 +5,21 @@ import { config } from '@/config'
 import type { Database } from '@/db'
 import { env } from '@/env'
 import type { EmailProvider } from '@/lib/email'
-import { applySelfRegistrationDefaults } from '@/modules/registration/self-registration'
+import {
+  applySelfRegistrationDefaults,
+  type ErrorLogger,
+} from '@/modules/registration/self-registration'
 
-export function createAuth(database: Database, emailProvider: EmailProvider) {
+// Scripts (the seed) have no Fastify logger; buildApp passes `app.log`.
+const consoleLogger: ErrorLogger = {
+  error: (obj, msg) => console.error(msg, obj),
+}
+
+export function createAuth(
+  database: Database,
+  emailProvider: EmailProvider,
+  logger: ErrorLogger = consoleLogger
+) {
   const { google, facebook, apple } = config.auth.socialProviders
   const disableSignUp = config.registration.mode !== 'open'
 
@@ -26,7 +38,8 @@ export function createAuth(database: Database, emailProvider: EmailProvider) {
             await applySelfRegistrationDefaults(
               database,
               user.id,
-              config.subscriptions
+              config.subscriptions,
+              logger
             )
           },
         },

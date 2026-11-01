@@ -63,7 +63,7 @@ export function buildApp(database: Database, options: BuildAppOptions = {}) {
     from: config.email.from,
     nodeEnv: env.NODE_ENV,
   })
-  const auth = createAuth(database, emailProvider)
+  const auth = createAuth(database, emailProvider, app.log)
   const auditService = createAuditService(database)
 
   app.setValidatorCompiler(validatorCompiler)

@@ -9,6 +9,11 @@ type SubscriptionsConfig = Pick<
   'enabled' | 'trial'
 >
 
+/** The slice of a pino/Fastify logger this module needs. */
+export interface ErrorLogger {
+  error: (obj: object, msg: string) => void
+}
+
 /**
  * What a self-registered user gets in open registration mode: the default role
  * (`roles.isDefault`) and, when configured, a trial subscription. Called from
@@ -19,7 +24,8 @@ type SubscriptionsConfig = Pick<
 export async function applySelfRegistrationDefaults(
   database: Database,
   userId: string,
-  { enabled, trial }: SubscriptionsConfig
+  { enabled, trial }: SubscriptionsConfig,
+  logger: ErrorLogger
 ) {
   const [defaultRole] = await database
     .select()
@@ -37,7 +43,8 @@ export async function applySelfRegistrationDefaults(
     const now = new Date()
     const trialEndsAt = new Date(now)
     trialEndsAt.setDate(trialEndsAt.getDate() + trial.days)
-    // Best-effort: a failed trial must not fail the sign-up.
+    // Best-effort: a failed trial must not fail the sign-up — but it is
+    // logged, or the user silently ends up without access.
     await database
       .insert(subscriptions)
       .values({
@@ -48,6 +55,8 @@ export async function applySelfRegistrationDefaults(
         currentPeriodStart: now,
         currentPeriodEnd: trialEndsAt,
       })
-      .catch(() => {})
+      .catch((err: unknown) =>
+        logger.error({ err, userId }, 'Trial subscription creation failed')
+      )
   }
 }

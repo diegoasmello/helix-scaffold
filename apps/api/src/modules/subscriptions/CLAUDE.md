@@ -223,7 +223,7 @@ The trial subscription uses:
 - `currentPeriodStart` = `now`
 - `currentPeriodEnd` = `now + trial.days` days
 
-**This operation is best-effort.** The INSERT is followed by `.catch(() => {})` so a DB failure does not cause user creation to fail. If the insert silently fails, the user will exist without a trial subscription and will see "no active subscription" on the me-page.
+**This operation is best-effort.** A failed INSERT does not fail the sign-up: it is caught and logged (`'Trial subscription creation failed'`, with `userId`) through the logger `buildApp` hands to `createAuth` (`app.log`). The user then exists without a trial and sees "no active subscription" on the me-page — search the logs for that message.
 
 **Self-registration only:** the hook acts only on sign-ups that arrive over HTTP (`/sign-up/email`, a social callback). `POST /bootstrap`, `POST /users` and the seed call `auth.api.signUpEmail()` on the server, with no request, so they get no trial (and no default role). In `closed` mode no trial is ever created. Covered by `registration/self-registration.test.ts`, which also calls `applySelfRegistrationDefaults()` directly with a trial config, since the test config has trials off.
 

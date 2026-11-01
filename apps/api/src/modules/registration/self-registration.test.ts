@@ -1,5 +1,13 @@
 import { eq } from 'drizzle-orm'
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
+import {
+  afterAll,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from 'vitest'
 
 import { roles, subscriptions, user } from '@/db/schema'
 import {
@@ -8,6 +16,7 @@ import {
   cleanupUsers,
   createTestApp,
   createTestSession,
+  grantActiveSubscription,
   testDb,
 } from '@/test/helpers'
 
@@ -93,10 +102,12 @@ describe('applySelfRegistrationDefaults', () => {
   it('starts a trial when one is configured', async () => {
     const target = await insertUser('trial@test.com')
 
-    await applySelfRegistrationDefaults(testDb, target.id, {
-      enabled: true,
-      trial: { days: 14, planId: 'pro' },
-    })
+    await applySelfRegistrationDefaults(
+      testDb,
+      target.id,
+      { enabled: true, trial: { days: 14, planId: 'pro' } },
+      { error: vi.fn() }
+    )
 
     const [trial] = await testDb
       .select()
@@ -110,13 +121,37 @@ describe('applySelfRegistrationDefaults', () => {
     expect((await findUser('trial@test.com')).roleId).toBe(defaultRoleId)
   })
 
+  it('logs a failed trial instead of failing the sign-up', async () => {
+    const target = await insertUser('livesub@test.com')
+    // A live subscription already exists: the partial unique index rejects
+    // a second one, so the trial insert fails
+    await grantActiveSubscription('livesub@test.com')
+    const logger = { error: vi.fn() }
+
+    await expect(
+      applySelfRegistrationDefaults(
+        testDb,
+        target.id,
+        { enabled: true, trial: { days: 14, planId: 'pro' } },
+        logger
+      )
+    ).resolves.toBeUndefined()
+
+    expect(logger.error).toHaveBeenCalledWith(
+      expect.objectContaining({ userId: target.id }),
+      'Trial subscription creation failed'
+    )
+  })
+
   it('starts no trial when trials are off', async () => {
     const target = await insertUser('notrial@test.com')
 
-    await applySelfRegistrationDefaults(testDb, target.id, {
-      enabled: true,
-      trial: false,
-    })
+    await applySelfRegistrationDefaults(
+      testDb,
+      target.id,
+      { enabled: true, trial: false },
+      { error: vi.fn() }
+    )
 
     expect(
       await testDb
