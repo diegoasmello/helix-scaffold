@@ -42,7 +42,7 @@ Receives `{ database, auth, emailProvider }` — no `requirePermission` paramete
 | `PATCH` | `/me/email`         | Initiates email change (sends verification email); returns `{ message }`                 |
 | `PATCH` | `/me/password`      | Changes password (requires current password); returns 204                                |
 | `POST`  | `/me/set-password`  | Sets a password for a social-only account; returns 204 or 400 if already has credential |
-| `GET`   | `/me/providers`     | Returns configured social providers (for the link-account UI); returns `{ providers }` |
+| `GET`   | `/me/providers`     | Social providers the user can link (for the link-account UI); `{ providers }`, `[]` in closed mode |
 
 **`GET /me`** — `const userId = request.sessionUser.id` then `service.getMe(userId)`.
 
@@ -54,14 +54,14 @@ Receives `{ database, auth, emailProvider }` — no `requirePermission` paramete
 
 **`POST /me/set-password`** — calls `service.setPassword(body, headers, sessionUser.email)`. Catches `APIError` → 400 `{ message }` (better-auth rejects if the user already has a credential account). Returns 204 on success. Audit: `{ passwordSet: true }`.
 
-**`GET /me/providers`** — calls `getConfiguredSocialProviders()` from `src/lib/social-providers.ts`. Returns `{ providers: string[] }` with all social providers enabled in `config.auth.socialProviders`, **regardless of `registration.mode`**. This differs from `GET /registration/status`, which filters providers by mode — the me endpoint is for authenticated users linking accounts, where mode doesn't apply.
+**`GET /me/providers`** — calls `getUsableSocialProviders()` from `src/lib/social-providers.ts`: the providers enabled in `config.auth.socialProviders` in open mode, `[]` in closed mode. Same list as `GET /registration/status` — closed mode is email/password only, and a provider linked there could never be used to sign in. With `[]` the frontend hides the "link another account" section; already linked accounts are still listed.
 
 ## Shared utility: `src/lib/social-providers.ts`
 
-`getConfiguredSocialProviders()` returns an array of provider names (`"google"`, `"facebook"`, `"apple"`) based on which providers are enabled in `config.auth.socialProviders`. Used by:
+`getUsableSocialProviders()` returns the enabled provider names (`"google"`, `"facebook"`, `"apple"`) in open mode and `[]` in closed mode. Used by:
 
-- `registration-routes.ts` — for `GET /registration/status` (filtered by mode)
-- `me-routes.ts` — for `GET /me/providers` (always returned)
+- `registration-routes.ts` — for `GET /registration/status`
+- `me-routes.ts` — for `GET /me/providers`
 
 It reads `config.auth.socialProviders`, so a new provider needs no change here — see `apps/api/CLAUDE.md` → _Shared social provider utility_ for the files that do change.
 

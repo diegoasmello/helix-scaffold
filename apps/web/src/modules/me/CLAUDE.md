@@ -161,7 +161,7 @@ const linkedProviderIds = new Set(accounts.map(a => a.providerId))
 const unlinkableProviders = availableProviders.filter(p => !linkedProviderIds.has(p))
 ```
 
-`availableProviders` lists every configured social provider, whatever the registration mode. Each row has a Connect button. While one provider is linking, the other buttons are disabled:
+`availableProviders` is empty in closed registration mode (the API returns `[]` — closed mode is email/password only), so the section disappears there; in open mode it lists every enabled provider. Each row has a Connect button. While one provider is linking, the other buttons are disabled:
 
 ```ts
 async function handleLink(provider: string) {

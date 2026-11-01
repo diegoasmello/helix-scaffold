@@ -27,7 +27,7 @@ Returns `{ open: boolean, providers: string[] }`. No auth, no permissions.
 
 **`providers` values:** `"google"` | `"facebook"` | `"apple"` — only providers enabled in `config.auth.socialProviders` (their credentials are guaranteed by config validation at startup).
 
-**Why `providers` is empty when closed:** returning a non-empty list in closed mode would leak which OAuth services are configured without giving users a way to act on it. The list is filtered to only the effective state: `config.registration.mode === 'open' ? getConfiguredSocialProviders() : []`.
+**Why `providers` is empty when closed:** returning a non-empty list in closed mode would leak which OAuth services are configured without giving users a way to act on it. The list comes from `getUsableSocialProviders()` (`src/lib/social-providers.ts`), which `GET /me/providers` uses too.
 
 ## Configuration
 
@@ -64,11 +64,11 @@ socialProviders: {
 
 **`disableSignUp: config.registration.mode !== 'open'`** — Better Auth enforces this during the OAuth callback. In closed mode, the OAuth flow can be initiated but account creation is blocked server-side. The `providers` field in the status response is also empty in closed mode, so the login page never shows the buttons.
 
-**Consequence in closed mode:** users can still *link* an enabled provider from `/me/security` (that list comes from `GET /me/providers`, which ignores the mode), but the login page offers no social button to sign in with it afterwards. Closed mode is effectively email/password only.
+**Closed mode is email/password only:** no social button on the login page, and no account linking on `/me/security` either — `GET /me/providers` returns `[]` in closed mode, so the "link another account" section is hidden. Accounts linked earlier (e.g. while the app was in open mode) are still listed.
 
 **Important:** `socialProviders` in `betterAuth()` expects **raw options objects**, not the result of calling the provider helper functions (`google()`, `facebook()`, etc.). Those helpers are for standalone use.
 
-**`getConfiguredSocialProviders()`** in `src/lib/social-providers.ts` derives the active list from `config.auth.socialProviders`, the same source `auth.ts` uses. See `apps/api/CLAUDE.md` → _Shared social provider utility_ for the steps to add a new provider.
+**`getConfiguredSocialProviders()`** in `src/lib/social-providers.ts` derives the enabled list from `config.auth.socialProviders`, the same source `auth.ts` uses; `getUsableSocialProviders()` filters it by mode. See `apps/api/CLAUDE.md` → _Shared social provider utility_ for the steps to add a new provider.
 
 ## Sign-up guard (email/password)
 

@@ -120,7 +120,7 @@ The profile (`/me`, `/api/me/*`) needs only a session, never a permission — th
 
 **Single source of truth:** the mode lives only in the backend config. The frontend reads `GET /registration/status → { open: boolean, providers: string[] }` at route-load time — no `VITE_*` duplication.
 
-**Social providers** are turned on per-provider in `app.config.ts` (`auth.socialProviders.<name>.enabled: true`), with their credentials in `apps/api/.env` (see `.env.example` → _Social providers_). The API refuses to start if an enabled provider has no credentials. The `providers` array in the status response lists the enabled providers only in open mode — it is always `[]` in closed mode. The frontend renders social login buttons only for the providers in this list.
+**Social providers** are turned on per-provider in `app.config.ts` (`auth.socialProviders.<name>.enabled: true`), with their credentials in `apps/api/.env` (see `.env.example` → _Social providers_). The API refuses to start if an enabled provider has no credentials. The `providers` array in the status response lists the enabled providers only in open mode — it is always `[]` in closed mode. The frontend renders social login buttons only for the providers in this list. **Closed mode is email/password only:** `GET /me/providers` is also `[]` there, so `/me/security` offers no account linking either (a linked provider could never be used to sign in).
 
 **Changing the default role for open registration:** set `isDefault = true` on the desired role via the Roles admin panel. Only one role can be the default at a time (DB-enforced partial unique index). The previous default is automatically unset by the service in a transaction.
 

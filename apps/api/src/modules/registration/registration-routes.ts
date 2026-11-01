@@ -1,7 +1,7 @@
 import z from 'zod'
 
 import { config } from '../../config'
-import { getConfiguredSocialProviders } from '../../lib/social-providers'
+import { getUsableSocialProviders } from '../../lib/social-providers'
 import type { FastifyTypedInstance } from '../../types'
 
 const registrationStatusSchema = z
@@ -23,10 +23,7 @@ export async function registrationRoutes(app: FastifyTypedInstance) {
     },
     async () => ({
       open: config.registration.mode === 'open',
-      providers:
-        config.registration.mode === 'open'
-          ? getConfiguredSocialProviders()
-          : [],
+      providers: getUsableSocialProviders(),
     })
   )
 }

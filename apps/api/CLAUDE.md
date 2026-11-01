@@ -106,10 +106,8 @@ The suite therefore never depends on what a product sets in `app.config.ts`. Soc
 
 ## Shared social provider utility (`src/lib/social-providers.ts`)
 
-`getConfiguredSocialProviders(): string[]` — returns the names of social providers enabled in `config.auth.socialProviders` (credentials are guaranteed by config validation). Imported by two modules:
-
-- `registration-routes.ts` — for `GET /registration/status` (only when `registration.mode` is `'open'`)
-- `me-routes.ts` — for `GET /me/providers` (always, regardless of mode)
+- `getConfiguredSocialProviders(): string[]` — the social providers enabled in `config.auth.socialProviders` (credentials are guaranteed by config validation), whatever the mode.
+- `getUsableSocialProviders(): string[]` — the same list in open mode, `[]` in closed mode (email/password only). Backs both `GET /registration/status` (login/sign-up buttons) and `GET /me/providers` (account linking on `/me/security`), so the two never disagree. Tested in `social-providers.test.ts` with a mocked config.
 
 **When adding a new social provider:** update `auth.ts` (socialProviders config), `AppConfig` + `appConfigSchema` in `src/config/define-config.ts`, the credential map in `src/config/index.ts`, `env.ts` and `.env.example`.
 

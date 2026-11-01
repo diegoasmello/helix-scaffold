@@ -5,7 +5,7 @@ import z from 'zod'
 import type { Auth } from '../../auth'
 import type { Database } from '../../db'
 import type { EmailProvider } from '../../lib/email'
-import { getConfiguredSocialProviders } from '../../lib/social-providers'
+import { getUsableSocialProviders } from '../../lib/social-providers'
 import type { FastifyTypedInstance } from '../../types'
 import { userSchema } from '../users/users-schema'
 import {
@@ -45,13 +45,13 @@ export async function meRoutes(
         operationId: 'getMeProviders',
         tags: ['me'],
         description:
-          'List social providers configured on this server (for account linking)',
+          'Social providers the user can link (none in closed registration mode)',
         response: {
           200: z.object({ providers: z.array(z.string()) }),
         },
       },
     },
-    async () => ({ providers: getConfiguredSocialProviders() })
+    async () => ({ providers: getUsableSocialProviders() })
   )
 
   app.patch(
