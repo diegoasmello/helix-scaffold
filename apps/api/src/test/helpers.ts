@@ -117,26 +117,30 @@ export async function createTestSession(
   // When subscription mode is enabled, give the test user an active subscription
   // so routes protected by requireSubscription() pass without extra setup per test.
   if (config.subscriptions.enabled) {
-    const [testUser] = await testDb
-      .select()
-      .from(user)
-      .where(eq(user.email, TEST_USER_EMAIL))
-    if (testUser) {
-      const now = new Date()
-      const far = new Date('2099-01-01')
-      await testDb.insert(subscriptions).values({
-        userId: testUser.id,
-        planId: 'pro',
-        status: 'active',
-        currentPeriodStart: now,
-        currentPeriodEnd: far,
-      })
-    }
+    await grantActiveSubscription(TEST_USER_EMAIL)
   }
 
   const setCookie = res.headers['set-cookie']
   const cookies = Array.isArray(setCookie) ? setCookie : [setCookie ?? '']
   return cookies.map((c) => c.split(';')[0]).join('; ')
+}
+
+/**
+ * Gives the user an active subscription (default plan `pro`, which unlocks
+ * `todos` in test-overrides.ts). Permission tests on a subscription-gated route
+ * need it: without one, `requireSubscription()` answers 403 before
+ * `requirePermission()` runs, and the test passes for the wrong reason.
+ */
+export async function grantActiveSubscription(email: string, planId = 'pro') {
+  const [target] = await testDb.select().from(user).where(eq(user.email, email))
+  if (!target) throw new Error(`grantActiveSubscription: no user ${email}`)
+  await testDb.insert(subscriptions).values({
+    userId: target.id,
+    planId,
+    status: 'active',
+    currentPeriodStart: new Date(),
+    currentPeriodEnd: new Date('2099-01-01'),
+  })
 }
 
 export async function createRoleWithPermissions(

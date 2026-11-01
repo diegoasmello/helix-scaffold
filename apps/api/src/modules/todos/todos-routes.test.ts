@@ -14,6 +14,7 @@ import {
   createRoleWithPermissions,
   createTestApp,
   createTestSession,
+  grantActiveSubscription,
   testDb,
 } from '@/test/helpers'
 
@@ -545,6 +546,8 @@ describe('Permission enforcement', () => {
       .update(user)
       .set({ roleId: role.id })
       .where(eq(user.email, email))
+    // Past the subscription gate, so a 403 can only come from the permission
+    await grantActiveSubscription(email)
     const setCookie = res.headers['set-cookie']
     const cookies = Array.isArray(setCookie) ? setCookie : [setCookie ?? '']
     return cookies.map((c) => c.split(';')[0]).join('; ')
@@ -553,6 +556,18 @@ describe('Permission enforcement', () => {
   beforeEach(async () => {
     await cleanupUsers()
     await cleanupRoles()
+  })
+
+  it('lets a restricted user with todos:view through (control)', async () => {
+    const cookie = await createRestrictedSession([
+      { resource: 'todos', action: 'view' },
+    ])
+    const res = await app.inject({
+      method: 'GET',
+      url: '/todos',
+      headers: { cookie },
+    })
+    expect(res.statusCode).toBe(200)
   })
 
   it('returns 403 on GET /todos without todo:view', async () => {

@@ -504,7 +504,7 @@ try {
 
 - Declare every status you return in the route's `response` schema, or serialization fails.
 - When one status has several causes (two unique indexes), tell them apart with `getPgErrorConstraint(error)` and give each a stable `code` the frontend can translate — see `subscriptions-routes.ts` (409 `live_subscription_exists` / `external_id_taken`) and `packages/api-client/CLAUDE.md` → `ApiError`.
-- References: `subscriptions-routes.ts` (400 on FK, 409 on unique), `permissions-routes.ts` (404 on FK). `roles` still returns 500 on a duplicate `name` — fix it the same way when touching that module.
+- References: `subscriptions-routes.ts` (400 on FK, 409 on unique), `roles-routes.ts` (409 `name_taken` on the unique `name`), `permissions-routes.ts` (404 on FK).
 
 ---
 
@@ -900,6 +900,7 @@ The helpers in `src/test/helpers.ts` provide:
 - `createTestSession(app)` — signs up `test@test.com` with the `__test_admin__` role (every permission in `ALL_PERMISSIONS`) and an active `pro` subscription; returns the cookie string
 - `getTestUser()` — the user created by `createTestSession()` (look it up by email, never by row order)
 - `createRoleWithPermissions(grants)` — a fresh role with exactly the given permissions, for permission enforcement tests
+- `grantActiveSubscription(email, planId = 'pro')` — an active subscription for that user. Restricted users on a **subscription-gated** route need it (see _Permission enforcement tests_)
 - Cleanup: `cleanupAuth()` (session, account, verification, user **and all roles**), `cleanupUsers()` / `cleanupRoles()` (everything except the test user / test role), `cleanupAuditLogs()`, `cleanupSubscriptions()`, `cleanupTodos()`, `cleanupUploads()`
 
 When adding a new module, add a `cleanupFeature()` function to `helpers.ts`:
@@ -1066,6 +1067,8 @@ describe('Permission enforcement', () => {
 ```
 
 The pattern for each test is: create a restricted session that has _just enough_ permission to reach the route (e.g. `view` only), then hit the route that requires the _next_ permission and assert 403. The `GET` test uses an empty grants list.
+
+**Subscription-gated routes** (`requireSubscription`) run the subscription check first, so a restricted user without a subscription gets 403 from the gate and the test passes for the wrong reason. Call `await grantActiveSubscription(email)` in `createRestrictedSession`, and add a control test where the user holds the permission and gets 200 — `todos-routes.test.ts` is the reference.
 
 ### Implementation patterns
 
