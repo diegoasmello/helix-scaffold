@@ -119,3 +119,15 @@ describe('POST /bootstrap', () => {
     expect(res.statusCode).toBe(400)
   })
 })
+
+// A public route that creates an admin must never come back: the only way to
+// create the first admin is POST /bootstrap, which refuses once a user exists.
+it('exposes no other route that can create an admin', async () => {
+  const res = await app.inject({
+    method: 'POST',
+    url: '/bootstrap/e2e-user',
+    payload: { name: 'X', email: 'x@test.com', password: 'Password123!' },
+    headers: { 'content-type': 'application/json' },
+  })
+  expect(res.statusCode).toBe(404)
+})
