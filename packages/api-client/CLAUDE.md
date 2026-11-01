@@ -90,7 +90,7 @@ The committed spec is the contract of the **codebase**, not of one deploy: it li
    ```bash
    pnpm export-spec
    ```
-   This builds the API with every optional route enabled and rewrites the committed `openapi.json` — see _Where `openapi.json` comes from_. The pre-commit hook does it too: when a staged `apps/api/src/**/*.ts` (tests excluded) changes, it re-exports the spec and stages it with the commit (`apps/api/lint-staged.config.js`). Run it by hand only to regenerate the client before committing.
+   This builds the API with every optional route enabled and rewrites the committed `openapi.json` — see _Where `openapi.json` comes from_. The pre-commit hook does it too: when a staged `apps/api/src/**/*.ts` (tests excluded) changes, it re-exports the spec and stages it with the commit (`apps/api/lint-staged.config.js`), and `pre-push` blocks the push if the committed spec is still stale. Run it by hand only to regenerate the client before committing.
 3. Regenerate the files in `src/generated/` from it:
    ```bash
    pnpm generate

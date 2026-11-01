@@ -1,1 +1,17 @@
 pnpm type-check
+
+# The committed OpenAPI spec must match the routes. pre-commit re-exports it
+# when apps/api/src changes; this catches what it can't see (dependency bumps,
+# rebases, --no-verify). The export reads the working tree, so it only proves
+# something about the pushed commits when the API and the spec are clean.
+SPEC=packages/api-client/openapi.json
+if [ -n "$(git status --porcelain -- apps/api "$SPEC")" ]; then
+  echo "pre-push: uncommitted changes in apps/api or $SPEC — skipping the OpenAPI spec check"
+else
+  pnpm --silent spec:export
+  if ! git diff --quiet -- "$SPEC"; then
+    echo "pre-push: $SPEC is out of date with the API routes."
+    echo "It has been re-exported: commit it and push again."
+    exit 1
+  fi
+fi
