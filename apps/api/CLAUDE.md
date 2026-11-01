@@ -74,7 +74,7 @@ The suite therefore never depends on what a product sets in `app.config.ts`. Soc
 
 ### OpenAPI spec export
 
-`pnpm spec:export <file>` (`src/scripts/export-spec.ts`) writes the spec `@helix/api-client` is generated from — `pnpm export-spec` in `packages/api-client` calls it. It builds the app in memory with `src/config/spec-overrides.ts` applied (via `enableSpecExport()`, before `@/config` is imported), so the spec lists every route the codebase can expose regardless of `app.config.ts`. It needs no database (building the app opens no connection) and no `.env` (placeholder values only pass `src/env.ts`).
+`pnpm spec:export <file>` (`src/scripts/export-spec.ts`) writes the spec `@helix/api-client` is generated from — `pnpm export-spec` in `packages/api-client` calls it. It builds the app in memory with `src/config/spec-overrides.ts` applied (via `enableSpecExport()`, before `@/config` is imported), so the spec lists every route the codebase can expose regardless of `app.config.ts`. It needs no database (building the app opens no connection) and no `.env` (placeholder values only pass `src/env.ts`). The pre-commit hook runs it whenever a staged `src/**/*.ts` (tests excluded) changes and stages the result (`lint-staged.config.js`), so the committed spec never lags behind the routes.
 
 `/docs` on a running server keeps serving the spec of its own config. **When a new setting registers routes conditionally** (like `subscriptions.enabled`), turn it on in `spec-overrides.ts`, or its routes vanish from the client. In this profile `requireSubscription()` skips its unknown-feature check, since the placeholder plan declares no features.
 
