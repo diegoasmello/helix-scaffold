@@ -4,6 +4,7 @@ import {
   filtersSearchParam,
   getFilterBarProps,
   parseFilterConditions,
+  searchSearchParam,
 } from './list-filters'
 
 const VALID = JSON.stringify([{ field: 'status', op: 'eq', value: 'pending' }])
@@ -102,5 +103,65 @@ describe('getFilterBarProps', () => {
     })
     const [{ search: update }] = navigate.mock.calls[0]
     expect(update(search).filters).toBeUndefined()
+  })
+})
+
+describe('searchSearchParam', () => {
+  it.each([
+    [undefined, undefined],
+    ['  milk ', 'milk'],
+    ['   ', undefined],
+    [2026, '2026'],
+    [['a'], undefined],
+  ])('reads %j as %j', (raw, expected) => {
+    expect(searchSearchParam.parse(raw)).toBe(expected)
+  })
+
+  it('cuts at 200 characters', () => {
+    expect(searchSearchParam.parse('x'.repeat(250))).toHaveLength(200)
+  })
+})
+
+describe('getFilterBarProps search', () => {
+  const search = {
+    page: 2,
+    filterLogic: 'AND' as const,
+    filters: undefined as string | undefined,
+    search: 'milk' as string | undefined,
+  }
+
+  it('binds the search box only when asked', () => {
+    expect(getFilterBarProps(search, vi.fn()).search).toBeUndefined()
+    expect(
+      getFilterBarProps(search, vi.fn(), { withSearch: true }).search?.value
+    ).toBe('milk')
+  })
+
+  it('counts a search as narrowing the list', () => {
+    expect(getFilterBarProps(search, vi.fn()).active).toBe(true)
+    expect(
+      getFilterBarProps({ ...search, search: undefined }, vi.fn()).active
+    ).toBe(false)
+  })
+
+  it('writes the search back, blank removing it', () => {
+    const navigate = vi.fn()
+    const props = getFilterBarProps(search, navigate, { withSearch: true })
+    props.search?.onChange('  ')
+    const [{ search: update }] = navigate.mock.calls[0]
+    expect(update(search)).toEqual({ ...search, search: undefined, page: 1 })
+  })
+
+  it('clears the filters and the search together', () => {
+    const navigate = vi.fn()
+    getFilterBarProps(
+      { ...search, filters: '[{"field":"a","op":"eq","value":1}]' },
+      navigate
+    ).clearAll()
+    const [{ search: update }] = navigate.mock.calls[0]
+    const next = update(search)
+    expect(next.filters).toBeUndefined()
+    expect(next.search).toBeUndefined()
+    expect(next.page).toBe(1)
   })
 })

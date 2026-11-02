@@ -27,6 +27,7 @@ const mockSearch = vi.hoisted(() => ({
     sortOrder: 'desc' as const,
     filterLogic: 'AND' as const,
     filters: undefined as string | undefined,
+    search: undefined as string | undefined,
   },
 }))
 
@@ -81,6 +82,7 @@ beforeEach(() => {
     sortOrder: 'desc',
     filterLogic: 'AND',
     filters: undefined,
+    search: undefined,
   }
   mockNavigate.mockReset()
   server.use(
@@ -310,6 +312,64 @@ describe('Filters', () => {
     const search = lastSearch()
     expect(search.filters).toBeUndefined()
     expect(search.filterLogic).toBe('OR')
+  })
+
+  it('searches as the user types, back to page 1', async () => {
+    renderTodoList()
+    await screen.findByText('Review quarterly report')
+    await userEvent.type(
+      screen.getByRole('searchbox', { name: 'Search by title or description' }),
+      'report'
+    )
+    await waitFor(() => expect(lastSearch().search).toBe('report'))
+    expect(lastSearch().page).toBe(1)
+  })
+
+  describe('when nothing matches', () => {
+    beforeEach(() => {
+      mockSearch.state = {
+        ...mockSearch.state,
+        search: 'zzz',
+        filters: JSON.stringify([
+          { field: 'status', op: 'eq', value: 'pending' },
+        ]),
+      } as typeof mockSearch.state
+      server.use(
+        getTodosHandler(
+          createPaginatedTodos({
+            data: [],
+            total: 0,
+            page: 1,
+            pageSize: 10,
+            totalPages: 0,
+          })
+        )
+      )
+    })
+
+    it('says why and offers to clear the search and filters', async () => {
+      renderTodoList()
+      expect(await screen.findByText('No todos found')).toBeInTheDocument()
+      expect(
+        screen.getByText(/No todo matches the search “zzz”/)
+      ).toBeInTheDocument()
+      await userEvent.click(
+        screen.getByRole('button', { name: 'Clear search and filters' })
+      )
+      const search = lastSearch()
+      expect(search.filters).toBeUndefined()
+      expect(search.search).toBeUndefined()
+    })
+
+    it('opens the filter panel from Edit filters', async () => {
+      renderTodoList()
+      await userEvent.click(
+        await screen.findByRole('button', { name: 'Edit filters' })
+      )
+      expect(
+        await screen.findByRole('button', { name: 'Apply filters' })
+      ).toBeInTheDocument()
+    })
   })
 
   it('closes the panel on Cancel without changing the URL', async () => {

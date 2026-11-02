@@ -40,7 +40,7 @@ All three upload references (`todo_attachments.upload_id`, `todos.file_id`, `tod
 
 Factory `createTodosService(database, storage)` returns `{ list, getById, create, update, remove, generateReport }`. Not pure SQL — it also assembles the embedded uploads and cleans up storage, but that logic is covered by the route tests (`describe('Attachments')`), so there is no separate service test.
 
-- `list` applies filters (`FILTER_COLUMNS` + `FILTER_COERCE` for `date`), ordering (`SORT_COLUMNS`) and pagination, then loads attachments (one query for the page, via `todo_attachments`) and the single `file`/`image` uploads (one `inArray` query).
+- `list` applies filters (`FILTER_COLUMNS` + `FILTER_COERCE` for `date`) and the `search` param (`SEARCH_COLUMNS`: title, description — combined with `and()`), ordering (`SORT_COLUMNS`) and pagination, then loads attachments (one query for the page, via `todo_attachments`) and the single `file`/`image` uploads (one `inArray` query).
 - `create` inserts the row (no `status` — the DB default applies), then inserts one `todo_attachments` row per `attachmentId`.
 - `update` updates only the sent columns; when `attachmentIds` is sent it fully resyncs the junction rows (delete all, insert new). Returns `null` for an unknown id.
 - `remove` is a hard delete: collects the todo's attachment, file and image uploads → deletes the todo (cascades the junction rows) → deletes those `uploads` rows → deletes their storage keys, original + variants (best-effort, `Promise.allSettled`).

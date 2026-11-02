@@ -50,7 +50,7 @@ Name clashes resolved explicitly in `src/index.ts`:
 | -------------- | ----------------------------------------------------------------------- | ------- |
 | App shell      | `Layout`, `Header`, `HeaderSearch`, `NotificationsMenu`, `Sidebar`, `SidebarLinksGroup`, `UserMenu`, `Breadcrumb`, `RouteBreadcrumb` (`layout`, `header`, `sidebar`, `user-menu`, `breadcrumb`) | Full-page scaffold rendered by `apps/web` — see _App shell_ |
 | Page wrappers  | `PageHeader`, `PageList`, `PageCreate`, `PageEdit`, `PageView`, `FormSection`, `PageTabs` (`page/`) | Standard CRUD screen layouts — see _Page layouts_; `PageHeader` (breadcrumb + `h1` + description + actions) tops all of them and custom pages |
-| Data display   | `DataTable` (+ `useDataTableLayout`), `LabeledValue`, `EmptyState`, `StatusBadge` | Paginated/sortable table (no card: header band + row borders; one card per record below `sm`); label + value pair — detail pages lay them out in a `Grid`; empty list screen with a CTA slot; a record's state as a toned pill with a dot |
+| Data display   | `DataTable` (+ `useDataTableLayout`), `LabeledValue`, `EmptyState`, `StatusBadge` | Paginated/sortable table (no card: header band + row borders; one card per record below `sm`; `emptyState` replaces the "no records" text in both layouts and is clickable); label + value pair — detail pages lay them out in a `Grid`; empty list screen with a CTA slot (nothing created yet); a record's state as a toned pill with a dot |
 | Actions        | `RowActions` (+ `RowAction`), `ActionsMenu` (+ `ActionsMenuItemConfig`) | `RowActions` is every table row's actions: ≤ 3 visible → text buttons, more → one "⋯" menu; `danger`, `hidden`. `ActionsMenu` is a plain dots menu for other places |
 | Forms          | `Form`, `useFormSummary`                                                | `<form>` wrapper: runs `form.onSubmit`, blocks navigation while dirty (`blockNavigationOnDirty`, default `true`), and tells the page around it whether it is dirty and how many fields have errors |
 | File upload    | `FilesInput`, `FileInput`, `FilePreview`, `FileCard` (`file-upload/`)   | Multi/single upload fields (the HTTP call is injected via `onUpload`) and read-only previews |
@@ -118,6 +118,10 @@ Operators per type (`operators.ts`; the first is the default, labels under `ui:f
 | `date` | **between**, gte ("from"), lte ("until"), eq ("on"), gt, lt, isNull, isNotNull |
 | `select` | eq, neq, **in** ("is any of" — `MultiSelect`), isNull, isNotNull |
 | `boolean` | eq (Yes/No) |
+
+`FilterBar` also takes an optional **`search`** (`{ value, onChange, placeholder? }`): a search box before the Filters button that calls `onChange` 300ms after typing stops (at once on Enter or when cleared) and follows `value` when it changes outside (back/forward). `opened` / `onOpenedChange` control the panel from elsewhere (e.g. "Edit filters").
+
+**`FilteredEmptyState`** (`title`, `description?`, `onEditFilters?`, `onClear`) — the `DataTable` `emptyState` for a list emptied by its search or filters: why, plus "Edit filters" and "Clear search and filters". Not to be confused with `EmptyState` (nothing created yet).
 
 Values sent to the API: numbers for `number` fields, `true`/`false` for `boolean`, `YYYY-MM-DD` strings for dates, a list for `in`, a `[from, to]` pair for `between` (inclusive), none for `isNull`/`isNotNull`. `describe.ts` turns a condition into words (option labels, Yes/No, dates in the user's locale).
 

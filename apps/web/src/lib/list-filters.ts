@@ -51,9 +51,25 @@ export const filtersSearchParam = z
     return parseFilterConditions(encoded).length > 0 ? encoded : undefined
   })
 
+/**
+ * `validateSearch` entry for a list route's `search` param (the search box).
+ * TanStack Router JSON-parses search values, so `?search=2026` arrives as a
+ * number: it is turned back into text. Blank becomes `undefined`; anything
+ * past the API's 200 characters is cut.
+ */
+export const searchSearchParam = z
+  .unknown()
+  .optional()
+  .transform((raw): string | undefined => {
+    if (typeof raw !== 'string' && typeof raw !== 'number') return undefined
+    const text = String(raw).trim().slice(0, 200)
+    return text || undefined
+  })
+
 interface FilterSearch {
   filters?: string
   filterLogic: 'AND' | 'OR'
+  search?: string
   page: number
 }
 
@@ -61,19 +77,56 @@ type SearchNavigateFn<TSearch> = (opts: {
   search: (prev: TSearch) => TSearch
 }) => unknown
 
+export interface FilterBarBindings {
+  value: LogicalFilterValue
+  onChange: (next: LogicalFilterValue) => void
+  /** Only when the route has a `search` param — the search box's state. */
+  search?: { value: string; onChange: (next: string) => void }
+  /** Filters or a search narrow the list (for the "no results" state). */
+  active: boolean
+  /** Drops the filters and the search at once. */
+  clearAll: () => void
+}
+
 /**
- * `FilterBar` props for a list route whose search holds `filters` and
- * `filterLogic` — like `getDataTablePaginationProps` for the table. Every
- * change rewrites both params and goes back to page 1; no conditions removes
- * `filters` from the URL.
+ * `FilterBar` props for a list route whose search holds `filters`,
+ * `filterLogic` and optionally `search` — like `getDataTablePaginationProps`
+ * for the table. Every change rewrites the params and goes back to page 1;
+ * no conditions (or a blank search) removes the param from the URL.
  */
 export function getFilterBarProps<TSearch extends FilterSearch>(
   search: TSearch,
-  navigate: SearchNavigateFn<TSearch>
-): { value: LogicalFilterValue; onChange: (next: LogicalFilterValue) => void } {
+  navigate: SearchNavigateFn<TSearch>,
+  options: { withSearch?: boolean } = {}
+): FilterBarBindings {
+  const conditions = parseFilterConditions(search.filters)
+
   return {
+    active: conditions.length > 0 || Boolean(search.search),
+    clearAll: () =>
+      navigate({
+        search: (prev) => ({
+          ...prev,
+          filters: undefined,
+          search: undefined,
+          page: 1,
+        }),
+      }),
+    ...(options.withSearch && {
+      search: {
+        value: search.search ?? '',
+        onChange: (next: string) =>
+          navigate({
+            search: (prev) => ({
+              ...prev,
+              search: next.trim() || undefined,
+              page: 1,
+            }),
+          }),
+      },
+    }),
     value: {
-      conditions: parseFilterConditions(search.filters),
+      conditions,
       logic: search.filterLogic,
     },
     onChange: (next) =>

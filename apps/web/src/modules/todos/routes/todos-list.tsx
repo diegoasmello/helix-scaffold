@@ -6,6 +6,7 @@ import {
   type DataTableColumn,
   EmptyState,
   FilterBar,
+  FilteredEmptyState,
   type FilterFieldDef,
   getDataTablePaginationProps,
   getDataTableSortingProps,
@@ -18,6 +19,7 @@ import { IconDownload, IconPlus } from '@helix/ui'
 import { PageList } from '@helix/ui'
 import { useMutation } from '@tanstack/react-query'
 import { parseISO } from 'date-fns'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { getFilterBarProps } from '@/lib/list-filters'
@@ -33,12 +35,20 @@ export function TodoList() {
 
   const navigate = todoListRoute.useNavigate()
   const search = todoListRoute.useSearch()
-  const { page, pageSize, sortBy, sortOrder, filters, filterLogic } = search
+  const {
+    page,
+    pageSize,
+    sortBy,
+    sortOrder,
+    filters,
+    filterLogic,
+    search: searchTerm,
+  } = search
   const resourceCache = useResourceCache()
 
   const { isExporting, handleExport } = useExportPdf(
     '/todos/export',
-    { sortBy, sortOrder, filters, filterLogic },
+    { sortBy, sortOrder, filters, filterLogic, search: searchTerm },
     'todos'
   )
 
@@ -57,7 +67,12 @@ export function TodoList() {
     { name: 'date', label: t('filters.date'), type: 'date' },
   ]
 
-  const filterBarProps = getFilterBarProps(search, navigate)
+  const {
+    active: narrowed,
+    clearAll,
+    ...filterBarProps
+  } = getFilterBarProps(search, navigate, { withSearch: true })
+  const [filtersOpened, setFiltersOpened] = useState(false)
 
   const { data: todosResponse } = useGetTodosSuspense({
     page,
@@ -66,6 +81,7 @@ export function TodoList() {
     sortOrder,
     filters,
     filterLogic,
+    search: searchTerm,
   })
 
   const paginationProps = getDataTablePaginationProps(
@@ -159,7 +175,7 @@ export function TodoList() {
     },
   ]
 
-  if (todosResponse.data.length === 0 && !filters) {
+  if (todosResponse.data.length === 0 && !narrowed) {
     return (
       <EmptyState title={t('empty.title')} description={t('empty.description')}>
         <Button
@@ -196,9 +212,34 @@ export function TodoList() {
         </Group>
       }
     >
-      <FilterBar fields={TODO_FILTER_FIELDS} {...filterBarProps} />
+      <FilterBar
+        fields={TODO_FILTER_FIELDS}
+        {...filterBarProps}
+        search={
+          filterBarProps.search && {
+            ...filterBarProps.search,
+            placeholder: t('filters.search'),
+          }
+        }
+        opened={filtersOpened}
+        onOpenedChange={setFiltersOpened}
+      />
 
       <DataTable
+        emptyState={
+          narrowed ? (
+            <FilteredEmptyState
+              title={t('noResults.title')}
+              description={
+                searchTerm
+                  ? t('noResults.withSearch', { search: searchTerm })
+                  : t('noResults.withoutSearch')
+              }
+              onEditFilters={() => setFiltersOpened(true)}
+              onClear={clearAll}
+            />
+          ) : undefined
+        }
         records={todosResponse.data}
         columns={columns}
         {...paginationProps}

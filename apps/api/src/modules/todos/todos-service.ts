@@ -1,8 +1,8 @@
-import { asc, count, desc, eq, inArray } from 'drizzle-orm'
+import { and, asc, count, desc, eq, inArray } from 'drizzle-orm'
 
 import type { Database } from '@/db'
 import { todoAttachments, todos, uploads } from '@/db/schema'
-import { buildFilterWhereClause } from '@/lib/filtering'
+import { buildFilterWhereClause, buildSearchClause } from '@/lib/filtering'
 import { getPaginationParams } from '@/lib/pagination'
 import type { StorageProvider } from '@/lib/storage'
 
@@ -26,6 +26,9 @@ const FILTER_COLUMNS = {
   status: todos.status,
   date: todos.date,
 } as const
+
+// The list's search box matches the title or the description.
+const SEARCH_COLUMNS = [todos.title, todos.description]
 
 const FILTER_COERCE = {
   date: (v: unknown) => (typeof v === 'string' ? new Date(v) : v),
@@ -107,11 +110,14 @@ export function createTodosService(
     const { limit, offset } = getPaginationParams(query.page, query.pageSize)
     const sortCol = SORT_COLUMNS[query.sortBy ?? 'createdAt']
     const sortFn = query.sortOrder === 'desc' ? desc : asc
-    const where = buildFilterWhereClause(
-      query.filters,
-      query.filterLogic,
-      FILTER_COLUMNS,
-      FILTER_COERCE
+    const where = and(
+      buildFilterWhereClause(
+        query.filters,
+        query.filterLogic,
+        FILTER_COLUMNS,
+        FILTER_COERCE
+      ),
+      buildSearchClause(query.search, SEARCH_COLUMNS)
     )
 
     const [data, [{ total }]] = await Promise.all([
@@ -272,11 +278,14 @@ export function createTodosService(
   async function generateReport(query: TodosExportQuery): Promise<Buffer> {
     const sortCol = SORT_COLUMNS[query.sortBy ?? 'createdAt']
     const sortFn = query.sortOrder === 'desc' ? desc : asc
-    const where = buildFilterWhereClause(
-      query.filters,
-      query.filterLogic,
-      FILTER_COLUMNS,
-      FILTER_COERCE
+    const where = and(
+      buildFilterWhereClause(
+        query.filters,
+        query.filterLogic,
+        FILTER_COLUMNS,
+        FILTER_COERCE
+      ),
+      buildSearchClause(query.search, SEARCH_COLUMNS)
     )
 
     const data = await database

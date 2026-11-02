@@ -24,7 +24,7 @@ export function DataTable<T>(
     verticalSpacing = 'md',
     withColumnBorders = false,
     highlightOnHover = true,
-    minHeight = 180,
+    minHeight: minHeightProp,
     ...rest
   } = props
 
@@ -36,6 +36,9 @@ export function DataTable<T>(
   })
 
   const noRecordsText = rest.noRecordsText ?? t('dataTable.noRecords')
+  const empty = (rest.records ?? []).length === 0
+  // A custom empty state (e.g. FilteredEmptyState) needs room for its buttons.
+  const minHeight = minHeightProp ?? (empty && rest.emptyState ? 340 : 180)
 
   if (!wide && rest.columns) {
     return (
@@ -50,6 +53,7 @@ export function DataTable<T>(
         recordsPerPage={rest.recordsPerPage}
         onPageChange={rest.onPageChange}
         noRecordsText={noRecordsText}
+        emptyState={rest.emptyState}
         fetching={rest.fetching}
       />
     )
@@ -93,6 +97,10 @@ const useStyles = createStyles((theme, _, u) => ({
 
     .mantine-datatable-empty-state {
       padding-top: 72px;
+    }
+    /* Clickable once shown (mantine-datatable sets pointer-events: none). */
+    .mantine-datatable-empty-state[data-active] {
+      pointer-events: auto;
     }
 
     .mantine-datatable-header {

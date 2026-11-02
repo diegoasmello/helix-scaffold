@@ -1,6 +1,6 @@
 import z from 'zod'
 
-import { filterQuerySchema } from '@/lib/filtering'
+import { filterQuerySchema, searchQuerySchema } from '@/lib/filtering'
 import {
   paginatedResponseSchema,
   paginationQuerySchema,
@@ -72,11 +72,12 @@ export const todosFilterQuerySchema = filterQuerySchema([...TODO_FILTER_FIELDS])
 export const todosListQuerySchema = paginationQuerySchema
   .merge(todosSortingSchema)
   .merge(todosFilterQuerySchema)
+  .merge(searchQuerySchema)
 export type TodosListQuery = z.infer<typeof todosListQuerySchema>
 
-export const todosExportQuerySchema = todosSortingSchema.merge(
-  todosFilterQuerySchema
-)
+export const todosExportQuerySchema = todosSortingSchema
+  .merge(todosFilterQuerySchema)
+  .merge(searchQuerySchema)
 export type TodosExportQuery = z.infer<typeof todosExportQuerySchema>
 
 export type CreateTodoInput = z.infer<typeof createTodoSchema>

@@ -181,9 +181,39 @@ const XXX_FILTER_FIELDS: FilterFieldDef[] = [
 
 Field types and their operators (`text`, `number`, `date`, `select`, `boolean`) are listed in `packages/ui/CLAUDE.md` → _Filters_. `number`/`date` offer `between` and `select` offers `in` ("is any of") — the API must accept both (it does through `src/lib/filtering.ts`), and a `date` field on a `timestamp` column needs its `coerce` entry.
 
+### Search box and "no results"
+
+A list whose API accepts `search` (see `apps/api/CLAUDE.md` → _Search box_) adds `search: searchSearchParam` (`@/lib/list-filters`) to `validateSearch` and `loaderDeps`, passes it to the list hook and to `useExportPdf`, and calls `getFilterBarProps(search, navigate, { withSearch: true })`. Besides `value`/`onChange`/`search` (spread into `FilterBar`, with the module's placeholder), it returns `active` (filters or a search narrow the list) and `clearAll` — keep those two out of the spread:
+
+```tsx
+const { active: narrowed, clearAll, ...filterBarProps } = getFilterBarProps(search, navigate, { withSearch: true })
+const [filtersOpened, setFiltersOpened] = useState(false)
+
+<FilterBar
+  fields={XXX_FILTER_FIELDS}
+  {...filterBarProps}
+  search={filterBarProps.search && { ...filterBarProps.search, placeholder: t('filters.search') }}
+  opened={filtersOpened}
+  onOpenedChange={setFiltersOpened}
+/>
+<DataTable
+  emptyState={narrowed ? (
+    <FilteredEmptyState
+      title={t('noResults.title')}
+      description={search.search ? t('noResults.withSearch', { search: search.search }) : t('noResults.withoutSearch')}
+      onEditFilters={() => setFiltersOpened(true)}
+      onClear={clearAll}
+    />
+  ) : undefined}
+  ...
+/>
+```
+
+The page-level `EmptyState` ("nothing yet, create one") shows only when the list is empty **and** not `narrowed`.
+
 ### Tests
 
-Add a `describe('Filters')` block to the list test file — `todos-list.test.tsx` is the reference. Cover: no count and no chips without filters; chips in words for conditions in the URL (query the remove buttons, e.g. `{ name: 'Remove filter: Status is Pending' }`); a malformed param is ignored; removing a chip and "Clear all" call `navigate` (run the `search` updater and check `filters`/`page: 1`); adding a condition from the field menu (`Add condition` → `menuitem`) and applying; an incomplete condition shows its error and does not navigate; Cancel leaves the URL alone. The test setup's `matchMedia` stub makes the panel a popover; make `min-width` queries fail to get the full-screen dialog (see _on small screens_).
+Add a `describe('Filters')` block to the list test file — `todos-list.test.tsx` is the reference. Cover: no count and no chips without filters; chips in words for conditions in the URL (query the remove buttons, e.g. `{ name: 'Remove filter: Status is Pending' }`); a malformed param is ignored; removing a chip and "Clear all" call `navigate` (run the `search` updater and check `filters`/`page: 1`); adding a condition from the field menu (`Add condition` → `menuitem`) and applying; an incomplete condition shows its error and does not navigate; Cancel leaves the URL alone; typing in the search box navigates after the debounce (`waitFor`); with no results, "Clear search and filters" and "Edit filters" work. The test setup's `matchMedia` stub makes the panel a popover; make `min-width` queries fail to get the full-screen dialog (see _on small screens_).
 
 ---
 

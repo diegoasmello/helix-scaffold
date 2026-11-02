@@ -27,7 +27,8 @@
     "status": "Status",
     "statusPending": "Pendente",
     "statusCompleted": "Concluída",
-    "date": "Data"
+    "date": "Data",
+    "search": "Buscar por título ou descrição"
   },
   "form": {
     "image": {
@@ -98,5 +99,10 @@
     "bodyDescription": "Aceita títulos, listas, links e imagens.",
     "files": "Imagem e arquivos",
     "filesDescription": "A imagem aparece no detalhe. Anexos e o PDF ficam disponíveis para download."
+  },
+  "noResults": {
+    "title": "Nenhuma tarefa encontrada",
+    "withSearch": "Nenhuma tarefa atende à busca “{{search}}” e aos filtros aplicados. Tente remover um filtro ou mudar a busca.",
+    "withoutSearch": "Nenhuma tarefa atende aos filtros aplicados. Tente remover um filtro ou mostrar as que atendem a qualquer condição."
   }
 }

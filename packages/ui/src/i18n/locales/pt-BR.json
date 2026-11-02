@@ -72,7 +72,11 @@
     "errors": {
       "required": "Informe um valor ou remova esta condição.",
       "range": "Informe os dois limites ou remova esta condição."
-    }
+    },
+    "searchPlaceholder": "Buscar nesta lista",
+    "clearSearch": "Limpar busca",
+    "editFilters": "Editar filtros",
+    "clearSearchAndFilters": "Limpar busca e filtros"
   },
   "fileUpload": {
     "dropFile": "Solte um arquivo ou clique para selecionar",

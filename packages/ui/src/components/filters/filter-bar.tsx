@@ -2,13 +2,24 @@ import { css } from '@emotion/react'
 import {
   ActionIcon,
   Button,
+  CloseButton,
   Modal,
   Popover,
+  TextInput,
   useMantineTheme,
 } from '@mantine/core'
 import { createStyles } from '@mantine/emotion'
-import { useDisclosure, useMediaQuery } from '@mantine/hooks'
-import { IconAdjustmentsHorizontal, IconX } from '@tabler/icons-react'
+import {
+  useDebouncedCallback,
+  useMediaQuery,
+  useUncontrolled,
+} from '@mantine/hooks'
+import {
+  IconAdjustmentsHorizontal,
+  IconSearch,
+  IconX,
+} from '@tabler/icons-react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { conditionSentence, describeCondition } from './describe'
@@ -21,6 +32,19 @@ export interface FilterBarProps<T extends string = string> {
   value: LogicalFilterValue
   /** Apply, remove one chip, or clear all — always the full new value. */
   onChange: (value: LogicalFilterValue) => void
+  /**
+   * A search box before the Filters button. `onChange` runs 300ms after the
+   * user stops typing (at once on Enter or when cleared).
+   */
+  search?: {
+    value: string
+    onChange: (value: string) => void
+    /** Defaults to "Search this list". */
+    placeholder?: string
+  }
+  /** Controls whether the panel is open — e.g. "Edit filters" elsewhere. */
+  opened?: boolean
+  onOpenedChange?: (opened: boolean) => void
 }
 
 /**
@@ -32,7 +56,8 @@ export interface FilterBarProps<T extends string = string> {
 export function FilterBar<T extends string = string>(
   props: Readonly<FilterBarProps<T>>
 ) {
-  const { fields, value, onChange } = props
+  const { fields, value, onChange, search, opened: openedProp } = props
+  const { onOpenedChange } = props
 
   const { t, i18n } = useTranslation('ui')
   const { classes, cx } = useStyles()
@@ -40,7 +65,13 @@ export function FilterBar<T extends string = string>(
   const wide = useMediaQuery(`(min-width: ${theme.breakpoints.sm})`, true, {
     getInitialValueInEffect: false,
   })
-  const [opened, { toggle, close }] = useDisclosure(false)
+  const [opened, setOpened] = useUncontrolled({
+    value: openedProp,
+    defaultValue: false,
+    onChange: onOpenedChange,
+  })
+  const toggle = () => setOpened(!opened)
+  const close = () => setOpened(false)
 
   const count = value.conditions.length
 
@@ -88,6 +119,8 @@ export function FilterBar<T extends string = string>(
 
   return (
     <div className={classes.bar}>
+      {search && <SearchBox {...search} />}
+
       {wide ? (
         <Popover
           opened={opened}
@@ -167,12 +200,75 @@ export function FilterBar<T extends string = string>(
   )
 }
 
+function SearchBox(props: Readonly<NonNullable<FilterBarProps['search']>>) {
+  const { value, onChange, placeholder } = props
+
+  const { t } = useTranslation('ui')
+  const { classes } = useStyles()
+  const [text, setText] = useState(value)
+  const [lastValue, setLastValue] = useState(value)
+  const commit = useDebouncedCallback(onChange, 300)
+
+  // Follows the URL (back/forward, "Clear search and filters").
+  if (value !== lastValue) {
+    setLastValue(value)
+    setText(value)
+  }
+
+  const label = placeholder ?? t('filters.searchPlaceholder')
+
+  return (
+    <TextInput
+      type="search"
+      className={classes.search}
+      aria-label={label}
+      placeholder={label}
+      leftSection={<IconSearch size={16} />}
+      value={text}
+      onChange={(event) => {
+        setText(event.currentTarget.value)
+        commit(event.currentTarget.value)
+      }}
+      onKeyDown={(event) => {
+        if (event.key === 'Enter') {
+          commit.cancel()
+          onChange(text)
+        }
+      }}
+      rightSection={
+        text ? (
+          <CloseButton
+            size="sm"
+            aria-label={t('filters.clearSearch')}
+            onClick={() => {
+              commit.cancel()
+              setText('')
+              onChange('')
+            }}
+          />
+        ) : undefined
+      }
+    />
+  )
+}
+
 const useStyles = createStyles((theme, _, u) => ({
   bar: css`
     display: flex;
     flex-wrap: wrap;
     align-items: center;
     gap: ${theme.spacing.xs};
+  `,
+  search: css`
+    width: 280px;
+
+    @media (max-width: calc(${theme.breakpoints.sm} - 0.0625em)) {
+      width: 100%;
+    }
+
+    input::-webkit-search-cancel-button {
+      display: none;
+    }
   `,
   count: css`
     min-width: 20px;

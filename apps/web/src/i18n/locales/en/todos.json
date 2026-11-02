@@ -27,7 +27,8 @@
     "status": "Status",
     "statusPending": "Pending",
     "statusCompleted": "Completed",
-    "date": "Date"
+    "date": "Date",
+    "search": "Search by title or description"
   },
   "form": {
     "image": {
@@ -98,5 +99,10 @@
     "bodyDescription": "Accepts headings, lists, links and images.",
     "files": "Image and files",
     "filesDescription": "The image shows on the detail page. Attachments and the PDF are available for download."
+  },
+  "noResults": {
+    "title": "No todos found",
+    "withSearch": "No todo matches the search “{{search}}” and the filters applied. Try removing a filter or changing the search.",
+    "withoutSearch": "No todo matches the filters applied. Try removing a filter or showing the ones that match any condition."
   }
 }

@@ -61,6 +61,8 @@ export async function todosRoutes(
         sortOrder: request.query.sortOrder,
         filterLogic: request.query.filterLogic,
         filterCount: request.query.filters?.length ?? 0,
+        // Whether a search was used — never the text itself.
+        searched: Boolean(request.query.search),
       })
       return reply
         .header('Content-Type', 'application/pdf')

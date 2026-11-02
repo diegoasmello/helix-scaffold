@@ -225,6 +225,8 @@ A condition whose value does not fit its operator is skipped, not rejected. A fi
 
 Merge this into the module's `listQuerySchema` alongside pagination and sorting.
 
+**Search box** — `searchQuerySchema` adds `search` (trimmed, blank → `undefined`, max 200 chars) and `buildSearchClause(term, columns)` turns it into a case-insensitive "contains" on any of the columns (LIKE wildcards in the term are escaped). Combine both clauses with Drizzle's `and()`, which skips `undefined`: `and(buildFilterWhereClause(...), buildSearchClause(query.search, SEARCH_COLUMNS))`. Add `searchQuerySchema` to the export schema too, and audit only whether a search was used (`searched: Boolean(query.search)`), never the text.
+
 **`buildFilterWhereClause(conditions, logic, columnMap, coerce?)`** — builds a Drizzle `SQL | undefined` from the parsed filter conditions. Returns `undefined` when the list is empty (no `.where()` added). Pass the result to both the data query and the count query so pagination totals remain consistent.
 
 The optional `coerce` map transforms raw filter values before Drizzle receives them. This is required for columns whose DB type differs from the serialized URL value — most commonly `timestamp` columns where the filter value arrives as an ISO string. For array values (`in`, `between`) it runs on each item:

@@ -16,6 +16,8 @@ export interface DataTableCardsProps<T> {
   recordsPerPage?: number
   onPageChange?: (page: number) => void
   noRecordsText: string
+  /** Replaces `noRecordsText` when there are no records. */
+  emptyState?: ReactNode
   fetching?: boolean
 }
 
@@ -37,6 +39,7 @@ export function DataTableCards<T>(props: Readonly<DataTableCardsProps<T>>) {
     recordsPerPage,
     onPageChange,
     noRecordsText,
+    emptyState,
     fetching,
   } = props
 
@@ -57,6 +60,7 @@ export function DataTableCards<T>(props: Readonly<DataTableCardsProps<T>>) {
       : 1
 
   if (records.length === 0) {
+    if (emptyState) return <>{emptyState}</>
     return (
       <Text c="dimmed" ta="center" className={classes.empty}>
         {noRecordsText}

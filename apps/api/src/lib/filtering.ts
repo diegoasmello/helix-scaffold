@@ -183,3 +183,36 @@ export function buildFilterWhereClause<T extends string>(
   if (sqlConditions.length === 1) return sqlConditions[0]
   return logic === 'AND' ? and(...sqlConditions) : or(...sqlConditions)
 }
+
+/**
+ * `search`: free text a list matches against a few text columns (the list
+ * screen's search box). Blank becomes `undefined`; capped at 200 characters.
+ */
+export const searchQuerySchema = z.object({
+  search: z
+    .string()
+    .trim()
+    .max(200)
+    .optional()
+    .transform((v) => v || undefined),
+})
+
+export type SearchQuery = z.infer<typeof searchQuerySchema>
+
+/** Escapes LIKE wildcards so `50%` or `a_b` match literally. */
+function escapeLike(term: string): string {
+  return term.replace(/[\\%_]/g, (char) => `\\${char}`)
+}
+
+/**
+ * Case-insensitive "contains" of `term` in any of `columns`, or `undefined`
+ * without a term. Combine it with the filter clause: `and(filters, search)`.
+ */
+export function buildSearchClause(
+  term: string | undefined,
+  columns: AnyColumn[]
+): SQL | undefined {
+  if (!term || columns.length === 0) return undefined
+  const pattern = `%${escapeLike(term)}%`
+  return or(...columns.map((column) => ilike(column, pattern)))
+}

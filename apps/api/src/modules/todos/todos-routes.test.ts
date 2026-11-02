@@ -205,6 +205,33 @@ describe('GET /todos', () => {
       expect(res.json().total).toBe(2)
     })
 
+    it('searches the title and the description', async () => {
+      const get = (search: string) =>
+        app.inject({
+          method: 'GET',
+          url: `/todos?search=${encodeURIComponent(search)}`,
+          headers: { cookie: authCookie },
+        })
+      const byTitle = (await get('RUST')).json()
+      expect(byTitle.data.map((t: { title: string }) => t.title)).toEqual([
+        'Learn Rust',
+      ])
+      expect((await get('errand')).json().data[0].title).toBe('Buy milk')
+      expect((await get('%')).json().total).toBe(0)
+    })
+
+    it('combines the search with the filters', async () => {
+      const filters = JSON.stringify([
+        { field: 'status', op: 'eq', value: 'completed' },
+      ])
+      const res = await app.inject({
+        method: 'GET',
+        url: `/todos?search=milk&filters=${encodeURIComponent(filters)}`,
+        headers: { cookie: authCookie },
+      })
+      expect(res.json().total).toBe(0)
+    })
+
     it('applies AND logic across two conditions', async () => {
       const filters = JSON.stringify([
         { field: 'status', op: 'eq', value: 'pending' },

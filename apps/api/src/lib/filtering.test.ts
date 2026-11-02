@@ -2,7 +2,12 @@ import { type AnyColumn, type SQL } from 'drizzle-orm'
 import { integer, PgDialect, pgTable, text } from 'drizzle-orm/pg-core'
 import { describe, expect, it } from 'vitest'
 
-import { buildFilterWhereClause, filterQuerySchema } from './filtering'
+import {
+  buildFilterWhereClause,
+  buildSearchClause,
+  filterQuerySchema,
+  searchQuerySchema,
+} from './filtering'
 
 const dialect = new PgDialect()
 
@@ -505,5 +510,40 @@ describe('buildFilterWhereClause', () => {
       )!
       expect(toSQL(result).params).toEqual([new Date(iso)])
     })
+  })
+})
+
+describe('searchQuerySchema', () => {
+  it.each([
+    [undefined, undefined],
+    ['', undefined],
+    ['   ', undefined],
+    ['  milk ', 'milk'],
+  ])('reads %j as %j', (input, expected) => {
+    expect(searchQuerySchema.parse({ search: input }).search).toBe(expected)
+  })
+
+  it('rejects more than 200 characters', () => {
+    expect(() => searchQuerySchema.parse({ search: 'x'.repeat(201) })).toThrow()
+  })
+})
+
+describe('buildSearchClause', () => {
+  it('returns undefined without a term', () => {
+    expect(buildSearchClause(undefined, [testTable.name])).toBeUndefined()
+  })
+
+  it('matches the term in any of the columns, case-insensitively', () => {
+    const { sql, params } = toSQL(
+      buildSearchClause('milk', [testTable.name, testTable.status])!
+    )
+    expect(sql.toLowerCase()).toContain('ilike')
+    expect(sql.toLowerCase()).toContain(' or ')
+    expect(params).toEqual(['%milk%', '%milk%'])
+  })
+
+  it('escapes LIKE wildcards in the term', () => {
+    const { params } = toSQL(buildSearchClause('50%_off', [testTable.name])!)
+    expect(params).toEqual(['%50\\%\\_off%'])
   })
 })

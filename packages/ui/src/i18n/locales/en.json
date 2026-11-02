@@ -72,7 +72,11 @@
     "errors": {
       "required": "Fill in a value or remove this condition.",
       "range": "Fill in both ends or remove this condition."
-    }
+    },
+    "searchPlaceholder": "Search this list",
+    "clearSearch": "Clear search",
+    "editFilters": "Edit filters",
+    "clearSearchAndFilters": "Clear search and filters"
   },
   "fileUpload": {
     "dropFile": "Drop a file or click to select",

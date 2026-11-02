@@ -103,7 +103,7 @@ For upload fields, use `minFiles(n)` (from `@helix/ui`) for `FilesInput` and `re
 
 Every route's `beforeLoad` is `guardPage(TODOS_ACCESS.<page>)` (`routes/access.ts`): each access has `feature: 'todos'` plus the permission, so `guardPage` checks the plan first (redirecting to `/upgrade?feature=todos`), then the permission — the same order as the API's `[requireSubscription('todos'), requirePermission(...)]`. It is the reference for gating routes by plan feature; see `src/modules/subscriptions/CLAUDE.md` → _Route guards_.
 
-`todoListRoute` has `validateSearch` with: `page` (default 1), `pageSize` (default 10), `sortBy` (enum: `title | status | date | createdAt`, optional), `sortOrder` (default `'desc'`), `filters` (JSON string, optional — `filtersSearchParam` from `@/lib/list-filters`, which drops an invalid value), `filterLogic` (`'AND' | 'OR'`, default `'AND'`).
+`todoListRoute` has `validateSearch` with: `page` (default 1), `pageSize` (default 10), `sortBy` (enum: `title | status | date | createdAt`, optional), `sortOrder` (default `'desc'`), `filters` (JSON string, optional — `filtersSearchParam` from `@/lib/list-filters`, which drops an invalid value), `filterLogic` (`'AND' | 'OR'`, default `'AND'`), `search` (optional — `searchSearchParam`; matches title or description).
 
 `loaderDeps` forwards all six params so the loader re-runs on search changes.
 

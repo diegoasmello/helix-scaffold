@@ -5,7 +5,7 @@ import {
 import { createRoute } from '@tanstack/react-router'
 import { z } from 'zod'
 
-import { filtersSearchParam } from '@/lib/list-filters'
+import { filtersSearchParam, searchSearchParam } from '@/lib/list-filters'
 import { guardPage } from '@/modules/auth/page-access'
 import { authenticatedRoute } from '@/routes'
 
@@ -34,9 +34,10 @@ export const todoListRoute = createRoute({
     sortOrder: z.enum(['asc', 'desc']).default('desc'),
     filters: filtersSearchParam,
     filterLogic: z.enum(['AND', 'OR']).default('AND'),
+    search: searchSearchParam,
   }),
   loaderDeps: ({
-    search: { page, pageSize, sortBy, sortOrder, filters, filterLogic },
+    search: { page, pageSize, sortBy, sortOrder, filters, filterLogic, search },
   }) => ({
     page,
     pageSize,
@@ -44,6 +45,7 @@ export const todoListRoute = createRoute({
     sortOrder,
     filters,
     filterLogic,
+    search,
   }),
   loader: ({ deps }) =>
     queryClient.ensureQueryData(getTodosSuspenseQueryOptions(deps)),
