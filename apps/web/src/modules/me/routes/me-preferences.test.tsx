@@ -1,4 +1,4 @@
-import { MantineProvider } from '@helix/ui'
+import { MantineEmotionProvider, MantineProvider } from '@helix/ui'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
@@ -11,11 +11,13 @@ function renderMePreferences(sidebarCollapsed = false) {
   const toggleSidebar = vi.fn()
   render(
     <MantineProvider>
-      <SidebarPreferenceContext.Provider
-        value={{ sidebarCollapsed, toggleSidebar }}
-      >
-        <MePreferences />
-      </SidebarPreferenceContext.Provider>
+      <MantineEmotionProvider>
+        <SidebarPreferenceContext.Provider
+          value={{ sidebarCollapsed, toggleSidebar }}
+        >
+          <MePreferences />
+        </SidebarPreferenceContext.Provider>
+      </MantineEmotionProvider>
     </MantineProvider>
   )
   return { toggleSidebar }
@@ -126,7 +128,9 @@ describe('MePreferences', () => {
     expect(() =>
       render(
         <MantineProvider>
-          <MePreferences />
+          <MantineEmotionProvider>
+            <MePreferences />
+          </MantineEmotionProvider>
         </MantineProvider>
       )
     ).toThrow('useSidebarPreference must be used within App')

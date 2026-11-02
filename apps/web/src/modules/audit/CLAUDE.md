@@ -56,7 +56,7 @@ Entries written by the billing webhook have `userId: 'system:<adapter>'` and `us
 
 ## Detail screen (`audit-detail.tsx`)
 
-`PageView` titled `t('detail.title')`. `createdAt` is shown with `formatDate(parseISO(...), 'short')`.
+`PageView` titled `t('detail.title')`: an "Event" `PageSection` with a `DetailList` (date, action badge, user + email, resource, resource id, IP), then User agent and Metadata sections when present. `createdAt` is shown with `formatDate(parseISO(...), 'short')`.
 
 `ACTION_COLORS` is typed as `Record<AuditLog['action'], string>` here (tighter than the list's `Record<string, string>`).
 

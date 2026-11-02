@@ -14,8 +14,8 @@ import {
 import {
   MantineEmotionProvider,
   MantineProvider,
-  type NavigationItemProps,
   Notifications,
+  type PageTabsProps,
 } from '@helix/ui'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
@@ -62,8 +62,14 @@ vi.mock('@helix/ui', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@helix/ui')>()
   return {
     ...actual,
-    NavigationItem: (props: NavigationItemProps) => (
-      <a href={props.to}>{props.label}</a>
+    PageTabs: (props: PageTabsProps) => (
+      <nav aria-label={props.label}>
+        {props.tabs.map((tab) => (
+          <a key={tab.to} href={tab.to}>
+            {tab.label}
+          </a>
+        ))}
+      </nav>
     ),
   }
 })
@@ -96,12 +102,14 @@ function renderMeAccount() {
   })
   return render(
     <MantineProvider>
-      <Notifications />
-      <QueryClientProvider client={queryClient}>
-        <Suspense fallback={<div>Loading...</div>}>
-          <MeAccount />
-        </Suspense>
-      </QueryClientProvider>
+      <MantineEmotionProvider>
+        <Notifications />
+        <QueryClientProvider client={queryClient}>
+          <Suspense fallback={<div>Loading...</div>}>
+            <MeAccount />
+          </Suspense>
+        </QueryClientProvider>
+      </MantineEmotionProvider>
     </MantineProvider>
   )
 }
@@ -128,9 +136,11 @@ function renderMePage() {
   })
   return render(
     <MantineProvider>
-      <QueryClientProvider client={queryClient}>
-        <MePage />
-      </QueryClientProvider>
+      <MantineEmotionProvider>
+        <QueryClientProvider client={queryClient}>
+          <MePage />
+        </QueryClientProvider>
+      </MantineEmotionProvider>
     </MantineProvider>
   )
 }

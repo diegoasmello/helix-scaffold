@@ -13,7 +13,9 @@
     "title": "Editar Tarefa"
   },
   "detail": {
-    "title": "Visualizar Tarefa"
+    "title": "Visualizar Tarefa",
+    "attachmentsCount_one": "{{count}} arquivo",
+    "attachmentsCount_other": "{{count}} arquivos"
   },
   "columns": {
     "title": "Título",
@@ -90,5 +92,14 @@
     "updateFailed": "Falha ao atualizar tarefa",
     "deleted": "Tarefa excluída com sucesso",
     "deleteFailed": "Falha ao excluir tarefa"
+  },
+  "sections": {
+    "details": "Detalhes",
+    "basic": "Informações básicas",
+    "basicDescription": "Como a tarefa aparece na lista e nas notificações.",
+    "body": "Texto completo",
+    "bodyDescription": "Aceita títulos, listas, links e imagens.",
+    "files": "Imagem e arquivos",
+    "filesDescription": "A imagem aparece no detalhe. Anexos e o PDF ficam disponíveis para download."
   }
 }

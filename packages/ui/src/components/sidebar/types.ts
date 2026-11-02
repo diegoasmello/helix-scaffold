@@ -26,7 +26,7 @@ type WithoutTrailingSlash<P extends string> = P extends `${infer Base}/`
 
 // Valid navigable app routes — pathless layout routes (e.g. authenticated)
 // are excluded because their fullPath collapses to the parent's path.
-type AppRoute =
+export type AppRoute =
   ParseRoute<RegisteredRouter['routeTree']> extends infer R
     ? R extends { fullPath: infer FP extends string }
       ? FP extends `/${string}` | '/'

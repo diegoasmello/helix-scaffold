@@ -4,6 +4,7 @@ import {
   Button,
   createStyles,
   css,
+  FormSection,
   Group,
   IconBrandApple,
   IconBrandFacebook,
@@ -97,16 +98,10 @@ export function SignInMethods() {
   }
 
   return (
-    <Stack gap="md">
-      <Stack gap={4}>
-        <Title order={4} lh={1.2}>
-          {t('signIn.sectionTitle')}
-        </Title>
-        <Text c="dimmed" size="xs">
-          {t('signIn.sectionDescription')}
-        </Text>
-      </Stack>
-
+    <FormSection
+      title={t('signIn.sectionTitle')}
+      description={t('signIn.sectionDescription')}
+    >
       <Stack gap="xs">
         <Title order={5}>{t('signIn.connectedAccountsTitle')}</Title>
         {accountsError ? (
@@ -189,6 +184,6 @@ export function SignInMethods() {
           </Stack>
         </Stack>
       )}
-    </Stack>
+    </FormSection>
   )
 }

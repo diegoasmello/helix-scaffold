@@ -49,15 +49,15 @@ Name clashes resolved explicitly in `src/index.ts`:
 | Group          | Exports (folder)                                                        | Purpose |
 | -------------- | ----------------------------------------------------------------------- | ------- |
 | App shell      | `Layout`, `Header`, `HeaderSearch`, `NotificationsMenu`, `Sidebar`, `SidebarLinksGroup`, `UserMenu`, `Breadcrumb`, `RouteBreadcrumb` (`layout`, `header`, `sidebar`, `user-menu`, `breadcrumb`) | Full-page scaffold rendered by `apps/web` — see _App shell_ |
-| Page wrappers  | `PageHeader`, `PageList`, `PageCreate`, `PageEdit`, `PageView` (`page/`) | Standard CRUD screen layouts; `PageHeader` (breadcrumb + `h1` + description + actions) tops all four and custom pages |
-| Data display   | `DataTable` (+ `useDataTableLayout`), `LabeledValue`, `EmptyState`, `StatusBadge` | Paginated/sortable table (no card: header band + row borders; one card per record below `sm`); label + value pair for detail views; empty list screen with a CTA slot; a record's state as a toned pill with a dot |
+| Page wrappers  | `PageHeader`, `PageList`, `PageCreate`, `PageEdit`, `PageView`, `PageSection`, `FormSection`, `PageTabs` (`page/`) | Standard CRUD screen layouts — see _Page layouts_; `PageHeader` (breadcrumb + `h1` + description + actions) tops all of them and custom pages |
+| Data display   | `DataTable` (+ `useDataTableLayout`), `DetailList`, `LabeledValue`, `EmptyState`, `StatusBadge` | Paginated/sortable table (no card: header band + row borders; one card per record below `sm`); a record's properties as bordered label/value lines (`<dl>`); a stacked label + value pair (legacy — prefer `DetailList`); empty list screen with a CTA slot; a record's state as a toned pill with a dot |
 | Actions        | `RowActions` (+ `RowAction`), `ActionsMenu` (+ `ActionsMenuItemConfig`) | `RowActions` is every table row's actions: ≤ 3 visible → text buttons, more → one "⋯" menu; `danger`, `hidden`. `ActionsMenu` is a plain dots menu for other places |
-| Forms          | `Form`                                                                  | `<form>` wrapper: runs `form.onSubmit`, blocks navigation while dirty (`blockNavigationOnDirty`, default `true`) |
+| Forms          | `Form`, `useFormSummary`                                                | `<form>` wrapper: runs `form.onSubmit`, blocks navigation while dirty (`blockNavigationOnDirty`, default `true`), and tells the page around it whether it is dirty and how many fields have errors |
 | File upload    | `FilesInput`, `FileInput`, `FilePreview`, `FileCard` (`file-upload/`)   | Multi/single upload fields (the HTTP call is injected via `onUpload`) and read-only previews |
 | Filtering      | `LogicalFilterForm` (`logical-filter/`)                                 | Combinable field conditions with AND/OR |
 | Feedback       | `confirm()`, `notify()` (`modals/confirm`, `notifications/notify`)      | Confirm dialog helper; toast helper |
 | Rich text      | `RichTextEditor`, `RichTextRenderer`                                    | Tiptap editor (HTML string value) and read-only renderer |
-| Navigation     | `NavigationItem` (`navigation/`)                                        | Router-aware nav link (used by the `/me` sub-navigation) |
+| Navigation     | `NavigationItem` (`navigation/`)                                        | Router-aware nav entry (the sidebar's) |
 | Misc           | `LanguagePicker`                                                        | Language dropdown; options come from the `languages` prop |
 | Theme          | `createTheme()` (`theme/index.ts`)                                      | Base theme — see _Theme_ |
 
@@ -71,17 +71,26 @@ Name clashes resolved explicitly in `src/index.ts`:
 - Radius scale: `xs` 4, `sm` 6, `md` 8 (default), `lg` 12, `xl` 16.
 - **`md` breakpoint is 1024px** (`64em`, not Mantine's 992px): below it the sidebar is a drawer and the header goes compact. In `createStyles`, write `@media (max-width: calc(${theme.breakpoints.md} - 0.0625em))` for "below md".
 - **Custom spacing scale on a 4/8px grid** — it differs from Mantine's defaults, so pick values by size, not by habit: `xs` 8px, `sm` 12px, `md` 16px, `lg` 24px, `xl` 32px.
-- Component defaults/styles for `Title`, `Input` (focus outline), `Button`, `Paper`, `Drawer`, `Modal` (bordered), `Menu`, `Badge` (light pill, not capitalized; `circle`/small sizes keep Mantine's geometry) and `Notification`.
+- Component defaults/styles for `Title`, `Input` (focus outline), `Button` (`variant="default"` + `color="red"` = the bordered destructive button, red text — Mantine itself ignores `color` on that variant), `Paper`, `Drawer`, `Modal` (bordered), `Menu`, `Badge` (light pill, not capitalized; `circle`/small sizes keep Mantine's geometry) and `Notification`.
 - **It references `theme.colors.main`** (input focus ring, notification fallback), so any app using it must define a `main` palette.
 
 ## App shell
 
 - **`Layout`** — `AppShell` with a 68px bordered header and a 272px sidebar (72px collapsed, persisted per user). Below `md` the sidebar renders in a `Drawer` instead (closes on navigation). Slots: `search`, `notifications`; `user` takes `{ name, description? }`.
 - **`Sidebar`** — groups of items; each `SidebarItem` may carry a `badge` (`{ count, highlight? }`), an `action` (a "+" link, `{ label, to }` — `label` is its accessible name) and `links` (second level; a link's own `links` make a third). Sub-menus are tied to their parent by guide lines. Inside the drawer it gets `onClose` (close button instead of the collapse toggle).
-- **`NavigationItem`** — the 44px entry used by the sidebar and the `/me` sub-navigation (active = white surface with a border). Props `size="nested"`, `badge`, `action`.
+- **`NavigationItem`** — the 44px entry used by the sidebar (active = white surface with a border). Props `size="nested"`, `badge`, `action`.
 - **`HeaderSearch`** — pill input from `md` up (`Ctrl K` focuses it), an icon opening a dialog below; it only collects the query (`onSearch`).
 - **`NotificationsMenu`** — bell with an unread count and a panel (`items`, `onItemClick`, `onMarkAllRead`, `onViewAll`); pure UI.
-- **`RouteBreadcrumb`** — the breadcrumb built from the deepest route's `staticData.breadcrumbs` (labels are `common` keys). Renders nothing for a single crumb, or outside a router.
+- **`RouteBreadcrumb`** — the breadcrumb built from the deepest route's `staticData.breadcrumbs` (labels are `common` keys). Renders nothing for a single crumb, or outside a router. `PageHeader` shows it unless `withBreadcrumb={false}` (create, edit and detail pages).
+- **Page gutters** — `Layout`'s content area sets `--helix-page-px`/`--helix-page-pt`/`--helix-page-pb` (28/28/32px, 16/20/28px below `md`). Edge-to-edge pages cancel them with negative margins and reuse them as their inner padding; always read them with a fallback (`var(--helix-page-px, 0px)`) so the component still works outside `Layout` (tests).
+
+## Page layouts
+
+- **`PageList`** — `PageHeader` + the content (filters, `DataTable`) inside the page gutters.
+- **`PageCreate` / `PageEdit` / `PageView`** (all `PageSectionLayout`) — edge-to-edge: a bordered header (no breadcrumb; `title`, `description`, `titleAside`, `actions` that fill the width on phones), the content, an optional `aside` (`PageView`: 340px right column with a left border, above the content below `lg`), optional `tabs` (`PageView`: a `PageTabs` at the bottom of the header) and `footerActions` in a bar stuck to the bottom of the screen (buttons fill the width on phones). Inside a `Form` it adds the "Couldn't save. Fix the N highlighted fields below." alert after an invalid submit and "Unsaved changes" in the footer.
+- **`PageSection`** (`title`, `meta?`) — a stacked block of a detail page; **`FormSection`** (`title`, `description?`, `children?`) — a two-column group of fields (intro ≤ 300px left, fields ≤ 720px right, stacked when narrow). Both carry `data-page-section`, are `<section>`s named by their `h2` (so `getByRole('region', { name })` finds them) and draw their own padding and bottom border; content without sections keeps the page padding (`:has(> [data-page-section])`). Inside an `aside` a `PageSection` loses its padding and border.
+- **`DetailList`** — `items: { label, value, hidden? }[]` as label/value lines between borders; empty values render "—".
+- **`PageTabs`** — `label` + `tabs: { label, to }[]`: route links as underlined tabs, `aria-current` on the active one, sideways scroll when they do not fit.
 
 ## `LogicalFilterForm` component
 

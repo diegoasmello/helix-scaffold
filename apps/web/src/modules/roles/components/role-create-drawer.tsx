@@ -8,7 +8,7 @@ import { useResourceCache } from '@/lib/resource-cache'
 
 import type { CreateRoleInput, RoleFormValues } from '../types'
 import { roleFormValidate } from '../validation'
-import { RolesForm } from './roles-form'
+import { RolesFormFields } from './roles-form'
 
 export interface RoleCreateDrawerProps {
   opened: boolean
@@ -73,7 +73,7 @@ export function RoleCreateDrawer(props: Readonly<RoleCreateDrawerProps>) {
     >
       <form onSubmit={form.onSubmit(handleSubmit)}>
         <Stack>
-          <RolesForm form={form} />
+          <RolesFormFields form={form} />
           <Group justify="flex-end">
             <Button
               size="md"

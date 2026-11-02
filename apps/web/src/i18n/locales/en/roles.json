@@ -39,7 +39,10 @@
   "labels": {
     "name": "Name",
     "description": "Description",
-    "createdAt": "Created At"
+    "createdAt": "Created At",
+    "isDefault": "Default for new users",
+    "yes": "Yes",
+    "no": "No"
   },
   "delete": {
     "title": "Delete role",
@@ -75,5 +78,10 @@
     "default_role": "The default registration role cannot be deleted. Make another role the default first.",
     "role_in_use": "This role still has users. Move them to another role first.",
     "role_not_found": "This role no longer exists."
+  },
+  "sections": {
+    "basic": "Basic information",
+    "basicDescription": "How the role shows up when assigning it to users.",
+    "details": "Details"
   }
 }

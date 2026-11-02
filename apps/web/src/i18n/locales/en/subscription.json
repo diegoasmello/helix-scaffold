@@ -101,5 +101,14 @@
     "live_subscription_exists": "This user already has an active or trialing subscription. Cancel it or change its plan instead.",
     "external_id_taken": "This external ID is already used by another subscription.",
     "user_not_found": "The selected user no longer exists."
+  },
+  "sections": {
+    "plan": "Subscriber and plan",
+    "planDescription": "Who subscribes, to which plan, and the current state.",
+    "period": "Period",
+    "periodDescription": "The billing period in effect and, if any, the end of the trial.",
+    "billing": "Billing",
+    "billingDescription": "The subscription's id at the payment processor, when it manages it.",
+    "details": "Details"
   }
 }

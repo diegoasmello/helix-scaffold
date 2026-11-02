@@ -1,20 +1,29 @@
 import {
   createTodo,
   createUpload,
+  deleteTodosIdHandler,
+  deleteTodosIdHandlerResponse204,
   getTodosIdHandler,
 } from '@helix/api-client/mocks'
-import { MantineEmotionProvider, MantineProvider } from '@helix/ui'
+import {
+  MantineEmotionProvider,
+  MantineProvider,
+  ModalsProvider,
+} from '@helix/ui'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { Suspense } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { server } from '../../../mocks/server'
 import { TodoDetail } from './todos-detail'
 
+const mockNavigate = vi.hoisted(() => vi.fn())
+
 vi.mock('.', () => ({
   todoDetailRoute: {
-    useNavigate: () => vi.fn(),
+    useNavigate: () => mockNavigate,
     useParams: () => ({ id: '1' }),
   },
 }))
@@ -35,11 +44,13 @@ function renderTodoDetail() {
   return render(
     <MantineProvider>
       <MantineEmotionProvider>
-        <QueryClientProvider client={queryClient}>
-          <Suspense fallback={<div>Loading...</div>}>
-            <TodoDetail />
-          </Suspense>
-        </QueryClientProvider>
+        <ModalsProvider>
+          <QueryClientProvider client={queryClient}>
+            <Suspense fallback={<div>Loading...</div>}>
+              <TodoDetail />
+            </Suspense>
+          </QueryClientProvider>
+        </ModalsProvider>
       </MantineEmotionProvider>
     </MantineProvider>
   )
@@ -98,5 +109,34 @@ describe('TodoDetail', () => {
     renderTodoDetail()
     await screen.findByText('Review quarterly report')
     expect(screen.queryByText('Attachments')).not.toBeInTheDocument()
+  })
+
+  it('opens the edit page from the header', async () => {
+    renderTodoDetail()
+    await userEvent.click(await screen.findByRole('button', { name: 'Edit' }))
+    expect(mockNavigate).toHaveBeenCalledWith({
+      to: '/todos/$id/edit',
+      params: { id: '1' },
+    })
+  })
+
+  it('deletes after confirming and goes back to the list', async () => {
+    let deletedId: string | undefined
+    server.use(
+      deleteTodosIdHandler((info) => {
+        deletedId = info.params.id as string
+        return deleteTodosIdHandlerResponse204()
+      })
+    )
+    renderTodoDetail()
+    await userEvent.click(await screen.findByRole('button', { name: 'Delete' }))
+    const dialog = await screen.findByRole('dialog')
+    await userEvent.click(
+      within(dialog).getByRole('button', { name: 'Delete' })
+    )
+    await waitFor(() => expect(deletedId).toBe('1'))
+    await waitFor(() =>
+      expect(mockNavigate).toHaveBeenCalledWith({ to: '/todos' })
+    )
   })
 })

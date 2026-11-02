@@ -6,20 +6,17 @@ import {
 import type { PermissionAction } from '@helix/api-client/types'
 import {
   Button,
-  Grid,
-  Group,
-  LabeledValue,
+  DetailList,
+  IconPencil,
+  PageSection,
   PageView,
-  Stack,
-  Text,
-  Title,
 } from '@helix/ui'
 import { parseISO } from 'date-fns'
 import { useTranslation } from 'react-i18next'
 
 import { formatDate } from '@/utils/date'
 
-import { useAuth } from '../../auth/use-auth'
+import { HasPermission } from '../../auth/components/has-permission'
 import { PermissionsTree } from '../components/permissions-tree'
 import { rolesDetailRoute } from '.'
 
@@ -28,7 +25,6 @@ export function RolesDetail() {
   const navigate = rolesDetailRoute.useNavigate()
   const { t } = useTranslation('roles')
   const { t: tc } = useTranslation('common')
-  const { hasPermission } = useAuth()
 
   const { data: item } = useGetRolesIdSuspense(id)
   const { data: grants } = useGetRolesIdPermissionsSuspense(id)
@@ -36,10 +32,11 @@ export function RolesDetail() {
 
   return (
     <PageView
-      title={t('detail.title')}
+      title={item.name}
+      description={item.description}
       actions={
-        <Group justify="flex-end">
-          {hasPermission('permissions', 'edit') && (
+        <>
+          <HasPermission resource="permissions" action="edit">
             <Button
               variant="default"
               onClick={() =>
@@ -48,53 +45,44 @@ export function RolesDetail() {
             >
               {t('permissions.editButton')}
             </Button>
-          )}
-        </Group>
+          </HasPermission>
+          <HasPermission resource="roles" action="edit">
+            <Button
+              leftSection={<IconPencil size={17} />}
+              onClick={() =>
+                navigate({ to: '/roles/$id/edit', params: { id } })
+              }
+            >
+              {tc('actions.edit')}
+            </Button>
+          </HasPermission>
+        </>
       }
-      footerActions={
-        <Group justify="flex-end">
-          <Button
-            size="md"
-            variant="default"
-            onClick={() => navigate({ to: '/roles' })}
-          >
-            {tc('actions.back')}
-          </Button>
-        </Group>
+      aside={
+        <PageSection title={t('sections.details')}>
+          <DetailList
+            items={[
+              {
+                label: t('labels.isDefault'),
+                value: item.isDefault ? t('labels.yes') : t('labels.no'),
+              },
+              {
+                label: t('labels.createdAt'),
+                value: formatDate(parseISO(item.createdAt), 'short'),
+              },
+            ]}
+          />
+        </PageSection>
       }
     >
-      <Grid>
-        <Grid.Col span={12}>
-          <LabeledValue label={t('labels.name')}>
-            <Text size="md">{item.name}</Text>
-          </LabeledValue>
-        </Grid.Col>
-        <Grid.Col span={12}>
-          <LabeledValue label={t('labels.description')}>
-            <Text size="md">{item.description}</Text>
-          </LabeledValue>
-        </Grid.Col>
-        <Grid.Col span={{ base: 12, sm: 6 }}>
-          <LabeledValue label={t('labels.createdAt')}>
-            <Text size="md">
-              {formatDate(parseISO(item.createdAt), 'short')}
-            </Text>
-          </LabeledValue>
-        </Grid.Col>
-
-        <Grid.Col span={12}>
-          <Stack gap="sm">
-            <Title order={3}>{t('permissions.title')}</Title>
-
-            <PermissionsTree
-              definitions={definitions}
-              grants={grants.grants as Record<string, PermissionAction[]>}
-              onChange={() => {}}
-              disabled
-            />
-          </Stack>
-        </Grid.Col>
-      </Grid>
+      <PageSection title={t('permissions.title')}>
+        <PermissionsTree
+          definitions={definitions}
+          grants={grants.grants as Record<string, PermissionAction[]>}
+          onChange={() => {}}
+          disabled
+        />
+      </PageSection>
     </PageView>
   )
 }

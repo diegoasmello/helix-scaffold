@@ -1,5 +1,11 @@
 import type { UseFormReturnType } from '@helix/ui'
-import { DateInput, Grid, GridCol, Select, TextInput } from '@helix/ui'
+import {
+  DateInput,
+  FormSection,
+  Select,
+  SimpleGrid,
+  TextInput,
+} from '@helix/ui'
 import { useTranslation } from 'react-i18next'
 
 import { UserSelectField } from '../../users/components/user-select-field'
@@ -35,74 +41,75 @@ export function SubscriptionsForm(props: Readonly<SubscriptionsFormProps>) {
   }
 
   return (
-    <Grid>
-      {!isEditing && (
-        <GridCol span={12}>
+    <>
+      <FormSection
+        title={t('sections.plan')}
+        description={t('sections.planDescription')}
+      >
+        {!isEditing && (
           <UserSelectField required {...form.getInputProps('userId')} />
-        </GridCol>
-      )}
+        )}
+        <SimpleGrid cols={{ base: 1, xs: 2 }} spacing="md">
+          <Select
+            label={t('form.planId.label')}
+            placeholder={t('form.planId.placeholder')}
+            required
+            data={planOptions}
+            allowDeselect={false}
+            {...form.getInputProps('planId')}
+          />
+          <Select
+            label={t('form.status.label')}
+            required
+            data={STATUS_OPTIONS.map((s) => ({
+              value: s,
+              label: t(`status.${s}`),
+            }))}
+            value={form.values.status}
+            onChange={(value) =>
+              form.setFieldValue(
+                'status',
+                (value ?? 'active') as SubscriptionFormValues['status']
+              )
+            }
+            error={form.errors.status}
+          />
+        </SimpleGrid>
+      </FormSection>
 
-      <GridCol span={{ base: 12, sm: 6 }}>
-        <Select
-          label={t('form.planId.label')}
-          placeholder={t('form.planId.placeholder')}
-          required
-          data={planOptions}
-          allowDeselect={false}
-          {...form.getInputProps('planId')}
-        />
-      </GridCol>
+      <FormSection
+        title={t('sections.period')}
+        description={t('sections.periodDescription')}
+      >
+        <SimpleGrid cols={{ base: 1, xs: 2 }} spacing="md">
+          <DateInput
+            label={t('form.currentPeriodStart.label')}
+            required
+            {...form.getInputProps('currentPeriodStart')}
+          />
+          <DateInput
+            label={t('form.currentPeriodEnd.label')}
+            required
+            {...form.getInputProps('currentPeriodEnd')}
+          />
+          <DateInput
+            label={t('form.trialEndsAt.label')}
+            clearable
+            {...form.getInputProps('trialEndsAt')}
+          />
+        </SimpleGrid>
+      </FormSection>
 
-      <GridCol span={{ base: 12, sm: 6 }}>
-        <Select
-          label={t('form.status.label')}
-          required
-          data={STATUS_OPTIONS.map((s) => ({
-            value: s,
-            label: t(`status.${s}`),
-          }))}
-          value={form.values.status}
-          onChange={(value) =>
-            form.setFieldValue(
-              'status',
-              (value ?? 'active') as SubscriptionFormValues['status']
-            )
-          }
-          error={form.errors.status}
-        />
-      </GridCol>
-
-      <GridCol span={{ base: 12, sm: 6 }}>
-        <DateInput
-          label={t('form.currentPeriodStart.label')}
-          required
-          {...form.getInputProps('currentPeriodStart')}
-        />
-      </GridCol>
-
-      <GridCol span={{ base: 12, sm: 6 }}>
-        <DateInput
-          label={t('form.currentPeriodEnd.label')}
-          required
-          {...form.getInputProps('currentPeriodEnd')}
-        />
-      </GridCol>
-
-      <GridCol span={{ base: 12, sm: 6 }}>
-        <DateInput
-          label={t('form.trialEndsAt.label')}
-          clearable
-          {...form.getInputProps('trialEndsAt')}
-        />
-      </GridCol>
-
-      <GridCol span={{ base: 12, sm: 6 }}>
+      <FormSection
+        title={t('sections.billing')}
+        description={t('sections.billingDescription')}
+      >
         <TextInput
           label={t('form.externalId.label')}
           placeholder={t('form.externalId.placeholder')}
           {...form.getInputProps('externalId')}
         />
-      </GridCol>
-    </Grid>
+      </FormSection>
+    </>
   )
 }

@@ -39,7 +39,10 @@
   "labels": {
     "name": "Nome",
     "description": "Descrição",
-    "createdAt": "Criado em"
+    "createdAt": "Criado em",
+    "isDefault": "Padrão para novos usuários",
+    "yes": "Sim",
+    "no": "Não"
   },
   "delete": {
     "title": "Excluir perfil",
@@ -75,5 +78,10 @@
     "default_role": "O perfil padrão de cadastro não pode ser excluído. Defina outro perfil como padrão antes.",
     "role_in_use": "Este perfil ainda tem usuários. Mova-os para outro perfil antes.",
     "role_not_found": "Este perfil não existe mais."
+  },
+  "sections": {
+    "basic": "Informações básicas",
+    "basicDescription": "Como o perfil aparece ao atribuí-lo a usuários.",
+    "details": "Detalhes"
   }
 }

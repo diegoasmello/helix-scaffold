@@ -7,12 +7,11 @@ import {
 import {
   Alert,
   Button,
+  FormSection,
   Group,
   notify,
   Stack,
-  Text,
   TextInput,
-  Title,
   useForm,
 } from '@helix/ui'
 import { IconInfoCircle } from '@helix/ui'
@@ -80,39 +79,31 @@ export function MeAccount() {
   })
 
   return (
-    <Stack gap="xl">
-      <form onSubmit={nameForm.onSubmit((values) => updateProfile(values))}>
-        <Stack gap="md">
-          <Stack gap={4}>
-            <Title order={4} lh={1.2}>
-              {t('account.name.sectionTitle')}
-            </Title>
-            <Text c="dimmed" size="xs">
-              {t('account.name.sectionDescription')}
-            </Text>
+    <>
+      <FormSection
+        title={t('account.name.sectionTitle')}
+        description={t('account.name.sectionDescription')}
+      >
+        <form onSubmit={nameForm.onSubmit((values) => updateProfile(values))}>
+          <Stack gap="md">
+            <TextInput
+              label={t('account.name.label')}
+              required
+              {...nameForm.getInputProps('name')}
+            />
+            <Group justify="flex-end">
+              <Button type="submit" loading={isUpdating}>
+                {tc('actions.save')}
+              </Button>
+            </Group>
           </Stack>
-          <TextInput
-            label={t('account.name.label')}
-            required
-            {...nameForm.getInputProps('name')}
-          />
-          <Group justify="flex-end">
-            <Button type="submit" loading={isUpdating}>
-              {tc('actions.save')}
-            </Button>
-          </Group>
-        </Stack>
-      </form>
+        </form>
+      </FormSection>
 
-      <Stack gap="md">
-        <Stack gap={4}>
-          <Title order={4} lh={1.2}>
-            {t('account.email.sectionTitle')}
-          </Title>
-          <Text c="dimmed" size="xs">
-            {t('account.email.sectionDescription')}
-          </Text>
-        </Stack>
+      <FormSection
+        title={t('account.email.sectionTitle')}
+        description={t('account.email.sectionDescription')}
+      >
         <TextInput
           label={t('account.email.currentLabel')}
           value={profile.email}
@@ -158,7 +149,7 @@ export function MeAccount() {
             </Stack>
           </form>
         )}
-      </Stack>
-    </Stack>
+      </FormSection>
+    </>
   )
 }

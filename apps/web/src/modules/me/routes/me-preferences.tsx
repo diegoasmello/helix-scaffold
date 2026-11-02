@@ -1,10 +1,7 @@
 import {
-  Flex,
+  FormSection,
   LanguagePicker,
-  Stack,
   Switch,
-  Text,
-  Title,
   useMantineColorScheme,
 } from '@helix/ui'
 import { useTranslation } from 'react-i18next'
@@ -18,28 +15,18 @@ export function MePreferences() {
   const { colorScheme, setColorScheme } = useMantineColorScheme()
 
   return (
-    <Stack gap="xl">
-      <Stack gap="md">
-        <Stack gap={4}>
-          <Title order={4} lh={1.2}>
-            {t('preferences.language.sectionTitle')}
-          </Title>
-          <Text c="dimmed" size="xs">
-            {t('preferences.language.sectionDescription')}
-          </Text>
-        </Stack>
+    <>
+      <FormSection
+        title={t('preferences.language.sectionTitle')}
+        description={t('preferences.language.sectionDescription')}
+      >
         <LanguagePicker languages={appConfig.i18n.languages} />
-      </Stack>
+      </FormSection>
 
-      <Flex gap="md" align="center" justify="space-between">
-        <Stack gap={4}>
-          <Title order={4} lh={1.2}>
-            {t('preferences.appearance.sectionTitle')}
-          </Title>
-          <Text c="dimmed" size="xs">
-            {t('preferences.appearance.sectionDescription')}
-          </Text>
-        </Stack>
+      <FormSection
+        title={t('preferences.appearance.sectionTitle')}
+        description={t('preferences.appearance.sectionDescription')}
+      >
         <Switch
           label={t('preferences.appearance.darkMode')}
           checked={colorScheme === 'dark'}
@@ -47,23 +34,18 @@ export function MePreferences() {
             setColorScheme(e.currentTarget.checked ? 'dark' : 'light')
           }
         />
-      </Flex>
+      </FormSection>
 
-      <Flex gap="md" align="center" justify="space-between">
-        <Stack gap={4}>
-          <Title order={4} lh={1.2}>
-            {t('preferences.navigation.sectionTitle')}
-          </Title>
-          <Text c="dimmed" size="xs">
-            {t('preferences.navigation.sectionDescription')}
-          </Text>
-        </Stack>
+      <FormSection
+        title={t('preferences.navigation.sectionTitle')}
+        description={t('preferences.navigation.sectionDescription')}
+      >
         <Switch
           label={t('preferences.navigation.hideSidebar')}
           checked={sidebarCollapsed}
           onChange={toggleSidebar}
         />
-      </Flex>
-    </Stack>
+      </FormSection>
+    </>
   )
 }

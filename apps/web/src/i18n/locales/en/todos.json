@@ -13,7 +13,9 @@
     "title": "Edit Todo"
   },
   "detail": {
-    "title": "View Todo"
+    "title": "View Todo",
+    "attachmentsCount_one": "{{count}} file",
+    "attachmentsCount_other": "{{count}} files"
   },
   "columns": {
     "title": "Title",
@@ -90,5 +92,14 @@
     "updateFailed": "Failed to update todo",
     "deleted": "Todo deleted successfully",
     "deleteFailed": "Failed to delete todo"
+  },
+  "sections": {
+    "details": "Details",
+    "basic": "Basic information",
+    "basicDescription": "How the todo shows up in the list and in notifications.",
+    "body": "Full text",
+    "bodyDescription": "Accepts headings, lists, links and images.",
+    "files": "Image and files",
+    "filesDescription": "The image shows on the detail page. Attachments and the PDF are available for download."
   }
 }

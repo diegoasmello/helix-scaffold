@@ -1,10 +1,10 @@
 import { useGetSubscriptionsIdSuspense } from '@helix/api-client/hooks'
 import {
   Button,
-  Group,
-  LabeledValue,
+  DetailList,
+  IconPencil,
+  PageSection,
   PageView,
-  Stack,
   StatusBadge,
 } from '@helix/ui'
 import { parseISO } from 'date-fns'
@@ -12,6 +12,7 @@ import { useTranslation } from 'react-i18next'
 
 import { formatDate } from '@/utils/date'
 
+import { HasPermission } from '../../auth/components/has-permission'
 import { SUBSCRIPTION_STATUS_TONES } from '../constants'
 import { useSubscription } from '../hooks/use-subscription'
 import { subscriptionsDetailRoute, subscriptionsListRoute } from '.'
@@ -25,72 +26,66 @@ export function SubscriptionsDetail() {
 
   const { data: item } = useGetSubscriptionsIdSuspense(id)
 
-  const statusTone = SUBSCRIPTION_STATUS_TONES[item.status]
+  const date = (value: string | null | undefined) =>
+    value ? formatDate(parseISO(value), 'short') : null
 
   return (
     <PageView
-      title={t('detail.title')}
-      footerActions={
-        <Group>
+      title={getPlanName(item.planId)}
+      titleAside={
+        <StatusBadge tone={SUBSCRIPTION_STATUS_TONES[item.status]}>
+          {t(`status.${item.status}`)}
+        </StatusBadge>
+      }
+      actions={
+        <HasPermission resource="subscriptions" action="edit">
           <Button
-            size="md"
-            variant="default"
-            onClick={() => navigate({ to: '/subscriptions' })}
+            leftSection={<IconPencil size={17} />}
+            onClick={() =>
+              navigate({ to: '/subscriptions/$id/edit', params: { id } })
+            }
           >
-            {tc('actions.back')}
+            {tc('actions.edit')}
           </Button>
-        </Group>
+        </HasPermission>
       }
     >
-      <Stack gap="md">
-        <LabeledValue label={t('labels.userId')}>{item.userId}</LabeledValue>
-
-        <LabeledValue label={t('labels.planId')}>
-          {getPlanName(item.planId)}
-        </LabeledValue>
-
-        <LabeledValue label={t('labels.status')}>
-          <StatusBadge tone={statusTone}>
-            {t(`status.${item.status}`)}
-          </StatusBadge>
-        </LabeledValue>
-
-        <LabeledValue label={t('labels.currentPeriodStart')}>
-          {formatDate(parseISO(item.currentPeriodStart), 'short')}
-        </LabeledValue>
-
-        <LabeledValue label={t('labels.currentPeriodEnd')}>
-          {formatDate(parseISO(item.currentPeriodEnd), 'short')}
-        </LabeledValue>
-
-        {item.trialEndsAt && (
-          <LabeledValue label={t('labels.trialEndsAt')}>
-            {formatDate(parseISO(item.trialEndsAt), 'short')}
-          </LabeledValue>
-        )}
-
-        {item.pastDueSince && (
-          <LabeledValue label={t('labels.pastDueSince')}>
-            {formatDate(parseISO(item.pastDueSince), 'short')}
-          </LabeledValue>
-        )}
-
-        {item.canceledAt && (
-          <LabeledValue label={t('labels.canceledAt')}>
-            {formatDate(parseISO(item.canceledAt), 'short')}
-          </LabeledValue>
-        )}
-
-        {item.externalId && (
-          <LabeledValue label={t('labels.externalId')}>
-            {item.externalId}
-          </LabeledValue>
-        )}
-
-        <LabeledValue label={t('labels.createdAt')}>
-          {formatDate(parseISO(item.createdAt), 'short')}
-        </LabeledValue>
-      </Stack>
+      <PageSection title={t('sections.details')}>
+        <DetailList
+          items={[
+            { label: t('labels.userId'), value: item.userId },
+            {
+              label: t('labels.currentPeriodStart'),
+              value: date(item.currentPeriodStart),
+            },
+            {
+              label: t('labels.currentPeriodEnd'),
+              value: date(item.currentPeriodEnd),
+            },
+            {
+              label: t('labels.trialEndsAt'),
+              value: date(item.trialEndsAt),
+              hidden: !item.trialEndsAt,
+            },
+            {
+              label: t('labels.pastDueSince'),
+              value: date(item.pastDueSince),
+              hidden: !item.pastDueSince,
+            },
+            {
+              label: t('labels.canceledAt'),
+              value: date(item.canceledAt),
+              hidden: !item.canceledAt,
+            },
+            {
+              label: t('labels.externalId'),
+              value: item.externalId,
+              hidden: !item.externalId,
+            },
+            { label: t('labels.createdAt'), value: date(item.createdAt) },
+          ]}
+        />
+      </PageSection>
     </PageView>
   )
 }

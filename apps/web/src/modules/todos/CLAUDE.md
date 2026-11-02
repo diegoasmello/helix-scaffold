@@ -67,7 +67,7 @@ interface TodoFormValues {
 | `file`        | `FileInput`      | `accept={PDF_MIME_TYPE}`, `onUpload={uploadFile}` |
 | `image`       | `FileInput`      | `accept={IMAGE_MIME_TYPE}`, `onUpload={uploadFile}` |
 
-The detail screen uses `RichTextRenderer` (from `@helix/ui`) to render the `content` HTML string — never render it as plain text.
+The form is split in three `FormSection`s — basic information (title, description, date + status), full text (content) and image and files (image, attachments, PDF). The detail screen uses `RichTextRenderer` (from `@helix/ui`) to render the `content` HTML string — never render it as plain text.
 
 `uploadFile` is imported from `@/modules/uploads/service`. `FilesInput`, `FileInput`, `PDF_MIME_TYPE`, and `IMAGE_MIME_TYPE` come from `@helix/ui`. The detail screen renders attachments using `FilePreview` from `@helix/ui` inside a `SimpleGrid cols={{ base: 1, sm: 2 }}`.
 
@@ -119,7 +119,7 @@ Inline in each component — no `hooks.ts`. Cache operations in `useMutation.onS
 
 **Create**: `resourceCache.changed('todos')`. Does NOT send `status`.  
 **Update**: `resourceCache.saved('todos', updated)` — seeds the item cache, refetches the lists.  
-**Delete**: `resourceCache.removed('todos', id)` — drops the item cache, refetches the lists. Delete mutation lives in `TodoList` (not the detail screen).
+**Delete**: `resourceCache.removed('todos', id)` — drops the item cache, refetches the lists. Both `TodoList` (row action) and `TodoDetail` (header button) delete; the detail navigates to `/todos` **before** dropping the cache, or its own query would refetch a 404.
 
 ## Sidebar
 

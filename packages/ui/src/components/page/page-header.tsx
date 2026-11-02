@@ -12,22 +12,37 @@ export interface PageHeaderProps {
   titleAside?: ReactNode
   /** Right side — the page's buttons. Wraps under the title on small screens. */
   actions?: ReactNode
+  /**
+   * The route's breadcrumb above the title. Defaults to `true`; detail and
+   * form pages turn it off — there it only takes room.
+   */
+  withBreadcrumb?: boolean
+  /** Below `sm`, the actions fill the width in equal columns. */
+  fullWidthActionsOnMobile?: boolean
 }
 
 /**
- * The top of every page: the route's breadcrumb, the `h1` title, an optional
- * description and the page actions. Used by `PageList`, `PageCreate`,
- * `PageEdit` and `PageView`; use it directly on custom pages.
+ * The top of every page: the route's breadcrumb (lists and custom pages), the
+ * `h1` title, an optional description and the page actions. Used by
+ * `PageList`, `PageCreate`, `PageEdit` and `PageView`; use it directly on
+ * custom pages.
  */
 export function PageHeader(props: Readonly<PageHeaderProps>) {
-  const { title, description, titleAside, actions } = props
+  const {
+    title,
+    description,
+    titleAside,
+    actions,
+    withBreadcrumb = true,
+    fullWidthActionsOnMobile = false,
+  } = props
 
-  const { classes } = useStyles()
+  const { classes, cx } = useStyles()
 
   return (
     <header className={classes.root}>
       <div className={classes.heading}>
-        <RouteBreadcrumb />
+        {withBreadcrumb && <RouteBreadcrumb />}
         <div className={classes.titleRow}>
           <Title order={1}>{title}</Title>
           {titleAside}
@@ -38,7 +53,16 @@ export function PageHeader(props: Readonly<PageHeaderProps>) {
           </Text>
         )}
       </div>
-      {actions && <div className={classes.actions}>{actions}</div>}
+      {actions && (
+        <div
+          className={cx(
+            classes.actions,
+            fullWidthActionsOnMobile && classes.actionsFullWidth
+          )}
+        >
+          {actions}
+        </div>
+      )}
     </header>
   )
 }
@@ -56,6 +80,17 @@ const useStyles = createStyles((theme) => ({
     flex-direction: column;
     gap: 6px;
     min-width: 0;
+
+    h1 {
+      overflow-wrap: anywhere;
+    }
+
+    @media (max-width: calc(${theme.breakpoints.sm} - 0.0625em)) {
+      h1 {
+        font-size: 26px;
+        line-height: 1.25;
+      }
+    }
   `,
   titleRow: css`
     display: flex;
@@ -71,5 +106,17 @@ const useStyles = createStyles((theme) => ({
     display: flex;
     flex-wrap: wrap;
     gap: 10px;
+  `,
+  actionsFullWidth: css`
+    @media (max-width: calc(${theme.breakpoints.sm} - 0.0625em)) {
+      width: 100%;
+      display: grid;
+      grid-auto-flow: column;
+      grid-auto-columns: minmax(0, 1fr);
+
+      & > .mantine-Button-root {
+        height: 46px;
+      }
+    }
   `,
 }))

@@ -62,12 +62,22 @@ export function FileCard(props: Readonly<FileCardProps>) {
   )
 }
 
-const useStyles = createStyles((theme) => ({
+const useStyles = createStyles((theme, _, u) => ({
   card: css`
-    border: 1px solid ${theme.colors.gray[3]};
-    border-radius: ${theme.radius.sm};
+    ${u.light} {
+      border: 1px solid ${theme.colors.gray[3]};
+    }
+    ${u.dark} {
+      border: 1px solid ${theme.colors.dark[5]};
+    }
+    border-radius: ${theme.radius.md};
     padding: 0 ${theme.spacing.sm};
-    background: ${theme.white};
+    ${u.light} {
+      background: ${theme.white};
+    }
+    ${u.dark} {
+      background: ${theme.colors.dark[6]};
+    }
     height: 60px;
   `,
   thumbnail: css`
@@ -81,8 +91,18 @@ const useStyles = createStyles((theme) => ({
     width: 40px;
     height: 40px;
     border-radius: ${theme.radius.xs};
-    background: ${theme.colors.gray[1]};
-    color: ${theme.colors.gray[6]};
+    ${u.light} {
+      background: ${theme.colors.gray[1]};
+    }
+    ${u.dark} {
+      background: ${theme.colors.dark[5]};
+    }
+    ${u.light} {
+      color: ${theme.colors.gray[6]};
+    }
+    ${u.dark} {
+      color: ${theme.colors.dark[2]};
+    }
     flex-shrink: 0;
   `,
   fileInfo: css`

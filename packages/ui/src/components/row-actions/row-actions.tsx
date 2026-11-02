@@ -33,7 +33,7 @@ export function RowActions(props: Readonly<RowActionsProps>) {
   const { actions, menuLabel } = props
 
   const { t } = useTranslation('ui')
-  const { classes, cx } = useStyles()
+  const { classes } = useStyles()
   const layout = useDataTableLayout()
 
   const visible = actions.filter((action) => !action.hidden)
@@ -82,11 +82,9 @@ export function RowActions(props: Readonly<RowActionsProps>) {
         <Button
           key={action.label}
           variant="default"
+          color={action.danger ? 'red' : undefined}
           size={inCard ? 'sm' : 'xs'}
-          className={cx(
-            inCard && classes.cardButton,
-            action.danger && classes.danger
-          )}
+          className={inCard ? classes.cardButton : undefined}
           onClick={action.onClick}
         >
           {action.label}
@@ -96,22 +94,8 @@ export function RowActions(props: Readonly<RowActionsProps>) {
   )
 }
 
-const useStyles = createStyles((theme, _, u) => ({
+const useStyles = createStyles(() => ({
   cardButton: css`
     height: 44px;
-  `,
-  danger: css`
-    ${u.light} {
-      color: ${theme.colors.red[7]};
-      &:hover {
-        background-color: ${theme.colors.red[0]};
-      }
-    }
-    ${u.dark} {
-      color: ${theme.colors.red[4]};
-      &:hover {
-        background-color: rgba(250, 82, 82, 0.12);
-      }
-    }
   `,
 }))

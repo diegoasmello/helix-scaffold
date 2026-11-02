@@ -501,7 +501,7 @@ export function XxxCreateDrawer(props: Readonly<XxxCreateDrawerProps>) {
 
 - **Header** (68px, bordered): the global search (`search` slot → `HeaderSearch`, `Ctrl K`), the bell (`notifications` slot → `NotificationsMenu`) and the `UserMenu` (name + email). Below `md` (1024px) it adds a menu button and the logo.
 - **Navbar**: the `Sidebar`, driven by `sidebarGroups` from `src/config/sidebar.ts`. Below `md` it moves into a drawer opened by the header's menu button.
-- **Main**: `<Outlet />` renders the active route on a white surface. The breadcrumb is no longer in the header — each page renders it above its title (`PageHeader`, see _Breadcrumb convention_).
+- **Main**: `<Outlet />` renders the active route on a white surface. The breadcrumb is no longer in the header — list and custom pages render it above their title (`PageHeader`, see _Breadcrumb convention_); create, edit and detail pages have none.
 
 **Search and notifications are UI only.** `app.tsx` passes `HeaderSearch` an `onSearch` that just says search is not connected yet (`common:search.notAvailable`), and `NotificationsMenu` an empty `items` list. A product wires `onSearch` to its search endpoint and `items`/`onMarkAllRead`/`onViewAll` to its notifications query — the components need no change.
 
@@ -593,17 +593,20 @@ initialValues: {
 
 ### Detail screen
 
-Use `FilePreview` from `@helix/ui` inside a `SimpleGrid`:
+Use `FilePreview` from `@helix/ui` inside a `SimpleGrid`, in its own `PageSection` (single files go in the `aside`, under the `DetailList`):
 
 ```tsx
 {item.attachments.length > 0 && (
-  <LabeledValue label="Attachments">
+  <PageSection
+    title={t('labels.attachments')}
+    meta={t('detail.attachmentsCount', { count: item.attachments.length })}
+  >
     <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="xs">
       {item.attachments.map((a) => (
         <FilePreview key={a.id} upload={a} />
       ))}
     </SimpleGrid>
-  </LabeledValue>
+  </PageSection>
 )}
 ```
 
@@ -1210,7 +1213,7 @@ Use the same resource string registered in `apps/api/src/config/permissions.ts`.
 
 ### 5. Breadcrumb convention
 
-Breadcrumb `label` values are **i18n keys**, not translated strings. `RouteBreadcrumb` (`packages/ui`, rendered by `PageHeader` — so by every `PageList`/`PageCreate`/`PageEdit`/`PageView`) calls `useTranslation('common')` and resolves each label at render time via `t(label, { defaultValue: label })`. This makes breadcrumbs reactive to language changes. A single crumb is not rendered (it would only repeat the page title), so list pages show none; create/edit/detail pages show the trail. Outside a router (component tests) it renders nothing.
+Breadcrumb `label` values are **i18n keys**, not translated strings. `RouteBreadcrumb` (`packages/ui`, rendered by `PageHeader` on list and custom pages — `PageCreate`/`PageEdit`/`PageView` turn it off) calls `useTranslation('common')` and resolves each label at render time via `t(label, { defaultValue: label })`. This makes breadcrumbs reactive to language changes. A single crumb is not rendered (it would only repeat the page title), so list pages show none, and create/edit/detail pages never render it — keep declaring `staticData.breadcrumbs` anyway: custom pages built on `PageHeader` show the trail. Outside a router (component tests) it renders nothing.
 
 Do **not** call `t()` inside `staticData`. `staticData` is evaluated once at module load, outside React, so any string baked in there would be frozen in the language active at startup and would never update.
 
@@ -1255,9 +1258,16 @@ Use the page wrapper components from `@helix/ui`:
 | Screen | Wrapper      | Key props                                                                      |
 | ------ | ------------ | ------------------------------------------------------------------------------ |
 | List   | `PageList`   | `title`, `actions` (Create button)                                             |
-| Create | `PageCreate` | `title`, `children` (form fields), `footerActions` (Cancel + Save)             |
-| Edit   | `PageEdit`   | `title`, `children` (form fields), `footerActions` (Cancel + Save)             |
-| Detail | `PageView`   | `title` (item name), `footerActions` (Back button), `children` (LabeledValues) |
+| Create | `PageCreate` | `title`, `children` (`FormSection`s), `footerActions` (Cancel + Save)          |
+| Edit   | `PageEdit`   | `title`, `children` (`FormSection`s), `footerActions` (Cancel + Save)          |
+| Detail | `PageView`   | `title` (the record's name), `titleAside` (its `StatusBadge`), `actions` (Edit, Delete), `children` (`PageSection`s), `aside` (`DetailList`) |
+
+**Create, edit and detail pages are edge-to-edge and have no breadcrumb** (it only took room). The header, each section and the aside are separated by full-width borders; there is no Back button — the sidebar and the browser handle going back.
+
+- **Detail** — the `h1` is the record itself (`item.title`, `item.name`), not "View Xxx"; its state goes in `titleAside`. Header `actions`: Edit (primary, `IconPencil`) gated with `<HasPermission>`, and in `todos` also Delete (`variant="default" color="red"`, `IconTrash` — the theme turns that into the bordered red button). Long content goes in `PageSection`s (`title`, optional `meta` such as a file count); the record's short properties go in a `DetailList` (`items: { label, value, hidden? }[]`, empty values render "—"), either in `aside` (a 340px right column, above the content below `lg`) or in a "Details" `PageSection` when the page has little else. Do not repeat in the `DetailList` what the title or description already shows.
+- **Forms** — the shared form component returns `FormSection`s (`title`, `description`, fields): title and description on the left, fields on the right (max 720px), stacked on phones. Pairs of short fields go in `<SimpleGrid cols={{ base: 1, xs: 2 }}>`. A form also rendered elsewhere (e.g. `RoleCreateDrawer`) exports its fields alone too (`RolesFormFields`).
+- **Footer** — `footerActions` is a fragment of buttons (no `Group`): the bar sticks to the bottom of the screen and, inside a `Form`, shows "Unsaved changes" while the form is dirty; on phones the buttons fill the width. After an invalid submit the page shows "Couldn't save. Fix the N highlighted fields below." (`role="alert"`) — both come from `Form` through `useFormSummary()`.
+- Plain children (no sections) keep the page padding — e.g. `roles-permissions.tsx`.
 
 **Footer button conventions** — apply to every Create, Edit, and Detail screen:
 
@@ -1411,7 +1421,7 @@ const handleSubmit = (values: XxxFormValues) => {
 
 return (
   <Form<XxxFormValues> form={form} onSubmit={handleSubmit}>
-    <PageCreate title={t('create.title')} footerActions={<Group>...</Group>}>
+    <PageCreate title={t('create.title')} footerActions={<>{/* Cancel, Save */}</>}>
       <XxxForm form={form} />
     </PageCreate>
   </Form>
@@ -1422,7 +1432,7 @@ return (
 // xxx-edit.tsx — same shape with PageEdit
 return (
   <Form<XxxFormValues> form={form} onSubmit={handleSubmit}>
-    <PageEdit title={t('edit.title')} footerActions={<Group>...</Group>}>
+    <PageEdit title={t('edit.title')} footerActions={<>{/* Cancel, Save */}</>}>
       <XxxForm form={form} />
     </PageEdit>
   </Form>

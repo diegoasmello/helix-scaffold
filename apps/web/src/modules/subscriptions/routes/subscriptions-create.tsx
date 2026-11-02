@@ -1,5 +1,5 @@
 import { postSubscriptions } from '@helix/api-client/hooks'
-import { Button, Form, Group, notify, PageCreate, useForm } from '@helix/ui'
+import { Button, Form, notify, PageCreate, useForm } from '@helix/ui'
 import { useMutation } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 
@@ -76,7 +76,7 @@ export function SubscriptionsCreate() {
       <PageCreate
         title={t('create.title')}
         footerActions={
-          <Group justify="flex-end">
+          <>
             <Button
               size="md"
               variant="default"
@@ -89,7 +89,7 @@ export function SubscriptionsCreate() {
             <Button size="md" type="submit" loading={isPending}>
               {tc('actions.save')}
             </Button>
-          </Group>
+          </>
         }
       >
         <SubscriptionsForm form={form} plans={plans} />

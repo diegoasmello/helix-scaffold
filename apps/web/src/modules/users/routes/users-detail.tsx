@@ -1,10 +1,17 @@
 import { useGetUsersIdSuspense } from '@helix/api-client/hooks'
-import { Button, Grid, Group, LabeledValue, PageView, Text } from '@helix/ui'
+import {
+  Button,
+  DetailList,
+  IconPencil,
+  PageSection,
+  PageView,
+} from '@helix/ui'
 import { parseISO } from 'date-fns'
 import { useTranslation } from 'react-i18next'
 
 import { formatDate } from '@/utils/date'
 
+import { HasPermission } from '../../auth/components/has-permission'
 import { usersDetailRoute } from '.'
 
 export function UsersDetail() {
@@ -17,50 +24,34 @@ export function UsersDetail() {
 
   return (
     <PageView
-      title={t('detail.title')}
-      footerActions={
-        <Group justify="flex-end">
+      title={item.name}
+      description={item.email}
+      actions={
+        <HasPermission resource="users" action="edit">
           <Button
-            size="md"
-            variant="default"
-            onClick={() => navigate({ to: '/users' })}
+            leftSection={<IconPencil size={17} />}
+            onClick={() => navigate({ to: '/users/$id/edit', params: { id } })}
           >
-            {tc('actions.back')}
+            {tc('actions.edit')}
           </Button>
-        </Group>
+        </HasPermission>
       }
     >
-      <Grid>
-        <Grid.Col span={{ base: 12, sm: 6 }}>
-          <LabeledValue label={t('labels.name')}>
-            <Text size="md">{item.name}</Text>
-          </LabeledValue>
-        </Grid.Col>
-        <Grid.Col span={{ base: 12, sm: 6 }}>
-          <LabeledValue label={t('labels.email')}>
-            <Text size="md">{item.email}</Text>
-          </LabeledValue>
-        </Grid.Col>
-        <Grid.Col span={{ base: 12, sm: 6 }}>
-          <LabeledValue label={t('labels.role')}>
-            <Text size="md">{item.role?.name ?? '—'}</Text>
-          </LabeledValue>
-        </Grid.Col>
-        <Grid.Col span={{ base: 12, sm: 6 }}>
-          <LabeledValue label={t('labels.emailVerified')}>
-            <Text size="md">
-              {item.emailVerified ? t('labels.yes') : t('labels.no')}
-            </Text>
-          </LabeledValue>
-        </Grid.Col>
-        <Grid.Col span={{ base: 12, sm: 6 }}>
-          <LabeledValue label={t('labels.createdAt')}>
-            <Text size="md">
-              {formatDate(parseISO(item.createdAt), 'short')}
-            </Text>
-          </LabeledValue>
-        </Grid.Col>
-      </Grid>
+      <PageSection title={t('sections.details')}>
+        <DetailList
+          items={[
+            { label: t('labels.role'), value: item.role?.name },
+            {
+              label: t('labels.emailVerified'),
+              value: item.emailVerified ? t('labels.yes') : t('labels.no'),
+            },
+            {
+              label: t('labels.createdAt'),
+              value: formatDate(parseISO(item.createdAt), 'short'),
+            },
+          ]}
+        />
+      </PageSection>
     </PageView>
   )
 }

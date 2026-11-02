@@ -114,11 +114,20 @@ export function createTheme(
         }),
       },
       Button: {
-        styles: (_theme: MantineTheme, props: { size?: string }) => ({
+        // `variant="default"` ignores `color`; with `color="red"` it becomes
+        // the bordered destructive button (Delete next to Edit).
+        styles: (
+          theme: MantineTheme,
+          props: { size?: string; variant?: string; color?: string }
+        ) => ({
           root: {
             fontSize: '14px',
             fontWeight: 500,
             ...(props.size === 'xs' && { fontSize: '13.5px' }),
+            ...(props.variant === 'default' &&
+              props.color === 'red' && {
+                color: `light-dark(${theme.colors.red[7]}, ${theme.colors.red[4]})`,
+              }),
           },
         }),
       },

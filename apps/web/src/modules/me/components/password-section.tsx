@@ -2,6 +2,7 @@ import { patchMePassword, postMeSetPassword } from '@helix/api-client/hooks'
 import {
   Button,
   Center,
+  FormSection,
   Grid,
   GridCol,
   Group,
@@ -9,8 +10,6 @@ import {
   notify,
   PasswordInput,
   Stack,
-  Text,
-  Title,
   useForm,
 } from '@helix/ui'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -103,18 +102,14 @@ export function PasswordSection() {
   })
 
   return (
-    <Stack gap="md">
-      <Stack gap={4}>
-        <Title order={4} lh={1.2}>
-          {t('security.sectionTitle')}
-        </Title>
-        <Text c="dimmed" size="xs">
-          {!accountsLoading && !hasPassword
-            ? t('security.passwordNotSetDescription')
-            : t('security.sectionDescription')}
-        </Text>
-      </Stack>
-
+    <FormSection
+      title={t('security.sectionTitle')}
+      description={
+        !accountsLoading && !hasPassword
+          ? t('security.passwordNotSetDescription')
+          : t('security.sectionDescription')
+      }
+    >
       {accountsLoading ? (
         <Center>
           <Loader size="sm" />
@@ -178,6 +173,6 @@ export function PasswordSection() {
           </Stack>
         </form>
       )}
-    </Stack>
+    </FormSection>
   )
 }

@@ -106,5 +106,11 @@
   },
   "rowActions": {
     "more": "Actions"
+  },
+  "form": {
+    "saveFailed": "Couldn't save.",
+    "fixFields_one": "Fix the highlighted field below.",
+    "fixFields_other": "Fix the {{count}} highlighted fields below.",
+    "unsavedChanges": "Unsaved changes"
   }
 }

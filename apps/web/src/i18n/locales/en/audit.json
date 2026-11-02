@@ -21,5 +21,8 @@
     "ip": "IP",
     "userAgent": "User Agent",
     "metadata": "Metadata"
+  },
+  "sections": {
+    "event": "Event"
   }
 }

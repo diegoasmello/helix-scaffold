@@ -1,5 +1,6 @@
 import {
   createSubscription,
+  getMePermissionsHandler,
   getSubscriptionsIdHandler,
   getSubscriptionStatusHandler,
   getSubscriptionStatusHandlerResponse200,
@@ -22,6 +23,23 @@ const mockNavigate = vi.fn()
 vi.mock('.', () => ({
   subscriptionsDetailRoute: { useParams: () => ({ id: '1' }) },
   subscriptionsListRoute: { useNavigate: () => mockNavigate },
+}))
+
+vi.mock('../../../lib/authentication', () => ({
+  authClient: {
+    useSession: () => ({
+      data: {
+        user: {
+          id: 'test-user',
+          name: 'Test User',
+          email: 'test@example.com',
+          image: null,
+          roleId: 'test-role',
+        },
+      },
+      isPending: false,
+    }),
+  },
 }))
 
 const plans = [
@@ -160,10 +178,24 @@ describe('SubscriptionsDetail', () => {
     expect(screen.queryByText('External ID')).not.toBeInTheDocument()
   })
 
-  it('navigates back to the list when Back is clicked', async () => {
+  it('opens the edit page from the header', async () => {
+    server.use(
+      getMePermissionsHandler({ grants: { subscriptions: ['view', 'edit'] } })
+    )
+    renderSubscriptionsDetail()
+    await userEvent.click(await screen.findByRole('button', { name: 'Edit' }))
+    expect(mockNavigate).toHaveBeenCalledWith({
+      to: '/subscriptions/$id/edit',
+      params: { id: '1' },
+    })
+  })
+
+  it('hides Edit without subscriptions:edit', async () => {
+    server.use(getMePermissionsHandler({ grants: { subscriptions: ['view'] } }))
     renderSubscriptionsDetail()
     await screen.findByText('user-1')
-    await userEvent.click(screen.getByRole('button', { name: 'Back' }))
-    expect(mockNavigate).toHaveBeenCalledWith({ to: '/subscriptions' })
+    expect(
+      screen.queryByRole('button', { name: 'Edit' })
+    ).not.toBeInTheDocument()
   })
 })

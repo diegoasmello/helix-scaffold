@@ -2,6 +2,7 @@ import type { UseFormReturnType } from '@mantine/form'
 import type { ComponentProps } from 'react'
 
 import { useFormBlocker } from '../../hooks'
+import { FormSummaryContext } from './form-summary'
 
 export interface FormProps<Values, TransformedValues = Values> extends Omit<
   ComponentProps<'form'>,
@@ -25,7 +26,10 @@ export function Form<Values, TransformedValues = Values>(
     ...rest
   } = props
 
-  useFormBlocker(blockNavigationOnDirty, form.isDirty())
+  const dirty = form.isDirty()
+  const errorCount = Object.values(form.errors).filter(Boolean).length
+
+  useFormBlocker(blockNavigationOnDirty, dirty)
 
   const handleSubmit = form.onSubmit(
     (values) => {
@@ -34,7 +38,6 @@ export function Form<Values, TransformedValues = Values>(
     },
     (errors) => {
       if (focusOnError) {
-        // add algum notify de feedback?
         const firstErrorPath = Object.keys(errors)[0]
         form.getInputNode(firstErrorPath)?.focus()
       }
@@ -42,8 +45,10 @@ export function Form<Values, TransformedValues = Values>(
   )
 
   return (
-    <form onSubmit={handleSubmit} noValidate {...rest}>
-      {children}
-    </form>
+    <FormSummaryContext.Provider value={{ dirty, errorCount }}>
+      <form onSubmit={handleSubmit} noValidate {...rest}>
+        {children}
+      </form>
+    </FormSummaryContext.Provider>
   )
 }

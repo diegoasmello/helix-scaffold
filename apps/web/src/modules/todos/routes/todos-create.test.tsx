@@ -148,6 +148,24 @@ describe('TodoCreate', () => {
     expect(errors.length).toBeGreaterThanOrEqual(2)
   })
 
+  it('sums up the fields to fix after an invalid submit', async () => {
+    renderTodoCreate()
+    await screen.findByRole('heading', { name: 'Create Todo' })
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: 'Save' }))
+    const alert = await screen.findByRole('alert')
+    expect(alert).toHaveTextContent("Couldn't save.")
+    expect(alert).toHaveTextContent(/Fix the \d+ highlighted fields below\./)
+  })
+
+  it('flags unsaved changes next to the save button', async () => {
+    renderTodoCreate()
+    await screen.findByRole('heading', { name: 'Create Todo' })
+    expect(screen.queryByText('Unsaved changes')).not.toBeInTheDocument()
+    await userEvent.type(screen.getByPlaceholderText('Todo title'), 'New')
+    expect(screen.getByText('Unsaved changes')).toBeInTheDocument()
+  })
+
   it('calls POST /todos with correct payload and navigates on success', async () => {
     let capturedBody: CreateTodoInput | undefined
     server.use(

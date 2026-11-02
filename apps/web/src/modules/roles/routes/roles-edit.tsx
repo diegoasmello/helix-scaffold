@@ -1,5 +1,5 @@
 import { patchRolesId, useGetRolesIdSuspense } from '@helix/api-client/hooks'
-import { Button, Form, Group, notify, PageEdit, useForm } from '@helix/ui'
+import { Button, Form, notify, PageEdit, useForm } from '@helix/ui'
 import { useMutation } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 
@@ -67,7 +67,7 @@ export function RolesEdit() {
       <PageEdit
         title={t('edit.title')}
         footerActions={
-          <Group justify="flex-end">
+          <>
             <Button
               size="md"
               variant="default"
@@ -79,7 +79,7 @@ export function RolesEdit() {
             <Button size="md" type="submit" loading={isPending}>
               {tc('actions.save')}
             </Button>
-          </Group>
+          </>
         }
       >
         <RolesForm form={form} />

@@ -146,12 +146,22 @@ const useStyles = createStyles((theme, _, u) => ({
       background-color: ${theme.colors.dark[7]};
     }
   `,
+  // The page gutters are variables so full-bleed pages (`PageView`,
+  // `PageCreate`, `PageEdit`) can cancel them and draw edge-to-edge borders.
   container: css`
+    --helix-page-px: 28px;
+    --helix-page-pt: 28px;
+    --helix-page-pb: ${theme.spacing.xl};
     width: 100%;
-    padding: 28px 28px ${theme.spacing.xl};
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    padding: var(--helix-page-pt) var(--helix-page-px) var(--helix-page-pb);
 
     @media (max-width: calc(${theme.breakpoints.md} - 0.0625em)) {
-      padding: 20px ${theme.spacing.md} 28px;
+      --helix-page-px: ${theme.spacing.md};
+      --helix-page-pt: 20px;
+      --helix-page-pb: 28px;
     }
   `,
 }))

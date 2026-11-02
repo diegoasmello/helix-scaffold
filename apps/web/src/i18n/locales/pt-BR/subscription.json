@@ -101,5 +101,14 @@
     "live_subscription_exists": "Este usuário já tem uma assinatura ativa ou em teste. Cancele-a ou altere o plano dela.",
     "external_id_taken": "Este ID externo já está em uso por outra assinatura.",
     "user_not_found": "O usuário selecionado não existe mais."
+  },
+  "sections": {
+    "plan": "Assinante e plano",
+    "planDescription": "Quem assina, qual plano e a situação atual.",
+    "period": "Período",
+    "periodDescription": "O período de cobrança em vigor e, se houver, o fim do teste.",
+    "billing": "Cobrança",
+    "billingDescription": "O ID da assinatura no processador de pagamento, quando ele a gerencia.",
+    "details": "Detalhes"
   }
 }

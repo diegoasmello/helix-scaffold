@@ -106,5 +106,11 @@
   },
   "rowActions": {
     "more": "Ações"
+  },
+  "form": {
+    "saveFailed": "Não foi possível salvar.",
+    "fixFields_one": "Corrija o campo destacado abaixo.",
+    "fixFields_other": "Corrija os {{count}} campos destacados abaixo.",
+    "unsavedChanges": "Alterações não salvas"
   }
 }
