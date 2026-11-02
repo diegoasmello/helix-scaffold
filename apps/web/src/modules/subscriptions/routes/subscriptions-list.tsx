@@ -165,6 +165,7 @@ export function SubscriptionsList() {
       }
     >
       <DataTable
+        cardTitleAside="status"
         records={subscriptionsResponse.data}
         columns={columns}
         {...paginationProps}

@@ -221,11 +221,13 @@ export function TodoList() {
             placeholder: t('filters.search'),
           }
         }
+        resultCount={todosResponse.total}
         opened={filtersOpened}
         onOpenedChange={setFiltersOpened}
       />
 
       <DataTable
+        cardTitleAside="status"
         emptyState={
           narrowed ? (
             <FilteredEmptyState

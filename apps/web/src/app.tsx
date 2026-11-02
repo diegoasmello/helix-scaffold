@@ -78,7 +78,11 @@ export function App() {
       >
         <Layout
           sidebarGroups={visibleGroups}
-          user={user ? { ...user, description: user.email } : { name: 'Guest' }}
+          user={
+            user
+              ? { ...user, description: user.roleName ?? user.email }
+              : { name: 'Guest' }
+          }
           onAccountSettings={handleAccountSettings}
           onLogout={handleLogout}
           sidebarCollapsed={sidebarCollapsed}

@@ -15,8 +15,11 @@ import {
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { parseISO } from 'date-fns'
 import { Suspense } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+
+import { formatDate } from '@/utils/date'
 
 import { server } from '../../../mocks/server'
 import { UsersList } from './users-list'
@@ -53,6 +56,7 @@ const mockUsers = [
     emailVerified: true,
     roleId: 'role-1',
     role: { id: 'role-1', name: 'Admin' },
+    createdAt: '2026-03-12T10:00:00.000Z',
   }),
   createUserWithRole({
     id: '2',
@@ -103,6 +107,22 @@ beforeEach(() => {
 afterEach(() => vi.clearAllMocks())
 
 describe('UsersList', () => {
+  it('shows the role as a badge and the creation date', async () => {
+    renderUsersList()
+    await screen.findByText('Alice Silva')
+    const row = screen
+      .getAllByRole('row')
+      .find((r) => within(r).queryByText('Alice Silva'))!
+    expect(
+      within(row).getByText('Admin').closest('.mantine-Badge-root')
+    ).not.toBeNull()
+    expect(
+      within(row).getByText(
+        formatDate(parseISO('2026-03-12T10:00:00.000Z'), 'short')
+      )
+    ).toBeInTheDocument()
+  })
+
   it('renders all users', async () => {
     renderUsersList()
     expect(await screen.findByText('Alice Silva')).toBeInTheDocument()

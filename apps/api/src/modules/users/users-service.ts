@@ -46,6 +46,26 @@ function toUserWithRole(row: {
   }
 }
 
+/** One user with their role's id and name — also `GET /me`'s answer. */
+export async function getUserWithRole(database: Database, id: string) {
+  const [row] = await database
+    .select({
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      emailVerified: user.emailVerified,
+      roleId: user.roleId,
+      createdAt: user.createdAt,
+      updatedAt: user.updatedAt,
+      roleRefId: roles.id,
+      roleName: roles.name,
+    })
+    .from(user)
+    .leftJoin(roles, eq(user.roleId, roles.id))
+    .where(eq(user.id, id))
+  return row ? toUserWithRole(row) : null
+}
+
 export function createUsersService(
   database: Database,
   auth: Auth,
@@ -81,22 +101,7 @@ export function createUsersService(
   }
 
   async function getById(id: string) {
-    const [row] = await database
-      .select({
-        id: user.id,
-        name: user.name,
-        email: user.email,
-        emailVerified: user.emailVerified,
-        roleId: user.roleId,
-        createdAt: user.createdAt,
-        updatedAt: user.updatedAt,
-        roleRefId: roles.id,
-        roleName: roles.name,
-      })
-      .from(user)
-      .leftJoin(roles, eq(user.roleId, roles.id))
-      .where(eq(user.id, id))
-    return row ? toUserWithRole(row) : null
+    return getUserWithRole(database, id)
   }
 
   async function validateRoleExists(roleId: string) {

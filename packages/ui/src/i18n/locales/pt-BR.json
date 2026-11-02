@@ -76,18 +76,22 @@
     "searchPlaceholder": "Buscar nesta lista",
     "clearSearch": "Limpar busca",
     "editFilters": "Editar filtros",
-    "clearSearchAndFilters": "Limpar busca e filtros"
+    "clearSearchAndFilters": "Limpar busca e filtros",
+    "resultCount_one": "{{count}} resultado",
+    "resultCount_other": "{{count}} resultados"
   },
   "fileUpload": {
-    "dropFile": "Solte um arquivo ou clique para selecionar",
-    "dropFiles": "Solte arquivos aqui ou clique para selecionar",
     "uploading": "Enviando…",
     "uploadFailed": "Falha ao enviar arquivo",
     "uploadFailedCount_one": "Falha ao enviar {{count}} arquivo",
     "uploadFailedCount_other": "Falha ao enviar {{count}} arquivos",
-    "remainingCount_one": "{{count}} arquivo restante",
-    "remainingCount_other": "{{count}} arquivos restantes",
-    "removeFile": "Remover {{name}}"
+    "removeFile": "Remover {{name}}",
+    "clickToUpload": "Clique para enviar",
+    "orDropOne": "ou arraste um arquivo para cá",
+    "orDropMany": "ou arraste os arquivos para cá",
+    "uploadedCount": "{{count}} de {{max}} arquivos enviados",
+    "replace": "Trocar",
+    "remove": "Remover"
   },
   "userMenu": {
     "accountSettings": "Configurações da conta",
@@ -133,11 +137,12 @@
   },
   "dataTable": {
     "recordsPerPage": "Linhas por página",
-    "pagination": "Mostrando {{from}}–{{to}} de {{total}}",
+    "pagination": "Mostrando <b>{{from}}–{{to}}</b> de <b>{{total}}</b>",
     "noRecords": "Nenhum registro encontrado",
     "previous": "Anterior",
     "next": "Próxima",
-    "pageOf": "Página {{page}} de {{pages}}"
+    "pageOf": "Página {{page}} de {{pages}}",
+    "paginationLabel": "Paginação"
   },
   "rowActions": {
     "more": "Ações"

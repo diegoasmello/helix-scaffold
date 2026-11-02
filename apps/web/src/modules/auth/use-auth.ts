@@ -13,10 +13,12 @@ import type { AuthState, User } from './types'
 export function useAuth(): AuthState {
   const { data: session, isPending: sessionPending } = authClient.useSession()
 
+  // The profile: the current name (kept fresh by `/me/account`'s mutations)
+  // and the role's name for the header's user menu.
   const { data: meData } = useQuery({
     queryKey: getMeSuspenseQueryKey(),
     queryFn: async () => getMeSuspense(),
-    enabled: false,
+    enabled: !!session?.user,
     staleTime: Infinity,
   })
 
@@ -27,6 +29,7 @@ export function useAuth(): AuthState {
         email: session.user.email,
         avatar: session.user.image ?? undefined,
         roleId: (session.user as { roleId?: string | null }).roleId ?? null,
+        roleName: meData?.role?.name ?? null,
       }
     : null
 

@@ -6,6 +6,7 @@ import {
   createTestSession,
   findAuditLogs,
   getTestUser,
+  TEST_ROLE_NAME,
   testDb,
 } from '@/test/helpers'
 
@@ -92,6 +93,16 @@ describe('GET /me', () => {
     expect(body.email).toBe('test@test.com')
     expect(body.name).toBe('Test User')
     expect(body.password).toBeUndefined()
+  })
+
+  it("includes the user's role", async () => {
+    const res = await app.inject({
+      method: 'GET',
+      url: '/me',
+      headers: { cookie: authCookie },
+    })
+    const body = res.json()
+    expect(body.role).toEqual({ id: body.roleId, name: TEST_ROLE_NAME })
   })
 })
 

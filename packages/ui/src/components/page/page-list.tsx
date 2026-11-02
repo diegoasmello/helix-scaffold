@@ -18,7 +18,12 @@ export function PageList(props: Readonly<PageListProps>) {
 
   return (
     <div className={classes.root}>
-      <PageHeader title={title} description={description} actions={actions} />
+      <PageHeader
+        title={title}
+        description={description}
+        actions={actions}
+        fullWidthActionsOnMobile
+      />
       {children}
     </div>
   )

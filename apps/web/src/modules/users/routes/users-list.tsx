@@ -1,20 +1,26 @@
 import { deleteUsersId, useGetUsersSuspense } from '@helix/api-client/hooks'
 import {
+  Avatar,
+  Badge,
   Button,
   confirm,
   DataTable,
   type DataTableColumn,
   getDataTablePaginationProps,
   getDataTableSortingProps,
+  Group,
   notify,
   PageList,
   RowActions,
+  Text,
 } from '@helix/ui'
 import { IconPlus } from '@helix/ui'
 import { useMutation } from '@tanstack/react-query'
+import { parseISO } from 'date-fns'
 import { useTranslation } from 'react-i18next'
 
 import { useResourceCache } from '@/lib/resource-cache'
+import { formatDate } from '@/utils/date'
 
 import { HasPermission } from '../../auth/components/has-permission'
 import { useAuth } from '../../auth/use-auth'
@@ -70,15 +76,30 @@ export function UsersList() {
       accessor: 'name',
       title: t('columns.name'),
       sortable: true,
-      width: '30%',
+      render: (item) => (
+        <Group gap="sm" wrap="nowrap">
+          <Avatar name={item.name} color="initials" size={34} />
+          <Text size="sm" fw={500} truncate="end">
+            {item.name}
+          </Text>
+        </Group>
+      ),
     },
+    { accessor: 'email', title: t('columns.email'), sortable: true },
     {
       accessor: 'role',
       title: t('columns.role'),
-      render: (item) => item.role?.name ?? '—',
-      width: '30%',
+      width: 160,
+      render: (item) =>
+        item.role ? <Badge variant="default">{item.role.name}</Badge> : '—',
     },
-    { accessor: 'email', title: t('columns.email'), sortable: true },
+    {
+      accessor: 'createdAt',
+      title: t('columns.createdAt'),
+      sortable: true,
+      width: 140,
+      render: (item) => formatDate(parseISO(item.createdAt), 'short'),
+    },
     {
       accessor: 'actions',
       title: t('columns.actions'),

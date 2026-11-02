@@ -7,6 +7,7 @@ import { user } from '@/db/schema'
 import { env } from '@/env'
 import type { EmailProvider } from '@/lib/email'
 
+import { getUserWithRole } from '../users/users-service'
 import type {
   SetPasswordInput,
   UpdateMeEmailInput,
@@ -20,8 +21,10 @@ export function createMeService(
   emailProvider: EmailProvider
 ) {
   async function getMe(userId: string) {
-    const [item] = await database.select().from(user).where(eq(user.id, userId))
-    return item ?? null
+    const item = await getUserWithRole(database, userId)
+    // A signed-in session always belongs to an existing user.
+    if (!item) throw new Error(`User ${userId} not found`)
+    return item
   }
 
   async function updateMe(userId: string, data: UpdateMeInput) {

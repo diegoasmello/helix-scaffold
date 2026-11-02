@@ -20,7 +20,7 @@ import {
 import { env } from '@/env'
 
 const TEST_USER_EMAIL = 'test@test.com'
-const TEST_ROLE_NAME = '__test_admin__'
+export const TEST_ROLE_NAME = '__test_admin__'
 
 export const testDb = drizzle(env.DATABASE_URL, {
   schema,

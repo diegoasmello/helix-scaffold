@@ -131,6 +131,18 @@ describe('TodoList', () => {
     expect(within(pendingRow).getByText('Pending')).toBeInTheDocument()
   })
 
+  it('shows the result count and the pagination summary', async () => {
+    renderTodoList()
+    await screen.findByText('Review quarterly report')
+    expect(screen.getByText('2 results')).toBeInTheDocument()
+    const pagination = screen.getByRole('navigation', { name: 'Pagination' })
+    expect(pagination).toHaveTextContent('Showing 1–2 of 2')
+    expect(pagination).toHaveTextContent('Page 1 of 1')
+    expect(
+      within(pagination).getByRole('button', { name: 'Next' })
+    ).toBeDisabled()
+  })
+
   it('opens delete modal when delete button is clicked', async () => {
     renderTodoList()
     await screen.findByText('Review quarterly report')
@@ -411,7 +423,8 @@ describe('TodoList layout', () => {
       expect(cards).toHaveLength(2)
       const first = within(cards[0])
       expect(first.getByText('Review quarterly report')).toBeInTheDocument()
-      expect(first.getByText('Status')).toBeInTheDocument()
+      expect(first.getByText('Date')).toBeInTheDocument()
+      expect(first.queryByText('Status')).not.toBeInTheDocument()
       expect(first.getByText('Completed')).toBeInTheDocument()
       expect(first.getByRole('button', { name: 'View' })).toBeInTheDocument()
       expect(first.getByRole('button', { name: 'Edit' })).toBeInTheDocument()

@@ -10,6 +10,8 @@ export type User = {
   email: string
   avatar?: string
   roleId: string | null
+  /** From `GET /me` — `null` until it loads, or without a role. */
+  roleName: string | null
 }
 
 export type AuthState = {

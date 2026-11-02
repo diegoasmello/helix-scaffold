@@ -10,6 +10,17 @@ import type { Key } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { DataTableCards } from './data-table-cards'
+import { DataTablePager } from './data-table-pager'
+
+/** mantine-datatable does not export the type of `renderPagination`'s argument. */
+type PaginationRenderContext = Parameters<
+  NonNullable<
+    Extract<
+      DataTableProps<unknown>,
+      { renderPagination?: unknown }
+    >['renderPagination']
+  >
+>[0]
 
 /**
  * The list table: sits directly on the page (no card) — a header band with
@@ -17,10 +28,20 @@ import { DataTableCards } from './data-table-cards'
  * Below the `sm` breakpoint it renders one card per record instead (see
  * `DataTableCards`); tables built from column `groups` always stay tables.
  */
-export function DataTable<T>(
-  props: Readonly<Omit<DataTableProps<T>, 'withTableBorder'>>
-) {
+export type HelixDataTableProps<T> = Omit<
+  DataTableProps<T>,
+  'withTableBorder'
+> & {
+  /**
+   * Accessor of the column shown next to the title in the phone card (e.g.
+   * the status badge), without its label.
+   */
+  cardTitleAside?: string
+}
+
+export function DataTable<T>(props: Readonly<HelixDataTableProps<T>>) {
   const {
+    cardTitleAside,
     verticalSpacing = 'md',
     withColumnBorders = false,
     highlightOnHover = true,
@@ -48,6 +69,7 @@ export function DataTable<T>(
         idAccessor={
           rest.idAccessor as string | ((record: T) => Key) | undefined
         }
+        titleAside={cardTitleAside}
         page={rest.page}
         totalRecords={rest.totalRecords}
         recordsPerPage={rest.recordsPerPage}
@@ -60,16 +82,19 @@ export function DataTable<T>(
   }
 
   const tableProps = {
-    recordsPerPageLabel: t('dataTable.recordsPerPage'),
-    paginationText: ({
-      from,
-      to,
-      totalRecords,
-    }: {
-      from: number
-      to: number
-      totalRecords: number
-    }) => t('dataTable.pagination', { from, to, total: totalRecords }),
+    renderPagination: ({ state, actions }: PaginationRenderContext) => (
+      <DataTablePager
+        page={state.page}
+        totalPages={state.totalPages}
+        totalRecords={state.totalRecords ?? 0}
+        from={state.from ?? 0}
+        to={state.to ?? 0}
+        onPageChange={actions.setPage}
+        recordsPerPage={state.recordsPerPage}
+        recordsPerPageOptions={rest.recordsPerPageOptions}
+        onRecordsPerPageChange={actions.setRecordsPerPage}
+      />
+    ),
     noRecordsText,
     withTableBorder: false,
     withRowBorders: true,
@@ -141,10 +166,10 @@ const useStyles = createStyles((theme, _, u) => ({
     }
 
     .mantine-datatable-pagination {
-      padding: ${theme.spacing.md} 0 0;
+      display: block;
+      padding: 0;
       border: 0;
       background: transparent;
-      font-size: 13.5px;
     }
   `,
 }))

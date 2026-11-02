@@ -42,6 +42,8 @@ export interface FilterBarProps<T extends string = string> {
     /** Defaults to "Search this list". */
     placeholder?: string
   }
+  /** Shown at the right end of the bar: "31 results". */
+  resultCount?: number
   /** Controls whether the panel is open — e.g. "Edit filters" elsewhere. */
   opened?: boolean
   onOpenedChange?: (opened: boolean) => void
@@ -56,7 +58,8 @@ export interface FilterBarProps<T extends string = string> {
 export function FilterBar<T extends string = string>(
   props: Readonly<FilterBarProps<T>>
 ) {
-  const { fields, value, onChange, search, opened: openedProp } = props
+  const { fields, value, onChange, search, resultCount } = props
+  const { opened: openedProp } = props
   const { onOpenedChange } = props
 
   const { t, i18n } = useTranslation('ui')
@@ -196,6 +199,12 @@ export function FilterBar<T extends string = string>(
           {t('filters.clearAll')}
         </Button>
       )}
+
+      {resultCount !== undefined && (
+        <span className={classes.results} aria-live="polite">
+          {t('filters.resultCount', { count: resultCount })}
+        </span>
+      )}
     </div>
   )
 }
@@ -319,6 +328,17 @@ const useStyles = createStyles((theme, _, u) => ({
   `,
   clear: css`
     font-weight: 500;
+  `,
+  results: css`
+    margin-left: auto;
+    font-size: 13.5px;
+    white-space: nowrap;
+    ${u.light} {
+      color: ${theme.colors.gray[6]};
+    }
+    ${u.dark} {
+      color: ${theme.colors.dark[2]};
+    }
   `,
   modal: css`
     display: flex;

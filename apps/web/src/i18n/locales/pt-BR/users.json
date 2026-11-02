@@ -13,7 +13,8 @@
     "name": "Nome",
     "role": "Perfil",
     "email": "E-mail",
-    "actions": "Ações"
+    "actions": "Ações",
+    "createdAt": "Criado em"
   },
   "form": {
     "name": {

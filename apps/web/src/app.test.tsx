@@ -1,5 +1,7 @@
 import {
+  createUserWithRole,
   getMeEntitlementsHandler,
+  getMeHandler,
   getMePermissionsHandler,
   getSubscriptionStatusHandler,
   getSubscriptionStatusHandlerResponse200,
@@ -52,6 +54,7 @@ vi.mock('@helix/ui', async (importOriginal) => {
     Layout: (props: LayoutProps) => (
       <div>
         <span data-testid="user-name">{props.user.name}</span>
+        <span data-testid="user-description">{props.user.description}</span>
         {props.sidebarGroups.map((group, index) => (
           <section key={group.title ?? index} data-testid="sidebar-group">
             {group.title && <h2>{group.title}</h2>}
@@ -130,6 +133,17 @@ function sidebarLinks() {
 beforeEach(() => {
   // Default handlers: subscriptions disabled.
   mockPermissions(ALL_GRANTS)
+  server.use(
+    getMeHandler(
+      createUserWithRole({
+        id: 'test-user',
+        name: 'Test User',
+        email: 'test@example.com',
+        roleId: 'test-role',
+        role: { id: 'test-role', name: 'Administrator' },
+      })
+    )
+  )
 })
 
 afterEach(() => vi.clearAllMocks())
@@ -151,6 +165,15 @@ describe('App', () => {
     renderApp()
     expect(await screen.findByTestId('user-name')).toHaveTextContent(
       'Test User'
+    )
+  })
+
+  it("describes the user by their role's name in the header menu", async () => {
+    renderApp()
+    await waitFor(() =>
+      expect(screen.getByTestId('user-description')).toHaveTextContent(
+        'Administrator'
+      )
     )
   })
 

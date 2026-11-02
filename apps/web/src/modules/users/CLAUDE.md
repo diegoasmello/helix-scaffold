@@ -116,6 +116,8 @@ Inline in each component — no `hooks.ts`.
 
 ## RBAC in the list screen
 
+**Columns** (`UsersList`): name with an initials `Avatar` (`color="initials"`, sortable), email (sortable), role as a neutral `Badge` (`variant="default"`), created at (`formatDate(parseISO(...), 'short')`, sortable), actions.
+
 Unlike the todos module, `UsersList` gates its actions by permission:
 
 - Create button → `<HasPermission resource="users" action="create">`

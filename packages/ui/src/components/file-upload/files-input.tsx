@@ -1,14 +1,15 @@
 import { css } from '@emotion/react'
-import { Group, Input, Loader, SimpleGrid, Stack, Text } from '@mantine/core'
+import { Input, Loader, Text } from '@mantine/core'
 import type { FileWithPath } from '@mantine/dropzone'
 import { Dropzone } from '@mantine/dropzone'
 import { createStyles } from '@mantine/emotion'
-import { IconUpload, IconX } from '@tabler/icons-react'
+import { IconUpload } from '@tabler/icons-react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { notify } from '../notifications/notify'
 import { FileCard } from './file-card'
+import { useUploadFieldStyles } from './upload-field-styles'
 export type { ImageVariant, ImageVariants, UploadedFile } from './types'
 import type { UploadedFile } from './types'
 
@@ -24,6 +25,10 @@ export interface FilesInputProps<T extends UploadedFile = UploadedFile> {
   error?: string
 }
 
+/**
+ * A multi-file upload field: a drop area with "N of M files uploaded", then
+ * the files in one bordered list, each with "Remove".
+ */
 export function FilesInput<T extends UploadedFile>(
   props: Readonly<FilesInputProps<T>>
 ) {
@@ -39,7 +44,8 @@ export function FilesInput<T extends UploadedFile>(
     error,
   } = props
 
-  const { classes } = useStyles()
+  const { classes, cx } = useUploadFieldStyles()
+  const { classes: own } = useStyles()
   const { t } = useTranslation('ui')
   const [uploadingCount, setUploadingCount] = useState(0)
 
@@ -51,16 +57,14 @@ export function FilesInput<T extends UploadedFile>(
     if (filesToUpload.length === 0) return
 
     setUploadingCount((n) => n + filesToUpload.length)
-
     const results = await Promise.allSettled(filesToUpload.map(onUpload))
-
     setUploadingCount((n) => n - filesToUpload.length)
 
-    const successful = (
-      results.filter(
-        (r) => r.status === 'fulfilled'
-      ) as PromiseFulfilledResult<T>[]
-    ).map((r) => r.value)
+    const successful = results
+      .filter(
+        (r): r is PromiseFulfilledResult<Awaited<T>> => r.status === 'fulfilled'
+      )
+      .map((r) => r.value)
 
     const failedCount = results.filter((r) => r.status === 'rejected').length
     if (failedCount > 0) {
@@ -70,14 +74,17 @@ export function FilesInput<T extends UploadedFile>(
       })
     }
 
-    if (successful.length > 0) {
-      onChange([...value, ...successful])
-    }
+    if (successful.length > 0) onChange([...value, ...successful])
   }
 
   const handleRemove = (id: string) => {
-    onChange(value.filter((u) => u.id !== id))
+    onChange(value.filter((upload) => upload.id !== id))
   }
+
+  const count = t('fileUpload.uploadedCount', {
+    count: value.length,
+    max: maxFiles,
+  })
 
   return (
     <Input.Wrapper
@@ -85,125 +92,99 @@ export function FilesInput<T extends UploadedFile>(
       description={description}
       required={required}
       error={error}
+      classNames={{ description: classes.description }}
     >
-      <Stack
-        gap="xs"
-        mt={description ? 4 : undefined}
-        mb={error ? 4 : undefined}
-      >
-        {!isAtLimit && (
+      <div className={classes.body}>
+        {isAtLimit ? (
+          <Text size="sm" c="dimmed">
+            {count}
+          </Text>
+        ) : (
           <Dropzone
             onDrop={handleDrop}
             accept={accept}
-            classNames={{ root: error ? classes.dropzoneError : undefined }}
+            className={cx(classes.dropzone, error && classes.error)}
           >
-            <Group
-              justify="center"
-              gap="xl"
-              mih={80}
-              className={classes.dropzoneContent}
-            >
-              <Dropzone.Accept>
-                <IconUpload size={32} />
-              </Dropzone.Accept>
-              <Dropzone.Reject>
-                <IconX size={32} />
-              </Dropzone.Reject>
-              <Dropzone.Idle>
-                <IconUpload size={32} />
-              </Dropzone.Idle>
-              <Stack gap={4} align="center">
-                <Text size="sm" fw={500}>
-                  {t('fileUpload.dropFiles')}
+            <div className={cx(classes.dropzoneContent, own.tall)}>
+              <IconUpload size={20} />
+              <div className={own.text}>
+                <Text size="sm">
+                  <strong className={classes.cta}>
+                    {t('fileUpload.clickToUpload')}
+                  </strong>{' '}
+                  {t('fileUpload.orDropMany')}
                 </Text>
                 <Text size="xs" c="dimmed">
-                  {t('fileUpload.remainingCount', { count: remaining })}
+                  {count}
                 </Text>
-              </Stack>
-            </Group>
+              </div>
+            </div>
           </Dropzone>
         )}
 
         {(value.length > 0 || uploadingCount > 0) && (
-          <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="xs">
+          <ul className={own.list}>
             {value.map((upload) => (
-              <FileCard
-                key={upload.id}
-                upload={upload}
-                onRemove={handleRemove}
-              />
+              <li key={upload.id}>
+                <FileCard
+                  upload={upload}
+                  onRemove={handleRemove}
+                  bordered={false}
+                />
+              </li>
             ))}
             {Array.from({ length: uploadingCount }).map((_, i) => (
-              <Group
-                key={`uploading-${i}`}
-                className={classes.uploadingCard}
-                gap="sm"
-                wrap="nowrap"
-              >
-                <Stack
-                  className={classes.uploadingIcon}
-                  align="center"
-                  justify="center"
-                >
-                  <Loader size="xs" />
-                </Stack>
+              <li key={`uploading-${i}`} className={own.uploadingRow}>
+                <Loader size="xs" />
                 <Text size="sm" c="dimmed">
                   {t('fileUpload.uploading')}
                 </Text>
-              </Group>
+              </li>
             ))}
-          </SimpleGrid>
+          </ul>
         )}
-      </Stack>
+      </div>
     </Input.Wrapper>
   )
 }
 
 const useStyles = createStyles((theme, _, u) => ({
-  dropzoneContent: css`
-    pointer-events: none;
+  tall: css`
+    min-height: 72px;
+    padding: ${theme.spacing.sm} 0;
   `,
-  dropzoneError: css`
-    border-color: ${theme.colors.red[6]};
-    border-style: solid;
+  text: css`
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+  `,
+  list: css`
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    border-radius: ${theme.radius.md};
+    ${u.light} {
+      border: 1px solid ${theme.colors.gray[3]};
+    }
+    ${u.dark} {
+      border: 1px solid ${theme.colors.dark[5]};
+    }
 
-    &:focus,
-    &:focus-visible {
-      outline-color: ${theme.colors.red[6]};
+    & > li + li {
+      ${u.light} {
+        border-top: 1px solid ${theme.colors.gray[2]};
+      }
+      ${u.dark} {
+        border-top: 1px solid ${theme.colors.dark[6]};
+      }
     }
   `,
-  uploadingCard: css`
-    ${u.light} {
-      border: 1px dashed ${theme.colors.gray[4]};
-    }
-    ${u.dark} {
-      border: 1px dashed ${theme.colors.dark[4]};
-    }
-    border-radius: ${theme.radius.sm};
-    padding: ${theme.spacing.xs} ${theme.spacing.sm};
-    ${u.light} {
-      background: ${theme.colors.gray[0]};
-    }
-    ${u.dark} {
-      background: ${theme.colors.dark[8]};
-    }
-  `,
-  uploadingIcon: css`
-    width: 40px;
-    height: 40px;
-    border-radius: ${theme.radius.xs};
-    ${u.light} {
-      background: ${theme.colors.gray[1]};
-    }
-    ${u.dark} {
-      background: ${theme.colors.dark[5]};
-    }
-    ${u.light} {
-      color: ${theme.colors.gray[5]};
-    }
-    ${u.dark} {
-      color: ${theme.colors.dark[3]};
-    }
-    flex-shrink: 0;
+  uploadingRow: css`
+    min-height: 60px;
+    padding: 0 ${theme.spacing.sm};
+    display: flex;
+    align-items: center;
+    gap: ${theme.spacing.sm};
   `,
 }))

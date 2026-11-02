@@ -8,7 +8,7 @@ import type { Database } from '../../db'
 import type { EmailProvider } from '../../lib/email'
 import { getUsableSocialProviders } from '../../lib/social-providers'
 import type { FastifyTypedInstance } from '../../types'
-import { userSchema } from '../users/users-schema'
+import { userWithRoleSchema } from '../users/users-schema'
 import {
   setPasswordSchema,
   updateMeEmailSchema,
@@ -38,8 +38,8 @@ export async function meRoutes(
     {
       schema: {
         tags: ['me'],
-        description: 'Get current user profile',
-        response: { 200: userSchema },
+        description: 'Get current user profile, with their role',
+        response: { 200: userWithRoleSchema },
       },
     },
     async (request) => service.getMe(request.sessionUser.id)
@@ -68,7 +68,7 @@ export async function meRoutes(
         tags: ['me'],
         description: 'Update current user profile (name only)',
         body: updateMeSchema,
-        response: { 200: userSchema },
+        response: { 200: userWithRoleSchema },
       },
     },
     async (request) => {

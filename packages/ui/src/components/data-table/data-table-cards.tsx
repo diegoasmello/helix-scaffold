@@ -1,16 +1,18 @@
 import { css } from '@emotion/react'
-import { Button, Group, Text } from '@mantine/core'
+import { Text } from '@mantine/core'
 import { createStyles } from '@mantine/emotion'
 import type { DataTableColumn } from 'mantine-datatable'
 import type { Key, ReactNode } from 'react'
-import { useTranslation } from 'react-i18next'
 
 import { DataTableLayoutContext } from './data-table-layout'
+import { DataTablePager } from './data-table-pager'
 
 export interface DataTableCardsProps<T> {
   records: readonly T[]
   columns: readonly DataTableColumn<T>[]
   idAccessor?: string | ((record: T) => Key)
+  /** Accessor of the column shown next to the title, without its label. */
+  titleAside?: string
   page?: number
   totalRecords?: number
   recordsPerPage?: number
@@ -34,6 +36,7 @@ export function DataTableCards<T>(props: Readonly<DataTableCardsProps<T>>) {
     records,
     columns,
     idAccessor = 'id',
+    titleAside,
     page,
     totalRecords,
     recordsPerPage,
@@ -44,14 +47,16 @@ export function DataTableCards<T>(props: Readonly<DataTableCardsProps<T>>) {
   } = props
 
   const { classes } = useStyles()
-  const { t } = useTranslation('ui')
 
   const visibleColumns = columns.filter((column) => !column.hidden)
   const actionsColumn = visibleColumns.find(
     (column) => column.accessor === ACTIONS_ACCESSOR
   )
+  const asideColumn = titleAside
+    ? visibleColumns.find((column) => column.accessor === titleAside)
+    : undefined
   const [titleColumn, ...fieldColumns] = visibleColumns.filter(
-    (column) => column !== actionsColumn
+    (column) => column !== actionsColumn && column !== asideColumn
   )
 
   const totalPages =
@@ -77,8 +82,15 @@ export function DataTableCards<T>(props: Readonly<DataTableCardsProps<T>>) {
             className={classes.card}
           >
             {titleColumn && (
-              <div className={classes.title}>
-                {cellContent(titleColumn, record, index)}
+              <div className={classes.titleRow}>
+                <div className={classes.title}>
+                  {cellContent(titleColumn, record, index)}
+                </div>
+                {asideColumn && (
+                  <div className={classes.titleAside}>
+                    {cellContent(asideColumn, record, index)}
+                  </div>
+                )}
               </div>
             )}
             {fieldColumns.length > 0 && (
@@ -104,26 +116,16 @@ export function DataTableCards<T>(props: Readonly<DataTableCardsProps<T>>) {
         ))}
       </ul>
 
-      {page && onPageChange && totalPages > 1 && (
-        <Group justify="space-between" wrap="nowrap" className={classes.pager}>
-          <Button
-            variant="default"
-            disabled={page <= 1}
-            onClick={() => onPageChange(page - 1)}
-          >
-            {t('dataTable.previous')}
-          </Button>
-          <Text size="sm" c="dimmed">
-            {t('dataTable.pageOf', { page, pages: totalPages })}
-          </Text>
-          <Button
-            variant="default"
-            disabled={page >= totalPages}
-            onClick={() => onPageChange(page + 1)}
-          >
-            {t('dataTable.next')}
-          </Button>
-        </Group>
+      {page && onPageChange && totalRecords !== undefined && (
+        <DataTablePager
+          compact
+          page={page}
+          totalPages={totalPages}
+          totalRecords={totalRecords}
+          from={(page - 1) * (recordsPerPage ?? 0) + 1}
+          to={Math.min(page * (recordsPerPage ?? 0), totalRecords)}
+          onPageChange={onPageChange}
+        />
       )}
     </DataTableLayoutContext.Provider>
   )
@@ -192,7 +194,17 @@ const useStyles = createStyles((theme, _, u) => ({
       border: 1px solid ${theme.colors.dark[5]};
     }
   `,
+  titleRow: css`
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: ${theme.spacing.sm};
+  `,
+  titleAside: css`
+    flex-shrink: 0;
+  `,
   title: css`
+    min-width: 0;
     font-size: 15px;
     font-weight: 500;
     line-height: 1.4;
@@ -239,8 +251,5 @@ const useStyles = createStyles((theme, _, u) => ({
   `,
   empty: css`
     padding: 48px ${theme.spacing.md};
-  `,
-  pager: css`
-    padding-top: ${theme.spacing.md};
   `,
 }))

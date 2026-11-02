@@ -192,6 +192,7 @@ const [filtersOpened, setFiltersOpened] = useState(false)
 <FilterBar
   fields={XXX_FILTER_FIELDS}
   {...filterBarProps}
+  resultCount={xxxResponse.total}
   search={filterBarProps.search && { ...filterBarProps.search, placeholder: t('filters.search') }}
   opened={filtersOpened}
   onOpenedChange={setFiltersOpened}
@@ -462,7 +463,7 @@ export function XxxCreateDrawer(props: Readonly<XxxCreateDrawerProps>) {
 
 `src/app.tsx` renders `<Layout>` from `@helix/ui`, which uses Mantine's `AppShell` with:
 
-- **Header** (68px, bordered): the global search (`search` slot → `HeaderSearch`, `Ctrl K`), the bell (`notifications` slot → `NotificationsMenu`) and the `UserMenu` (name + email). Below `md` (1024px) it adds a menu button and the logo.
+- **Header** (68px, bordered): the global search (`search` slot → `HeaderSearch`, `Ctrl K`), the bell (`notifications` slot → `NotificationsMenu`) and the `UserMenu` (name + the role's name — `useAuth().user.roleName`, the email until it loads). Below `md` (1024px) it adds a menu button and the logo.
 - **Navbar**: the `Sidebar`, driven by `sidebarGroups` from `src/config/sidebar.ts`. Below `md` it moves into a drawer opened by the header's menu button.
 - **Main**: `<Outlet />` renders the active route on a white surface. The breadcrumb is no longer in the header — list and custom pages render it above their title (`PageHeader`, see _Breadcrumb convention_); create, edit and detail pages have none.
 
@@ -1329,7 +1330,7 @@ const { hasPermission } = useAuth() // from '../../auth/use-auth'
 
 The buttons' accessible name is their visible (translated) label — do not add an `aria-label`. On phones the `DataTable` renders cards (see _DataTable on small screens_) and `RowActions` fills the card's footer with full-width 44px buttons. `ActionsMenu` stays exported for menus outside tables; do not use it for row actions.
 
-**DataTable on small screens** — below the `sm` breakpoint (768px) `DataTable` renders one card per record instead of a table: the **first visible column is the card's title**, the other columns are label/value lines (label = the column `title`), and the `actions` column goes to the card's footer. Pagination becomes Previous / "Page x of y" / Next; sorting is not offered on phones. So order the columns with the record's name first and keep `title` on every column. A column's `render` output is reused as is — cells can call `useDataTableLayout()` (`'table' | 'cards'`) if they need to adapt. Tables built with column `groups` always stay tables.
+**DataTable on small screens** — below the `sm` breakpoint (768px) `DataTable` renders one card per record instead of a table: the **first visible column is the card's title**, the other columns are label/value lines (label = the column `title`), and the `actions` column goes to the card's footer. Pagination becomes Previous / "Page x of y" / Next; sorting is not offered on phones. So order the columns with the record's name first and keep `title` on every column. A column's `render` output is reused as is — cells can call `useDataTableLayout()` (`'table' | 'cards'`) if they need to adapt. Tables built with column `groups` always stay tables. Pass `cardTitleAside="status"` when the list has a status column: the badge then sits next to the card's title, without a label.
 
 **Create button** (in `PageList` `actions` prop) — wrap with `<HasPermission>`:
 

@@ -4,7 +4,7 @@ Self-service profile management. Operates on the current authenticated user only
 
 ## Data model
 
-No dedicated table. Reads and writes the `user` table from better-auth (`src/db/schema/authentication.ts`). This is the same table used by the users module, but `me-routes.ts` uses `userSchema` (without `.meta()`, no role embed) — **not** `userWithRoleSchema`.
+No dedicated table. Reads and writes the `user` table from better-auth (`src/db/schema/authentication.ts`). This is the same table used by the users module, and `GET`/`PATCH /me` answer with the same `userWithRoleSchema` (`role: { id, name } | null`) — `getMe` reuses `getUserWithRole(database, id)` from `users-service.ts`.
 
 Social provider information lives in the `account` table (also better-auth managed). Each row has `providerId` (`"credential"` for email/password, `"google"` / `"facebook"` / `"apple"` for OAuth) and `password` (only non-null for credential accounts). The me module does not query this table directly — it delegates to `auth.api.*` methods which handle it internally.
 
@@ -37,7 +37,7 @@ Receives `{ database, auth, emailProvider }` — no `requirePermission` paramete
 
 | Method  | Path                | Notes                                                                                    |
 | ------- | ------------------- | ---------------------------------------------------------------------------------------- |
-| `GET`   | `/me`               | Returns the current user; uses `userSchema` (no role embed)                              |
+| `GET`   | `/me`               | Returns the current user with their role (`userWithRoleSchema`) — the web shows the role's name in the header |
 | `PATCH` | `/me`               | Updates name only; returns updated user                                                  |
 | `PATCH` | `/me/email`         | Initiates email change (sends verification email); returns `{ message }`                 |
 | `PATCH` | `/me/password`      | Changes password (requires current password); returns 204                                |

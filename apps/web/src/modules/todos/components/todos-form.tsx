@@ -6,7 +6,6 @@ import {
   FileInput,
   FilesInput,
   FormSection,
-  Image,
   IMAGE_MIME_TYPE,
   PDF_MIME_TYPE,
   RichTextEditor,
@@ -90,28 +89,16 @@ export function TodoForm(props: Readonly<TodoFormProps>) {
         title={t('sections.files')}
         description={t('sections.filesDescription')}
       >
-        <div>
-          {form.values.image && (
-            <Image
-              src={form.values.image.url}
-              radius="md"
-              mah={240}
-              w="auto"
-              fit="contain"
-              mb="xs"
-            />
-          )}
-          <FileInput
-            label={t('form.image.label')}
-            description={t('form.image.description')}
-            required
-            value={form.values.image}
-            onChange={(upload) => form.setFieldValue('image', upload)}
-            onUpload={uploadFile}
-            accept={IMAGE_MIME_TYPE}
-            error={form.errors.image as string | undefined}
-          />
-        </div>
+        <FileInput
+          label={t('form.image.label')}
+          description={t('form.image.description')}
+          required
+          value={form.values.image}
+          onChange={(upload) => form.setFieldValue('image', upload)}
+          onUpload={uploadFile}
+          accept={IMAGE_MIME_TYPE}
+          error={form.errors.image as string | undefined}
+        />
         <FilesInput
           label={t('form.attachments.label')}
           description={t('form.attachments.description')}

@@ -114,7 +114,11 @@ const useStyles = createStyles((theme) => ({
       grid-auto-flow: column;
       grid-auto-columns: minmax(0, 1fr);
 
-      & > .mantine-Button-root {
+      /* Buttons wrapped in a Group or a permission check still get a column. */
+      & > .mantine-Group-root {
+        display: contents;
+      }
+      & .mantine-Button-root {
         height: 46px;
       }
     }

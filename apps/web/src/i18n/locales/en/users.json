@@ -13,7 +13,8 @@
     "name": "Name",
     "role": "Role",
     "email": "Email",
-    "actions": "Actions"
+    "actions": "Actions",
+    "createdAt": "Created at"
   },
   "form": {
     "name": {

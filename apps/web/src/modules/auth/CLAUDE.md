@@ -66,11 +66,13 @@ type AuthState = {
 
 `PermissionResource` (`@helix/api-client/types`) is the enum of the API's catalog (`RESOURCE_DEFINITIONS`), so `hasPermission('user', 'view')`, `<HasPermission resource="user">` and a `PageAccess` with a typo do not compile. A resource added in the API reaches it after `pnpm spec:export && pnpm spec:generate`. The action is not checked per resource here — the API's `requirePermission()` is.
 
-**Two async pieces composed together:**
+**Three async pieces composed together:**
 
 1. `authClient.useSession()` — returns the better-auth session. The `user` object is shaped from `session.user`; `roleId` is cast from `session.user` as it is not in better-auth's default type.
 
-2. `useQuery(getMePermissionsQueryKey(), getMePermissions)` — fetches `GET /me/permissions`. Only enabled when `!!user` (skipped when unauthenticated). `staleTime: 30_000` (30 s cache).
+2. `useQuery(getMeSuspenseQueryKey(), getMeSuspense)` — the profile (`GET /me`, same cache entry as `/me/account`), enabled once there is a session, `staleTime: Infinity`. It gives `user.name` (fresh after the user renames themselves) and `user.roleName` (the header's user menu shows it under the name; `null` until it loads or without a role).
+
+3. `useQuery(getMePermissionsQueryKey(), getMePermissions)` — fetches `GET /me/permissions`. Only enabled when `!!user` (skipped when unauthenticated). `staleTime: 30_000` (30 s cache).
 
 `isPending` is `true` when the session is loading **or** when the user is known but permissions have not resolved yet. This prevents a flash where `hasPermission` returns `false` before grants arrive.
 

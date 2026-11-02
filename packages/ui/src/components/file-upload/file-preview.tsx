@@ -1,9 +1,10 @@
 import { css } from '@emotion/react'
-import { Anchor, Group, Image, Stack, Text } from '@mantine/core'
+import { Anchor, Group, Stack, Text } from '@mantine/core'
 import { createStyles } from '@mantine/emotion'
 
+import { FileTile } from './file-tile'
 import type { UploadedFile } from './types'
-import { formatFileSize, getFileIcon } from './utils'
+import { formatFileSize } from './utils'
 
 export interface FilePreviewProps {
   upload: UploadedFile
@@ -13,8 +14,6 @@ export function FilePreview(props: Readonly<FilePreviewProps>) {
   const { upload } = props
 
   const { classes } = useStyles()
-  const isImage =
-    upload.mimeType.startsWith('image/') && upload.variants !== null
 
   return (
     <Anchor
@@ -24,26 +23,10 @@ export function FilePreview(props: Readonly<FilePreviewProps>) {
       className={classes.link}
     >
       <Group className={classes.card} gap="sm" wrap="nowrap">
-        {isImage ? (
-          <Image
-            src={upload.variants!.thumbnail.url}
-            alt={upload.originalName}
-            className={classes.thumbnail}
-            fit="cover"
-          />
-        ) : (
-          <Stack
-            className={classes.fileIcon}
-            align="center"
-            justify="center"
-            gap={0}
-          >
-            {getFileIcon(upload.mimeType)}
-          </Stack>
-        )}
+        <FileTile upload={upload} />
 
         <Stack gap={4} className={classes.fileInfo}>
-          <Text size="sm" truncate="end" title={upload.originalName}>
+          <Text size="sm" fw={500} truncate="end" title={upload.originalName}>
             {upload.originalName}
           </Text>
           <Text size="xs" c="dimmed">
@@ -87,31 +70,6 @@ const useStyles = createStyles((theme, _, u) => ({
         border-color: ${theme.colors.dark[3]};
       }
     }
-  `,
-  thumbnail: css`
-    width: 40px;
-    height: 40px;
-    border-radius: ${theme.radius.xs};
-    flex-shrink: 0;
-    display: block;
-  `,
-  fileIcon: css`
-    width: 40px;
-    height: 40px;
-    border-radius: ${theme.radius.xs};
-    ${u.light} {
-      background: ${theme.colors.gray[1]};
-    }
-    ${u.dark} {
-      background: ${theme.colors.dark[5]};
-    }
-    ${u.light} {
-      color: ${theme.colors.gray[6]};
-    }
-    ${u.dark} {
-      color: ${theme.colors.dark[2]};
-    }
-    flex-shrink: 0;
   `,
   fileInfo: css`
     flex: 1;
