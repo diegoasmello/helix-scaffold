@@ -23,6 +23,7 @@ import { parseISO } from 'date-fns'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
+import { parseFilterConditions } from '@/lib/list-filters'
 import { useResourceCache } from '@/lib/resource-cache'
 import { useExportPdf } from '@/lib/use-export-pdf'
 import { formatDate } from '@/utils/date'
@@ -61,9 +62,7 @@ export function TodoList() {
   ]
 
   const filterValue: LogicalFilterValue = {
-    conditions: filters
-      ? (JSON.parse(filters) as LogicalFilterValue['conditions'])
-      : [],
+    conditions: parseFilterConditions(filters),
     logic: filterLogic,
   }
   const activeFilterCount = filterValue.conditions.length

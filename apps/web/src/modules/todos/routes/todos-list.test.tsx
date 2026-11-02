@@ -223,6 +223,14 @@ describe('Filter panel', () => {
     expect(within(filtersBtn).getByText('1')).toBeInTheDocument()
   })
 
+  it('renders the list without a badge when the filters param is malformed', async () => {
+    mockSearch.state = { ...mockSearch.state, filters: 'abc' }
+    renderTodoList()
+    await screen.findByText('Review quarterly report')
+    const filtersBtn = screen.getByRole('button', { name: /filters/i })
+    expect(filtersBtn.textContent).not.toMatch(/\d/)
+  })
+
   it('auto-opens filter panel when URL contains active filters', async () => {
     mockSearch.state = {
       ...mockSearch.state,

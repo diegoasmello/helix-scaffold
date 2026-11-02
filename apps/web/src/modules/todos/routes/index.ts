@@ -5,6 +5,7 @@ import {
 import { createRoute } from '@tanstack/react-router'
 import { z } from 'zod'
 
+import { filtersSearchParam } from '@/lib/list-filters'
 import { guardPage } from '@/modules/auth/page-access'
 import { authenticatedRoute } from '@/routes'
 
@@ -31,7 +32,7 @@ export const todoListRoute = createRoute({
     pageSize: z.number().int().min(1).max(100).default(10),
     sortBy: z.enum(['title', 'status', 'date', 'createdAt']).optional(),
     sortOrder: z.enum(['asc', 'desc']).default('desc'),
-    filters: z.string().optional(),
+    filters: filtersSearchParam,
     filterLogic: z.enum(['AND', 'OR']).default('AND'),
   }),
   loaderDeps: ({

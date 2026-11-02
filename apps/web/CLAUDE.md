@@ -124,14 +124,18 @@ List screens can optionally show a collapsible filter panel that lets users comb
 Add two params to the route's `validateSearch`:
 
 ```ts
+import { filtersSearchParam } from '@/lib/list-filters'
+
 validateSearch: z.object({
   // ...existing pagination + sorting params
-  filters: z.string().optional(),              // JSON-encoded FilterCondition[]
+  filters: filtersSearchParam,                 // JSON-encoded FilterCondition[]
   filterLogic: z.enum(['AND', 'OR']).default('AND'),
 }),
 ```
 
 `filters` is stored as a raw JSON string because TanStack Router only auto-serialises primitives. The frontend `JSON.stringify`s the conditions array before putting it in the URL; the backend `JSON.parse`s it (and validates field names) on the server side.
+
+**Never `JSON.parse` the param yourself.** The URL is user input: a hand-edited or truncated link (`?filters=abc`) would throw during render and take the page down. `src/lib/list-filters.ts` owns both sides — `filtersSearchParam` drops a value that is not a valid condition list (the list loads unfiltered) and re-encodes one TanStack Router already JSON-parsed (a hand-typed `?filters=[...]`); `parseFilterConditions(filters)` reads it in the component and returns `[]` instead of throwing.
 
 Update `loaderDeps` to forward the new params so the loader re-runs when they change:
 
@@ -176,7 +180,7 @@ useEffect(() => {
 }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
 const filterValue: LogicalFilterValue = {
-  conditions: filters ? (JSON.parse(filters) as LogicalFilterValue['conditions']) : [],
+  conditions: parseFilterConditions(filters), // from '@/lib/list-filters'
   logic: filterLogic,
 }
 const activeFilterCount = filterValue.conditions.length
