@@ -118,8 +118,8 @@ describe('AuditList', () => {
   it('shows action badges', async () => {
     renderAuditList()
     await screen.findAllByText('Alice Silva')
-    expect(screen.getByText('create')).toBeInTheDocument()
-    expect(screen.getByText('delete')).toBeInTheDocument()
+    expect(screen.getByText('Create')).toBeInTheDocument()
+    expect(screen.getByText('Delete')).toBeInTheDocument()
   })
 
   it('shows resource names', async () => {

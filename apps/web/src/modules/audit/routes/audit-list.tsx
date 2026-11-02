@@ -1,7 +1,6 @@
 import { useGetAuditLogsSuspense } from '@helix/api-client/hooks'
 import type { AuditLog } from '@helix/api-client/types'
 import {
-  Badge,
   Button,
   DataTable,
   type DataTableColumn,
@@ -18,13 +17,8 @@ import { useTranslation } from 'react-i18next'
 import { useExportPdf } from '@/lib/use-export-pdf'
 import { formatDateTime } from '@/utils/date'
 
+import { AuditActionBadge } from '../components/audit-action-badge'
 import { auditListRoute } from '.'
-
-const ACTION_COLORS: Record<string, string> = {
-  create: 'green',
-  edit: 'blue',
-  delete: 'red',
-}
 
 export function AuditList() {
   const navigate = auditListRoute.useNavigate()
@@ -65,11 +59,7 @@ export function AuditList() {
       accessor: 'action',
       title: t('columns.action'),
       sortable: true,
-      render: (log) => (
-        <Badge color={ACTION_COLORS[log.action] ?? 'gray'} variant="light">
-          {log.action}
-        </Badge>
-      ),
+      render: (log) => <AuditActionBadge action={log.action} />,
     },
     { accessor: 'resource', title: t('columns.resource'), sortable: true },
     {

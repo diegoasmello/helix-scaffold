@@ -21,5 +21,11 @@
     "ip": "IP",
     "userAgent": "Agente do Usuário",
     "metadata": "Metadados"
+  },
+  "actionLabels": {
+    "create": "Criação",
+    "edit": "Edição",
+    "delete": "Exclusão",
+    "export": "Exportação"
   }
 }

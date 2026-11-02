@@ -1,7 +1,5 @@
 import { useGetAuditLogsIdSuspense } from '@helix/api-client/hooks'
-import type { AuditLog } from '@helix/api-client/types'
 import {
-  Badge,
   createStyles,
   css,
   Grid,
@@ -14,13 +12,8 @@ import { useTranslation } from 'react-i18next'
 
 import { formatDate } from '@/utils/date'
 
+import { AuditActionBadge } from '../components/audit-action-badge'
 import { auditDetailRoute } from '.'
-
-const ACTION_COLORS: Record<AuditLog['action'], string> = {
-  create: 'green',
-  edit: 'blue',
-  delete: 'red',
-}
 
 export function AuditDetail() {
   const { id } = auditDetailRoute.useParams()
@@ -41,9 +34,7 @@ export function AuditDetail() {
         </Grid.Col>
         <Grid.Col span={{ base: 12, sm: 6 }}>
           <LabeledValue label={t('labels.action')}>
-            <Badge color={ACTION_COLORS[log.action]} variant="light">
-              {log.action}
-            </Badge>
+            <AuditActionBadge action={log.action} />
           </LabeledValue>
         </Grid.Col>
         <Grid.Col span={{ base: 12, sm: 6 }}>
