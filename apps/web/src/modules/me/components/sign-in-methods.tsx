@@ -1,7 +1,6 @@
 import { getMeProviders } from '@helix/api-client/hooks'
 import {
   Alert,
-  Badge,
   Button,
   createStyles,
   css,
@@ -14,6 +13,7 @@ import {
   IconLock,
   notify,
   Stack,
+  StatusBadge,
   Text,
   Title,
 } from '@helix/ui'
@@ -141,9 +141,9 @@ export function SignInMethods() {
                       {formatDate(account.createdAt)}
                     </Text>
                   </Stack>
-                  <Badge variant="light" color="green" size="sm">
+                  <StatusBadge tone="success">
                     {t('signIn.activeLabel')}
-                  </Badge>
+                  </StatusBadge>
                 </Group>
               )
             })}

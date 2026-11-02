@@ -15,6 +15,7 @@ import {
   type LogicalFilterValue,
   notify,
   Paper,
+  StatusBadge,
 } from '@helix/ui'
 import { IconDownload, IconFilter, IconPlus } from '@helix/ui'
 import { PageList } from '@helix/ui'
@@ -144,14 +145,11 @@ export function TodoList() {
       sortable: true,
       textAlign: 'center',
       render: (item) => (
-        <Badge
-          color={item.status === 'completed' ? 'green' : 'gray'}
-          variant="light"
-        >
+        <StatusBadge tone={item.status === 'completed' ? 'success' : 'warning'}>
           {item.status === 'completed'
             ? t('status.completed')
             : t('status.pending')}
-        </Badge>
+        </StatusBadge>
       ),
     },
     {

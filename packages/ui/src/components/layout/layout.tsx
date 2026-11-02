@@ -1,7 +1,9 @@
 import { css } from '@emotion/react'
-import { AppShell, Container } from '@mantine/core'
+import { AppShell, Container, Drawer } from '@mantine/core'
 import { createStyles } from '@mantine/emotion'
-import { Outlet } from '@tanstack/react-router'
+import { useDisclosure } from '@mantine/hooks'
+import { Outlet, useRouterState } from '@tanstack/react-router'
+import { type ReactNode, useEffect } from 'react'
 
 import Logo from '../../assets/helix.svg'
 import LogoIcon from '../../assets/helix-icon.svg'
@@ -12,15 +14,20 @@ import type { SidebarGroup } from '../sidebar/types'
 
 export interface LayoutProps {
   sidebarGroups: SidebarGroup[]
-  user: { id?: string; name: string; avatar?: string }
+  user: { id?: string; name: string; description?: string }
   onAccountSettings: () => void
   onLogout: () => void
   sidebarCollapsed?: boolean
   onToggleSidebar?: () => void
+  /** Header search field — usually a `HeaderSearch`. */
+  search?: ReactNode
+  /** Header bell — usually a `NotificationsMenu`. */
+  notifications?: ReactNode
 }
 
-const SIDEBAR_WIDTH = 256
+const SIDEBAR_WIDTH = 272
 const SIDEBAR_COLLAPSED_WIDTH = 72
+const HEADER_HEIGHT = 68
 
 export function Layout(props: Readonly<LayoutProps>) {
   const {
@@ -30,21 +37,39 @@ export function Layout(props: Readonly<LayoutProps>) {
     onLogout,
     sidebarCollapsed: externalCollapsed,
     onToggleSidebar: externalToggle,
+    search,
+    notifications,
   } = props
 
   const { classes } = useStyles()
   const [internalCollapsed, internalToggle] = usePersistedSidebar(user.id)
+  const [drawerOpened, drawer] = useDisclosure(false)
+  const pathname = useRouterState({ select: (s) => s.location.pathname })
 
   const sidebarCollapsed = externalCollapsed ?? internalCollapsed
   const toggleSidebar = externalToggle ?? internalToggle
 
+  // Following a link in the drawer closes it.
+  useEffect(() => {
+    drawer.close()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pathname])
+
+  const logo = (
+    <img src={Logo} alt="Helix" height={24} className={classes.logoImg} />
+  )
+  const logoIcon = (
+    <img src={LogoIcon} alt="Helix" height={26} className={classes.logoImg} />
+  )
+
   return (
     <AppShell
-      header={{ height: 60 }}
+      header={{ height: HEADER_HEIGHT }}
       navbar={{
         width: sidebarCollapsed ? SIDEBAR_COLLAPSED_WIDTH : SIDEBAR_WIDTH,
-        breakpoint: 'sm',
-        collapsed: { mobile: sidebarCollapsed },
+        breakpoint: 'md',
+        // Below `md` the sidebar lives in the drawer instead.
+        collapsed: { mobile: true },
       }}
       layout="alt"
       withBorder={false}
@@ -53,38 +78,45 @@ export function Layout(props: Readonly<LayoutProps>) {
         user={user}
         onAccountSettings={onAccountSettings}
         onLogout={onLogout}
+        onOpenNavigation={drawer.open}
+        mobileLogo={logoIcon}
+        search={search}
+        notifications={notifications}
       />
 
-      <AppShell.Navbar unstyled style={{ padding: 0, overflow: 'visible' }}>
+      <AppShell.Navbar unstyled className={classes.navbar}>
         <Sidebar
           groups={sidebarGroups}
-          expandedLogo={
-            <img
-              src={Logo}
-              alt="Logo"
-              height={26}
-              className={classes.logoImg}
-            />
-          }
-          collapsedLogo={
-            <img
-              src={LogoIcon}
-              alt="Logo"
-              height={26}
-              className={classes.logoImg}
-            />
-          }
+          expandedLogo={logo}
+          collapsedLogo={logoIcon}
           collapsed={sidebarCollapsed}
           onToggleCollapsed={toggleSidebar}
         />
       </AppShell.Navbar>
 
+      <Drawer
+        opened={drawerOpened}
+        onClose={drawer.close}
+        size={324}
+        withCloseButton={false}
+        padding={0}
+        offset={0}
+        radius={0}
+        hiddenFrom="md"
+        classNames={{ body: classes.drawerBody }}
+      >
+        <Sidebar
+          groups={sidebarGroups}
+          expandedLogo={logo}
+          collapsedLogo={logoIcon}
+          onClose={drawer.close}
+        />
+      </Drawer>
+
       <AppShell.Main className={classes.main}>
-        <div className={classes.inner}>
-          <Container fluid>
-            <Outlet />
-          </Container>
-        </div>
+        <Container fluid className={classes.container}>
+          <Outlet />
+        </Container>
       </AppShell.Main>
     </AppShell>
   )
@@ -92,26 +124,34 @@ export function Layout(props: Readonly<LayoutProps>) {
 
 const useStyles = createStyles((theme, _, u) => ({
   logoImg: css`
+    display: block;
     ${u.dark} {
       filter: invert(1);
     }
   `,
+  navbar: css`
+    padding: 0;
+    overflow: visible;
+  `,
+  drawerBody: css`
+    height: 100%;
+  `,
   main: css`
     display: flex;
     flex-direction: column;
-  `,
-  inner: css`
-    flex: 1;
-    border-top-left-radius: ${theme.radius.lg};
-    padding-top: ${theme.spacing.lg};
-    padding-left: ${theme.spacing.xs};
-    padding-right: ${theme.spacing.xs};
-    padding-bottom: ${theme.spacing.lg};
     ${u.light} {
-      background-color: ${theme.colors.gray[1]};
+      background-color: ${theme.white};
     }
     ${u.dark} {
-      background-color: ${theme.colors.dark[8]};
+      background-color: ${theme.colors.dark[7]};
+    }
+  `,
+  container: css`
+    width: 100%;
+    padding: 28px 28px ${theme.spacing.xl};
+
+    @media (max-width: calc(${theme.breakpoints.md} - 0.0625em)) {
+      padding: 20px ${theme.spacing.md} 28px;
     }
   `,
 }))

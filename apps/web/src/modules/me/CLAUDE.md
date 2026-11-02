@@ -196,7 +196,7 @@ A read-only view of the current user's subscription. It uses `useSubscription()`
 
 - `<Loader>` while `isPending` (status or subscription fetching)
 - "No active subscription" when `subscription` is `null`
-- Otherwise: plan name (`plan?.name`, falling back to the raw `planId`), status badge (`SUBSCRIPTION_STATUS_COLORS`), trial end date (only when `trialEndsAt` is set), period start and end; a "payment failed" `Alert` while past_due within the grace period
+- Otherwise: plan name (`plan?.name`, falling back to the raw `planId`), status badge (`StatusBadge` with `SUBSCRIPTION_STATUS_TONES`), trial end date (only when `trialEndsAt` is set), period start and end; a "payment failed" `Alert` while past_due within the grace period
 - In both cases, a **Plans** section (`<section aria-labelledby>`, so tests find it with `getByRole('region', { name: 'Plans' })`) renders `<PlanCatalog>` from the subscriptions module: every plan with what it includes, the current one highlighted. Its description ("contact an administrator…") is the placeholder for a checkout call to action
 
 Dates use `formatDate` from `@/utils/date`, never the `date-fns` function of the same name.

@@ -3,7 +3,6 @@ import {
   useGetSubscriptionsSuspense,
 } from '@helix/api-client/hooks'
 import {
-  Badge,
   Button,
   confirm,
   DataTable,
@@ -15,6 +14,7 @@ import {
   IconPlus,
   notify,
   PageList,
+  StatusBadge,
 } from '@helix/ui'
 import { useMutation } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
@@ -22,7 +22,7 @@ import { useTranslation } from 'react-i18next'
 import { useResourceCache } from '@/lib/resource-cache'
 
 import { HasPermission } from '../../auth/components/has-permission'
-import { SUBSCRIPTION_STATUS_COLORS } from '../constants'
+import { SUBSCRIPTION_STATUS_TONES } from '../constants'
 import { useSubscription } from '../hooks/use-subscription'
 import type { SubscriptionItem } from '../types'
 import { subscriptionsListRoute } from '.'
@@ -87,9 +87,9 @@ export function SubscriptionsList() {
       title: t('columns.status'),
       sortable: true,
       render: (item) => (
-        <Badge color={SUBSCRIPTION_STATUS_COLORS[item.status]} variant="light">
+        <StatusBadge tone={SUBSCRIPTION_STATUS_TONES[item.status]}>
           {t(`status.${item.status}`)}
-        </Badge>
+        </StatusBadge>
       ),
     },
     {

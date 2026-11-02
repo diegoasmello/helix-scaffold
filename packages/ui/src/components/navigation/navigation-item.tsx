@@ -3,7 +3,7 @@ import { UnstyledButton } from '@mantine/core'
 import { createStyles } from '@mantine/emotion'
 import { IconChevronRight, type IconProps } from '@tabler/icons-react'
 import { Link, useMatchRoute } from '@tanstack/react-router'
-import type { RefAttributes } from 'react'
+import type { ReactNode, RefAttributes } from 'react'
 
 export interface NavigationItemProps {
   label: string
@@ -13,7 +13,12 @@ export interface NavigationItemProps {
   icon?: React.FC<IconProps & RefAttributes<SVGSVGElement>>
   to?: string
   onClick?: () => void
-  px?: string
+  /** `nested` entries (sub-menus) are a step shorter and carry no icon. */
+  size?: 'default' | 'nested'
+  /** Rendered after the label — a count badge. */
+  badge?: ReactNode
+  /** Rendered after the entry, outside the link — e.g. a "+" button. */
+  action?: ReactNode
 }
 
 export function NavigationItem(props: Readonly<NavigationItemProps>) {
@@ -25,7 +30,9 @@ export function NavigationItem(props: Readonly<NavigationItemProps>) {
     icon: Icon,
     to,
     onClick,
-    px = '0',
+    size = 'default',
+    badge,
+    action,
   } = props
 
   const matchRoute = useMatchRoute()
@@ -33,70 +40,128 @@ export function NavigationItem(props: Readonly<NavigationItemProps>) {
     active ??
     (to !== undefined ? Boolean(matchRoute({ to, fuzzy: true })) : false)
 
-  const { classes, cx } = useStyles({ px })
-
-  const rootClass = cx(classes.navItem, { [classes.navItemActive]: isActive })
+  const { classes, cx } = useStyles()
 
   const content = (
     <>
-      <div className={classes.inner}>
-        {Icon && (
-          <Icon
-            size={18}
-            className={cx(classes.icon, { [classes.iconActive]: isActive })}
-          />
-        )}
-        <span
-          className={cx(classes.label, { [classes.labelActive]: isActive })}
-        >
-          {label}
-        </span>
-      </div>
+      {Icon && (
+        <Icon
+          size={20}
+          stroke={1.7}
+          className={cx(classes.icon, { [classes.iconActive]: isActive })}
+        />
+      )}
+      <span className={classes.label}>{label}</span>
+      {badge}
       {chevron && (
         <IconChevronRight
           className={cx(classes.chevron, {
             [classes.chevronRotated]: chevronOpen,
-            [classes.chevronActive]: isActive,
           })}
-          stroke={1.5}
+          stroke={1.7}
           size={16}
         />
       )}
     </>
   )
 
-  if (to !== undefined) {
-    return (
-      <Link to={to} className={rootClass}>
+  const controlClass = cx(classes.control, {
+    [classes.controlNested]: size === 'nested',
+  })
+
+  const control =
+    to !== undefined ? (
+      <Link
+        to={to}
+        className={controlClass}
+        aria-current={isActive ? 'page' : undefined}
+      >
         {content}
       </Link>
+    ) : (
+      <UnstyledButton
+        onClick={onClick}
+        className={controlClass}
+        aria-expanded={chevron ? Boolean(chevronOpen) : undefined}
+      >
+        {content}
+      </UnstyledButton>
     )
-  }
 
   return (
-    <UnstyledButton onClick={onClick} className={rootClass}>
-      {content}
-    </UnstyledButton>
+    <div
+      className={cx(classes.item, {
+        [classes.itemActive]: isActive,
+        [classes.itemNested]: size === 'nested',
+        [classes.itemWithAction]: !!action,
+      })}
+    >
+      {control}
+      {action}
+    </div>
   )
 }
 
-const useStyles = createStyles((theme, params: { px: string }, u) => ({
-  navItem: css`
+const useStyles = createStyles((theme, _, u) => ({
+  item: css`
     display: flex;
     align-items: center;
-    width: 100%;
-    height: 3rem;
-    position: relative;
-    text-decoration: none;
-    color: inherit;
-    background-color: transparent;
-    padding: 0 ${params.px};
-    outline: none;
+    gap: 4px;
+    border: 1px solid transparent;
+    border-radius: ${theme.radius.lg};
+    transition: background-color 150ms ease;
 
-    &:focus-visible div {
+    &:hover {
+      ${u.light} {
+        background-color: ${theme.colors.gray[1]};
+      }
+      ${u.dark} {
+        background-color: ${theme.colors.dark[6]};
+      }
+    }
+  `,
+  itemNested: css`
+    border-radius: ${theme.radius.md};
+  `,
+  itemWithAction: css`
+    padding-right: 6px;
+  `,
+  itemActive: css`
+    &,
+    &:hover {
+      ${u.light} {
+        background-color: ${theme.white};
+        border-color: ${theme.colors.gray[3]};
+      }
+      ${u.dark} {
+        background-color: ${theme.colors.dark[6]};
+        border-color: ${theme.colors.dark[5]};
+      }
+    }
+  `,
+  control: css`
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: ${theme.spacing.sm};
+    height: 42px;
+    padding: 0 ${theme.spacing.sm};
+    border-radius: inherit;
+    text-decoration: none;
+    font-size: 15px;
+    font-weight: 500;
+    line-height: 1.2;
+    ${u.light} {
+      color: ${theme.colors.gray[8]};
+    }
+    ${u.dark} {
+      color: ${theme.colors.dark[1]};
+    }
+
+    &:focus-visible {
       outline-offset: 2px;
       animation: var(--helix-focus-ring-animation);
-
       ${u.light} {
         outline: 2px solid ${theme.colors.main[6]};
       }
@@ -105,44 +170,27 @@ const useStyles = createStyles((theme, params: { px: string }, u) => ({
       }
     }
 
-    &:hover > div {
+    &[aria-current='page'] {
       ${u.light} {
-        background-color: ${theme.colors.gray[1]};
+        color: ${theme.colors.gray[9]};
       }
       ${u.dark} {
-        background-color: ${theme.colors.dark[5]};
+        color: ${theme.colors.dark[0]};
       }
     }
   `,
-  navItemActive: css`
-    cursor: default;
-
-    & > div,
-    &:hover > div {
-      ${u.light} {
-        background-color: ${theme.colors.main[0]};
-      }
-      ${u.dark} {
-        background-color: ${theme.colors.dark[5]};
-      }
-    }
-  `,
-  inner: css`
-    flex: 1;
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    min-width: 0;
-    height: 100%;
-    padding: 0 1rem;
-    border-radius: ${theme.radius.lg};
-    transition:
-      background-color 0.3s ease,
-      color 0.3s ease;
+  controlNested: css`
+    height: 38px;
+    font-size: 14.5px;
   `,
   icon: css`
-    color: light-dark(rgba(0, 0, 0, 0.7), rgba(255, 255, 255, 0.7));
     flex-shrink: 0;
+    ${u.light} {
+      color: ${theme.colors.gray[6]};
+    }
+    ${u.dark} {
+      color: ${theme.colors.dark[2]};
+    }
   `,
   iconActive: css`
     ${u.light} {
@@ -153,36 +201,23 @@ const useStyles = createStyles((theme, params: { px: string }, u) => ({
     }
   `,
   label: css`
-    font-size: 14px;
-    font-weight: 500;
-    letter-spacing: -0.154px;
-    color: light-dark(rgba(0, 0, 0, 0.7), rgba(255, 255, 255, 0.7));
-    line-height: normal;
-  `,
-  labelActive: css`
-    ${u.light} {
-      color: ${theme.colors.main[6]};
-    }
-    ${u.dark} {
-      color: ${theme.colors.main[3]};
-    }
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   `,
   chevron: css`
-    transition:
-      transform 200ms ease,
-      color 200ms ease;
     flex-shrink: 0;
-    color: light-dark(rgba(0, 0, 0, 0.35), rgba(255, 255, 255, 0.35));
-  `,
-  chevronRotated: css`
-    transform: rotate(-90deg);
-  `,
-  chevronActive: css`
+    transition: transform 200ms ease;
     ${u.light} {
-      color: ${theme.colors.main[6]};
+      color: ${theme.colors.gray[6]};
     }
     ${u.dark} {
-      color: ${theme.colors.main[3]};
+      color: ${theme.colors.dark[2]};
     }
+  `,
+  chevronRotated: css`
+    transform: rotate(90deg);
   `,
 }))

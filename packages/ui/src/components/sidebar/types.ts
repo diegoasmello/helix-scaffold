@@ -35,15 +35,46 @@ type AppRoute =
       : never
     : never
 
-export type SidebarLink = {
+/**
+ * A count at the end of an entry. `highlight` paints it in the primary color
+ * — for things waiting on the user (approvals); plain counts stay neutral.
+ */
+export type SidebarBadge = {
+  count: number
+  highlight?: boolean
+}
+
+/** A "+" shortcut on the entry — e.g. "Create task" next to "Tasks". */
+export type SidebarAction = {
+  /** Accessible name of the button (it shows only a "+"). */
   label: string
   to: AppRoute
+}
+
+/** Third-level entry (e.g. Journals → Volumes → **Articles**). */
+export type SidebarSubLink = {
+  label: string
+  to: AppRoute
+  badge?: SidebarBadge
+  action?: SidebarAction
+}
+
+/** Second-level entry: a page, or a group that opens a third level. */
+export type SidebarLink = {
+  label: string
+  to?: AppRoute
+  badge?: SidebarBadge
+  action?: SidebarAction
+  links?: SidebarSubLink[]
+  initiallyOpened?: boolean
 }
 
 export type SidebarItem = {
   label: string
   icon: FC<IconProps & RefAttributes<SVGSVGElement>>
   to?: AppRoute
+  badge?: SidebarBadge
+  action?: SidebarAction
   links?: SidebarLink[]
   initiallyOpened?: boolean
 }

@@ -499,9 +499,11 @@ export function XxxCreateDrawer(props: Readonly<XxxCreateDrawerProps>) {
 
 `src/app.tsx` renders `<Layout>` from `@helix/ui`, which uses Mantine's `AppShell` with:
 
-- **Header**: breadcrumbs (auto-populated from route `staticData`) + `UserMenu`
-- **Navbar**: driven by `sidebarItems` from `src/config/sidebar.ts`
-- **Main**: `<Outlet />` renders the active route
+- **Header** (68px, bordered): the global search (`search` slot → `HeaderSearch`, `Ctrl K`), the bell (`notifications` slot → `NotificationsMenu`) and the `UserMenu` (name + email). Below `md` (1024px) it adds a menu button and the logo.
+- **Navbar**: the `Sidebar`, driven by `sidebarGroups` from `src/config/sidebar.ts`. Below `md` it moves into a drawer opened by the header's menu button.
+- **Main**: `<Outlet />` renders the active route on a white surface. The breadcrumb is no longer in the header — each page renders it above its title (`PageHeader`, see _Breadcrumb convention_).
+
+**Search and notifications are UI only.** `app.tsx` passes `HeaderSearch` an `onSearch` that just says search is not connected yet (`common:search.notAvailable`), and `NotificationsMenu` an empty `items` list. A product wires `onSearch` to its search endpoint and `items`/`onMarkAllRead`/`onViewAll` to its notifications query — the components need no change.
 
 ## Theme
 
@@ -817,7 +819,7 @@ import i18n from 'i18next'
 
 ### Breadcrumb labels
 
-`staticData.breadcrumbs` in route definitions stores labels as i18n **keys** (e.g. `'nav.todos'`, `'actions.create'`). The `Header` component in `packages/ui` translates them reactively via `useTranslation('common')` at render time. Never call `t()` inside `staticData` — it is evaluated once at module load and the result would be frozen in the startup language. See _Step 5 — Breadcrumb convention_ in _Creating a new module_ for the full key reference.
+`staticData.breadcrumbs` in route definitions stores labels as i18n **keys** (e.g. `'nav.todos'`, `'actions.create'`). `RouteBreadcrumb` in `packages/ui` (inside each page's `PageHeader`) translates them reactively via `useTranslation('common')` at render time. Never call `t()` inside `staticData` — it is evaluated once at module load and the result would be frozen in the startup language. See _Step 5 — Breadcrumb convention_ in _Creating a new module_ for the full key reference.
 
 ### Sidebar labels
 
@@ -1208,7 +1210,7 @@ Use the same resource string registered in `apps/api/src/config/permissions.ts`.
 
 ### 5. Breadcrumb convention
 
-Breadcrumb `label` values are **i18n keys**, not translated strings. The `Header` component (`packages/ui`) calls `useTranslation('common')` and resolves each label at render time via `t(label, { defaultValue: label })`. This makes breadcrumbs reactive to language changes — switching language re-renders the Header with the correct translations.
+Breadcrumb `label` values are **i18n keys**, not translated strings. `RouteBreadcrumb` (`packages/ui`, rendered by `PageHeader` — so by every `PageList`/`PageCreate`/`PageEdit`/`PageView`) calls `useTranslation('common')` and resolves each label at render time via `t(label, { defaultValue: label })`. This makes breadcrumbs reactive to language changes. A single crumb is not rendered (it would only repeat the page title), so list pages show none; create/edit/detail pages show the trail. Outside a router (component tests) it renders nothing.
 
 Do **not** call `t()` inside `staticData`. `staticData` is evaluated once at module load, outside React, so any string baked in there would be frozen in the language active at startup and would never update.
 
@@ -1295,6 +1297,8 @@ const columns: DataTableColumn<XxxItem>[] = [
 `getDataTablePaginationProps(response, search, navigate)` — derives `totalRecords`, `page`, `onPageChange`, `recordsPerPage`, `recordsPerPageOptions` (fixed at `[5, 10, 15, 20]`), and `onRecordsPerPageChange` (resets `page` to 1).
 
 `getDataTableSortingProps(search, navigate)` — derives `sortStatus` (`undefined` when `sortBy` is absent, so headers render unsorted) and `onSortStatusChange` (always resets `page` to 1 when sort changes).
+
+**Status columns** render a `StatusBadge` from `@helix/ui` — `<StatusBadge tone="success">{t('status.completed')}</StatusBadge>` — never a colored `Badge`. Tones: `success` (done/active), `warning` (pending/at risk), `danger` (failed/expired), `info` (trial, informative), `neutral` (inactive). Keep the mapping in the module (`SUBSCRIPTION_STATUS_TONES` is the example). `DataTable` translates its own pagination and empty texts (`ui:dataTable.*`).
 
 **Empty state** — every list screen must handle the case where there are no records and no active filters. In this case, render `EmptyState` from `@helix/ui` in place of the entire `PageList` (not just the `DataTable`). Include a direct call-to-action button so the user can create the first record without navigating back to find the Create button:
 
@@ -1527,6 +1531,12 @@ import { XXX_ACCESS } from '@/modules/xxx/routes/access'
 ```
 
 `access` must be the **same constant** the list route's `guardPage()` enforces — never a new object (`src/routes.test.ts` fails otherwise). `app.tsx` filters items with `canSeeSidebarItem()`, which is `checkPageAccess(item.access)` — the guard's own decision — so the sidebar never offers a page that would redirect. The first visible item is also where `/` sends the user.
+
+Optional per item (all supported by `@helix/ui`'s `SidebarItem`, none required):
+
+- **`action`** — a "+" shortcut next to the label, e.g. `{ label: 'nav.createXxx', to: '/xxx/create' }` (the label is an i18n key, used as the button's accessible name). Pair it with **`actionAccess: XXX_ACCESS.create`**: `app.tsx` shows the "+" only when that access passes. `todos` is the reference.
+- **`badge`** — `{ count, highlight? }`: a count after the label; `highlight` paints it in the primary color (things waiting on the user). Feed it from a query; never hard-code a number.
+- **`links`** — a sub-menu. A link may have its own `links`, for a third level (e.g. Journals → Volumes → Articles); links carry `badge`/`action` too.
 
 ### 10. Delete confirmation
 
@@ -1859,7 +1869,7 @@ server.use(
 
 | Screen | Tests                                                                                                                                                                        |
 | ------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| List   | renders items; status badges; clicking Delete opens confirm dialog; confirming calls DELETE endpoint; cancelling closes dialog; hides Edit/Delete when user lacks permission |
+| List   | renders items; status badges (`StatusBadge` text); clicking Delete opens confirm dialog; confirming calls DELETE endpoint; cancelling closes dialog; hides Edit/Delete when user lacks permission |
 | Create | renders form; validation errors on empty submit; POST called with correct payload + navigates on success; shows danger notification on API error                             |
 | Edit   | form pre-populated from GET response; validation errors; PATCH called with updated payload + navigates on success; shows danger notification on API error                    |
 | Detail | renders all fields; correct badge per status                                                                                                                                 |

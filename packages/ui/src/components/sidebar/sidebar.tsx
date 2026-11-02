@@ -1,7 +1,7 @@
 import { css } from '@emotion/react'
 import { Box, Flex, ScrollArea, Text, UnstyledButton } from '@mantine/core'
 import { createStyles } from '@mantine/emotion'
-import { IconChevronLeft } from '@tabler/icons-react'
+import { IconLayoutSidebarLeftCollapse, IconX } from '@tabler/icons-react'
 import { Link, useRouterState } from '@tanstack/react-router'
 import type { ReactNode } from 'react'
 import { useRef, useState } from 'react'
@@ -17,6 +17,11 @@ export interface SidebarProps {
   collapsedLogo: ReactNode
   collapsed?: boolean
   onToggleCollapsed?: () => void
+  /**
+   * Inside the mobile drawer: no collapse toggle and no border; a close button
+   * calls this instead.
+   */
+  onClose?: () => void
 }
 
 export function Sidebar(props: Readonly<SidebarProps>) {
@@ -26,7 +31,10 @@ export function Sidebar(props: Readonly<SidebarProps>) {
     collapsedLogo,
     collapsed = false,
     onToggleCollapsed,
+    onClose,
   } = props
+
+  const inDrawer = onClose !== undefined
 
   const { t } = useTranslation('ui')
   const [hovered, setHovered] = useState(false)
@@ -67,6 +75,7 @@ export function Sidebar(props: Readonly<SidebarProps>) {
       <Box
         className={cx(
           classes.sidebar,
+          !inDrawer && classes.sidebarBordered,
           !collapsed && classes.sidebarExpanded,
           collapsed && classes.sidebarAbsolute,
           collapsed && !peekExpanded && classes.sidebarCollapsedWidth,
@@ -86,22 +95,32 @@ export function Sidebar(props: Readonly<SidebarProps>) {
             <Link to="/">
               {visuallyCollapsed ? collapsedLogo : expandedLogo}
             </Link>
-            {!visuallyCollapsed && (
+            {inDrawer ? (
               <UnstyledButton
-                onClick={onToggleCollapsed}
+                onClick={onClose}
                 className={classes.toggleButton}
-                aria-label={
-                  collapsed ? t('sidebar.expand') : t('sidebar.collapse')
-                }
+                aria-label={t('sidebar.close')}
               >
-                <IconChevronLeft
-                  size={16}
-                  stroke={1.5}
-                  className={cx(classes.toggleIcon, {
-                    [classes.toggleIconCollapsed]: collapsed,
-                  })}
-                />
+                <IconX size={20} stroke={1.7} />
               </UnstyledButton>
+            ) : (
+              !visuallyCollapsed && (
+                <UnstyledButton
+                  onClick={onToggleCollapsed}
+                  className={classes.toggleButton}
+                  aria-label={
+                    collapsed ? t('sidebar.expand') : t('sidebar.collapse')
+                  }
+                >
+                  <IconLayoutSidebarLeftCollapse
+                    size={18}
+                    stroke={1.7}
+                    className={cx(classes.toggleIcon, {
+                      [classes.toggleIconCollapsed]: collapsed,
+                    })}
+                  />
+                </UnstyledButton>
+              )
             )}
           </Flex>
 
@@ -127,6 +146,8 @@ export function Sidebar(props: Readonly<SidebarProps>) {
                         initiallyOpened={item.initiallyOpened}
                         links={item.links}
                         to={item.to}
+                        badge={item.badge}
+                        action={item.action}
                       />
                     ))}
                   </nav>
@@ -143,15 +164,23 @@ export function Sidebar(props: Readonly<SidebarProps>) {
 const useStyles = createStyles((theme, _, u) => ({
   sidebar: css`
     height: 100%;
-    padding: ${theme.spacing.md};
-    padding-bottom: 0;
+    box-sizing: border-box;
+    padding: ${theme.spacing.md} 14px 0;
     display: flex;
     flex-direction: column;
     ${u.light} {
-      background-color: ${theme.white};
+      background-color: ${theme.colors.gray[0]};
     }
     ${u.dark} {
       background-color: ${theme.colors.dark[7]};
+    }
+  `,
+  sidebarBordered: css`
+    ${u.light} {
+      border-right: 1px solid ${theme.colors.gray[3]};
+    }
+    ${u.dark} {
+      border-right: 1px solid ${theme.colors.dark[5]};
     }
   `,
   sidebarExpanded: css`
@@ -163,45 +192,38 @@ const useStyles = createStyles((theme, _, u) => ({
     left: 0;
     height: 100%;
     z-index: 200;
-    transition:
-      width 250ms ease,
-      box-shadow 250ms ease;
+    transition: width 250ms ease;
   `,
   sidebarCollapsedWidth: css`
     width: 72px;
   `,
   sidebarPeekWidth: css`
-    width: 280px;
-    ${u.light} {
-      box-shadow: 4px 0 24px rgba(0, 0, 0, 0.08);
-    }
-    ${u.dark} {
-      box-shadow: 4px 0 24px rgba(0, 0, 0, 0.3);
-    }
+    width: 272px;
   `,
   header: css`
     flex-shrink: 0;
-    min-height: 24px;
+    min-height: 40px;
+    padding-left: 10px;
   `,
   toggleButton: css`
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 28px;
-    height: 28px;
-    border-radius: ${theme.radius.sm};
+    width: 36px;
+    height: 36px;
+    border-radius: 999px;
     flex-shrink: 0;
     ${u.light} {
-      color: ${theme.colors.gray[5]};
+      color: ${theme.colors.gray[6]};
     }
     ${u.dark} {
-      color: ${theme.colors.dark[3]};
+      color: ${theme.colors.dark[2]};
     }
 
     &:hover {
       ${u.light} {
-        background-color: ${theme.colors.gray[1]};
-        color: ${theme.colors.gray[7]};
+        background-color: ${theme.colors.gray[2]};
+        color: ${theme.colors.gray[8]};
       }
       ${u.dark} {
         background-color: ${theme.colors.dark[5]};
@@ -217,31 +239,28 @@ const useStyles = createStyles((theme, _, u) => ({
   `,
   scrollArea: css`
     flex: 1;
-    width: calc(100% + ${theme.spacing.md} * 2);
-    margin-left: calc(${theme.spacing.md} * -1);
-    margin-right: calc(${theme.spacing.md} * -1);
+    width: calc(100% + 28px);
+    margin-left: -14px;
+    margin-right: -14px;
     /* Pulled up by the focus ring extent (2px outline + 2px offset) and
        padded back below, so the viewport doesn't clip the first item's ring */
     margin-top: -4px;
   `,
   scrollAreaInner: css`
-    padding-top: 4px;
-    padding-bottom: ${theme.spacing.xl};
+    padding: 4px 14px ${theme.spacing.xl};
   `,
   group: css`
     &:not(:first-of-type) {
-      margin-top: ${theme.spacing.xs};
+      margin-top: 22px;
     }
   `,
   groupTitleHidden: css`
     visibility: hidden;
   `,
   groupTitle: css`
-    font-size: 0.875rem;
-    font-weight: 600;
-    letter-spacing: 0.5px;
-    padding: ${theme.spacing.xs} ${theme.spacing.md};
-    padding-left: 20px;
+    font-size: 12.5px;
+    font-weight: 500;
+    padding: 0 ${theme.spacing.sm} 6px;
     ${u.light} {
       color: ${theme.colors.gray[6]};
     }
@@ -251,6 +270,6 @@ const useStyles = createStyles((theme, _, u) => ({
   `,
   nav: css`
     display: grid;
-    gap: 0.25rem;
+    gap: 4px;
   `,
 }))

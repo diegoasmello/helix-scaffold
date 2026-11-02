@@ -1,5 +1,8 @@
-import { Flex, Group, Text, Title } from '@mantine/core'
+import { css } from '@emotion/react'
+import { createStyles } from '@mantine/emotion'
 import type { ReactNode } from 'react'
+
+import { PageHeader } from './page-header'
 
 export interface PageListProps {
   title: string
@@ -11,20 +14,20 @@ export interface PageListProps {
 export function PageList(props: Readonly<PageListProps>) {
   const { title, description, actions, children } = props
 
+  const { classes } = useStyles()
+
   return (
-    <Flex direction="column" gap="lg">
-      <Group justify="space-between" align="center">
-        <Flex direction="column" gap={8}>
-          <Title order={2}>{title}</Title>
-          {description && (
-            <Text maw="420" size="sm" c="dimmed">
-              {description}
-            </Text>
-          )}
-        </Flex>
-        {actions}
-      </Group>
+    <div className={classes.root}>
+      <PageHeader title={title} description={description} actions={actions} />
       {children}
-    </Flex>
+    </div>
   )
 }
+
+const useStyles = createStyles((theme) => ({
+  root: css`
+    display: flex;
+    flex-direction: column;
+    gap: ${theme.spacing.lg};
+  `,
+}))

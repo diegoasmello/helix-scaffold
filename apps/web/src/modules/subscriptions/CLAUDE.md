@@ -17,7 +17,7 @@ src/modules/subscriptions/
 ├── types.ts
 ├── access.ts                         ← hasSubscriptionAccess() — reads the API's entitlements, shared by hook and router
 ├── access.test.ts
-├── constants.ts                      ← SUBSCRIPTION_STATUS_COLORS
+├── constants.ts                      ← SUBSCRIPTION_STATUS_TONES
 ├── validation.ts
 ├── validation.test.ts
 ├── hooks/
@@ -262,7 +262,7 @@ Fields rendered:
 
 - `DataTable` with pagination and sorting (no filters — not needed for an ops tool)
 - Plan column renders `getPlanName(item.planId)`
-- Status column renders a colored `Badge` using `SUBSCRIPTION_STATUS_COLORS` (`constants.ts`)
+- Status column renders a `StatusBadge` whose tone comes from `SUBSCRIPTION_STATUS_TONES` (`constants.ts`): active → success, trialing → info, past_due → warning, canceled → neutral, expired → danger
 - `currentPeriodEnd` column renders `new Date(value).toLocaleDateString()`
 - Actions column: View (always), Edit (behind `subscriptions:edit`), Delete (behind `subscriptions:delete`)
 - Empty state shows "No subscriptions yet" with a Create button (behind `subscriptions:create`)
@@ -299,7 +299,7 @@ Footer: Back button → `/subscriptions`.
 
 ## Me-page subscription tab
 
-`/me/subscription` lives in the `me` module and consumes `useSubscription()`, `useSubscriptionAccess().graceEndsAt`, `<PlanCatalog>` and `SUBSCRIPTION_STATUS_COLORS` from here. It is documented in `src/modules/me/CLAUDE.md` → _MeSubscription_.
+`/me/subscription` lives in the `me` module and consumes `useSubscription()`, `useSubscriptionAccess().graceEndsAt`, `<PlanCatalog>` and `SUBSCRIPTION_STATUS_TONES` from here. It is documented in `src/modules/me/CLAUDE.md` → _MeSubscription_.
 
 ---
 

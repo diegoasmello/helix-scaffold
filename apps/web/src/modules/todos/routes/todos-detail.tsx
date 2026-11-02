@@ -1,6 +1,5 @@
 import { useGetTodosIdSuspense } from '@helix/api-client/hooks'
 import {
-  Badge,
   Button,
   FilePreview,
   Grid,
@@ -9,6 +8,7 @@ import {
   PageView,
   RichTextRenderer,
   SimpleGrid,
+  StatusBadge,
   Text,
 } from '@helix/ui'
 import { parseISO } from 'date-fns'
@@ -64,14 +64,13 @@ export function TodoDetail() {
         </Grid.Col>
         <Grid.Col span={{ base: 12, sm: 6 }}>
           <LabeledValue label={t('labels.status')}>
-            <Badge
-              color={item.status === 'completed' ? 'green' : 'gray'}
-              variant="light"
+            <StatusBadge
+              tone={item.status === 'completed' ? 'success' : 'warning'}
             >
               {item.status === 'completed'
                 ? t('status.completed')
                 : t('status.pending')}
-            </Badge>
+            </StatusBadge>
           </LabeledValue>
         </Grid.Col>
         <Grid.Col span={{ base: 12, sm: 6 }}>

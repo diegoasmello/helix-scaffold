@@ -7,7 +7,8 @@
     "auditLog": "Audit Log",
     "subscriptions": "Subscriptions",
     "settings": "Settings",
-    "profile": "Profile"
+    "profile": "Profile",
+    "createTodo": "Create todo"
   },
   "actions": {
     "save": "Save",
@@ -24,5 +25,8 @@
   "report": {
     "downloaded": "Report downloaded successfully",
     "failed": "Failed to generate report"
+  },
+  "search": {
+    "notAvailable": "Global search is not connected to an API yet."
   }
 }

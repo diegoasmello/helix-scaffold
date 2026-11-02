@@ -1,11 +1,18 @@
 import { useGetSubscriptionsIdSuspense } from '@helix/api-client/hooks'
-import { Badge, Button, Group, LabeledValue, PageView, Stack } from '@helix/ui'
+import {
+  Button,
+  Group,
+  LabeledValue,
+  PageView,
+  Stack,
+  StatusBadge,
+} from '@helix/ui'
 import { parseISO } from 'date-fns'
 import { useTranslation } from 'react-i18next'
 
 import { formatDate } from '@/utils/date'
 
-import { SUBSCRIPTION_STATUS_COLORS } from '../constants'
+import { SUBSCRIPTION_STATUS_TONES } from '../constants'
 import { useSubscription } from '../hooks/use-subscription'
 import { subscriptionsDetailRoute, subscriptionsListRoute } from '.'
 
@@ -18,7 +25,7 @@ export function SubscriptionsDetail() {
 
   const { data: item } = useGetSubscriptionsIdSuspense(id)
 
-  const statusColor = SUBSCRIPTION_STATUS_COLORS[item.status]
+  const statusTone = SUBSCRIPTION_STATUS_TONES[item.status]
 
   return (
     <PageView
@@ -43,9 +50,9 @@ export function SubscriptionsDetail() {
         </LabeledValue>
 
         <LabeledValue label={t('labels.status')}>
-          <Badge color={statusColor} variant="light">
+          <StatusBadge tone={statusTone}>
             {t(`status.${item.status}`)}
-          </Badge>
+          </StatusBadge>
         </LabeledValue>
 
         <LabeledValue label={t('labels.currentPeriodStart')}>

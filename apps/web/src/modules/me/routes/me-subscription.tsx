@@ -1,11 +1,11 @@
 import {
   Alert,
-  Badge,
   Center,
   IconAlertTriangle,
   LabeledValue,
   Loader,
   Stack,
+  StatusBadge,
   Text,
   Title,
 } from '@helix/ui'
@@ -13,7 +13,7 @@ import { parseISO } from 'date-fns'
 import { useId } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import { SUBSCRIPTION_STATUS_COLORS } from '@/modules/subscriptions/constants'
+import { SUBSCRIPTION_STATUS_TONES } from '@/modules/subscriptions/constants'
 import { formatDate } from '@/utils/date'
 
 import { PlanCatalog } from '../../subscriptions/components/plan-catalog'
@@ -65,7 +65,7 @@ export function MeSubscription() {
     )
   }
 
-  const statusColor = SUBSCRIPTION_STATUS_COLORS[subscription.status]
+  const statusTone = SUBSCRIPTION_STATUS_TONES[subscription.status]
 
   return (
     <Stack gap="xl">
@@ -97,9 +97,9 @@ export function MeSubscription() {
           </LabeledValue>
 
           <LabeledValue label={t('me.labels.status')}>
-            <Badge color={statusColor} variant="light">
+            <StatusBadge tone={statusTone}>
               {t(`status.${subscription.status}`)}
-            </Badge>
+            </StatusBadge>
           </LabeledValue>
 
           {subscription.trialEndsAt && (

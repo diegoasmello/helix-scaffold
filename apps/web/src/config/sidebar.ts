@@ -20,6 +20,11 @@ import { USERS_ACCESS } from '@/modules/users/routes/access'
 
 interface SidebarItemWithAccess extends SidebarItem {
   /**
+   * The access the "+" shortcut (`action`) leads to — usually the module's
+   * `create` access. The button shows only when the user has it.
+   */
+  actionAccess?: PageAccess
+  /**
    * The same `PageAccess` the target route's `guardPage()` enforces — always
    * the module's constant, never a new object (`routes.test.ts` checks it).
    * Omit it only for pages every signed-in user may open.
@@ -40,6 +45,8 @@ export const sidebarGroups: SidebarGroupWithAccess[] = [
         icon: IconChecklist,
         to: '/todos',
         access: TODOS_ACCESS.view,
+        action: { label: 'nav.createTodo', to: '/todos/create' },
+        actionAccess: TODOS_ACCESS.create,
       },
     ],
   },

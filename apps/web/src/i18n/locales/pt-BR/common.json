@@ -7,7 +7,8 @@
     "auditLog": "Auditoria",
     "subscriptions": "Assinaturas",
     "settings": "Configurações",
-    "profile": "Perfil"
+    "profile": "Perfil",
+    "createTodo": "Criar tarefa"
   },
   "actions": {
     "save": "Salvar",
@@ -24,5 +25,8 @@
   "report": {
     "downloaded": "Relatório baixado com sucesso",
     "failed": "Falha ao gerar relatório"
+  },
+  "search": {
+    "notAvailable": "A pesquisa geral ainda não está ligada a uma API."
   }
 }

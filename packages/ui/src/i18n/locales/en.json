@@ -56,11 +56,14 @@
   },
   "userMenu": {
     "accountSettings": "Account settings",
-    "logout": "Logout"
+    "logout": "Logout",
+    "openMenu": "Account menu"
   },
   "sidebar": {
     "expand": "Expand sidebar",
-    "collapse": "Collapse sidebar"
+    "collapse": "Collapse sidebar",
+    "close": "Close menu",
+    "open": "Open menu"
   },
   "confirm": {
     "confirm": "Confirm",
@@ -74,5 +77,28 @@
     "message": "You have unsaved changes. Are you sure you want to leave?",
     "confirm": "Leave",
     "cancel": "Stay"
+  },
+  "search": {
+    "label": "Search",
+    "placeholder": "Search…",
+    "shortcut": "Ctrl K",
+    "open": "Open search"
+  },
+  "notifications": {
+    "title": "Notifications",
+    "open": "Notifications",
+    "openWithUnread": "Notifications, {{count}} unread",
+    "markAllRead": "Mark all as read",
+    "viewAll": "View all notifications",
+    "empty": "You have no notifications.",
+    "unread": "Unread"
+  },
+  "breadcrumb": {
+    "label": "Breadcrumb"
+  },
+  "dataTable": {
+    "recordsPerPage": "Rows per page",
+    "pagination": "Showing {{from}}–{{to}} of {{total}}",
+    "noRecords": "No records found"
   }
 }

@@ -48,9 +48,9 @@ Name clashes resolved explicitly in `src/index.ts`:
 
 | Group          | Exports (folder)                                                        | Purpose |
 | -------------- | ----------------------------------------------------------------------- | ------- |
-| App shell      | `Layout`, `Header`, `Sidebar`, `SidebarLinksGroup`, `UserMenu`, `Breadcrumb` (`layout`, `header`, `sidebar`, `user-menu`, `breadcrumb`) | Full-page scaffold rendered by `apps/web`; breadcrumbs come from route `staticData` |
-| Page wrappers  | `PageList`, `PageCreate`, `PageEdit`, `PageView` (`page/`)              | Standard CRUD screen layouts |
-| Data display   | `DataTable`, `LabeledValue`, `EmptyState`                               | Paginated/sortable table; label + value pair for detail views; empty list screen with a CTA slot |
+| App shell      | `Layout`, `Header`, `HeaderSearch`, `NotificationsMenu`, `Sidebar`, `SidebarLinksGroup`, `UserMenu`, `Breadcrumb`, `RouteBreadcrumb` (`layout`, `header`, `sidebar`, `user-menu`, `breadcrumb`) | Full-page scaffold rendered by `apps/web` — see _App shell_ |
+| Page wrappers  | `PageHeader`, `PageList`, `PageCreate`, `PageEdit`, `PageView` (`page/`) | Standard CRUD screen layouts; `PageHeader` (breadcrumb + `h1` + description + actions) tops all four and custom pages |
+| Data display   | `DataTable`, `LabeledValue`, `EmptyState`, `StatusBadge`                | Paginated/sortable table (no card: header band + row borders); label + value pair for detail views; empty list screen with a CTA slot; a record's state as a toned pill with a dot |
 | Actions        | `ActionsMenu` (+ `ActionsMenuItemConfig`)                               | Row actions dropdown — use when a row has more than 3 actions |
 | Forms          | `Form`                                                                  | `<form>` wrapper: runs `form.onSubmit`, blocks navigation while dirty (`blockNavigationOnDirty`, default `true`) |
 | File upload    | `FilesInput`, `FileInput`, `FilePreview`, `FileCard` (`file-upload/`)   | Multi/single upload fields (the HTTP call is injected via `onUpload`) and read-only previews |
@@ -65,11 +65,23 @@ Name clashes resolved explicitly in `src/index.ts`:
 
 `createTheme(overrides)` builds the base Mantine theme the app extends (`apps/web/src/config/theme.ts` adds the `main` palette and sets it as `primaryColor`):
 
-- Fonts: **Geist Variable** (body) and **Plus Jakarta Sans Variable** (headings).
-- `defaultRadius: 'md'`, `focusRing: 'auto'`.
+- Fonts: **Geist Variable** for body and headings (headings weight 600; `h1` 30px with -0.025em tracking — the page title). Plus Jakarta Sans is still imported but no longer used.
+- **Neutral palettes are zinc**: `gray` and `dark` replace Mantine's. Mantine reads them by index (`gray[6]` = light `dimmed`, 4.8:1 on white; `gray[4]` = input border; `dark[7]` = dark body; `dark[4]` = dark borders). The app's `colors` (e.g. `main`) are **merged** with these, not swapped in.
+- **No shadows** — `shadows.*` are all `none`; surfaces are separated by 1px borders (`gray[3]` / `dark[5]`). `Paper` defaults to `withBorder` + `radius="lg"`. Never reintroduce a shadow for separation.
+- Radius scale: `xs` 4, `sm` 6, `md` 8 (default), `lg` 12, `xl` 16.
+- **`md` breakpoint is 1024px** (`64em`, not Mantine's 992px): below it the sidebar is a drawer and the header goes compact. In `createStyles`, write `@media (max-width: calc(${theme.breakpoints.md} - 0.0625em))` for "below md".
 - **Custom spacing scale on a 4/8px grid** — it differs from Mantine's defaults, so pick values by size, not by habit: `xs` 8px, `sm` 12px, `md` 16px, `lg` 24px, `xl` 32px.
-- Component defaults/styles for `Input` (focus outline), `Button`, `Drawer`, `Modal`, `Badge` (light, capitalized) and `Notification`.
+- Component defaults/styles for `Title`, `Input` (focus outline), `Button`, `Paper`, `Drawer`, `Modal` (bordered), `Menu`, `Badge` (light pill, not capitalized; `circle`/small sizes keep Mantine's geometry) and `Notification`.
 - **It references `theme.colors.main`** (input focus ring, notification fallback), so any app using it must define a `main` palette.
+
+## App shell
+
+- **`Layout`** — `AppShell` with a 68px bordered header and a 272px sidebar (72px collapsed, persisted per user). Below `md` the sidebar renders in a `Drawer` instead (closes on navigation). Slots: `search`, `notifications`; `user` takes `{ name, description? }`.
+- **`Sidebar`** — groups of items; each `SidebarItem` may carry a `badge` (`{ count, highlight? }`), an `action` (a "+" link, `{ label, to }` — `label` is its accessible name) and `links` (second level; a link's own `links` make a third). Sub-menus are tied to their parent by guide lines. Inside the drawer it gets `onClose` (close button instead of the collapse toggle).
+- **`NavigationItem`** — the 44px entry used by the sidebar and the `/me` sub-navigation (active = white surface with a border). Props `size="nested"`, `badge`, `action`.
+- **`HeaderSearch`** — pill input from `md` up (`Ctrl K` focuses it), an icon opening a dialog below; it only collects the query (`onSearch`).
+- **`NotificationsMenu`** — bell with an unread count and a panel (`items`, `onItemClick`, `onMarkAllRead`, `onViewAll`); pure UI.
+- **`RouteBreadcrumb`** — the breadcrumb built from the deepest route's `staticData.breadcrumbs` (labels are `common` keys). Renders nothing for a single crumb, or outside a router.
 
 ## `LogicalFilterForm` component
 

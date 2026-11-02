@@ -1,5 +1,6 @@
-import { Divider, Flex, Group, Paper, Title } from '@mantine/core'
 import type { ReactNode } from 'react'
+
+import { PageSectionLayout } from './page-section-layout'
 
 export interface PageViewProps {
   title: string
@@ -12,20 +13,12 @@ export function PageView(props: Readonly<PageViewProps>) {
   const { title, actions, children, footerActions } = props
 
   return (
-    <Flex direction="column" gap="lg">
-      <Group justify="space-between" align="center">
-        <Title order={2}>{title}</Title>
-        {actions}
-      </Group>
-      <Paper p="24">
-        {children}
-        {footerActions && (
-          <>
-            <Divider my="xl" />
-            {footerActions}
-          </>
-        )}
-      </Paper>
-    </Flex>
+    <PageSectionLayout
+      title={title}
+      actions={actions}
+      footerActions={footerActions}
+    >
+      {children}
+    </PageSectionLayout>
   )
 }

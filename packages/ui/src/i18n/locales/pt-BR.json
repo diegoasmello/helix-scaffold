@@ -56,11 +56,14 @@
   },
   "userMenu": {
     "accountSettings": "Configurações da conta",
-    "logout": "Sair"
+    "logout": "Sair",
+    "openMenu": "Menu da conta"
   },
   "sidebar": {
     "expand": "Expandir barra lateral",
-    "collapse": "Recolher barra lateral"
+    "collapse": "Recolher barra lateral",
+    "close": "Fechar menu",
+    "open": "Abrir menu"
   },
   "confirm": {
     "confirm": "Confirmar",
@@ -74,5 +77,28 @@
     "message": "Você tem alterações não salvas. Tem certeza que deseja sair?",
     "confirm": "Sair",
     "cancel": "Ficar"
+  },
+  "search": {
+    "label": "Pesquisar",
+    "placeholder": "Pesquisar…",
+    "shortcut": "Ctrl K",
+    "open": "Abrir pesquisa"
+  },
+  "notifications": {
+    "title": "Notificações",
+    "open": "Notificações",
+    "openWithUnread": "Notificações, {{count}} não lidas",
+    "markAllRead": "Marcar todas como lidas",
+    "viewAll": "Ver todas as notificações",
+    "empty": "Você não tem notificações.",
+    "unread": "Não lida"
+  },
+  "breadcrumb": {
+    "label": "Trilha de navegação"
+  },
+  "dataTable": {
+    "recordsPerPage": "Linhas por página",
+    "pagination": "Mostrando {{from}}–{{to}} de {{total}}",
+    "noRecords": "Nenhum registro encontrado"
   }
 }
