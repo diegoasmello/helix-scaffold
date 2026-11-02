@@ -124,7 +124,11 @@ export function Sidebar(props: Readonly<SidebarProps>) {
             )}
           </Flex>
 
-          <ScrollArea className={classes.scrollArea}>
+          <ScrollArea
+            className={classes.scrollArea}
+            scrollbars="y"
+            classNames={{ content: classes.scrollContent }}
+          >
             <div className={classes.scrollAreaInner}>
               {groups.map((group, index) => (
                 <div key={group.title ?? index} className={classes.group}>
@@ -246,6 +250,13 @@ const useStyles = createStyles((theme, _, u) => ({
        padded back below, so the viewport doesn't clip the first item's ring */
     margin-top: -4px;
   `,
+  /* Mantine lays the content out as a table, which grows to its widest
+     child — keep it at the viewport's width. */
+  scrollContent: css`
+    && {
+      display: block;
+    }
+  `,
   scrollAreaInner: css`
     padding: 4px 14px ${theme.spacing.xl};
   `,
@@ -270,6 +281,10 @@ const useStyles = createStyles((theme, _, u) => ({
   `,
   nav: css`
     display: grid;
+    /* An implicit (auto) column never gets narrower than its widest item's
+       content, so a long label would push the entry past the sidebar instead
+       of truncating. minmax(0, 1fr) caps the column at the sidebar's width. */
+    grid-template-columns: minmax(0, 1fr);
     gap: 4px;
   `,
 }))

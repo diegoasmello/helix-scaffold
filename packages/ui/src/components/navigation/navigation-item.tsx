@@ -1,9 +1,9 @@
 import { css } from '@emotion/react'
-import { UnstyledButton } from '@mantine/core'
+import { Tooltip, UnstyledButton } from '@mantine/core'
 import { createStyles } from '@mantine/emotion'
 import { IconChevronRight, type IconProps } from '@tabler/icons-react'
 import { Link, useMatchRoute } from '@tanstack/react-router'
-import type { ReactNode, RefAttributes } from 'react'
+import { type ReactNode, type RefAttributes, useRef, useState } from 'react'
 
 export interface NavigationItemProps {
   label: string
@@ -42,6 +42,17 @@ export function NavigationItem(props: Readonly<NavigationItemProps>) {
 
   const { classes, cx } = useStyles()
 
+  // The full label in a tooltip, only while it is cut off with an ellipsis.
+  const labelRef = useRef<HTMLSpanElement>(null)
+  const [showFullLabel, setShowFullLabel] = useState(false)
+
+  const handleLabelReveal = () => {
+    const el = labelRef.current
+    setShowFullLabel(!!el && el.scrollWidth > el.clientWidth)
+  }
+
+  const handleLabelHide = () => setShowFullLabel(false)
+
   const content = (
     <>
       {Icon && (
@@ -51,7 +62,17 @@ export function NavigationItem(props: Readonly<NavigationItemProps>) {
           className={cx(classes.icon, { [classes.iconActive]: isActive })}
         />
       )}
-      <span className={classes.label}>{label}</span>
+      <Tooltip
+        label={label}
+        opened={showFullLabel}
+        position="right"
+        withArrow
+        offset={16}
+      >
+        <span ref={labelRef} className={classes.label}>
+          {label}
+        </span>
+      </Tooltip>
       {badge}
       {chevron && (
         <IconChevronRight
@@ -95,6 +116,10 @@ export function NavigationItem(props: Readonly<NavigationItemProps>) {
         [classes.itemNested]: size === 'nested',
         [classes.itemWithAction]: !!action,
       })}
+      onMouseEnter={handleLabelReveal}
+      onMouseLeave={handleLabelHide}
+      onFocus={handleLabelReveal}
+      onBlur={handleLabelHide}
     >
       {control}
       {action}
