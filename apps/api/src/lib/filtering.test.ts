@@ -79,6 +79,7 @@ describe('filterQuerySchema', () => {
         'isNull',
         'isNotNull',
         'in',
+        'between',
       ]
       for (const op of ops) {
         const result = schema.parse({
@@ -348,6 +349,56 @@ describe('buildFilterWhereClause', () => {
           columnMap
         )
       ).toBeUndefined()
+    })
+  })
+
+  describe('between', () => {
+    it('generates an inclusive BETWEEN for a [from, to] pair', () => {
+      const result = buildFilterWhereClause(
+        [{ field: 'count', op: 'between', value: [2, 5] }],
+        'AND',
+        columnMap
+      )!
+      const { sql, params } = toSQL(result)
+      expect(sql.toLowerCase()).toContain(' between ')
+      expect(params).toEqual([2, 5])
+    })
+
+    it.each([
+      ['a single value', 3],
+      ['one bound', [3]],
+      ['three values', [1, 2, 3]],
+      ['an empty bound', ['', '5']],
+    ])('skips the condition for %s', (_, value) => {
+      expect(
+        buildFilterWhereClause(
+          [{ field: 'count', op: 'between', value }],
+          'AND',
+          columnMap
+        )
+      ).toBeUndefined()
+    })
+
+    it('coerces each bound', () => {
+      const result = buildFilterWhereClause(
+        [{ field: 'count', op: 'between', value: ['2', '5'] }],
+        'AND',
+        columnMap,
+        { count: (v) => Number(v) }
+      )!
+      expect(toSQL(result).params).toEqual([2, 5])
+    })
+  })
+
+  describe('coerce', () => {
+    it('coerces each item of an in list', () => {
+      const result = buildFilterWhereClause(
+        [{ field: 'count', op: 'in', value: ['1', '2'] }],
+        'AND',
+        columnMap,
+        { count: (v) => Number(v) }
+      )!
+      expect(toSQL(result).params).toEqual([1, 2])
     })
   })
 

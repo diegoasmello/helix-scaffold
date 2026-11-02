@@ -137,7 +137,7 @@ See `apps/web/CLAUDE.md` → _PDF export_ for the full implementation guide and 
 
 ## Filtering
 
-`TodoList` has a collapsible filter panel. The filter fields and their backend equivalents:
+`TodoList` has a `FilterBar` above the table (`getFilterBarProps(search, navigate)` from `@/lib/list-filters`). The filter fields and their backend equivalents:
 
 | `FilterFieldDef.name` | Type | Backend column (`todos-schema.ts`) |
 |-----------------------|------|-------------------------------------|

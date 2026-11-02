@@ -174,6 +174,37 @@ describe('GET /todos', () => {
       expect(body.total).toBe(2)
     })
 
+    it('filters by date between, both ends included', async () => {
+      const filters = JSON.stringify([
+        { field: 'date', op: 'between', value: ['2025-03-01', '2025-06-01'] },
+      ])
+      const res = await app.inject({
+        method: 'GET',
+        url: `/todos?filters=${encodeURIComponent(filters)}&sortBy=date&sortOrder=asc`,
+        headers: { cookie: authCookie },
+      })
+      expect(res.statusCode).toBe(200)
+      const body = res.json()
+      expect(body.total).toBe(2)
+      expect(body.data.map((t: { title: string }) => t.title)).toEqual([
+        'Learn Rust',
+        'Read book',
+      ])
+    })
+
+    it('filters by status in', async () => {
+      const filters = JSON.stringify([
+        { field: 'status', op: 'in', value: ['pending'] },
+      ])
+      const res = await app.inject({
+        method: 'GET',
+        url: `/todos?filters=${encodeURIComponent(filters)}`,
+        headers: { cookie: authCookie },
+      })
+      expect(res.statusCode).toBe(200)
+      expect(res.json().total).toBe(2)
+    })
+
     it('applies AND logic across two conditions', async () => {
       const filters = JSON.stringify([
         { field: 'status', op: 'eq', value: 'pending' },

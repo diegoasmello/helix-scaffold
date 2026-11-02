@@ -1,11 +1,18 @@
-import type { FilterCondition } from '@helix/ui'
+import type { FilterCondition, LogicalFilterValue } from '@helix/ui'
 import { z } from 'zod'
 
 const filterConditionSchema = z.object({
   field: z.string(),
   op: z.string(),
   value: z
-    .union([z.string(), z.number(), z.boolean(), z.null(), z.array(z.string())])
+    .union([
+      z.string(),
+      z.number(),
+      z.boolean(),
+      z.null(),
+      // `in` lists and `between` [from, to] pairs
+      z.array(z.union([z.string(), z.number()])),
+    ])
     .optional(),
 })
 
@@ -43,3 +50,43 @@ export const filtersSearchParam = z
     const encoded = typeof raw === 'string' ? raw : JSON.stringify(raw)
     return parseFilterConditions(encoded).length > 0 ? encoded : undefined
   })
+
+interface FilterSearch {
+  filters?: string
+  filterLogic: 'AND' | 'OR'
+  page: number
+}
+
+type SearchNavigateFn<TSearch> = (opts: {
+  search: (prev: TSearch) => TSearch
+}) => unknown
+
+/**
+ * `FilterBar` props for a list route whose search holds `filters` and
+ * `filterLogic` — like `getDataTablePaginationProps` for the table. Every
+ * change rewrites both params and goes back to page 1; no conditions removes
+ * `filters` from the URL.
+ */
+export function getFilterBarProps<TSearch extends FilterSearch>(
+  search: TSearch,
+  navigate: SearchNavigateFn<TSearch>
+): { value: LogicalFilterValue; onChange: (next: LogicalFilterValue) => void } {
+  return {
+    value: {
+      conditions: parseFilterConditions(search.filters),
+      logic: search.filterLogic,
+    },
+    onChange: (next) =>
+      navigate({
+        search: (prev) => ({
+          ...prev,
+          filters:
+            next.conditions.length > 0
+              ? JSON.stringify(next.conditions)
+              : undefined,
+          filterLogic: next.logic,
+          page: 1,
+        }),
+      }),
+  }
+}

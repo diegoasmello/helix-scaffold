@@ -1,6 +1,7 @@
 import {
   and,
   type AnyColumn,
+  between,
   eq,
   gt,
   gte,
@@ -29,6 +30,7 @@ export const FILTER_OPERATORS = [
   'isNull',
   'isNotNull',
   'in',
+  'between',
 ] as const
 export type FilterOperator = (typeof FILTER_OPERATORS)[number]
 
@@ -115,8 +117,14 @@ export function buildFilterWhereClause<T extends string>(
     const col = columnMap[field]
     if (!col) continue
 
+    // Array values (`in`, `between`) are coerced item by item.
     const coerceFn = coerce?.[field]
-    const coercedValue = coerceFn && value != null ? coerceFn(value) : value
+    const coercedValue =
+      coerceFn && value != null
+        ? Array.isArray(value)
+          ? value.map((item) => coerceFn(item))
+          : coerceFn(value)
+        : value
 
     switch (op) {
       case 'eq':
@@ -158,6 +166,15 @@ export function buildFilterWhereClause<T extends string>(
       case 'in':
         if (Array.isArray(coercedValue) && coercedValue.length > 0)
           sqlConditions.push(inArray(col, coercedValue))
+        break
+      case 'between':
+        // Inclusive on both ends: `[from, to]`.
+        if (
+          Array.isArray(coercedValue) &&
+          coercedValue.length === 2 &&
+          coercedValue.every((item) => item != null && item !== '')
+        )
+          sqlConditions.push(between(col, coercedValue[0], coercedValue[1]))
         break
     }
   }

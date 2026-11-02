@@ -54,7 +54,7 @@ Name clashes resolved explicitly in `src/index.ts`:
 | Actions        | `RowActions` (+ `RowAction`), `ActionsMenu` (+ `ActionsMenuItemConfig`) | `RowActions` is every table row's actions: ≤ 3 visible → text buttons, more → one "⋯" menu; `danger`, `hidden`. `ActionsMenu` is a plain dots menu for other places |
 | Forms          | `Form`, `useFormSummary`                                                | `<form>` wrapper: runs `form.onSubmit`, blocks navigation while dirty (`blockNavigationOnDirty`, default `true`), and tells the page around it whether it is dirty and how many fields have errors |
 | File upload    | `FilesInput`, `FileInput`, `FilePreview`, `FileCard` (`file-upload/`)   | Multi/single upload fields (the HTTP call is injected via `onUpload`) and read-only previews |
-| Filtering      | `LogicalFilterForm` (`logical-filter/`)                                 | Combinable field conditions with AND/OR |
+| Filtering      | `FilterBar`, `FilterPanel` (`filters/`)                                 | A list's filters: button + chips in words + all/any condition editor — see _Filters_ |
 | Feedback       | `confirm()`, `notify()` (`modals/confirm`, `notifications/notify`)      | Confirm dialog helper; toast helper |
 | Rich text      | `RichTextEditor`, `RichTextRenderer`                                    | Tiptap editor (HTML string value) and read-only renderer |
 | Navigation     | `NavigationItem` (`navigation/`)                                        | Router-aware nav entry (the sidebar's) |
@@ -91,74 +91,35 @@ Name clashes resolved explicitly in `src/index.ts`:
 - **`FormSection`** (`title`, `description?`, `children?`) — a two-column group of fields (intro ≤ 300px left, fields ≤ 720px right, stacked when narrow). It carries `data-page-section`, is a `<section>` named by its `h2` (so `getByRole('region', { name })` finds it) and draws its own padding and bottom border; content without sections keeps the page padding (`:has(> [data-page-section])`).
 - **`PageTabs`** — `label` + `tabs: { label, to }[]`: route links as underlined tabs, `aria-current` on the active one, sideways scroll when they do not fit.
 
-## `LogicalFilterForm` component
-
-Reusable filter panel that lets users combine one or more field conditions with AND/OR logic. Used in list screens above the `DataTable`. Exports from `@helix/ui` (via `./logical-filter`):
+## Filters (`components/filters/`)
 
 ```ts
 import {
-  LogicalFilterForm,
-  type FilterFieldDef,
-  type FilterFieldType,
-  type FilterCondition,
-  type LogicalFilterValue,
-  type LogicalFilterFormProps,
+  FilterBar,            // button + chips + panel — what list screens use
+  FilterPanel,          // the editor alone
+  type FilterFieldDef,  // { name, label, type, options? }
+  type FilterFieldType, // 'text' | 'number' | 'boolean' | 'date' | 'select'
+  type FilterCondition, // { field, op, value? } — what the API receives
+  type FilterOperator,
+  type LogicalFilterValue, // { conditions, logic: 'AND' | 'OR' }
 } from '@helix/ui'
 ```
 
-**Types:**
+**`FilterBar`** (`fields`, `value`, `onChange`) — the "Filters" button (`light` with a count when conditions apply; accessible name "Filters, N applied"), one chip per applied condition in words with a remove button ("Remove filter: Status is Pending"), and "Clear all". Every change calls `onChange` with the full new value. The button opens `FilterPanel` in a `Popover` from `sm` up (`hideDetached={false}`, so it stays open while the page scrolls) and in a full-screen `Modal` below.
 
-```ts
-type FilterFieldType = 'text' | 'number' | 'boolean' | 'date' | 'select'
+**`FilterPanel`** (`fields`, `value`, `onApply`, `onCancel`, `layout: 'popover' | 'fullscreen'`) — edits a draft copy (`draft.ts`): an all/any `SegmentedControl`, one `fieldset` per condition (field → operator → value; visually hidden legend "Condition N" in the popover, a bordered card with touch-sized inputs full screen), the connector ("and"/"or") between them, and "Add condition", a menu that starts from the **field**. Applying with an incomplete condition shows "Fill in a value or remove this condition." under it and does not call `onApply`; the footer sums up ("3 conditions · 1 incomplete"). In the popover, nested dropdowns (`Select`, `DateInput`, `Menu`) render inside it (`withinPortal: false`), or clicking them would close it.
 
-interface FilterFieldDef<T extends string = string> {
-  name: T
-  label: string
-  type: FilterFieldType
-  options?: Array<{ value: string; label: string }>  // only for 'select' type
-}
+Operators per type (`operators.ts`; the first is the default, labels under `ui:filters.ops.*` read differently per type):
 
-interface FilterCondition {
-  field: string
-  op: string
-  value?: string | number | boolean | null | string[]
-}
+| Type | Operators |
+|---|---|
+| `text` | contains, eq, neq, startsWith, endsWith, isNull, isNotNull |
+| `number` | eq, neq, gt, gte, lt, lte, **between**, isNull, isNotNull |
+| `date` | **between**, gte ("from"), lte ("until"), eq ("on"), gt, lt, isNull, isNotNull |
+| `select` | eq, neq, **in** ("is any of" — `MultiSelect`), isNull, isNotNull |
+| `boolean` | eq (Yes/No) |
 
-interface LogicalFilterValue {
-  conditions: FilterCondition[]
-  logic: 'AND' | 'OR'
-}
-```
-
-**Props:**
-
-```ts
-interface LogicalFilterFormProps<T extends string = string> {
-  fields: FilterFieldDef<T>[]   // filterable columns for this module
-  value: LogicalFilterValue      // current filter state (from URL params)
-  onApply: (value: LogicalFilterValue) => void  // called on Apply and on Clear
-}
-```
-
-**Behaviour:**
-
-- The form state is strings internally; values are coerced to the correct type (`number`, `boolean`) on submit before `onApply` is called
-- `isNull` / `isNotNull` operators hide the value input and omit `value` from the condition
-- Clicking **Clear** calls `onApply({ logic: 'AND', conditions: [] })` — the parent is responsible for updating the URL
-- Clicking **Apply** with conditions that have no value set silently skips them
-- Uses `<Form blockNavigationOnDirty={false}>` — never blocks navigation
-
-**Value input rendered per type:**
-
-| type | Input component | Notes |
-|------|-----------------|-------|
-| `text` | `TextInput` | |
-| `number` | `NumberInput` | Stored as string in form; coerced on submit |
-| `date` | `DateInput` | Value is ISO date string; `onChange` returns `string \| null` in Mantine v9 |
-| `select` | `Select` | Uses `field.options` |
-| `boolean` | `Select` | Yes / No options; coerced to `true`/`false` on submit |
-
-**Mantine v9 `DateInput` gotcha**: `onChange` returns `DateStringValue | null` (a string), not `Date | null`. Do not call `.toISOString()` on it. The value prop also accepts `string | null`, not `Date | null`.
+Values sent to the API: numbers for `number` fields, `true`/`false` for `boolean`, `YYYY-MM-DD` strings for dates, a list for `in`, a `[from, to]` pair for `between` (inclusive), none for `isNull`/`isNotNull`. `describe.ts` turns a condition into words (option labels, Yes/No, dates in the user's locale).
 
 ## Form validation utilities
 

@@ -219,6 +219,7 @@ A condition is `{ field, op, value? }`. Operators (`FILTER_OPERATORS`):
 | `gt`, `gte`, `lt`, `lte` | `>`, `>=`, `<`, `<=` | number, or a date string with a `coerce` entry |
 | `isNull`, `isNotNull` | `IS NULL`, `IS NOT NULL` | omitted |
 | `in` | `IN (...)` | non-empty array of strings/numbers |
+| `between` | `BETWEEN from AND to` (inclusive) | `[from, to]` — both set |
 
 A condition whose value does not fit its operator is skipped, not rejected. A field outside the allowed list makes the whole `filters` param fall back to `[]` (same as invalid JSON).
 
@@ -226,7 +227,7 @@ Merge this into the module's `listQuerySchema` alongside pagination and sorting.
 
 **`buildFilterWhereClause(conditions, logic, columnMap, coerce?)`** — builds a Drizzle `SQL | undefined` from the parsed filter conditions. Returns `undefined` when the list is empty (no `.where()` added). Pass the result to both the data query and the count query so pagination totals remain consistent.
 
-The optional `coerce` map transforms raw filter values before Drizzle receives them. This is required for columns whose DB type differs from the serialized URL value — most commonly `timestamp` columns where the filter value arrives as an ISO string:
+The optional `coerce` map transforms raw filter values before Drizzle receives them. This is required for columns whose DB type differs from the serialized URL value — most commonly `timestamp` columns where the filter value arrives as an ISO string. For array values (`in`, `between`) it runs on each item:
 
 ```ts
 const FILTER_COERCE = {

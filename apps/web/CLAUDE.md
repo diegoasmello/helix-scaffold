@@ -117,7 +117,7 @@ When a field needs all records from another module (e.g. a role selector in the 
 
 ## Filtering
 
-List screens can optionally show a collapsible filter panel that lets users combine field conditions with AND/OR logic. The filter state lives entirely in the URL (two extra search params: `filters` and `filterLogic`). The panel open/close state is local only — not persisted in the URL.
+List screens can optionally show a `FilterBar` (`@helix/ui`) between the page header and the `DataTable`: a "Filters" button with the number of applied conditions, each applied condition as a removable chip in words ("Status is Pending", "Date is between 10/1/2026 and 10/31/2026") and "Clear all". The button opens `FilterPanel` under it (full screen below `sm`), where users combine conditions with all/any logic. The applied state lives entirely in the URL (two search params: `filters` and `filterLogic`); the panel's draft and open state are local.
 
 ### URL shape
 
@@ -151,106 +151,39 @@ Pass them to the suspense hook too:
 const { data: xxxResponse } = useGetXxxsSuspense({ page, pageSize, sortBy, sortOrder, filters, filterLogic })
 ```
 
-### `LogicalFilterForm` component (`@helix/ui`)
+### `FilterBar` (`@helix/ui`)
 
-The reusable filter UI lives in `packages/ui`. Import `LogicalFilterForm`, `FilterFieldDef`, and `LogicalFilterValue` from `@helix/ui`.
+Declare the filterable fields (labels from the module namespace), then spread `getFilterBarProps(search, navigate)` (`@/lib/list-filters`) — it reads `filters`/`filterLogic` with `parseFilterConditions` and writes every change back (JSON-encoded, `filters` dropped when empty, `page: 1`):
 
-**Define filter fields** in the list file (module-specific):
+```tsx
+const search = xxxListRoute.useSearch()
+const navigate = xxxListRoute.useNavigate()
 
-```ts
 const XXX_FILTER_FIELDS: FilterFieldDef[] = [
-  { name: 'title',  label: 'Title',  type: 'text' },
-  { name: 'status', label: 'Status', type: 'select',
-    options: [{ value: 'active', label: 'Active' }, { value: 'archived', label: 'Archived' }] },
-  { name: 'date',   label: 'Date',   type: 'date' },
+  { name: 'title', label: t('filters.title'), type: 'text' },
+  {
+    name: 'status',
+    label: t('filters.status'),
+    type: 'select',
+    options: [
+      { value: 'pending', label: t('filters.statusPending') },
+      { value: 'completed', label: t('filters.statusCompleted') },
+    ],
+  },
+  { name: 'date', label: t('filters.date'), type: 'date' },
 ]
+
+<PageList title={...} actions={/* Export, Create — not Filters */}>
+  <FilterBar fields={XXX_FILTER_FIELDS} {...getFilterBarProps(search, navigate)} />
+  <DataTable ... />
+</PageList>
 ```
 
-Supported `type` values: `'text'` | `'number'` | `'boolean'` | `'date'` | `'select'`. The `name` values must match the field names declared in `XXX_FILTER_FIELDS` on the backend (`apps/api/src/modules/xxx/xxx-schema.ts`).
-
-**State and handlers** in the list component:
-
-```ts
-const [filtersOpen, setFiltersOpen] = useState(false)
-const { ..., filters, filterLogic } = xxxListRoute.useSearch()
-
-// Auto-open the panel when the page loads with active filters (e.g. bookmarked URL)
-useEffect(() => {
-  if (filters) setFiltersOpen(true)
-}, []) // eslint-disable-line react-hooks/exhaustive-deps
-
-const filterValue: LogicalFilterValue = {
-  conditions: parseFilterConditions(filters), // from '@/lib/list-filters'
-  logic: filterLogic,
-}
-const activeFilterCount = filterValue.conditions.length
-
-const handleApplyFilters = (value: LogicalFilterValue) => {
-  const hasFilters = value.conditions.length > 0
-  navigate({
-    search: (prev) => ({
-      ...prev,
-      filters: hasFilters ? JSON.stringify(value.conditions) : undefined,
-      filterLogic: value.logic,
-      page: 1,   // always reset to page 1 when filters change
-    }),
-  })
-  if (!hasFilters) setFiltersOpen(false)
-}
-```
-
-**Filters button** (add to `PageList` `actions`, before the Create button):
-
-```tsx
-<Button
-  variant={activeFilterCount > 0 ? 'light' : 'default'}
-  leftSection={<IconFilter size={16} />}
-  onClick={() => setFiltersOpen((o) => !o)}
-  rightSection={
-    activeFilterCount > 0 ? (
-      <Badge size="xs" circle>{activeFilterCount}</Badge>
-    ) : undefined
-  }
->
-  Filters
-</Button>
-```
-
-**Filter panel** (between `PageList` header and `DataTable`):
-
-```tsx
-<Collapse expanded={filtersOpen}>
-  <Paper withBorder p="md" mb="md">
-    <LogicalFilterForm
-      key={filters ?? ''}
-      fields={XXX_FILTER_FIELDS}
-      value={filterValue}
-      onApply={handleApplyFilters}
-    />
-  </Paper>
-</Collapse>
-```
-
-The `key={filters ?? ''}` causes the form to remount whenever the active filter string changes (e.g. browser back/forward), so the form stays in sync with the URL.
+Field types and their operators (`text`, `number`, `date`, `select`, `boolean`) are listed in `packages/ui/CLAUDE.md` → _Filters_. `number`/`date` offer `between` and `select` offers `in` ("is any of") — the API must accept both (it does through `src/lib/filtering.ts`), and a `date` field on a `timestamp` column needs its `coerce` entry.
 
 ### Tests
 
-Add a `describe('Filter panel')` block to the list test file. Required cases:
-
-| Test | What to verify |
-|------|----------------|
-| No active filters | Filters button renders with no badge |
-| Click Filters | Panel opens (find `'Add filter'` button asynchronously) |
-| Click Filters again | Panel closes |
-| `useSearch` returns active filters | Badge shows correct count (scope with `within(filtersBtn)` to avoid pagination collisions) |
-| Page loads with active filters | Panel auto-opens |
-| Click Add filter | A condition row appears |
-| Fill value + click Apply | `navigate` called with JSON-encoded `filters` and `page: 1` |
-| Click Clear | `navigate` called with `filters: undefined` and `page: 1` |
-
-Always use `findByRole` (async) for assertions after click — Mantine's `Collapse` animation is asynchronous. Use `within(filtersBtn).getByText('1')` for badge assertions to avoid false matches from pagination controls.
-
-See `apps/web/src/modules/todos/routes/todos-list.test.tsx` → `describe('Filter panel')` for the reference implementation.
+Add a `describe('Filters')` block to the list test file — `todos-list.test.tsx` is the reference. Cover: no count and no chips without filters; chips in words for conditions in the URL (query the remove buttons, e.g. `{ name: 'Remove filter: Status is Pending' }`); a malformed param is ignored; removing a chip and "Clear all" call `navigate` (run the `search` updater and check `filters`/`page: 1`); adding a condition from the field menu (`Add condition` → `menuitem`) and applying; an incomplete condition shows its error and does not navigate; Cancel leaves the URL alone. The test setup's `matchMedia` stub makes the panel a popover; make `min-width` queries fail to get the full-screen dialog (see _on small screens_).
 
 ---
 
