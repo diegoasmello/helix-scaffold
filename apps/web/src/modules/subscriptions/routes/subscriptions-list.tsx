@@ -10,10 +10,10 @@ import {
   EmptyState,
   getDataTablePaginationProps,
   getDataTableSortingProps,
-  Group,
   IconPlus,
   notify,
   PageList,
+  RowActions,
   StatusBadge,
 } from '@helix/ui'
 import { useMutation } from '@tanstack/react-query'
@@ -22,6 +22,7 @@ import { useTranslation } from 'react-i18next'
 import { useResourceCache } from '@/lib/resource-cache'
 
 import { HasPermission } from '../../auth/components/has-permission'
+import { useAuth } from '../../auth/use-auth'
 import { SUBSCRIPTION_STATUS_TONES } from '../constants'
 import { useSubscription } from '../hooks/use-subscription'
 import type { SubscriptionItem } from '../types'
@@ -34,6 +35,7 @@ export function SubscriptionsList() {
   const { page, pageSize, sortBy, sortOrder } = search
   const { t } = useTranslation('subscription')
   const { t: tc } = useTranslation('common')
+  const { hasPermission } = useAuth()
   const { getPlanName } = useSubscription()
 
   const { data: subscriptionsResponse } = useGetSubscriptionsSuspense({
@@ -101,49 +103,33 @@ export function SubscriptionsList() {
     {
       accessor: 'actions',
       title: t('columns.actions'),
-      textAlign: 'center',
+      textAlign: 'right',
       width: '1%',
       render: (item) => (
-        <Group justify="center" gap="xs" wrap="nowrap">
-          <Button
-            size="xs"
-            variant="default"
-            aria-label="View"
-            onClick={() =>
-              navigate({
-                to: '/subscriptions/$id',
-                params: { id: item.id },
-              })
-            }
-          >
-            {tc('actions.view')}
-          </Button>
-          <HasPermission resource="subscriptions" action="edit">
-            <Button
-              size="xs"
-              variant="default"
-              aria-label="Edit"
-              onClick={() =>
+        <RowActions
+          actions={[
+            {
+              label: tc('actions.view'),
+              onClick: () =>
+                navigate({ to: '/subscriptions/$id', params: { id: item.id } }),
+            },
+            {
+              label: tc('actions.edit'),
+              hidden: !hasPermission('subscriptions', 'edit'),
+              onClick: () =>
                 navigate({
                   to: '/subscriptions/$id/edit',
                   params: { id: item.id },
-                })
-              }
-            >
-              {tc('actions.edit')}
-            </Button>
-          </HasPermission>
-          <HasPermission resource="subscriptions" action="delete">
-            <Button
-              size="xs"
-              variant="default"
-              aria-label="Delete"
-              onClick={() => handleDelete(item.id)}
-            >
-              {tc('actions.delete')}
-            </Button>
-          </HasPermission>
-        </Group>
+                }),
+            },
+            {
+              label: tc('actions.delete'),
+              danger: true,
+              hidden: !hasPermission('subscriptions', 'delete'),
+              onClick: () => handleDelete(item.id),
+            },
+          ]}
+        />
       ),
     },
   ]

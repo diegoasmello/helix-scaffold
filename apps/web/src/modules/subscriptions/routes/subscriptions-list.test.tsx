@@ -155,7 +155,7 @@ describe('SubscriptionsList', () => {
 
   it('navigates to the detail screen when View is clicked', async () => {
     renderSubscriptionsList()
-    const viewButtons = await screen.findAllByLabelText('View')
+    const viewButtons = await screen.findAllByRole('button', { name: 'View' })
     await userEvent.click(viewButtons[0])
     expect(mockNavigate).toHaveBeenCalledWith({
       to: '/subscriptions/$id',
@@ -165,7 +165,7 @@ describe('SubscriptionsList', () => {
 
   it('navigates to the edit screen when Edit is clicked', async () => {
     renderSubscriptionsList()
-    const editButtons = await screen.findAllByLabelText('Edit')
+    const editButtons = await screen.findAllByRole('button', { name: 'Edit' })
     await userEvent.click(editButtons[0])
     expect(mockNavigate).toHaveBeenCalledWith({
       to: '/subscriptions/$id/edit',
@@ -181,7 +181,9 @@ describe('SubscriptionsList', () => {
 
   it('opens delete modal when delete button is clicked', async () => {
     renderSubscriptionsList()
-    const deleteButtons = await screen.findAllByLabelText('Delete')
+    const deleteButtons = await screen.findAllByRole('button', {
+      name: 'Delete',
+    })
     await userEvent.click(deleteButtons[0])
     const dialog = await screen.findByRole('dialog')
     expect(within(dialog).getByText('Delete subscription')).toBeInTheDocument()
@@ -201,7 +203,9 @@ describe('SubscriptionsList', () => {
       })
     )
     renderSubscriptionsList()
-    const deleteButtons = await screen.findAllByLabelText('Delete')
+    const deleteButtons = await screen.findAllByRole('button', {
+      name: 'Delete',
+    })
     await userEvent.click(deleteButtons[0])
     const dialog = await screen.findByRole('dialog')
     await userEvent.click(
@@ -219,7 +223,9 @@ describe('SubscriptionsList', () => {
       })
     )
     renderSubscriptionsList()
-    const deleteButtons = await screen.findAllByLabelText('Delete')
+    const deleteButtons = await screen.findAllByRole('button', {
+      name: 'Delete',
+    })
     await userEvent.click(deleteButtons[0])
     const dialog = await screen.findByRole('dialog')
     await userEvent.click(
@@ -238,9 +244,13 @@ describe('SubscriptionsList', () => {
     renderSubscriptionsList()
     // Create is permission-gated too: once it shows, permissions have resolved.
     await screen.findByRole('button', { name: 'Create' })
-    expect(screen.getAllByLabelText('View')).toHaveLength(2)
-    expect(screen.queryByLabelText('Edit')).not.toBeInTheDocument()
-    expect(screen.queryByLabelText('Delete')).not.toBeInTheDocument()
+    expect(screen.getAllByRole('button', { name: 'View' })).toHaveLength(2)
+    expect(
+      screen.queryByRole('button', { name: 'Edit' })
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'Delete' })
+    ).not.toBeInTheDocument()
   })
 
   describe('empty state', () => {

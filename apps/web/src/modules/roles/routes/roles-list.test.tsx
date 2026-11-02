@@ -205,21 +205,24 @@ describe('RolesList', () => {
     )
   })
 
-  it('hides edit, delete, and permissions items when user lacks those permissions', async () => {
+  it('shows the remaining actions as buttons when at most 3 are allowed', async () => {
     server.use(getMePermissionsHandler({ grants: { roles: ['view'] } }))
     renderRolesList()
     await screen.findByText('Admin')
-    const menuButtons = await screen.findAllByLabelText('Actions')
-    await userEvent.click(menuButtons[0])
-    const items = await screen.findAllByRole('menuitem')
-    const labels = items.map((item) => item.textContent)
-    expect(labels).toContain('View')
-    expect(labels).not.toContain('Edit')
-    expect(labels).not.toContain('Edit Permissions')
-    expect(labels).not.toContain('Delete')
+    expect(screen.getAllByRole('button', { name: 'View' })).toHaveLength(2)
+    expect(screen.queryByLabelText('Actions')).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'Edit' })
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'Edit Permissions' })
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'Delete' })
+    ).not.toBeInTheDocument()
   })
 
-  it('hides Edit Permissions item when user lacks permissions:edit', async () => {
+  it('hides Edit Permissions when user lacks permissions:edit', async () => {
     server.use(
       getMePermissionsHandler({
         grants: { roles: ['view', 'edit', 'delete'] },
@@ -227,11 +230,13 @@ describe('RolesList', () => {
     )
     renderRolesList()
     await screen.findByText('Admin')
-    const menuButtons = await screen.findAllByLabelText('Actions')
-    await userEvent.click(menuButtons[0])
-    const items = await screen.findAllByRole('menuitem')
-    const labels = items.map((item) => item.textContent)
-    expect(labels).toContain('Edit')
-    expect(labels).not.toContain('Edit Permissions')
+    expect(await screen.findAllByRole('button', { name: 'Edit' })).toHaveLength(
+      2
+    )
+    expect(screen.queryByLabelText('Actions')).not.toBeInTheDocument()
+    expect(screen.getAllByRole('button', { name: 'Delete' })).toHaveLength(2)
+    expect(
+      screen.queryByRole('button', { name: 'Edit Permissions' })
+    ).not.toBeInTheDocument()
   })
 })

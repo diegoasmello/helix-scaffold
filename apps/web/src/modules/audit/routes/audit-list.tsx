@@ -9,6 +9,7 @@ import {
   getDataTableSortingProps,
   Group,
   PageList,
+  RowActions,
 } from '@helix/ui'
 import { IconDownload } from '@helix/ui'
 import { parseISO } from 'date-fns'
@@ -84,17 +85,18 @@ export function AuditList() {
     {
       accessor: 'actions',
       title: t('columns.actions'),
-      textAlign: 'center',
+      textAlign: 'right',
       width: '1%',
       render: (log) => (
-        <Button
-          size="xs"
-          variant="default"
-          aria-label="View"
-          onClick={() => navigate({ to: '/audit/$id', params: { id: log.id } })}
-        >
-          {tc('actions.view')}
-        </Button>
+        <RowActions
+          actions={[
+            {
+              label: tc('actions.view'),
+              onClick: () =>
+                navigate({ to: '/audit/$id', params: { id: log.id } }),
+            },
+          ]}
+        />
       ),
     },
   ]

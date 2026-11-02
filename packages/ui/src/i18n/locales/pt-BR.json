@@ -99,6 +99,12 @@
   "dataTable": {
     "recordsPerPage": "Linhas por página",
     "pagination": "Mostrando {{from}}–{{to}} de {{total}}",
-    "noRecords": "Nenhum registro encontrado"
+    "noRecords": "Nenhum registro encontrado",
+    "previous": "Anterior",
+    "next": "Próxima",
+    "pageOf": "Página {{page}} de {{pages}}"
+  },
+  "rowActions": {
+    "more": "Ações"
   }
 }

@@ -1,6 +1,6 @@
 # users module — frontend
 
-Full CRUD module. Differs from other modules in three notable ways: two separate form validators (create vs. edit), the `PasswordInput` field is conditionally rendered via `isEditing`, and action buttons in the list are wrapped with `<HasPermission>`.
+Full CRUD module. Differs from other modules in three notable ways: two separate form validators (create vs. edit), the `PasswordInput` field is conditionally rendered via `isEditing`, and the list's actions are gated by permission.
 
 ## File structure
 
@@ -116,13 +116,13 @@ Inline in each component — no `hooks.ts`.
 
 ## RBAC in the list screen
 
-Unlike the todos module, `UsersList` wraps action buttons with `<HasPermission>`:
+Unlike the todos module, `UsersList` gates its actions by permission:
 
 - Create button → `<HasPermission resource="users" action="create">`
-- Edit icon → `<HasPermission resource="users" action="edit">`
-- Delete icon → `<HasPermission resource="users" action="delete">`
+- Row Edit → `hidden: !hasPermission('users', 'edit')` in `RowActions`
+- Row Delete → `hidden: !hasPermission('users', 'delete')`, `danger: true`
 
-View icon is always visible.
+View is always visible.
 
 ## Sidebar
 

@@ -3,12 +3,19 @@ import { DataTable as MantineDataTable } from 'mantine-datatable'
 export type { DataTableColumn } from 'mantine-datatable'
 export type { DataTableProps } from 'mantine-datatable'
 import { css } from '@emotion/react'
+import { useMantineTheme } from '@mantine/core'
 import { createStyles } from '@mantine/emotion'
+import { useMediaQuery } from '@mantine/hooks'
+import type { Key } from 'react'
 import { useTranslation } from 'react-i18next'
+
+import { DataTableCards } from './data-table-cards'
 
 /**
  * The list table: sits directly on the page (no card) — a header band with
  * borders above and below, rows divided by borders, pagination underneath.
+ * Below the `sm` breakpoint it renders one card per record instead (see
+ * `DataTableCards`); tables built from column `groups` always stay tables.
  */
 export function DataTable<T>(
   props: Readonly<Omit<DataTableProps<T>, 'withTableBorder'>>
@@ -23,6 +30,30 @@ export function DataTable<T>(
 
   const { classes } = useStyles()
   const { t } = useTranslation('ui')
+  const theme = useMantineTheme()
+  const wide = useMediaQuery(`(min-width: ${theme.breakpoints.sm})`, true, {
+    getInitialValueInEffect: false,
+  })
+
+  const noRecordsText = rest.noRecordsText ?? t('dataTable.noRecords')
+
+  if (!wide && rest.columns) {
+    return (
+      <DataTableCards
+        records={rest.records ?? []}
+        columns={rest.columns}
+        idAccessor={
+          rest.idAccessor as string | ((record: T) => Key) | undefined
+        }
+        page={rest.page}
+        totalRecords={rest.totalRecords}
+        recordsPerPage={rest.recordsPerPage}
+        onPageChange={rest.onPageChange}
+        noRecordsText={noRecordsText}
+        fetching={rest.fetching}
+      />
+    )
+  }
 
   const tableProps = {
     recordsPerPageLabel: t('dataTable.recordsPerPage'),
@@ -35,7 +66,7 @@ export function DataTable<T>(
       to: number
       totalRecords: number
     }) => t('dataTable.pagination', { from, to, total: totalRecords }),
-    noRecordsText: t('dataTable.noRecords'),
+    noRecordsText,
     withTableBorder: false,
     withRowBorders: true,
     borderRadius: 0,

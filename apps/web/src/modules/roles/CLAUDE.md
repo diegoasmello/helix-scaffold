@@ -137,13 +137,12 @@ Inline in each component — no `hooks.ts`.
 
 ## RBAC in the list screen
 
-`RolesList` wraps action buttons with `<HasPermission>`:
+`RolesList` gates its actions by permission:
 
 - Create button → `<HasPermission resource="roles" action="create">`
-- Edit icon → `<HasPermission resource="roles" action="edit">`
-- Delete icon → `<HasPermission resource="roles" action="delete">`
+- Row actions (`RowActions`): View (always), Edit (`hidden: !hasPermission('roles', 'edit')`), Edit Permissions (`hidden: !hasPermission('permissions', 'edit')`), Delete (`hidden: !hasPermission('roles', 'delete')`, `danger: true`)
 
-View icon is always visible.
+With all four allowed, the row shows the "⋯" menu; with 3 or fewer, text buttons — the tests cover both.
 
 ## List test (`routes/roles-list.test.tsx`)
 

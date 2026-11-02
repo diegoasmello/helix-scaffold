@@ -6,9 +6,9 @@ import {
   type DataTableColumn,
   getDataTablePaginationProps,
   getDataTableSortingProps,
-  Group,
   notify,
   PageList,
+  RowActions,
 } from '@helix/ui'
 import { IconPlus } from '@helix/ui'
 import { useMutation } from '@tanstack/react-query'
@@ -17,6 +17,7 @@ import { useTranslation } from 'react-i18next'
 import { useResourceCache } from '@/lib/resource-cache'
 
 import { HasPermission } from '../../auth/components/has-permission'
+import { useAuth } from '../../auth/use-auth'
 import type { UserItem } from '../types'
 import { usersListRoute } from '.'
 
@@ -27,6 +28,7 @@ export function UsersList() {
   const { page, pageSize, sortBy, sortOrder } = search
   const { t } = useTranslation('users')
   const { t: tc } = useTranslation('common')
+  const { hasPermission } = useAuth()
 
   const { data: usersResponse } = useGetUsersSuspense({
     page,
@@ -80,43 +82,30 @@ export function UsersList() {
     {
       accessor: 'actions',
       title: t('columns.actions'),
-      textAlign: 'center',
+      textAlign: 'right',
       width: '1%',
       render: (item) => (
-        <Group gap="xs" wrap="nowrap">
-          <Button
-            size="xs"
-            variant="default"
-            aria-label="View"
-            onClick={() =>
-              navigate({ to: '/users/$id', params: { id: item.id } })
-            }
-          >
-            {tc('actions.view')}
-          </Button>
-          <HasPermission resource="users" action="edit">
-            <Button
-              size="xs"
-              variant="default"
-              aria-label="Edit"
-              onClick={() =>
-                navigate({ to: '/users/$id/edit', params: { id: item.id } })
-              }
-            >
-              {tc('actions.edit')}
-            </Button>
-          </HasPermission>
-          <HasPermission resource="users" action="delete">
-            <Button
-              size="xs"
-              variant="default"
-              aria-label="Delete"
-              onClick={() => handleDelete(item.id, item.name)}
-            >
-              {tc('actions.delete')}
-            </Button>
-          </HasPermission>
-        </Group>
+        <RowActions
+          actions={[
+            {
+              label: tc('actions.view'),
+              onClick: () =>
+                navigate({ to: '/users/$id', params: { id: item.id } }),
+            },
+            {
+              label: tc('actions.edit'),
+              hidden: !hasPermission('users', 'edit'),
+              onClick: () =>
+                navigate({ to: '/users/$id/edit', params: { id: item.id } }),
+            },
+            {
+              label: tc('actions.delete'),
+              danger: true,
+              hidden: !hasPermission('users', 'delete'),
+              onClick: () => handleDelete(item.id, item.name),
+            },
+          ]}
+        />
       ),
     },
   ]

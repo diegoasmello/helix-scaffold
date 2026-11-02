@@ -125,7 +125,9 @@ describe('UsersList', () => {
 
   it('opens delete modal when delete button is clicked', async () => {
     renderUsersList()
-    const deleteButtons = await screen.findAllByLabelText('Delete')
+    const deleteButtons = await screen.findAllByRole('button', {
+      name: 'Delete',
+    })
     await userEvent.click(deleteButtons[0])
     const dialog = await screen.findByRole('dialog')
     expect(within(dialog).getByText('Delete user')).toBeInTheDocument()
@@ -145,7 +147,9 @@ describe('UsersList', () => {
       })
     )
     renderUsersList()
-    const deleteButtons = await screen.findAllByLabelText('Delete')
+    const deleteButtons = await screen.findAllByRole('button', {
+      name: 'Delete',
+    })
     await userEvent.click(deleteButtons[0])
     const dialog = await screen.findByRole('dialog')
     await userEvent.click(
@@ -174,7 +178,9 @@ describe('UsersList', () => {
       })
     )
     renderUsersList()
-    const deleteButtons = await screen.findAllByLabelText('Delete')
+    const deleteButtons = await screen.findAllByRole('button', {
+      name: 'Delete',
+    })
     await userEvent.click(deleteButtons[0])
     const dialog = await screen.findByRole('dialog')
     await userEvent.click(
@@ -188,7 +194,9 @@ describe('UsersList', () => {
 
   it('closes delete modal on cancel', async () => {
     renderUsersList()
-    const deleteButtons = await screen.findAllByLabelText('Delete')
+    const deleteButtons = await screen.findAllByRole('button', {
+      name: 'Delete',
+    })
     await userEvent.click(deleteButtons[0])
     const dialog = await screen.findByRole('dialog')
     await userEvent.click(

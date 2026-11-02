@@ -1332,46 +1332,32 @@ When active filters are present and the result is empty, skip the `EmptyState` �
 
 Form screens use the `<Form>` component from `@helix/ui` wrapping `PageCreate`/`PageEdit`. `Form` receives `form` (the `useForm` instance) and `onSubmit` (a plain function that receives the validated values — not `form.onSubmit(...)`). It handles validation and submission internally.
 
-**Per-row action buttons** — use inline `Button size="xs" variant="default"` when a row has **≤ 3 actions**. When a row can have **> 3 actions**, use `<ActionsMenu>` from `@helix/ui` instead — it renders a dots trigger (`IconDots`) that opens a dropdown `Menu`.
-
-**≤ 3 actions — inline buttons:**
+**Per-row actions** — always `<RowActions>` from `@helix/ui`, in a column with `accessor: 'actions'`, `textAlign: 'right'`, `width: '1%'`. It applies the list rules by itself: **≤ 3 visible actions** are text buttons side by side (`size="xs"`, `variant="default"`); **more than 3** collapse into a single "⋯" menu (accessible name "Actions"). Mark destructive actions `danger: true` (red text / red menu item) and permission-gated ones `hidden: !hasPermission(...)` — hidden actions are left out **before** the ≤ 3 count, so a row with 4 declared actions whose user may see 3 shows buttons. Never make the row text itself clickable (no `onRowClick`).
 
 ```tsx
-<Group gap="xs" wrap="nowrap">
-  {/* View is always visible — reading the list already requires `features:view` */}
-  <Button size="xs" variant="default" aria-label="View" onClick={() => navigate({ to: "/features/$id", params: { id: item.id } })}>
-    View
-  </Button>
-  <HasPermission resource="features" action="edit">
-    <Button size="xs" variant="default" aria-label="Edit" onClick={() => navigate({ to: "/features/$id/edit", params: { id: item.id } })}>
-      Edit
-    </Button>
-  </HasPermission>
-  <HasPermission resource="features" action="delete">
-    <Button size="xs" variant="default" aria-label="Delete" onClick={() => handleDelete(item.id)}>
-      Delete
-    </Button>
-  </HasPermission>
-</Group>
+const { hasPermission } = useAuth() // from '../../auth/use-auth'
+
+{
+  accessor: 'actions',
+  title: t('columns.actions'),
+  textAlign: 'right',
+  width: '1%',
+  render: (item) => (
+    <RowActions
+      actions={[
+        // View is always visible — reading the list already requires `features:view`
+        { label: tc('actions.view'), onClick: () => navigate({ to: '/features/$id', params: { id: item.id } }) },
+        { label: tc('actions.edit'), hidden: !hasPermission('features', 'edit'), onClick: () => navigate({ to: '/features/$id/edit', params: { id: item.id } }) },
+        { label: tc('actions.delete'), danger: true, hidden: !hasPermission('features', 'delete'), onClick: () => handleDelete(item.id) },
+      ]}
+    />
+  ),
+}
 ```
 
-**> 3 actions — dropdown menu:**
+The buttons' accessible name is their visible (translated) label — do not add an `aria-label`. On phones the `DataTable` renders cards (see _DataTable on small screens_) and `RowActions` fills the card's footer with full-width 44px buttons. `ActionsMenu` stays exported for menus outside tables; do not use it for row actions.
 
-Use `hasPermission()` (from `useAuth()`) to filter the items array before passing it to `<ActionsMenu>` — do not pass hidden items. Destructive actions (e.g. Delete) get `color: 'red'`:
-
-```tsx
-const { hasPermission } = useAuth()
-
-// Inside the column render:
-const items: ActionsMenuItemConfig[] = [
-  { label: tc('actions.view'), onClick: () => navigate({ to: '/features/$id', params: { id: item.id } }) },
-  ...(hasPermission('features', 'edit') ? [{ label: tc('actions.edit'), onClick: () => navigate({ to: '/features/$id/edit', params: { id: item.id } }) }] : []),
-  ...(hasPermission('features', 'delete') ? [{ label: tc('actions.delete'), color: 'red' as const, onClick: () => handleDelete(item.id) }] : []),
-]
-return <ActionsMenu items={items} />
-```
-
-`HasPermission` (the wrapper component) is replaced by `hasPermission()` (from `useAuth()`) in this pattern so the array can be filtered before passing to the component. The RBAC behaviour is identical — use `useAuth()` for both and import it from `../../auth/use-auth`.
+**DataTable on small screens** — below the `sm` breakpoint (768px) `DataTable` renders one card per record instead of a table: the **first visible column is the card's title**, the other columns are label/value lines (label = the column `title`), and the `actions` column goes to the card's footer. Pagination becomes Previous / "Page x of y" / Next; sorting is not offered on phones. So order the columns with the record's name first and keep `title` on every column. A column's `render` output is reused as is — cells can call `useDataTableLayout()` (`'table' | 'cards'`) if they need to adapt. Tables built with column `groups` always stay tables.
 
 **Create button** (in `PageList` `actions` prop) — wrap with `<HasPermission>`:
 
@@ -1869,7 +1855,7 @@ server.use(
 
 | Screen | Tests                                                                                                                                                                        |
 | ------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| List   | renders items; status badges (`StatusBadge` text); clicking Delete opens confirm dialog; confirming calls DELETE endpoint; cancelling closes dialog; hides Edit/Delete when user lacks permission |
+| List   | renders items; status badges (`StatusBadge` text); clicking Delete opens confirm dialog; confirming calls DELETE endpoint; cancelling closes dialog; hides Edit/Delete when user lacks permission (card layout: once, in the reference module) |
 | Create | renders form; validation errors on empty submit; POST called with correct payload + navigates on success; shows danger notification on API error                             |
 | Edit   | form pre-populated from GET response; validation errors; PATCH called with updated payload + navigates on success; shows danger notification on API error                    |
 | Detail | renders all fields; correct badge per status                                                                                                                                 |
@@ -1877,7 +1863,9 @@ server.use(
 **Key patterns:**
 
 - Use `await screen.findByText(...)` for content behind Suspense
-- **Use `await screen.findAllByLabelText("Delete")` (async) instead of `screen.getAllByLabelText("Delete")` (sync)** when clicking permission-gated buttons. The permissions query resolves after the data query — by the time `findByText` resolves, `HasPermission` may not have re-rendered yet.
+- **Use `await screen.findAllByRole("button", { name: "Delete" })` (async) instead of `getAllByRole` (sync)** when clicking permission-gated row actions. The permissions query resolves after the data query — by the time `findByText` resolves, the `hidden` actions may not have re-rendered yet.
+- Row actions are queried by role and visible name (`getAllByRole("button", { name: "Edit" })`), or — when there are more than 3 — `findAllByLabelText("Actions")` then `findByRole("menuitem", { name: "Delete" })`.
+- The test setup's `matchMedia` stub matches every query, so `DataTable` renders as a table. To test the card layout, make `min-width` queries fail — see `todos-list.test.tsx` → _on small screens_.
 - Scope modal assertions with `await screen.findByRole("dialog")` — Mantine modals render in portals
 - Use `waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument())` to assert a modal closed
 - Capture request bodies in MSW handlers to verify payloads without spying on service functions

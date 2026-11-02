@@ -48,7 +48,7 @@ No mutations, no cache invalidation, no `useQueryClient`.
 
 `ACTION_COLORS` maps action strings to badge colors (`create` green, `edit` blue, `delete` red); anything else — including `export` — falls back to `gray`.
 
-Columns: `createdAt` (`formatDateTime(parseISO(...))` from `@/utils/date`, sortable), `userName` (sortable), `action` (Badge, sortable), `resource` (sortable), `resourceId` (`?? '—'`), `ip` (`?? '—'`), `actions` (View button only).
+Columns: `createdAt` (`formatDateTime(parseISO(...))` from `@/utils/date`, sortable), `userName` (sortable), `action` (Badge, sortable), `resource` (sortable), `resourceId` (`?? '—'`), `ip` (`?? '—'`), `actions` (`RowActions` with View only).
 
 No Edit or Delete buttons. No `<HasPermission>` wrappers — reading the list already requires `audit:view`.
 

@@ -15,6 +15,7 @@ import {
   type LogicalFilterValue,
   notify,
   Paper,
+  RowActions,
   StatusBadge,
 } from '@helix/ui'
 import { IconDownload, IconFilter, IconPlus } from '@helix/ui'
@@ -155,42 +156,28 @@ export function TodoList() {
     {
       accessor: 'actions',
       title: t('columns.actions'),
-      textAlign: 'center',
+      textAlign: 'right',
       width: '1%',
       render: (item) => (
-        <Group gap="xs" wrap="nowrap">
-          <Button
-            size="xs"
-            variant="default"
-            aria-label="View"
-            onClick={() =>
-              navigate({ to: '/todos/$id', params: { id: item.id } })
-            }
-          >
-            {t('actions.view', { ns: 'common' })}
-          </Button>
-          <Button
-            size="xs"
-            variant="default"
-            aria-label="Edit"
-            onClick={() =>
-              navigate({
-                to: '/todos/$id/edit',
-                params: { id: item.id },
-              })
-            }
-          >
-            {t('actions.edit', { ns: 'common' })}
-          </Button>
-          <Button
-            size="xs"
-            variant="default"
-            aria-label="Delete"
-            onClick={() => handleConfirmDelete(item.id)}
-          >
-            {t('actions.delete', { ns: 'common' })}
-          </Button>
-        </Group>
+        <RowActions
+          actions={[
+            {
+              label: t('actions.view', { ns: 'common' }),
+              onClick: () =>
+                navigate({ to: '/todos/$id', params: { id: item.id } }),
+            },
+            {
+              label: t('actions.edit', { ns: 'common' }),
+              onClick: () =>
+                navigate({ to: '/todos/$id/edit', params: { id: item.id } }),
+            },
+            {
+              label: t('actions.delete', { ns: 'common' }),
+              danger: true,
+              onClick: () => handleConfirmDelete(item.id),
+            },
+          ]}
+        />
       ),
     },
   ]

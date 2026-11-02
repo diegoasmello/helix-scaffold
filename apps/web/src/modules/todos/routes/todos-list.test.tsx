@@ -132,7 +132,7 @@ describe('TodoList', () => {
   it('opens delete modal when delete button is clicked', async () => {
     renderTodoList()
     await screen.findByText('Review quarterly report')
-    await userEvent.click(screen.getAllByLabelText('Delete')[0])
+    await userEvent.click(screen.getAllByRole('button', { name: 'Delete' })[0])
     const dialog = await screen.findByRole('dialog')
     expect(within(dialog).getByText('Delete todo')).toBeInTheDocument()
     expect(
@@ -153,7 +153,7 @@ describe('TodoList', () => {
 
     renderTodoList()
     await screen.findByText('Review quarterly report')
-    await userEvent.click(screen.getAllByLabelText('Delete')[0])
+    await userEvent.click(screen.getAllByRole('button', { name: 'Delete' })[0])
     const dialog = await screen.findByRole('dialog')
     await userEvent.click(
       within(dialog).getByRole('button', { name: 'Delete' })
@@ -164,7 +164,7 @@ describe('TodoList', () => {
   it('closes delete modal on cancel', async () => {
     renderTodoList()
     await screen.findByText('Review quarterly report')
-    await userEvent.click(screen.getAllByLabelText('Delete')[0])
+    await userEvent.click(screen.getAllByRole('button', { name: 'Delete' })[0])
     const dialog = await screen.findByRole('dialog')
     await userEvent.click(
       within(dialog).getByRole('button', { name: 'Cancel' })
@@ -307,5 +307,70 @@ describe('Filter panel', () => {
     const result = searchFn({ page: 2 }) as Record<string, unknown>
     expect(result.filters).toBeUndefined()
     expect(result.page).toBe(1)
+  })
+
+  describe('on small screens', () => {
+    const originalMatchMedia = window.matchMedia
+
+    beforeEach(() => {
+      // Below the `sm` breakpoint: every `min-width` query fails.
+      window.matchMedia = vi.fn().mockImplementation((query: string) => ({
+        ...originalMatchMedia(query),
+        matches: !query.includes('min-width'),
+      }))
+    })
+
+    afterEach(() => {
+      window.matchMedia = originalMatchMedia
+    })
+
+    it('renders one card per todo instead of a table', async () => {
+      renderTodoList()
+      await screen.findByText('Review quarterly report')
+      expect(screen.queryByRole('table')).not.toBeInTheDocument()
+
+      const cards = screen.getAllByRole('listitem')
+      expect(cards).toHaveLength(2)
+      const first = within(cards[0])
+      expect(first.getByText('Review quarterly report')).toBeInTheDocument()
+      expect(first.getByText('Status')).toBeInTheDocument()
+      expect(first.getByText('Completed')).toBeInTheDocument()
+      expect(first.getByRole('button', { name: 'View' })).toBeInTheDocument()
+      expect(first.getByRole('button', { name: 'Edit' })).toBeInTheDocument()
+    })
+
+    it('deletes from a card', async () => {
+      renderTodoList()
+      await screen.findByText('Review quarterly report')
+      const [first] = screen.getAllByRole('listitem')
+      await userEvent.click(
+        within(first).getByRole('button', { name: 'Delete' })
+      )
+      const dialog = await screen.findByRole('dialog')
+      expect(within(dialog).getByText('Delete todo')).toBeInTheDocument()
+    })
+
+    it('pages with previous/next buttons', async () => {
+      server.use(
+        getTodosHandler(
+          createPaginatedTodos({
+            data: mockTodos,
+            total: 25,
+            page: 1,
+            pageSize: 10,
+            totalPages: 3,
+          })
+        )
+      )
+      renderTodoList()
+      expect(await screen.findByText('Page 1 of 3')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Previous' })).toBeDisabled()
+
+      await userEvent.click(screen.getByRole('button', { name: 'Next' }))
+      const [{ search }] = mockNavigate.mock.calls.at(-1) as [
+        { search: (prev: typeof mockSearch.state) => typeof mockSearch.state },
+      ]
+      expect(search(mockSearch.state).page).toBe(2)
+    })
   })
 })
