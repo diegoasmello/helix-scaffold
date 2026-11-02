@@ -2,41 +2,6 @@ import { css } from '@emotion/react'
 import { createStyles } from '@mantine/emotion'
 import { type ReactNode, useId } from 'react'
 
-export interface PageSectionProps {
-  /** The section's `h2`. */
-  title: ReactNode
-  /** Next to the title, dimmed — e.g. "3 files". */
-  meta?: ReactNode
-  children: ReactNode
-}
-
-/**
- * A titled block of a detail page (`PageView`), separated from the next one by
- * a full-width border. Inside an `aside`, it drops its own padding and border.
- */
-export function PageSection(props: Readonly<PageSectionProps>) {
-  const { title, meta, children } = props
-
-  const { classes } = useSectionStyles()
-  const titleId = useId()
-
-  return (
-    <section
-      data-page-section
-      aria-labelledby={titleId}
-      className={classes.section}
-    >
-      <div className={classes.titleRow}>
-        <h2 id={titleId} className={classes.title}>
-          {title}
-        </h2>
-        {meta && <span className={classes.meta}>{meta}</span>}
-      </div>
-      {children}
-    </section>
-  )
-}
-
 export interface FormSectionProps {
   /** The section's `h2`. */
   title: ReactNode
@@ -91,44 +56,20 @@ const useSectionStyles = createStyles((theme, _, u) => {
     &:last-child {
       border-bottom: 0;
     }
-    aside & {
-      padding: 0;
-      border: 0;
-    }
   `
 
   return {
-    section: css`
-      ${bordered};
-      display: flex;
-      flex-direction: column;
-      gap: ${theme.spacing.sm};
-    `,
     formSection: css`
       ${bordered};
       display: flex;
       flex-wrap: wrap;
       gap: 20px 48px;
     `,
-    titleRow: css`
-      display: flex;
-      align-items: baseline;
-      gap: ${theme.spacing.xs};
-    `,
     title: css`
       margin: 0;
       font-size: 15px;
       font-weight: 600;
       line-height: 1.4;
-    `,
-    meta: css`
-      font-size: 13px;
-      ${u.light} {
-        color: ${theme.colors.gray[6]};
-      }
-      ${u.dark} {
-        color: ${theme.colors.dark[2]};
-      }
     `,
     intro: css`
       flex: 1 1 240px;

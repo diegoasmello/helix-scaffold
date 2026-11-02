@@ -14,21 +14,25 @@ export interface PageSectionLayoutProps {
   titleAside?: ReactNode
   /** Header buttons (detail pages: Edit, Delete). Fill the width on phones. */
   actions?: ReactNode
-  /** Right column next to the content (stacks above it below `lg`). */
-  aside?: ReactNode
   /** Sub-page navigation (`PageTabs`) at the bottom of the header. */
   tabs?: ReactNode
   /** The bar pinned to the bottom of the screen (forms: Cancel, Save). */
   footerActions?: ReactNode
   children: ReactNode
+  /**
+   * `form` (create/edit) draws a border under the header and lets
+   * `FormSection`s run edge to edge. `view` (detail) keeps the header and the
+   * content together, with no line between them (unless there are `tabs`).
+   */
+  variant?: 'form' | 'view'
 }
 
 /**
- * Shared body of `PageCreate`, `PageEdit` and `PageView`: an edge-to-edge
- * page. The header (no breadcrumb), each `PageSection`/`FormSection` and the
- * aside are separated by full-width borders, and `footerActions` stick to the
- * bottom of the screen. Inside a `Form`, it shows the "fix N fields" alert
- * after a failed submit and "Unsaved changes" next to the footer buttons.
+ * Shared body of `PageCreate`, `PageEdit` and `PageView`: a header without
+ * breadcrumb, the content and `footerActions` stuck to the bottom of the
+ * screen. In forms the header and each `FormSection` are separated by
+ * full-width borders. Inside a `Form`, it shows the "fix N fields" alert after
+ * a failed submit and "Unsaved changes" next to the footer buttons.
  */
 export function PageSectionLayout(props: Readonly<PageSectionLayoutProps>) {
   const {
@@ -36,10 +40,10 @@ export function PageSectionLayout(props: Readonly<PageSectionLayoutProps>) {
     description,
     titleAside,
     actions,
-    aside,
     tabs,
     footerActions,
     children,
+    variant = 'form',
   } = props
 
   const { classes, cx } = useStyles()
@@ -50,7 +54,13 @@ export function PageSectionLayout(props: Readonly<PageSectionLayoutProps>) {
 
   return (
     <div className={classes.root}>
-      <div className={cx(classes.header, tabs && classes.headerWithTabs)}>
+      <div
+        className={cx(
+          classes.header,
+          (variant === 'form' || tabs) && classes.headerDivider,
+          tabs && classes.headerWithTabs
+        )}
+      >
         <PageHeader
           title={title}
           description={description}
@@ -62,17 +72,19 @@ export function PageSectionLayout(props: Readonly<PageSectionLayoutProps>) {
         {tabs}
       </div>
 
-      <div className={cx(classes.columns, aside && classes.withAside)}>
-        <div className={classes.content}>
-          {errorCount > 0 && (
-            <div role="alert" className={classes.errorAlert}>
-              <strong>{t('form.saveFailed')}</strong>{' '}
-              {t('form.fixFields', { count: errorCount })}
-            </div>
-          )}
-          {children}
-        </div>
-        {aside && <aside className={classes.aside}>{aside}</aside>}
+      <div
+        className={cx(
+          classes.content,
+          variant === 'view' && !tabs && classes.contentUnderHeader
+        )}
+      >
+        {errorCount > 0 && (
+          <div role="alert" className={classes.errorAlert}>
+            <strong>{t('form.saveFailed')}</strong>{' '}
+            {t('form.fixFields', { count: errorCount })}
+          </div>
+        )}
+        {children}
       </div>
 
       {footerActions && (
@@ -96,7 +108,6 @@ const PB = 'var(--helix-page-pb, 0px)'
 
 const useStyles = createStyles((theme, _, u) => {
   const belowSm = `@media (max-width: calc(${theme.breakpoints.sm} - 0.0625em))`
-  const belowLg = `@media (max-width: calc(${theme.breakpoints.lg} - 0.0625em))`
 
   return {
     // Cancels the Layout's gutters: borders run edge to edge.
@@ -108,6 +119,8 @@ const useStyles = createStyles((theme, _, u) => {
     `,
     header: css`
       padding: ${PT} ${PX} ${theme.spacing.lg};
+    `,
+    headerDivider: css`
       ${u.light} {
         border-bottom: 1px solid ${theme.colors.gray[3]};
       }
@@ -120,19 +133,6 @@ const useStyles = createStyles((theme, _, u) => {
       flex-direction: column;
       gap: ${theme.spacing.md};
       padding-bottom: 0;
-    `,
-    columns: css`
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-    `,
-    withAside: css`
-      flex-direction: row;
-      align-items: stretch;
-
-      ${belowLg} {
-        flex-direction: column-reverse;
-      }
     `,
     // Plain children (no sections) keep the page gutters.
     content: css`
@@ -150,33 +150,11 @@ const useStyles = createStyles((theme, _, u) => {
         padding-bottom: 20px;
       }
     `,
-    aside: css`
-      flex: 0 0 340px;
-      min-width: 0;
-      padding: 28px ${PX};
-      display: flex;
-      flex-direction: column;
-      gap: 22px;
-      ${u.light} {
-        border-left: 1px solid ${theme.colors.gray[3]};
-      }
-      ${u.dark} {
-        border-left: 1px solid ${theme.colors.dark[5]};
-      }
-
-      ${belowLg} {
-        flex-basis: auto;
-        border-left: 0;
-        ${u.light} {
-          border-bottom: 1px solid ${theme.colors.gray[3]};
-        }
-        ${u.dark} {
-          border-bottom: 1px solid ${theme.colors.dark[5]};
-        }
-      }
+    // A detail's content follows its header with no extra gap.
+    contentUnderHeader: css`
+      padding-top: 0;
       ${belowSm} {
-        padding-top: 20px;
-        padding-bottom: 20px;
+        padding-top: 0;
       }
     `,
     errorAlert: css`

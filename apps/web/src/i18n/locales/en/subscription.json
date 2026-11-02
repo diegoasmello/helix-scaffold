@@ -108,7 +108,6 @@
     "period": "Period",
     "periodDescription": "The billing period in effect and, if any, the end of the trial.",
     "billing": "Billing",
-    "billingDescription": "The subscription's id at the payment processor, when it manages it.",
-    "details": "Details"
+    "billingDescription": "The subscription's id at the payment processor, when it manages it."
   }
 }

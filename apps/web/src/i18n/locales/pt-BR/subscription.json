@@ -108,7 +108,6 @@
     "period": "Período",
     "periodDescription": "O período de cobrança em vigor e, se houver, o fim do teste.",
     "billing": "Cobrança",
-    "billingDescription": "O ID da assinatura no processador de pagamento, quando ele a gerencia.",
-    "details": "Detalhes"
+    "billingDescription": "O ID da assinatura no processador de pagamento, quando ele a gerencia."
   }
 }

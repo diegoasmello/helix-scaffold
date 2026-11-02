@@ -44,7 +44,7 @@ Loader on `meRoute`: `queryClient.ensureQueryData(getMeSuspenseQueryOptions())`.
 
 ## `MePage` (`routes/me-page.tsx`)
 
-Layout: a `PageView` titled "Account settings" with a `PageTabs` (one underlined tab per sub-page) at the bottom of its header, and the `<Outlet />` as content. Each sub-page returns `FormSection`s (title + description on the left, fields and their own Save button on the right); the subscription sub-page shows its data in a `DetailList`. It calls `useSubscription()` and renders the Subscription tab only when `enabled` is `true`. That hides the link, and the `meSubscriptionRoute` `beforeLoad` blocks direct URL access when the feature is off.
+Layout: a `PageView` titled "Account settings" with a `PageTabs` (one underlined tab per sub-page) at the bottom of its header, and the `<Outlet />` as content. Each sub-page returns `FormSection`s (title + description on the left, fields and their own Save button on the right); the subscription sub-page shows its data as `LabeledValue`s in a two-column `SimpleGrid`. It calls `useSubscription()` and renders the Subscription tab only when `enabled` is `true`. That hides the link, and the `meSubscriptionRoute` `beforeLoad` blocks direct URL access when the feature is off.
 
 ## Types (`types.ts`)
 

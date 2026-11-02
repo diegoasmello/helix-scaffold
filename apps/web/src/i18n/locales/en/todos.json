@@ -13,9 +13,7 @@
     "title": "Edit Todo"
   },
   "detail": {
-    "title": "View Todo",
-    "attachmentsCount_one": "{{count}} file",
-    "attachmentsCount_other": "{{count}} files"
+    "title": "View Todo"
   },
   "columns": {
     "title": "Title",
@@ -94,7 +92,6 @@
     "deleteFailed": "Failed to delete todo"
   },
   "sections": {
-    "details": "Details",
     "basic": "Basic information",
     "basicDescription": "How the todo shows up in the list and in notifications.",
     "body": "Full text",

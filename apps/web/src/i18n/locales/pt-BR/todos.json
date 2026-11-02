@@ -13,9 +13,7 @@
     "title": "Editar Tarefa"
   },
   "detail": {
-    "title": "Visualizar Tarefa",
-    "attachmentsCount_one": "{{count}} arquivo",
-    "attachmentsCount_other": "{{count}} arquivos"
+    "title": "Visualizar Tarefa"
   },
   "columns": {
     "title": "Título",
@@ -94,7 +92,6 @@
     "deleteFailed": "Falha ao excluir tarefa"
   },
   "sections": {
-    "details": "Detalhes",
     "basic": "Informações básicas",
     "basicDescription": "Como a tarefa aparece na lista e nas notificações.",
     "body": "Texto completo",

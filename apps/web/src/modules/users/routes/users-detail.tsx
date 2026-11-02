@@ -1,10 +1,11 @@
 import { useGetUsersIdSuspense } from '@helix/api-client/hooks'
 import {
   Button,
-  DetailList,
+  Grid,
   IconPencil,
-  PageSection,
+  LabeledValue,
   PageView,
+  Text,
 } from '@helix/ui'
 import { parseISO } from 'date-fns'
 import { useTranslation } from 'react-i18next'
@@ -37,21 +38,27 @@ export function UsersDetail() {
         </HasPermission>
       }
     >
-      <PageSection title={t('sections.details')}>
-        <DetailList
-          items={[
-            { label: t('labels.role'), value: item.role?.name },
-            {
-              label: t('labels.emailVerified'),
-              value: item.emailVerified ? t('labels.yes') : t('labels.no'),
-            },
-            {
-              label: t('labels.createdAt'),
-              value: formatDate(parseISO(item.createdAt), 'short'),
-            },
-          ]}
-        />
-      </PageSection>
+      <Grid gap="lg">
+        <Grid.Col span={{ base: 12, sm: 6 }}>
+          <LabeledValue label={t('labels.role')}>
+            <Text size="md">{item.role?.name ?? '—'}</Text>
+          </LabeledValue>
+        </Grid.Col>
+        <Grid.Col span={{ base: 12, sm: 6 }}>
+          <LabeledValue label={t('labels.emailVerified')}>
+            <Text size="md">
+              {item.emailVerified ? t('labels.yes') : t('labels.no')}
+            </Text>
+          </LabeledValue>
+        </Grid.Col>
+        <Grid.Col span={{ base: 12, sm: 6 }}>
+          <LabeledValue label={t('labels.createdAt')}>
+            <Text size="md">
+              {formatDate(parseISO(item.createdAt), 'short')}
+            </Text>
+          </LabeledValue>
+        </Grid.Col>
+      </Grid>
     </PageView>
   )
 }

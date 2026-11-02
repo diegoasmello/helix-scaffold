@@ -63,7 +63,6 @@
     "account": "Account",
     "accountDescription": "Who the user is and how they sign in.",
     "access": "Access",
-    "accessDescription": "The role decides what the user can see and do.",
-    "details": "Details"
+    "accessDescription": "The role decides what the user can see and do."
   }
 }

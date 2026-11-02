@@ -2,12 +2,12 @@ import { deleteTodosId, useGetTodosIdSuspense } from '@helix/api-client/hooks'
 import {
   Button,
   confirm,
-  DetailList,
   FilePreview,
+  Grid,
   IconPencil,
   IconTrash,
+  LabeledValue,
   notify,
-  PageSection,
   PageView,
   RichTextRenderer,
   SimpleGrid,
@@ -85,53 +85,56 @@ export function TodoDetail() {
           </Button>
         </>
       }
-      aside={
-        <>
-          <PageSection title={t('sections.details')}>
-            <DetailList
-              items={[
-                {
-                  label: t('labels.date'),
-                  value: formatDate(parseISO(item.date), 'short'),
-                },
-                {
-                  label: t('labels.createdAt'),
-                  value: formatDate(parseISO(item.createdAt), 'short'),
-                },
-              ]}
-            />
-          </PageSection>
-          {item.file && (
-            <PageSection title={t('labels.file')}>
-              <FilePreview upload={item.file} />
-            </PageSection>
-          )}
-          {item.image && (
-            <PageSection title={t('labels.image')}>
-              <FilePreview upload={item.image} />
-            </PageSection>
-          )}
-        </>
-      }
     >
-      <PageSection title={t('labels.description')}>
-        <Text size="md">{item.description}</Text>
-      </PageSection>
-      <PageSection title={t('labels.content')}>
-        <RichTextRenderer value={item.content} />
-      </PageSection>
-      {attachments.length > 0 && (
-        <PageSection
-          title={t('labels.attachments')}
-          meta={t('detail.attachmentsCount', { count: attachments.length })}
-        >
-          <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="xs">
-            {attachments.map((attachment) => (
-              <FilePreview key={attachment.id} upload={attachment} />
-            ))}
-          </SimpleGrid>
-        </PageSection>
-      )}
+      <Grid gap="lg">
+        <Grid.Col span={12}>
+          <LabeledValue label={t('labels.description')}>
+            <Text size="md">{item.description}</Text>
+          </LabeledValue>
+        </Grid.Col>
+        <Grid.Col span={12}>
+          <LabeledValue label={t('labels.content')}>
+            <RichTextRenderer value={item.content} />
+          </LabeledValue>
+        </Grid.Col>
+        <Grid.Col span={{ base: 12, sm: 6 }}>
+          <LabeledValue label={t('labels.date')}>
+            <Text size="md">{formatDate(parseISO(item.date), 'short')}</Text>
+          </LabeledValue>
+        </Grid.Col>
+        <Grid.Col span={{ base: 12, sm: 6 }}>
+          <LabeledValue label={t('labels.createdAt')}>
+            <Text size="md">
+              {formatDate(parseISO(item.createdAt), 'short')}
+            </Text>
+          </LabeledValue>
+        </Grid.Col>
+        {item.file && (
+          <Grid.Col span={{ base: 12, sm: 6 }}>
+            <LabeledValue label={t('labels.file')}>
+              <FilePreview upload={item.file} />
+            </LabeledValue>
+          </Grid.Col>
+        )}
+        {item.image && (
+          <Grid.Col span={{ base: 12, sm: 6 }}>
+            <LabeledValue label={t('labels.image')}>
+              <FilePreview upload={item.image} />
+            </LabeledValue>
+          </Grid.Col>
+        )}
+        {attachments.length > 0 && (
+          <Grid.Col span={12}>
+            <LabeledValue label={t('labels.attachments')}>
+              <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="xs">
+                {attachments.map((attachment) => (
+                  <FilePreview key={attachment.id} upload={attachment} />
+                ))}
+              </SimpleGrid>
+            </LabeledValue>
+          </Grid.Col>
+        )}
+      </Grid>
     </PageView>
   )
 }

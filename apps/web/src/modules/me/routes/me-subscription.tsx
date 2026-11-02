@@ -1,11 +1,13 @@
 import {
   Alert,
   Center,
-  DetailList,
   FormSection,
   IconAlertTriangle,
+  LabeledValue,
   Loader,
+  SimpleGrid,
   StatusBadge,
+  Text,
 } from '@helix/ui'
 import { parseISO } from 'date-fns'
 import { useTranslation } from 'react-i18next'
@@ -70,39 +72,31 @@ export function MeSubscription() {
             })}
           </Alert>
         )}
-        <DetailList
-          items={[
-            {
-              label: t('me.labels.plan'),
-              value: plan?.name ?? subscription.planId,
-            },
-            {
-              label: t('me.labels.status'),
-              value: (
-                <StatusBadge
-                  tone={SUBSCRIPTION_STATUS_TONES[subscription.status]}
-                >
-                  {t(`status.${subscription.status}`)}
-                </StatusBadge>
-              ),
-            },
-            {
-              label: t('me.labels.trialEnds'),
-              value: subscription.trialEndsAt
-                ? date(subscription.trialEndsAt)
-                : null,
-              hidden: !subscription.trialEndsAt,
-            },
-            {
-              label: t('me.labels.periodStart'),
-              value: date(subscription.currentPeriodStart),
-            },
-            {
-              label: t('me.labels.periodEnd'),
-              value: date(subscription.currentPeriodEnd),
-            },
-          ]}
-        />
+        <SimpleGrid cols={{ base: 1, xs: 2 }} spacing="lg">
+          <LabeledValue label={t('me.labels.plan')}>
+            <Text size="md">{plan?.name ?? subscription.planId}</Text>
+          </LabeledValue>
+          <LabeledValue label={t('me.labels.status')}>
+            <div>
+              <StatusBadge
+                tone={SUBSCRIPTION_STATUS_TONES[subscription.status]}
+              >
+                {t(`status.${subscription.status}`)}
+              </StatusBadge>
+            </div>
+          </LabeledValue>
+          {subscription.trialEndsAt && (
+            <LabeledValue label={t('me.labels.trialEnds')}>
+              <Text size="md">{date(subscription.trialEndsAt)}</Text>
+            </LabeledValue>
+          )}
+          <LabeledValue label={t('me.labels.periodStart')}>
+            <Text size="md">{date(subscription.currentPeriodStart)}</Text>
+          </LabeledValue>
+          <LabeledValue label={t('me.labels.periodEnd')}>
+            <Text size="md">{date(subscription.currentPeriodEnd)}</Text>
+          </LabeledValue>
+        </SimpleGrid>
       </FormSection>
 
       {planCatalog}

@@ -63,7 +63,6 @@
     "account": "Conta",
     "accountDescription": "Quem é o usuário e como ele entra.",
     "access": "Acesso",
-    "accessDescription": "O perfil define o que o usuário pode ver e fazer.",
-    "details": "Detalhes"
+    "accessDescription": "O perfil define o que o usuário pode ver e fazer."
   }
 }

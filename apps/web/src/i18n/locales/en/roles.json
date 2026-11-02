@@ -81,7 +81,6 @@
   },
   "sections": {
     "basic": "Basic information",
-    "basicDescription": "How the role shows up when assigning it to users.",
-    "details": "Details"
+    "basicDescription": "How the role shows up when assigning it to users."
   }
 }

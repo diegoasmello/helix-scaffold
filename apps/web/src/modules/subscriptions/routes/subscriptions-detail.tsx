@@ -1,11 +1,12 @@
 import { useGetSubscriptionsIdSuspense } from '@helix/api-client/hooks'
 import {
   Button,
-  DetailList,
+  Grid,
   IconPencil,
-  PageSection,
+  LabeledValue,
   PageView,
   StatusBadge,
+  Text,
 } from '@helix/ui'
 import { parseISO } from 'date-fns'
 import { useTranslation } from 'react-i18next'
@@ -29,6 +30,21 @@ export function SubscriptionsDetail() {
   const date = (value: string | null | undefined) =>
     value ? formatDate(parseISO(value), 'short') : null
 
+  // Optional dates and the external id only show when set.
+  const fields = [
+    { label: t('labels.userId'), value: item.userId },
+    {
+      label: t('labels.currentPeriodStart'),
+      value: date(item.currentPeriodStart),
+    },
+    { label: t('labels.currentPeriodEnd'), value: date(item.currentPeriodEnd) },
+    { label: t('labels.trialEndsAt'), value: date(item.trialEndsAt) },
+    { label: t('labels.pastDueSince'), value: date(item.pastDueSince) },
+    { label: t('labels.canceledAt'), value: date(item.canceledAt) },
+    { label: t('labels.externalId'), value: item.externalId },
+    { label: t('labels.createdAt'), value: date(item.createdAt) },
+  ]
+
   return (
     <PageView
       title={getPlanName(item.planId)}
@@ -50,42 +66,17 @@ export function SubscriptionsDetail() {
         </HasPermission>
       }
     >
-      <PageSection title={t('sections.details')}>
-        <DetailList
-          items={[
-            { label: t('labels.userId'), value: item.userId },
-            {
-              label: t('labels.currentPeriodStart'),
-              value: date(item.currentPeriodStart),
-            },
-            {
-              label: t('labels.currentPeriodEnd'),
-              value: date(item.currentPeriodEnd),
-            },
-            {
-              label: t('labels.trialEndsAt'),
-              value: date(item.trialEndsAt),
-              hidden: !item.trialEndsAt,
-            },
-            {
-              label: t('labels.pastDueSince'),
-              value: date(item.pastDueSince),
-              hidden: !item.pastDueSince,
-            },
-            {
-              label: t('labels.canceledAt'),
-              value: date(item.canceledAt),
-              hidden: !item.canceledAt,
-            },
-            {
-              label: t('labels.externalId'),
-              value: item.externalId,
-              hidden: !item.externalId,
-            },
-            { label: t('labels.createdAt'), value: date(item.createdAt) },
-          ]}
-        />
-      </PageSection>
+      <Grid gap="lg">
+        {fields
+          .filter((field) => field.value)
+          .map((field) => (
+            <Grid.Col key={field.label} span={{ base: 12, sm: 6 }}>
+              <LabeledValue label={field.label}>
+                <Text size="md">{field.value}</Text>
+              </LabeledValue>
+            </Grid.Col>
+          ))}
+      </Grid>
     </PageView>
   )
 }

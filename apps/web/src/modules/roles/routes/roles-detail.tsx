@@ -6,10 +6,13 @@ import {
 import type { PermissionAction } from '@helix/api-client/types'
 import {
   Button,
-  DetailList,
+  Grid,
   IconPencil,
-  PageSection,
+  LabeledValue,
   PageView,
+  Stack,
+  Text,
+  Title,
 } from '@helix/ui'
 import { parseISO } from 'date-fns'
 import { useTranslation } from 'react-i18next'
@@ -58,31 +61,36 @@ export function RolesDetail() {
           </HasPermission>
         </>
       }
-      aside={
-        <PageSection title={t('sections.details')}>
-          <DetailList
-            items={[
-              {
-                label: t('labels.isDefault'),
-                value: item.isDefault ? t('labels.yes') : t('labels.no'),
-              },
-              {
-                label: t('labels.createdAt'),
-                value: formatDate(parseISO(item.createdAt), 'short'),
-              },
-            ]}
-          />
-        </PageSection>
-      }
     >
-      <PageSection title={t('permissions.title')}>
-        <PermissionsTree
-          definitions={definitions}
-          grants={grants.grants as Record<string, PermissionAction[]>}
-          onChange={() => {}}
-          disabled
-        />
-      </PageSection>
+      <Grid gap="lg">
+        <Grid.Col span={{ base: 12, sm: 6 }}>
+          <LabeledValue label={t('labels.isDefault')}>
+            <Text size="md">
+              {item.isDefault ? t('labels.yes') : t('labels.no')}
+            </Text>
+          </LabeledValue>
+        </Grid.Col>
+        <Grid.Col span={{ base: 12, sm: 6 }}>
+          <LabeledValue label={t('labels.createdAt')}>
+            <Text size="md">
+              {formatDate(parseISO(item.createdAt), 'short')}
+            </Text>
+          </LabeledValue>
+        </Grid.Col>
+        <Grid.Col span={12}>
+          <Stack gap="sm">
+            <Title order={2} size="h3">
+              {t('permissions.title')}
+            </Title>
+            <PermissionsTree
+              definitions={definitions}
+              grants={grants.grants as Record<string, PermissionAction[]>}
+              onChange={() => {}}
+              disabled
+            />
+          </Stack>
+        </Grid.Col>
+      </Grid>
     </PageView>
   )
 }

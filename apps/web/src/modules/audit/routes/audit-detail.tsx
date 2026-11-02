@@ -4,8 +4,8 @@ import {
   Badge,
   createStyles,
   css,
-  DetailList,
-  PageSection,
+  Grid,
+  LabeledValue,
   PageView,
   Text,
 } from '@helix/ui'
@@ -31,54 +31,61 @@ export function AuditDetail() {
 
   return (
     <PageView title={t('detail.title')}>
-      <PageSection title={t('sections.event')}>
-        <DetailList
-          items={[
-            {
-              label: t('labels.date'),
-              value: formatDate(parseISO(log.createdAt), 'short'),
-            },
-            {
-              label: t('labels.action'),
-              value: (
-                <Badge color={ACTION_COLORS[log.action]} variant="light">
-                  {log.action}
-                </Badge>
-              ),
-            },
-            {
-              label: t('labels.user'),
-              value: (
-                <>
-                  {log.userName}
-                  {log.userEmail && (
-                    <Text size="sm" c="dimmed" fw={400}>
-                      {log.userEmail}
-                    </Text>
-                  )}
-                </>
-              ),
-            },
-            { label: t('labels.resource'), value: log.resource },
-            { label: t('labels.resourceId'), value: log.resourceId },
-            { label: t('labels.ip'), value: log.ip },
-          ]}
-        />
-      </PageSection>
-      {log.userAgent && (
-        <PageSection title={t('labels.userAgent')}>
-          <Text size="md" className={classes.wrap}>
-            {log.userAgent}
-          </Text>
-        </PageSection>
-      )}
-      {log.metadata != null && (
-        <PageSection title={t('labels.metadata')}>
-          <Text size="md" component="pre" className={classes.metadata}>
-            {JSON.stringify(log.metadata, null, 2)}
-          </Text>
-        </PageSection>
-      )}
+      <Grid gap="lg">
+        <Grid.Col span={{ base: 12, sm: 6 }}>
+          <LabeledValue label={t('labels.date')}>
+            <Text size="md">
+              {formatDate(parseISO(log.createdAt), 'short')}
+            </Text>
+          </LabeledValue>
+        </Grid.Col>
+        <Grid.Col span={{ base: 12, sm: 6 }}>
+          <LabeledValue label={t('labels.action')}>
+            <Badge color={ACTION_COLORS[log.action]} variant="light">
+              {log.action}
+            </Badge>
+          </LabeledValue>
+        </Grid.Col>
+        <Grid.Col span={{ base: 12, sm: 6 }}>
+          <LabeledValue label={t('labels.user')}>
+            <Text size="md">{log.userName}</Text>
+            <Text size="sm" c="dimmed">
+              {log.userEmail}
+            </Text>
+          </LabeledValue>
+        </Grid.Col>
+        <Grid.Col span={{ base: 12, sm: 6 }}>
+          <LabeledValue label={t('labels.resource')}>
+            <Text size="md">{log.resource}</Text>
+          </LabeledValue>
+        </Grid.Col>
+        <Grid.Col span={{ base: 12, sm: 6 }}>
+          <LabeledValue label={t('labels.resourceId')}>
+            <Text size="md">{log.resourceId ?? '—'}</Text>
+          </LabeledValue>
+        </Grid.Col>
+        <Grid.Col span={{ base: 12, sm: 6 }}>
+          <LabeledValue label={t('labels.ip')}>
+            <Text size="md">{log.ip ?? '—'}</Text>
+          </LabeledValue>
+        </Grid.Col>
+        {log.userAgent && (
+          <Grid.Col span={12}>
+            <LabeledValue label={t('labels.userAgent')}>
+              <Text size="md">{log.userAgent}</Text>
+            </LabeledValue>
+          </Grid.Col>
+        )}
+        {log.metadata != null && (
+          <Grid.Col span={12}>
+            <LabeledValue label={t('labels.metadata')}>
+              <Text size="md" component="pre" className={classes.metadata}>
+                {JSON.stringify(log.metadata, null, 2)}
+              </Text>
+            </LabeledValue>
+          </Grid.Col>
+        )}
+      </Grid>
     </PageView>
   )
 }
@@ -86,11 +93,7 @@ export function AuditDetail() {
 const useStyles = createStyles(() => ({
   // Long values (URLs, ids) must wrap instead of widening the page
   metadata: css`
-    margin: 0;
     white-space: pre-wrap;
     word-break: break-all;
-  `,
-  wrap: css`
-    overflow-wrap: anywhere;
   `,
 }))

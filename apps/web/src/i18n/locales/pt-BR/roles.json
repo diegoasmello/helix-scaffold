@@ -81,7 +81,6 @@
   },
   "sections": {
     "basic": "Informações básicas",
-    "basicDescription": "Como o perfil aparece ao atribuí-lo a usuários.",
-    "details": "Detalhes"
+    "basicDescription": "Como o perfil aparece ao atribuí-lo a usuários."
   }
 }

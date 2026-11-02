@@ -593,20 +593,19 @@ initialValues: {
 
 ### Detail screen
 
-Use `FilePreview` from `@helix/ui` inside a `SimpleGrid`, in its own `PageSection` (single files go in the `aside`, under the `DetailList`):
+Use `FilePreview` from `@helix/ui` inside a `SimpleGrid`, in a full-width `LabeledValue` of the detail grid:
 
 ```tsx
 {item.attachments.length > 0 && (
-  <PageSection
-    title={t('labels.attachments')}
-    meta={t('detail.attachmentsCount', { count: item.attachments.length })}
-  >
-    <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="xs">
-      {item.attachments.map((a) => (
-        <FilePreview key={a.id} upload={a} />
-      ))}
-    </SimpleGrid>
-  </PageSection>
+  <Grid.Col span={12}>
+    <LabeledValue label={t('labels.attachments')}>
+      <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="xs">
+        {item.attachments.map((a) => (
+          <FilePreview key={a.id} upload={a} />
+        ))}
+      </SimpleGrid>
+    </LabeledValue>
+  </Grid.Col>
 )}
 ```
 
@@ -1260,14 +1259,14 @@ Use the page wrapper components from `@helix/ui`:
 | List   | `PageList`   | `title`, `actions` (Create button)                                             |
 | Create | `PageCreate` | `title`, `children` (`FormSection`s), `footerActions` (Cancel + Save)          |
 | Edit   | `PageEdit`   | `title`, `children` (`FormSection`s), `footerActions` (Cancel + Save)          |
-| Detail | `PageView`   | `title` (the record's name), `titleAside` (its `StatusBadge`), `actions` (Edit, Delete), `children` (`PageSection`s), `aside` (`DetailList`) |
+| Detail | `PageView`   | `title` (the record's name), `titleAside` (its `StatusBadge`), `actions` (Edit, Delete), `children` (`LabeledValue`s in a `Grid`) |
 
-**Create, edit and detail pages are edge-to-edge and have no breadcrumb** (it only took room). The header, each section and the aside are separated by full-width borders; there is no Back button — the sidebar and the browser handle going back.
+**Create, edit and detail pages have no breadcrumb** (it only took room) and no Back button — the sidebar and the browser handle going back. Forms are edge-to-edge, with full-width borders under the header and between `FormSection`s; detail pages have **no lines** — not under the title, not between fields.
 
-- **Detail** — the `h1` is the record itself (`item.title`, `item.name`), not "View Xxx"; its state goes in `titleAside`. Header `actions`: Edit (primary, `IconPencil`) gated with `<HasPermission>`, and in `todos` also Delete (`variant="default" color="red"`, `IconTrash` — the theme turns that into the bordered red button). Long content goes in `PageSection`s (`title`, optional `meta` such as a file count); the record's short properties go in a `DetailList` (`items: { label, value, hidden? }[]`, empty values render "—"), either in `aside` (a 340px right column, above the content below `lg`) or in a "Details" `PageSection` when the page has little else. Do not repeat in the `DetailList` what the title or description already shows.
+- **Detail** — the `h1` is the record itself (`item.title`, `item.name`), not "View Xxx"; its state goes in `titleAside`. Header `actions`: Edit (primary, `IconPencil`) gated with `<HasPermission>`, and in `todos` also Delete (`variant="default" color="red"`, `IconTrash` — the theme turns that into the bordered red button). The fields are `LabeledValue`s in a `<Grid gap="lg">`: long values (description, rich text, attachments) `span={12}`, short ones `span={{ base: 12, sm: 6 }}`; leave out optional fields that are empty. Do not repeat in the grid what the title, `titleAside` or description already shows.
 - **Forms** — the shared form component returns `FormSection`s (`title`, `description`, fields): title and description on the left, fields on the right (max 720px), stacked on phones. Pairs of short fields go in `<SimpleGrid cols={{ base: 1, xs: 2 }}>`. A form also rendered elsewhere (e.g. `RoleCreateDrawer`) exports its fields alone too (`RolesFormFields`).
 - **Footer** — `footerActions` is a fragment of buttons (no `Group`): the bar sticks to the bottom of the screen and, inside a `Form`, shows "Unsaved changes" while the form is dirty; on phones the buttons fill the width. After an invalid submit the page shows "Couldn't save. Fix the N highlighted fields below." (`role="alert"`) — both come from `Form` through `useFormSummary()`.
-- Plain children (no sections) keep the page padding — e.g. `roles-permissions.tsx`.
+- Plain children (no `FormSection`s) keep the page padding — every detail page, and `roles-permissions.tsx`.
 
 **Footer button conventions** — apply to every Create, Edit, and Detail screen:
 
