@@ -23,8 +23,9 @@ type PaginationRenderContext = Parameters<
 >[0]
 
 /**
- * The list table: sits directly on the page (no card) — a header band with
- * borders above and below, rows divided by borders, pagination underneath.
+ * The list table: sits directly on the page (no card) inside a rounded
+ * border, with a header band, rows divided by borders and the pagination
+ * underneath, outside the border.
  * Below the `sm` breakpoint it renders one card per record instead (see
  * `DataTableCards`); tables built from column `groups` always stay tables.
  */
@@ -120,6 +121,18 @@ const useStyles = createStyles((theme, _, u) => ({
       --mantine-datatable-row-border-color: ${theme.colors.dark[6]};
     }
 
+    /* The border wraps the table only — the pager sits below it. */
+    .mantine-datatable-scroll-area {
+      border-radius: ${theme.radius.lg};
+      overflow: hidden;
+      ${u.light} {
+        border: 1px solid ${theme.colors.gray[3]};
+      }
+      ${u.dark} {
+        border: 1px solid ${theme.colors.dark[5]};
+      }
+    }
+
     .mantine-datatable-empty-state {
       padding-top: 72px;
     }
@@ -138,13 +151,11 @@ const useStyles = createStyles((theme, _, u) => ({
         ${u.light} {
           color: ${theme.colors.gray[6]};
           background-color: ${theme.colors.gray[0]};
-          border-top: 1px solid ${theme.colors.gray[3]};
           border-bottom: 1px solid ${theme.colors.gray[3]};
         }
         ${u.dark} {
           color: ${theme.colors.dark[2]};
           background-color: ${theme.colors.dark[8]};
-          border-top: 1px solid ${theme.colors.dark[5]};
           border-bottom: 1px solid ${theme.colors.dark[5]};
         }
       }
