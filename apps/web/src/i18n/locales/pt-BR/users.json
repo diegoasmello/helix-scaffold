@@ -1,13 +1,13 @@
 {
   "title": "Usuários",
   "create": {
-    "title": "Criar Usuário"
+    "title": "Criar usuário"
   },
   "edit": {
-    "title": "Editar Usuário"
+    "title": "Editar usuário"
   },
   "detail": {
-    "title": "Visualizar Usuário"
+    "title": "Visualizar usuário"
   },
   "columns": {
     "name": "Nome",

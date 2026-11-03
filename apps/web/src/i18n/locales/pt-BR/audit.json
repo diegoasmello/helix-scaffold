@@ -1,7 +1,7 @@
 {
   "title": "Auditoria",
   "detail": {
-    "title": "Visualizar Registro de Auditoria"
+    "title": "Visualizar registro de auditoria"
   },
   "columns": {
     "date": "Data",
@@ -19,7 +19,7 @@
     "resource": "Recurso",
     "resourceId": "ID do Recurso",
     "ip": "IP",
-    "userAgent": "Agente do Usuário",
+    "userAgent": "Agente do usuário",
     "metadata": "Metadados"
   },
   "actionLabels": {

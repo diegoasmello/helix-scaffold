@@ -7,13 +7,13 @@
     "createButton": "Criar primeira tarefa"
   },
   "create": {
-    "title": "Criar Tarefa"
+    "title": "Criar tarefa"
   },
   "edit": {
-    "title": "Editar Tarefa"
+    "title": "Editar tarefa"
   },
   "detail": {
-    "title": "Visualizar Tarefa"
+    "title": "Visualizar tarefa"
   },
   "columns": {
     "title": "Título",

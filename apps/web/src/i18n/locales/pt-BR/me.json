@@ -53,12 +53,12 @@
     "sectionTitle": "Senha",
     "sectionDescription": "Escolha uma senha forte com pelo menos 8 caracteres.",
     "passwordNotSetDescription": "Você se cadastrou via um provedor social e ainda não possui senha. Defina uma para também poder entrar com seu e-mail.",
-    "currentPassword": "Senha Atual",
-    "newPassword": "Nova Senha",
+    "currentPassword": "Senha atual",
+    "newPassword": "Nova senha",
     "newPasswordPlaceholder": "Mínimo de 8 caracteres",
-    "confirmNewPassword": "Confirmar Nova Senha",
+    "confirmNewPassword": "Confirmar nova senha",
     "confirmPasswordPlaceholder": "Repita sua senha",
-    "changeButton": "Alterar Senha",
+    "changeButton": "Alterar senha",
     "setPasswordButton": "Definir senha",
     "validation": {
       "passwordsNoMatch": "As senhas não coincidem"

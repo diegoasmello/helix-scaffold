@@ -1,8 +1,8 @@
 {
   "title": "Assinaturas",
-  "create": { "title": "Criar Assinatura" },
-  "edit": { "title": "Editar Assinatura" },
-  "detail": { "title": "Ver Assinatura" },
+  "create": { "title": "Criar assinatura" },
+  "edit": { "title": "Editar assinatura" },
+  "detail": { "title": "Ver assinatura" },
   "empty": {
     "title": "Nenhuma assinatura ainda",
     "description": "Crie uma assinatura para conceder acesso a um usuário.",

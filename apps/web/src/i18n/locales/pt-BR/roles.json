@@ -1,14 +1,14 @@
 {
   "title": "Perfis",
   "create": {
-    "title": "Criar Perfil",
-    "drawerTitle": "Criar Perfil"
+    "title": "Criar perfil",
+    "drawerTitle": "Criar perfil"
   },
   "edit": {
-    "title": "Editar Perfil"
+    "title": "Editar perfil"
   },
   "detail": {
-    "title": "Visualizar Perfil"
+    "title": "Visualizar perfil"
   },
   "columns": {
     "name": "Nome",
@@ -50,8 +50,8 @@
   },
   "permissions": {
     "title": "Permissões",
-    "editTitle": "Editar Permissões",
-    "editButton": "Editar Permissões",
+    "editTitle": "Editar permissões",
+    "editButton": "Editar permissões",
     "resources": {
       "todos": "Tarefas",
       "users": "Usuários",
