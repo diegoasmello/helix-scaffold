@@ -1,4 +1,4 @@
-import { env } from '@/env'
+import { API_URL } from '@/lib/api-url'
 
 const TIMEOUT_MS = 60_000
 
@@ -23,7 +23,7 @@ export async function downloadReport(
 
   let response: Response
   try {
-    response = await fetch(`${env.VITE_API_URL}${path}?${params}`, {
+    response = await fetch(`${API_URL}${path}?${params}`, {
       credentials: 'include',
       signal: controller.signal,
     })

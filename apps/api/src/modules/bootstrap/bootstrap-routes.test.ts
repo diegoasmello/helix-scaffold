@@ -30,7 +30,10 @@ afterAll(async () => {
 
 describe('GET /bootstrap/status', () => {
   it('returns bootstrapped false when no users exist', async () => {
-    const res = await app.inject({ method: 'GET', url: '/bootstrap/status' })
+    const res = await app.inject({
+      method: 'GET',
+      url: '/api/bootstrap/status',
+    })
     expect(res.statusCode).toBe(200)
     expect(res.json()).toEqual({ bootstrapped: false })
   })
@@ -38,7 +41,7 @@ describe('GET /bootstrap/status', () => {
   it('returns bootstrapped true when users exist', async () => {
     await app.inject({
       method: 'POST',
-      url: '/bootstrap',
+      url: '/api/bootstrap',
       payload: {
         name: 'Admin',
         email: 'admin@test.com',
@@ -47,7 +50,10 @@ describe('GET /bootstrap/status', () => {
       headers: { 'content-type': 'application/json' },
     })
 
-    const res = await app.inject({ method: 'GET', url: '/bootstrap/status' })
+    const res = await app.inject({
+      method: 'GET',
+      url: '/api/bootstrap/status',
+    })
     expect(res.statusCode).toBe(200)
     expect(res.json()).toEqual({ bootstrapped: true })
   })
@@ -57,7 +63,7 @@ describe('POST /bootstrap', () => {
   it('creates admin user and role with all permissions', async () => {
     const res = await app.inject({
       method: 'POST',
-      url: '/bootstrap',
+      url: '/api/bootstrap',
       payload: {
         name: 'Admin',
         email: 'admin@test.com',
@@ -109,7 +115,7 @@ describe('POST /bootstrap', () => {
   it('creates no default role in closed registration mode', async () => {
     const res = await closedApp.inject({
       method: 'POST',
-      url: '/bootstrap',
+      url: '/api/bootstrap',
       payload: {
         name: 'Admin',
         email: 'admin@test.com',
@@ -127,7 +133,7 @@ describe('POST /bootstrap', () => {
   it('returns 409 when system is already bootstrapped', async () => {
     await app.inject({
       method: 'POST',
-      url: '/bootstrap',
+      url: '/api/bootstrap',
       payload: {
         name: 'Admin',
         email: 'admin@test.com',
@@ -138,7 +144,7 @@ describe('POST /bootstrap', () => {
 
     const res = await app.inject({
       method: 'POST',
-      url: '/bootstrap',
+      url: '/api/bootstrap',
       payload: {
         name: 'Second',
         email: 'second@test.com',
@@ -160,7 +166,7 @@ describe('POST /bootstrap', () => {
 
     const res = await failingApp.inject({
       method: 'POST',
-      url: '/bootstrap',
+      url: '/api/bootstrap',
       payload: {
         name: 'Admin',
         email: 'admin@test.com',
@@ -172,7 +178,10 @@ describe('POST /bootstrap', () => {
     expect(res.statusCode).toBe(500)
 
     expect(await testDb.select().from(user)).toHaveLength(0)
-    const status = await app.inject({ method: 'GET', url: '/bootstrap/status' })
+    const status = await app.inject({
+      method: 'GET',
+      url: '/api/bootstrap/status',
+    })
     expect(status.json()).toEqual({ bootstrapped: false })
   })
 
@@ -193,7 +202,7 @@ describe('POST /bootstrap', () => {
 
     const res = await app.inject({
       method: 'POST',
-      url: '/bootstrap',
+      url: '/api/bootstrap',
       payload: {
         name: 'Admin',
         email: 'admin@test.com',
@@ -236,7 +245,7 @@ describe('POST /bootstrap', () => {
 
     const res = await app.inject({
       method: 'POST',
-      url: '/bootstrap',
+      url: '/api/bootstrap',
       payload: {
         name: 'Admin',
         email: 'admin@test.com',
@@ -261,7 +270,7 @@ describe('POST /bootstrap', () => {
     const bootstrap = (email: string) =>
       app.inject({
         method: 'POST',
-        url: '/bootstrap',
+        url: '/api/bootstrap',
         payload: { name: 'Admin', email, password: 'Password123!' },
         headers: { 'content-type': 'application/json' },
       })
@@ -281,7 +290,7 @@ describe('POST /bootstrap', () => {
   it('returns 400 for invalid body', async () => {
     const res = await app.inject({
       method: 'POST',
-      url: '/bootstrap',
+      url: '/api/bootstrap',
       payload: { name: '', email: 'not-an-email', password: 'short' },
       headers: { 'content-type': 'application/json' },
     })
@@ -294,7 +303,7 @@ describe('POST /bootstrap', () => {
 it('exposes no other route that can create an admin', async () => {
   const res = await app.inject({
     method: 'POST',
-    url: '/bootstrap/e2e-user',
+    url: '/api/bootstrap/e2e-user',
     payload: { name: 'X', email: 'x@test.com', password: 'Password123!' },
     headers: { 'content-type': 'application/json' },
   })

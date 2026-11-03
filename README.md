@@ -15,7 +15,7 @@ A full-stack TypeScript monorepo scaffold. Clone it, configure your env, and sta
 | **PDF export**          | Server-side PDF reports via `@react-pdf/renderer`                                                               |
 | **Audit log**           | Every mutation is logged; browsable admin panel                                                                 |
 | **i18n**                | English and pt-BR, fully typed key safety via `i18next` + TypeScript                                            |
-| **API docs**            | Scalar UI at `/docs`, OpenAPI spec auto-exported for client generation                                          |
+| **API docs**            | Scalar UI at `/api/docs`, OpenAPI spec auto-exported for client generation                                      |
 
 ## Architecture
 
@@ -202,6 +202,8 @@ export default defineConfig(({ mode }) => ({
 | `<PROVIDER>_CLIENT_ID` / `_SECRET` | Required for each social provider enabled in `app.config.ts`    |
 
 RBAC resources are declared in `apps/api/src/config/permissions.ts`.
+
+Every API route is served under `/api` (endpoints, `/api/auth/*`, `/api/docs`, `/api/files/*`), so the web and the API can share one domain: point the reverse proxy's `/api/*` at the API and everything else at the web's `index.html`. `BASE_URL`, `CLIENT_URL` and `VITE_API_URL` are origins, without the prefix.
 
 The frontend's only env var is `VITE_API_URL` (in `apps/web/.env`). Everything else, including registration mode, enabled social providers and subscription mode, is read from the API at runtime, so there is no `VITE_*` duplication of backend settings.
 

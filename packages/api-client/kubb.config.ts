@@ -5,7 +5,8 @@ import { pluginOas } from '@kubb/plugin-oas'
 import { pluginReactQuery } from '@kubb/plugin-react-query'
 import { pluginTs } from '@kubb/plugin-ts'
 
-const excludeAuth = [{ type: 'path' as const, pattern: /^\/api\/auth/ }]
+// Paths are relative to the spec's server (`/api`): better-auth is `/auth/*`.
+const excludeAuth = [{ type: 'path' as const, pattern: /^\/auth\// }]
 
 export default defineConfig({
   input: {
@@ -38,7 +39,8 @@ export default defineConfig({
     pluginMsw({
       output: { path: 'mocks', barrelType: 'named' },
       exclude: excludeAuth,
-      baseURL: 'http://localhost:3333',
+      // The test VITE_API_URL + the spec's server (`/api`)
+      baseURL: 'http://localhost:3333/api',
     }),
   ],
 })

@@ -1,6 +1,8 @@
 import fs from 'node:fs/promises'
 import path from 'node:path'
 
+import { API_PREFIX } from '@/lib/api-prefix'
+
 import type { StorageProvider } from './types'
 
 export function createLocalStorageProvider(
@@ -19,7 +21,7 @@ export function createLocalStorageProvider(
   }
 
   function getUrl(key: string): string {
-    return `${baseUrl}/files/${key}`
+    return `${baseUrl}${API_PREFIX}/files/${key}`
   }
 
   return { save, delete: deleteFile, getUrl }

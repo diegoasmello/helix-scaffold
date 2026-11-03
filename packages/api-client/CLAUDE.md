@@ -26,7 +26,7 @@ openapi.json      ← static committed spec (API contract)
 
 Implements the interface expected by kubb. Responsible for:
 
-- Building the URL via `new URL(url, _baseUrl)`
+- Building the URL by appending the path to `_baseUrl` (`${_baseUrl}${url}`) — `new URL(url, base)` would drop the base's `/api`
 - Sending `credentials: "include"` (better-auth session cookies)
 - Throwing `ApiError` (an `Error` with `status` and optional `code`) when `!response.ok` — `message` comes from the body's `message` (falling back to `statusText`), `code` from the body's `code` when the API sends one
 - Resolving `204 No Content` to `data: null` — React Query rejects `undefined` as query data, so a GET that can return 204 (e.g. `GET /me/subscription`) must yield `null`
@@ -48,7 +48,7 @@ onError: (error) => {
 
 When an API route returns several errors with the same status, give each a stable `code` in the response body (see `POST /subscriptions` 409s).
 
-`configure({ baseUrl })` must be called once before any fetch — in `apps/web/src/main.tsx` for the app, and in `vitest.setup.ts` for tests (with `http://localhost:3333`).
+`configure({ baseUrl })` must be called once before any fetch — in `apps/web/src/main.tsx` for the app, and in `vitest.setup.ts` for tests — with `API_URL` (`apps/web/src/lib/api-url.ts`: `VITE_API_URL` + `/api`). The spec's paths are relative to its server, `/api` (`servers` in `openapi.json`), so the base must include it. The MSW handlers are generated for `http://localhost:3333/api` (`pluginMsw` `baseURL` in `kubb.config.ts`) — the test `VITE_API_URL` plus the prefix.
 
 ## Code generation
 
@@ -79,17 +79,17 @@ kubb's only input is the committed `openapi.json` (`input.path` in `kubb.config.
 - `postinstall`, on every `pnpm install`;
 - the pre-commit hook, when a staged non-test file under `apps/api/src/` changes (`apps/api/lint-staged.config.js`: exports the spec, stages it, then generates).
 
-`pnpm dev` does **not** generate the client, and this package has no `dev` script. That is deliberate: the spec the running API serves at `/docs` holds only the routes its local `app.config.ts` turns on (with `subscriptions.enabled: false`, every subscription route but `/subscription/status` is gone). A client generated from it loses hooks and mocks the web imports statically, and the page dies on load (`does not provide an export named 'getMeSubscriptionQueryOptions'`; in tests, `getMeSubscriptionHandler is not a function`). Never point kubb at the running API, and never `curl` the live spec into `openapi.json`.
+`pnpm dev` does **not** generate the client, and this package has no `dev` script. That is deliberate: the spec the running API serves at `/api/docs` holds only the routes its local `app.config.ts` turns on (with `subscriptions.enabled: false`, every subscription route but `/subscription/status` is gone). A client generated from it loses hooks and mocks the web imports statically, and the page dies on load (`does not provide an export named 'getMeSubscriptionQueryOptions'`; in tests, `getMeSubscriptionHandler is not a function`). Never point kubb at the running API, and never `curl` the live spec into `openapi.json`.
 
 ### Where `openapi.json` comes from
 
 `pnpm export-spec` runs `pnpm --filter api spec:export` (`apps/api/src/scripts/export-spec.ts`), which builds the API in memory with `apps/api/src/config/spec-overrides.ts` applied and writes its spec here. No running server, database or `.env` needed.
 
-The committed spec is the contract of the **codebase**, not of one deploy: it lists every route the API can expose (subscriptions included), whatever the local `app.config.ts` enables. `apps/web` compiles against all of them and decides at runtime what to show (`GET /subscription/status`). The spec a deploy serves at `/docs` still reflects its own config.
+The committed spec is the contract of the **codebase**, not of one deploy: it lists every route the API can expose (subscriptions included), whatever the local `app.config.ts` enables. `apps/web` compiles against all of them and decides at runtime what to show (`GET /subscription/status`). The spec a deploy serves at `/api/docs` still reflects its own config.
 
 ### Excluded routes
 
-`/api/auth/*` is managed by better-auth on the client — excluded from generation in all plugins via `excludeAuth`.
+`/api/auth/*` (`/auth/*` in the spec, whose paths are relative to `/api`) is managed by better-auth on the client — excluded from generation in all plugins via `excludeAuth`.
 
 ## Workflow when creating or modifying an API endpoint
 

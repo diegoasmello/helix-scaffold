@@ -34,7 +34,7 @@ No `validation.ts`, no `hooks.ts`, no shared form component — each screen owns
 
 ## `authClient` (`src/lib/authentication.ts`)
 
-`authClient` is a `better-auth` React client created with `createAuthClient({ baseURL: env.VITE_API_URL })`. It is the **only** place in the codebase that talks to better-auth directly. Everything else goes through `useAuth()`.
+`authClient` is a `better-auth` React client created with ``createAuthClient({ baseURL: `${API_URL}/auth` })`` (`src/lib/api-url.ts`). It is the **only** place in the codebase that talks to better-auth directly. Everything else goes through `useAuth()`.
 
 Relevant methods used across the module:
 

@@ -40,6 +40,10 @@ export class ApiError extends Error {
 
 let _baseUrl = ''
 
+/**
+ * `baseUrl` is the API's origin plus the spec's server path (`/api`): the
+ * generated paths are relative to it (`/todos`).
+ */
 export function configure(options: { baseUrl: string }) {
   _baseUrl = options.baseUrl
 }
@@ -49,7 +53,10 @@ export const client = async <TData, _TError = unknown, TVariables = unknown>(
 ): Promise<ResponseConfig<TData>> => {
   const { url, method, data, params, signal, headers: configHeaders } = config
 
-  const fullUrl = new URL(url, (config.baseURL as string) ?? _baseUrl)
+  // Appended, not resolved: `new URL('/todos', 'https://host/api')` would
+  // drop the base's path (`/api`).
+  const baseUrl = String(config.baseURL ?? _baseUrl).replace(/\/+$/, '')
+  const fullUrl = new URL(`${baseUrl}${url}`)
 
   if (params) {
     for (const [key, value] of Object.entries(params)) {

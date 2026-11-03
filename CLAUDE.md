@@ -72,6 +72,8 @@ pnpm --filter web preview
 pnpm --filter api test:watch
 ```
 
+**API prefix:** every API route is served under `/api` (`apps/api/src/lib/api-prefix.ts`) — the REST endpoints, better-auth (`/api/auth/*`), the docs (`/api/docs`) and uploaded files (`/api/files/*`). Web and API can then share one domain in production: the reverse proxy sends `/api/*` to the API and everything else to the SPA, so a page (`/users`) never collides with an endpoint. Route files and the docs write paths without it (`GET /todos`); the spec declares it as its server (`servers: [{ url: '/api' }]`, paths stay `/todos`), so generated names never carry it. `VITE_API_URL` and `BASE_URL` stay the API's origin; the web adds the prefix in one place (`apps/web/src/lib/api-url.ts` → `API_URL`).
+
 **API contract → client:** the web consumes `@helix/api-client`, generated (gitignored) from the committed `packages/api-client/openapi.json`. Nothing regenerates it while you work — `pnpm dev` does not. **After changing a route, a request/response schema or the permission catalog in `apps/api`, run `pnpm spec:sync` before writing or testing web code**, or the new hooks, types and mocks don't exist yet. What counts as a contract change: `packages/api-client/CLAUDE.md` → _Workflow when creating or modifying an API endpoint_.
 
 **Local databases** (`docker compose up -d`): `db` → `helix` on port 5434, `db_test` → `helix_test` on port 5436. API tests need `db_test` running and migrated (`pnpm db:migrate:test`).

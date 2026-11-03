@@ -32,7 +32,7 @@ async function insertUpload(overrides?: Partial<typeof uploads.$inferInsert>) {
       mimeType: 'image/jpeg',
       fileSize: 1000,
       storageKey: `${crypto.randomUUID()}/original.jpg`,
-      url: 'http://localhost/files/test.jpg',
+      url: 'http://localhost/api/files/test.jpg',
       createdAt: OLD_DATE,
       ...overrides,
     })

@@ -24,6 +24,7 @@ import { registerAuditRequest } from './hooks/audit-request'
 import { createRequireAuth } from './hooks/require-auth'
 import { createRequirePermission } from './hooks/require-permission'
 import { createRequireSubscription } from './hooks/require-subscription'
+import { API_PREFIX } from './lib/api-prefix'
 import { registerDomainErrorHandler } from './lib/domain-errors'
 import { createEmailProvider } from './lib/email'
 import { createStorageProvider } from './lib/storage'
@@ -86,12 +87,6 @@ export function buildApp(database: Database, options: BuildAppOptions = {}) {
     limits: { fileSize: config.uploads.maxSizeMb * 1024 * 1024 },
   })
 
-  app.register(fastifyStatic, {
-    root: path.resolve(config.uploads.dir),
-    prefix: '/files/',
-    decorateReply: false,
-  })
-
   app.register(fastifyCors, {
     origin: env.CLIENT_URL,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
@@ -107,115 +102,134 @@ export function buildApp(database: Database, options: BuildAppOptions = {}) {
         title: config.app.name,
         version: '1.0.0',
       },
+      // The paths are written without it (`stripBasePath`), so the client's
+      // generated names stay `getTodos`, not `getApiTodos`.
+      servers: [{ url: API_PREFIX }],
     },
     transform: jsonSchemaTransform,
     transformObject: jsonSchemaTransformObject,
   })
 
-  app.register(ScalarApiReference, {
-    routePrefix: '/docs',
-  })
-
-  app.register(async (instance) => {
-    instance.addContentTypeParser(
-      'application/json',
-      { parseAs: 'string' },
-      (_req, body, done) => {
-        done(null, body)
-      }
-    )
-    instance.addHook('onRequest', async (request, reply) => {
-      if (
-        request.method === 'POST' &&
-        request.url.split('?')[0] === '/api/auth/sign-up/email' &&
-        config.registration.mode !== 'open'
-      ) {
-        return reply.status(403).send({ message: 'Registration is closed' })
-      }
-    })
-    instance.all('/api/auth/*', async (request, reply) => {
-      const rawBody = request.body as string | null
-      const webRequest = new Request(
-        new URL(request.url, env.BASE_URL).toString(),
-        {
-          method: request.method,
-          headers: fromNodeHeaders(request.headers),
-          body:
-            request.method !== 'GET' && request.method !== 'HEAD'
-              ? (rawBody ?? undefined)
-              : undefined,
-        }
-      )
-
-      const response = await auth.handler(webRequest)
-
-      reply.status(response.status)
-      response.headers.forEach((value, key) => {
-        if (!key.toLowerCase().startsWith('access-control-')) {
-          reply.header(key, value)
-        }
+  // Every route below is served under API_PREFIX (`/api/...`).
+  app.register(
+    async (api) => {
+      api.register(fastifyStatic, {
+        root: path.resolve(config.uploads.dir),
+        prefix: '/files/',
+        decorateReply: false,
       })
 
-      return reply.send(await response.text())
-    })
-  })
-
-  app.register(bootstrapRoutes, { database, auth, config, audit })
-  app.register(registrationRoutes, { config })
-  app.register(subscriptionStatusRoutes, { config })
-
-  if (config.subscriptions.enabled && billingWebhookAdapter) {
-    app.register(billingWebhookRoutes, {
-      database,
-      config,
-      adapter: billingWebhookAdapter,
-      audit,
-    })
-  }
-
-  app.register(async (authenticated) => {
-    authenticated.addHook('preHandler', createRequireAuth(auth))
-    registerAuditRequest(authenticated, audit)
-
-    const requirePermission = createRequirePermission(database)
-    const requireSubscription = createRequireSubscription(database, config)
-
-    authenticated.register(permissionsRoutes, { database, requirePermission })
-    authenticated.register(auditRoutes, { database, requirePermission })
-    authenticated.register(meRoutes, {
-      database,
-      auth,
-      config,
-      emailProvider,
-    })
-    authenticated.register(rolesRoutes, { database, requirePermission })
-    authenticated.register(usersRoutes, {
-      database,
-      auth,
-      config,
-      requirePermission,
-    })
-
-    authenticated.register(todosRoutes, {
-      database,
-      requirePermission,
-      requireSubscription,
-      storage,
-    })
-    authenticated.register(uploadsRoutes, {
-      database,
-      requirePermission,
-      storage,
-    })
-
-    if (config.subscriptions.enabled) {
-      authenticated.register(subscriptionsRoutes, {
-        database,
-        config,
-        requirePermission,
+      api.register(ScalarApiReference, {
+        routePrefix: '/docs',
       })
-    }
-  })
+
+      api.register(async (instance) => {
+        instance.addContentTypeParser(
+          'application/json',
+          { parseAs: 'string' },
+          (_req, body, done) => {
+            done(null, body)
+          }
+        )
+        instance.addHook('onRequest', async (request, reply) => {
+          if (
+            request.method === 'POST' &&
+            request.url.split('?')[0] === `${API_PREFIX}/auth/sign-up/email` &&
+            config.registration.mode !== 'open'
+          ) {
+            return reply.status(403).send({ message: 'Registration is closed' })
+          }
+        })
+        // better-auth's default basePath, `/api/auth`, is this route.
+        instance.all('/auth/*', async (request, reply) => {
+          const rawBody = request.body as string | null
+          const webRequest = new Request(
+            new URL(request.url, env.BASE_URL).toString(),
+            {
+              method: request.method,
+              headers: fromNodeHeaders(request.headers),
+              body:
+                request.method !== 'GET' && request.method !== 'HEAD'
+                  ? (rawBody ?? undefined)
+                  : undefined,
+            }
+          )
+
+          const response = await auth.handler(webRequest)
+
+          reply.status(response.status)
+          response.headers.forEach((value, key) => {
+            if (!key.toLowerCase().startsWith('access-control-')) {
+              reply.header(key, value)
+            }
+          })
+
+          return reply.send(await response.text())
+        })
+      })
+
+      api.register(bootstrapRoutes, { database, auth, config, audit })
+      api.register(registrationRoutes, { config })
+      api.register(subscriptionStatusRoutes, { config })
+
+      if (config.subscriptions.enabled && billingWebhookAdapter) {
+        api.register(billingWebhookRoutes, {
+          database,
+          config,
+          adapter: billingWebhookAdapter,
+          audit,
+        })
+      }
+
+      api.register(async (authenticated) => {
+        authenticated.addHook('preHandler', createRequireAuth(auth))
+        registerAuditRequest(authenticated, audit)
+
+        const requirePermission = createRequirePermission(database)
+        const requireSubscription = createRequireSubscription(database, config)
+
+        authenticated.register(permissionsRoutes, {
+          database,
+          requirePermission,
+        })
+        authenticated.register(auditRoutes, { database, requirePermission })
+        authenticated.register(meRoutes, {
+          database,
+          auth,
+          config,
+          emailProvider,
+        })
+        authenticated.register(rolesRoutes, { database, requirePermission })
+        authenticated.register(usersRoutes, {
+          database,
+          auth,
+          config,
+          requirePermission,
+        })
+
+        authenticated.register(todosRoutes, {
+          database,
+          requirePermission,
+          requireSubscription,
+          storage,
+        })
+        authenticated.register(uploadsRoutes, {
+          database,
+          requirePermission,
+          storage,
+        })
+
+        if (config.subscriptions.enabled) {
+          authenticated.register(subscriptionsRoutes, {
+            database,
+            config,
+            requirePermission,
+          })
+        }
+      })
+    },
+    { prefix: API_PREFIX }
+  )
 
   return app
 }

@@ -29,7 +29,7 @@ function send(payload: unknown, signature?: string) {
   const body = typeof payload === 'string' ? payload : JSON.stringify(payload)
   return app.inject({
     method: 'POST',
-    url: '/webhooks/billing',
+    url: '/api/webhooks/billing',
     payload: body,
     headers: {
       'content-type': 'application/json',
@@ -94,7 +94,7 @@ describe('POST /webhooks/billing — registration', () => {
     const appWithoutAdapter = createTestApp()
     const res = await appWithoutAdapter.inject({
       method: 'POST',
-      url: '/webhooks/billing',
+      url: '/api/webhooks/billing',
       payload: '{}',
       headers: { 'content-type': 'application/json' },
     })
@@ -118,7 +118,7 @@ describe('POST /webhooks/billing — verification', () => {
   it('returns 401 without a signature header', async () => {
     const res = await app.inject({
       method: 'POST',
-      url: '/webhooks/billing',
+      url: '/api/webhooks/billing',
       payload: '{"subscriptions":[]}',
       headers: { 'content-type': 'application/json' },
     })
@@ -295,7 +295,7 @@ it('is not registered when subscriptions are disabled', async () => {
   const body = JSON.stringify(state())
   const res = await disabledApp.inject({
     method: 'POST',
-    url: '/webhooks/billing',
+    url: '/api/webhooks/billing',
     payload: body,
     headers: {
       'content-type': 'application/json',

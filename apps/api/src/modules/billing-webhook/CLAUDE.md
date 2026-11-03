@@ -95,7 +95,7 @@ Runs in a transaction:
 3. **Adapter.** Create `src/modules/billing-webhook/adapters/<processor>.ts` implementing `BillingWebhookAdapter` — see the sketch below. Keep the price → plan map next to it.
 4. **Register it** in `src/config/billing-webhook.ts`.
 5. **Point the processor** at `{BASE_URL}/webhooks/billing` and subscribe to the subscription lifecycle events (created, updated, deleted / canceled, payment failed).
-6. **Test locally** with the processor's CLI forwarding (e.g. `stripe listen --forward-to localhost:3333/webhooks/billing`).
+6. **Test locally** with the processor's CLI forwarding (e.g. `stripe listen --forward-to localhost:3333/api/webhooks/billing`).
 7. **Unit-test the adapter** (signature accepted/rejected, each status mapping, price → plan, ignored events → `[]`). The sync itself is already covered by `billing-webhook-routes.test.ts`.
 
 ### Adapter sketch (Stripe-like processor)

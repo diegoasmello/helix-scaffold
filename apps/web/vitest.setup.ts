@@ -3,10 +3,10 @@ import './src/i18n'
 
 import { configure } from '@helix/api-client'
 
-import { env } from './src/env'
+import { API_URL } from './src/lib/api-url'
 import { server } from './src/mocks/server'
 
-configure({ baseUrl: env.VITE_API_URL })
+configure({ baseUrl: API_URL })
 
 beforeAll(() => server.listen())
 afterEach(() => server.resetHandlers())

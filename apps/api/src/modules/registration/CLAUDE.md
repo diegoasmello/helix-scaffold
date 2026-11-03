@@ -78,7 +78,7 @@ The enforcement for email/password sign-up lives in `app.ts`, not here. When mod
 instance.addHook('onRequest', async (request, reply) => {
   if (
     request.method === 'POST' &&
-    request.url.split('?')[0] === '/api/auth/sign-up/email' &&
+    request.url.split('?')[0] === `${API_PREFIX}/auth/sign-up/email` &&
     config.registration.mode !== 'open'
   ) {
     return reply.status(403).send({ message: 'Registration is closed' })

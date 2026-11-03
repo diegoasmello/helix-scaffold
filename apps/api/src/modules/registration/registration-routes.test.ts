@@ -13,7 +13,10 @@ afterAll(async () => {
 
 describe('GET /registration/status', () => {
   it('returns open: true with a providers array (registration open in test config overrides)', async () => {
-    const res = await app.inject({ method: 'GET', url: '/registration/status' })
+    const res = await app.inject({
+      method: 'GET',
+      url: '/api/registration/status',
+    })
     expect(res.statusCode).toBe(200)
     const body = res.json()
     expect(body.open).toBe(true)
@@ -26,7 +29,7 @@ describe('closed registration', () => {
   it('reports registration as closed, with no social providers', async () => {
     const res = await closedApp.inject({
       method: 'GET',
-      url: '/registration/status',
+      url: '/api/registration/status',
     })
     expect(res.statusCode).toBe(200)
     expect(res.json()).toEqual({ open: false, providers: [] })

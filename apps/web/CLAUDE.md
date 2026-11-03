@@ -12,7 +12,7 @@ React 19 + Vite — the main application.
 - **API client**: generated hooks/fetchers/types/mocks from `@helix/api-client` (see `packages/api-client/CLAUDE.md`)
 - **Auth client**: `better-auth/react` (`src/lib/authentication.ts`)
 
-`@/` is an alias for `apps/web/src` (Vite and Vitest). `src/env.ts` validates `import.meta.env` with Zod — `VITE_API_URL` is the only variable.
+`@/` is an alias for `apps/web/src` (Vite and Vitest). `src/env.ts` validates `import.meta.env` with Zod — `VITE_API_URL` is the only variable: the API's origin. Every route of the API lives under `/api`; `src/lib/api-url.ts` exports `API_URL` (`VITE_API_URL` + `/api`), the base of the fetch client (`configure()` in `main.tsx` and `vitest.setup.ts`), of `downloadReport` and of the better-auth client (`${API_URL}/auth`). Never build an API URL from `VITE_API_URL` directly.
 
 ## App config (`src/config/`)
 
@@ -1639,7 +1639,7 @@ import { getXxxList } from './service'
 describe('getXxxList', () => {
   it('maps API response to domain type', async () => {
     server.use(
-      http.get('http://localhost:3333/xxx', () =>
+      http.get('http://localhost:3333/api/xxx', () =>
         HttpResponse.json([{ id: '1', snake_case_field: 'value' }])
       )
     )
@@ -1649,7 +1649,7 @@ describe('getXxxList', () => {
 
   it('throws with message when API returns 500', async () => {
     server.use(
-      http.get('http://localhost:3333/xxx', () =>
+      http.get('http://localhost:3333/api/xxx', () =>
         HttpResponse.json({ message: 'DB unavailable' }, { status: 500 })
       )
     )

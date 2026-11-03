@@ -24,19 +24,19 @@ afterAll(async () => {
 })
 
 it('returns 401 on GET /me when not authenticated', async () => {
-  const res = await app.inject({ method: 'GET', url: '/me' })
+  const res = await app.inject({ method: 'GET', url: '/api/me' })
   expect(res.statusCode).toBe(401)
 })
 
 it('returns 401 on GET /me/providers when not authenticated', async () => {
-  const res = await app.inject({ method: 'GET', url: '/me/providers' })
+  const res = await app.inject({ method: 'GET', url: '/api/me/providers' })
   expect(res.statusCode).toBe(401)
 })
 
 it('returns 401 on PATCH /me when not authenticated', async () => {
   const res = await app.inject({
     method: 'PATCH',
-    url: '/me',
+    url: '/api/me',
     payload: { name: 'New Name' },
   })
   expect(res.statusCode).toBe(401)
@@ -45,7 +45,7 @@ it('returns 401 on PATCH /me when not authenticated', async () => {
 it('returns 401 on PATCH /me/email when not authenticated', async () => {
   const res = await app.inject({
     method: 'PATCH',
-    url: '/me/email',
+    url: '/api/me/email',
     payload: { newEmail: 'new@test.com' },
   })
   expect(res.statusCode).toBe(401)
@@ -54,7 +54,7 @@ it('returns 401 on PATCH /me/email when not authenticated', async () => {
 it('returns 401 on PATCH /me/password when not authenticated', async () => {
   const res = await app.inject({
     method: 'PATCH',
-    url: '/me/password',
+    url: '/api/me/password',
     payload: { currentPassword: 'Password123!', newPassword: 'NewPass456!' },
   })
   expect(res.statusCode).toBe(401)
@@ -63,7 +63,7 @@ it('returns 401 on PATCH /me/password when not authenticated', async () => {
 it('returns 401 on POST /me/set-password when not authenticated', async () => {
   const res = await app.inject({
     method: 'POST',
-    url: '/me/set-password',
+    url: '/api/me/set-password',
     payload: { newPassword: 'NewPassword123!' },
   })
   expect(res.statusCode).toBe(401)
@@ -73,7 +73,7 @@ describe('GET /me/providers', () => {
   it('returns 200 with a providers array', async () => {
     const res = await app.inject({
       method: 'GET',
-      url: '/me/providers',
+      url: '/api/me/providers',
       headers: { cookie: authCookie },
     })
     expect(res.statusCode).toBe(200)
@@ -85,7 +85,7 @@ describe('GET /me', () => {
   it('returns the authenticated user profile', async () => {
     const res = await app.inject({
       method: 'GET',
-      url: '/me',
+      url: '/api/me',
       headers: { cookie: authCookie },
     })
     expect(res.statusCode).toBe(200)
@@ -98,7 +98,7 @@ describe('GET /me', () => {
   it("includes the user's role", async () => {
     const res = await app.inject({
       method: 'GET',
-      url: '/me',
+      url: '/api/me',
       headers: { cookie: authCookie },
     })
     const body = res.json()
@@ -110,7 +110,7 @@ describe('PATCH /me', () => {
   it('updates the user name', async () => {
     const res = await app.inject({
       method: 'PATCH',
-      url: '/me',
+      url: '/api/me',
       payload: { name: 'Updated Name' },
       headers: { cookie: authCookie },
     })
@@ -123,7 +123,7 @@ describe('PATCH /me', () => {
 
     await app.inject({
       method: 'PATCH',
-      url: '/me',
+      url: '/api/me',
       payload: { name: 'Test User' },
       headers: { cookie: authCookie },
     })
@@ -132,7 +132,7 @@ describe('PATCH /me', () => {
   it('returns 400 for invalid body (empty name)', async () => {
     const res = await app.inject({
       method: 'PATCH',
-      url: '/me',
+      url: '/api/me',
       payload: { name: '' },
       headers: { cookie: authCookie },
     })
@@ -144,7 +144,7 @@ describe('PATCH /me/email', () => {
   it('initiates email change and returns a confirmation message', async () => {
     const res = await app.inject({
       method: 'PATCH',
-      url: '/me/email',
+      url: '/api/me/email',
       payload: { newEmail: 'newemail@test.com' },
       headers: { cookie: authCookie },
     })
@@ -160,7 +160,7 @@ describe('PATCH /me/email', () => {
   it('returns 400 for invalid email', async () => {
     const res = await app.inject({
       method: 'PATCH',
-      url: '/me/email',
+      url: '/api/me/email',
       payload: { newEmail: 'not-an-email' },
       headers: { cookie: authCookie },
     })
@@ -182,7 +182,7 @@ describe('PATCH /me/email', () => {
 
     const res = await app.inject({
       method: 'PATCH',
-      url: '/me/email',
+      url: '/api/me/email',
       payload: { newEmail: existingEmail },
       headers: { cookie: authCookie },
     })
@@ -203,7 +203,7 @@ describe('POST /me/set-password', () => {
   it('returns 400 for an authenticated user who already has a password', async () => {
     const res = await app.inject({
       method: 'POST',
-      url: '/me/set-password',
+      url: '/api/me/set-password',
       payload: { newPassword: 'BrandNew123!' },
       headers: { cookie: authCookie },
     })
@@ -214,7 +214,7 @@ describe('POST /me/set-password', () => {
   it('returns 400 for short password (Zod validation)', async () => {
     const res = await app.inject({
       method: 'POST',
-      url: '/me/set-password',
+      url: '/api/me/set-password',
       payload: { newPassword: 'short' },
       headers: { cookie: authCookie },
     })
@@ -226,7 +226,7 @@ describe('PATCH /me/password', () => {
   it('changes the password successfully', async () => {
     const res = await app.inject({
       method: 'PATCH',
-      url: '/me/password',
+      url: '/api/me/password',
       payload: {
         currentPassword: 'Password123!',
         newPassword: 'NewPassword456!',
@@ -244,7 +244,7 @@ describe('PATCH /me/password', () => {
 
     await app.inject({
       method: 'PATCH',
-      url: '/me/password',
+      url: '/api/me/password',
       payload: {
         currentPassword: 'NewPassword456!',
         newPassword: 'Password123!',
@@ -256,7 +256,7 @@ describe('PATCH /me/password', () => {
   it('returns 400 when current password is wrong', async () => {
     const res = await app.inject({
       method: 'PATCH',
-      url: '/me/password',
+      url: '/api/me/password',
       payload: {
         currentPassword: 'WrongPassword!',
         newPassword: 'NewPassword456!',
@@ -270,7 +270,7 @@ describe('PATCH /me/password', () => {
   it('returns 400 for invalid body (short password)', async () => {
     const res = await app.inject({
       method: 'PATCH',
-      url: '/me/password',
+      url: '/api/me/password',
       payload: {
         currentPassword: 'Password123!',
         newPassword: 'short',

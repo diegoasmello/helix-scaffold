@@ -77,7 +77,7 @@ async function createRestrictedSession(
 }
 
 it('returns 401 on any route when not authenticated', async () => {
-  const res = await app.inject({ method: 'GET', url: '/subscriptions' })
+  const res = await app.inject({ method: 'GET', url: '/api/subscriptions' })
   expect(res.statusCode).toBe(401)
 })
 
@@ -85,7 +85,7 @@ describe('GET /subscription/status', () => {
   it('returns enabled status without authentication', async () => {
     const res = await app.inject({
       method: 'GET',
-      url: '/subscription/status',
+      url: '/api/subscription/status',
     })
     expect(res.statusCode).toBe(200)
     expect(res.json()).toHaveProperty('enabled')
@@ -95,7 +95,7 @@ describe('GET /subscription/status', () => {
   it('returns the plan catalog from config when enabled', async () => {
     const res = await app.inject({
       method: 'GET',
-      url: '/subscription/status',
+      url: '/api/subscription/status',
     })
     expect(res.json()).toEqual({
       enabled: true,
@@ -111,7 +111,7 @@ describe('requireSubscription (via GET /todos)', () => {
     const cookie = await createRestrictedSession(todosViewer)
     const res = await app.inject({
       method: 'GET',
-      url: '/todos',
+      url: '/api/todos',
       headers: { cookie },
     })
     expect(res.statusCode).toBe(403)
@@ -127,7 +127,7 @@ describe('requireSubscription (via GET /todos)', () => {
     })
     const res = await app.inject({
       method: 'GET',
-      url: '/todos',
+      url: '/api/todos',
       headers: { cookie },
     })
     expect(res.statusCode).toBe(403)
@@ -143,7 +143,7 @@ describe('requireSubscription (via GET /todos)', () => {
     })
     const res = await app.inject({
       method: 'GET',
-      url: '/todos',
+      url: '/api/todos',
       headers: { cookie },
     })
     expect(res.statusCode).toBe(200)
@@ -157,7 +157,7 @@ describe('requireSubscription (via GET /todos)', () => {
     })
     const res = await app.inject({
       method: 'GET',
-      url: '/todos',
+      url: '/api/todos',
       headers: { cookie },
     })
     expect(res.statusCode).toBe(200)
@@ -171,7 +171,7 @@ describe('requireSubscription (via GET /todos)', () => {
     })
     const res = await app.inject({
       method: 'GET',
-      url: '/todos',
+      url: '/api/todos',
       headers: { cookie },
     })
     expect(res.statusCode).toBe(403)
@@ -185,7 +185,7 @@ describe('requireSubscription (via GET /todos)', () => {
     ])
     const res = await app.inject({
       method: 'GET',
-      url: '/todos',
+      url: '/api/todos',
       headers: { cookie },
     })
     expect(res.statusCode).toBe(200)
@@ -205,7 +205,7 @@ describe('GET /me/entitlements', () => {
   async function getEntitlements(cookie: string) {
     const res = await app.inject({
       method: 'GET',
-      url: '/me/entitlements',
+      url: '/api/me/entitlements',
       headers: { cookie },
     })
     expect(res.statusCode).toBe(200)
@@ -273,7 +273,7 @@ describe('GET /me/subscription', () => {
   it('returns 204 when user has no active subscription', async () => {
     const res = await app.inject({
       method: 'GET',
-      url: '/me/subscription',
+      url: '/api/me/subscription',
       headers: { cookie: authCookie },
     })
     expect(res.statusCode).toBe(204)
@@ -295,7 +295,7 @@ describe('GET /me/subscription', () => {
 
     const res = await app.inject({
       method: 'GET',
-      url: '/me/subscription',
+      url: '/api/me/subscription',
       headers: { cookie: authCookie },
     })
     expect(res.statusCode).toBe(200)
@@ -319,7 +319,7 @@ describe('GET /me/subscription', () => {
 
     const res = await app.inject({
       method: 'GET',
-      url: '/me/subscription',
+      url: '/api/me/subscription',
       headers: { cookie: authCookie },
     })
     expect(res.statusCode).toBe(204)
@@ -331,7 +331,7 @@ describe('Permission enforcement', () => {
     const cookie = await createRestrictedSession([])
     const res = await app.inject({
       method: 'GET',
-      url: '/subscriptions',
+      url: '/api/subscriptions',
       headers: { cookie },
     })
     expect(res.statusCode).toBe(403)
@@ -348,7 +348,7 @@ describe('Permission enforcement', () => {
 
     const res = await app.inject({
       method: 'POST',
-      url: '/subscriptions',
+      url: '/api/subscriptions',
       payload: {
         userId: testUser.id,
         planId: 'pro',
@@ -382,7 +382,7 @@ describe('Permission enforcement', () => {
     ])
     const res = await app.inject({
       method: 'PATCH',
-      url: `/subscriptions/${sub.id}`,
+      url: `/api/subscriptions/${sub.id}`,
       payload: { planId: 'starter' },
       headers: { cookie },
     })
@@ -411,7 +411,7 @@ describe('Permission enforcement', () => {
     ])
     const res = await app.inject({
       method: 'DELETE',
-      url: `/subscriptions/${sub.id}`,
+      url: `/api/subscriptions/${sub.id}`,
       headers: { cookie },
     })
     expect(res.statusCode).toBe(403)
@@ -422,7 +422,7 @@ describe('GET /subscriptions', () => {
   it('returns empty paginated list', async () => {
     const res = await app.inject({
       method: 'GET',
-      url: '/subscriptions',
+      url: '/api/subscriptions',
       headers: { cookie: authCookie },
     })
     expect(res.statusCode).toBe(200)
@@ -457,7 +457,7 @@ describe('GET /subscriptions', () => {
 
     const res = await app.inject({
       method: 'GET',
-      url: '/subscriptions?page=1&pageSize=10',
+      url: '/api/subscriptions?page=1&pageSize=10',
       headers: { cookie: authCookie },
     })
     expect(res.statusCode).toBe(200)
@@ -475,7 +475,7 @@ describe('POST /subscriptions', () => {
 
     const res = await app.inject({
       method: 'POST',
-      url: '/subscriptions',
+      url: '/api/subscriptions',
       payload: {
         userId: testUser.id,
         planId: 'pro',
@@ -497,7 +497,7 @@ describe('POST /subscriptions', () => {
   it('returns 400 for missing required fields', async () => {
     const res = await app.inject({
       method: 'POST',
-      url: '/subscriptions',
+      url: '/api/subscriptions',
       payload: { planId: 'pro' },
       headers: { cookie: authCookie },
     })
@@ -507,7 +507,7 @@ describe('POST /subscriptions', () => {
     const testUser = await getTestUser()
     const res = await app.inject({
       method: 'POST',
-      url: '/subscriptions',
+      url: '/api/subscriptions',
       payload: {
         userId: testUser.id,
         planId: 'legacy',
@@ -523,7 +523,7 @@ describe('POST /subscriptions', () => {
   it('returns 400 when the user does not exist', async () => {
     const res = await app.inject({
       method: 'POST',
-      url: '/subscriptions',
+      url: '/api/subscriptions',
       payload: {
         userId: 'nonexistent-user',
         planId: 'pro',
@@ -550,7 +550,7 @@ describe('POST /subscriptions', () => {
     }
     const first = await app.inject({
       method: 'POST',
-      url: '/subscriptions',
+      url: '/api/subscriptions',
       payload,
       headers: { cookie: authCookie },
     })
@@ -558,7 +558,7 @@ describe('POST /subscriptions', () => {
 
     const second = await app.inject({
       method: 'POST',
-      url: '/subscriptions',
+      url: '/api/subscriptions',
       payload: { ...payload, status: 'trialing' },
       headers: { cookie: authCookie },
     })
@@ -582,7 +582,7 @@ describe('POST /subscriptions', () => {
 
     const res = await app.inject({
       method: 'POST',
-      url: '/subscriptions',
+      url: '/api/subscriptions',
       payload: {
         userId: testUser.id,
         planId: 'pro',
@@ -609,7 +609,7 @@ describe('POST /subscriptions', () => {
 
     const res = await app.inject({
       method: 'POST',
-      url: '/subscriptions',
+      url: '/api/subscriptions',
       payload: {
         userId: testUser.id,
         planId: 'starter',
@@ -626,7 +626,7 @@ describe('POST /subscriptions', () => {
     const testUser = await getTestUser()
     const res = await app.inject({
       method: 'POST',
-      url: '/subscriptions',
+      url: '/api/subscriptions',
       payload: {
         userId: testUser.id,
         planId: 'unknown-plan',
@@ -643,7 +643,7 @@ describe('GET /subscriptions/:id', () => {
   it('returns 404 for unknown id', async () => {
     const res = await app.inject({
       method: 'GET',
-      url: '/subscriptions/nonexistent-id',
+      url: '/api/subscriptions/nonexistent-id',
       headers: { cookie: authCookie },
     })
     expect(res.statusCode).toBe(404)
@@ -668,7 +668,7 @@ describe('GET /subscriptions/:id', () => {
 
     const res = await app.inject({
       method: 'GET',
-      url: `/subscriptions/${inserted.id}`,
+      url: `/api/subscriptions/${inserted.id}`,
       headers: { cookie: authCookie },
     })
     expect(res.statusCode).toBe(200)
@@ -681,7 +681,7 @@ describe('PATCH /subscriptions/:id', () => {
   it('returns 404 for unknown id', async () => {
     const res = await app.inject({
       method: 'PATCH',
-      url: '/subscriptions/nonexistent-id',
+      url: '/api/subscriptions/nonexistent-id',
       payload: { planId: 'starter' },
       headers: { cookie: authCookie },
     })
@@ -707,7 +707,7 @@ describe('PATCH /subscriptions/:id', () => {
 
     const res = await app.inject({
       method: 'PATCH',
-      url: `/subscriptions/${inserted.id}`,
+      url: `/api/subscriptions/${inserted.id}`,
       payload: { planId: 'enterprise', status: 'canceled' },
       headers: { cookie: authCookie },
     })
@@ -744,7 +744,7 @@ describe('PATCH /subscriptions/:id', () => {
 
     const res = await app.inject({
       method: 'PATCH',
-      url: `/subscriptions/${canceled.id}`,
+      url: `/api/subscriptions/${canceled.id}`,
       payload: { status: 'active' },
       headers: { cookie: authCookie },
     })
@@ -767,7 +767,7 @@ describe('PATCH /subscriptions/:id', () => {
 
     const res = await app.inject({
       method: 'PATCH',
-      url: `/subscriptions/${inserted.id}`,
+      url: `/api/subscriptions/${inserted.id}`,
       payload: { planId: 'unknown-plan' },
       headers: { cookie: authCookie },
     })
@@ -780,7 +780,7 @@ describe('pastDueSince', () => {
     const testUser = await getTestUser()
     const res = await app.inject({
       method: 'POST',
-      url: '/subscriptions',
+      url: '/api/subscriptions',
       payload: {
         userId: testUser.id,
         planId: 'pro',
@@ -796,7 +796,7 @@ describe('pastDueSince', () => {
   function patch(id: string, payload: Record<string, unknown>) {
     return app.inject({
       method: 'PATCH',
-      url: `/subscriptions/${id}`,
+      url: `/api/subscriptions/${id}`,
       payload,
       headers: { cookie: authCookie },
     })
@@ -856,7 +856,7 @@ describe('DELETE /subscriptions/:id', () => {
 
     const res = await app.inject({
       method: 'DELETE',
-      url: `/subscriptions/${inserted.id}`,
+      url: `/api/subscriptions/${inserted.id}`,
       headers: { cookie: authCookie },
     })
     expect(res.statusCode).toBe(204)
@@ -869,7 +869,7 @@ describe('DELETE /subscriptions/:id', () => {
     const id = `missing-${crypto.randomUUID()}`
     const res = await app.inject({
       method: 'DELETE',
-      url: `/subscriptions/${id}`,
+      url: `/api/subscriptions/${id}`,
       headers: { cookie: authCookie },
     })
     expect(res.statusCode).toBe(204)
@@ -890,23 +890,24 @@ describe('with subscriptions disabled', () => {
   it('reports the feature off, with no plans', async () => {
     const res = await disabledApp.inject({
       method: 'GET',
-      url: '/subscription/status',
+      url: '/api/subscription/status',
     })
     expect(res.statusCode).toBe(200)
     expect(res.json()).toEqual({ enabled: false, plans: [] })
   })
 
-  it.each(['/subscriptions', '/me/subscription', '/me/entitlements'])(
-    'registers no %s route',
-    async (url) => {
-      const res = await disabledApp.inject({
-        method: 'GET',
-        url,
-        headers: { cookie: authCookie },
-      })
-      expect(res.statusCode).toBe(404)
-    }
-  )
+  it.each([
+    '/api/subscriptions',
+    '/api/me/subscription',
+    '/api/me/entitlements',
+  ])('registers no %s route', async (url) => {
+    const res = await disabledApp.inject({
+      method: 'GET',
+      url,
+      headers: { cookie: authCookie },
+    })
+    expect(res.statusCode).toBe(404)
+  })
 
   it('lets requireSubscription() through without a subscription', async () => {
     const cookie = await createRestrictedSession([
@@ -914,7 +915,7 @@ describe('with subscriptions disabled', () => {
     ])
     const res = await disabledApp.inject({
       method: 'GET',
-      url: '/todos',
+      url: '/api/todos',
       headers: { cookie },
     })
     expect(res.statusCode).toBe(200)

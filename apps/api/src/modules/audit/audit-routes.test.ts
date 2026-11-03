@@ -35,7 +35,7 @@ afterAll(async () => {
 })
 
 it('returns 401 on any route when not authenticated', async () => {
-  const res = await app.inject({ method: 'GET', url: '/audit-logs' })
+  const res = await app.inject({ method: 'GET', url: '/api/audit-logs' })
   expect(res.statusCode).toBe(401)
 })
 
@@ -43,7 +43,7 @@ describe('GET /audit-logs', () => {
   it('returns empty paginated response when no logs exist', async () => {
     const res = await app.inject({
       method: 'GET',
-      url: '/audit-logs',
+      url: '/api/audit-logs',
       headers: { cookie: authCookie },
     })
     expect(res.statusCode).toBe(200)
@@ -80,7 +80,7 @@ describe('GET /audit-logs', () => {
 
     const res = await app.inject({
       method: 'GET',
-      url: '/audit-logs',
+      url: '/api/audit-logs',
       headers: { cookie: authCookie },
     })
     expect(res.statusCode).toBe(200)
@@ -113,7 +113,7 @@ describe('GET /audit-logs', () => {
 
     const res = await app.inject({
       method: 'GET',
-      url: '/audit-logs?sortBy=createdAt&sortOrder=desc',
+      url: '/api/audit-logs?sortBy=createdAt&sortOrder=desc',
       headers: { cookie: authCookie },
     })
     expect(res.statusCode).toBe(200)
@@ -152,7 +152,7 @@ describe('GET /audit-logs', () => {
 
     const res = await app.inject({
       method: 'GET',
-      url: '/audit-logs?page=1&pageSize=2',
+      url: '/api/audit-logs?page=1&pageSize=2',
       headers: { cookie: authCookie },
     })
     expect(res.statusCode).toBe(200)
@@ -194,7 +194,7 @@ describe('GET /audit-logs', () => {
 
     const res = await app.inject({
       method: 'GET',
-      url: '/audit-logs?page=2&pageSize=2',
+      url: '/api/audit-logs?page=2&pageSize=2',
       headers: { cookie: authCookie },
     })
     expect(res.statusCode).toBe(200)
@@ -231,7 +231,7 @@ describe('GET /audit-logs', () => {
 
     const res = await app.inject({
       method: 'GET',
-      url: '/audit-logs?sortBy=userName&sortOrder=asc',
+      url: '/api/audit-logs?sortBy=userName&sortOrder=asc',
       headers: { cookie: authCookie },
     })
     expect(res.statusCode).toBe(200)
@@ -261,7 +261,7 @@ describe('GET /audit-logs', () => {
 
     const res = await app.inject({
       method: 'GET',
-      url: '/audit-logs?sortBy=resource&sortOrder=desc',
+      url: '/api/audit-logs?sortBy=resource&sortOrder=desc',
       headers: { cookie: authCookie },
     })
     expect(res.statusCode).toBe(200)
@@ -275,7 +275,7 @@ describe('GET /audit-logs/:id', () => {
   it('returns 404 when log not found', async () => {
     const res = await app.inject({
       method: 'GET',
-      url: '/audit-logs/nonexistent-id',
+      url: '/api/audit-logs/nonexistent-id',
       headers: { cookie: authCookie },
     })
     expect(res.statusCode).toBe(404)
@@ -300,7 +300,7 @@ describe('GET /audit-logs/:id', () => {
 
     const res = await app.inject({
       method: 'GET',
-      url: `/audit-logs/${inserted.id}`,
+      url: `/api/audit-logs/${inserted.id}`,
       headers: { cookie: authCookie },
     })
     expect(res.statusCode).toBe(200)
@@ -320,7 +320,7 @@ describe('GET /audit-logs/export', () => {
   it('returns 200 with a PDF buffer when no logs exist', async () => {
     const res = await app.inject({
       method: 'GET',
-      url: '/audit-logs/export',
+      url: '/api/audit-logs/export',
       headers: { cookie: authCookie },
     })
     expect(res.statusCode).toBe(200)
@@ -353,7 +353,7 @@ describe('GET /audit-logs/export', () => {
 
     const res = await app.inject({
       method: 'GET',
-      url: '/audit-logs/export?sortBy=createdAt&sortOrder=desc',
+      url: '/api/audit-logs/export?sortBy=createdAt&sortOrder=desc',
       headers: { cookie: authCookie },
     })
     expect(res.statusCode).toBe(200)
@@ -399,7 +399,7 @@ describe('Audit logging via onResponse hook', () => {
 
     await app.inject({
       method: 'POST',
-      url: '/todos',
+      url: '/api/todos',
       payload: {
         title: 'Audited Todo',
         description: 'Desc',
@@ -422,7 +422,7 @@ describe('Audit logging via onResponse hook', () => {
   it('does not create an audit log when the operation fails', async () => {
     await app.inject({
       method: 'POST',
-      url: '/todos',
+      url: '/api/todos',
       payload: { title: '' },
       headers: { cookie: authCookie },
     })
@@ -466,7 +466,7 @@ describe('Permission enforcement', () => {
     const cookie = await createRestrictedSession([])
     const res = await app.inject({
       method: 'GET',
-      url: '/audit-logs',
+      url: '/api/audit-logs',
       headers: { cookie },
     })
     expect(res.statusCode).toBe(403)
@@ -476,7 +476,7 @@ describe('Permission enforcement', () => {
     const cookie = await createRestrictedSession([])
     const res = await app.inject({
       method: 'GET',
-      url: '/audit-logs/some-id',
+      url: '/api/audit-logs/some-id',
       headers: { cookie },
     })
     expect(res.statusCode).toBe(403)
@@ -486,7 +486,7 @@ describe('Permission enforcement', () => {
     const cookie = await createRestrictedSession([])
     const res = await app.inject({
       method: 'GET',
-      url: '/audit-logs/export',
+      url: '/api/audit-logs/export',
       headers: { cookie },
     })
     expect(res.statusCode).toBe(403)

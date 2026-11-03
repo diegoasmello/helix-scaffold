@@ -53,7 +53,7 @@ afterAll(async () => {
 })
 
 it('returns 401 on any route when not authenticated', async () => {
-  const res = await app.inject({ method: 'GET', url: '/todos' })
+  const res = await app.inject({ method: 'GET', url: '/api/todos' })
   expect(res.statusCode).toBe(401)
 })
 
@@ -61,7 +61,7 @@ describe('GET /todos', () => {
   it('returns empty array when no todos', async () => {
     const res = await app.inject({
       method: 'GET',
-      url: '/todos',
+      url: '/api/todos',
       headers: { cookie: authCookie },
     })
     expect(res.statusCode).toBe(200)
@@ -92,7 +92,7 @@ describe('GET /todos', () => {
 
     const res = await app.inject({
       method: 'GET',
-      url: '/todos',
+      url: '/api/todos',
       headers: { cookie: authCookie },
     })
     expect(res.statusCode).toBe(200)
@@ -136,7 +136,7 @@ describe('GET /todos', () => {
       ])
       const res = await app.inject({
         method: 'GET',
-        url: `/todos?filters=${encodeURIComponent(filters)}`,
+        url: `/api/todos?filters=${encodeURIComponent(filters)}`,
         headers: { cookie: authCookie },
       })
       expect(res.statusCode).toBe(200)
@@ -151,7 +151,7 @@ describe('GET /todos', () => {
       ])
       const res = await app.inject({
         method: 'GET',
-        url: `/todos?filters=${encodeURIComponent(filters)}`,
+        url: `/api/todos?filters=${encodeURIComponent(filters)}`,
         headers: { cookie: authCookie },
       })
       expect(res.statusCode).toBe(200)
@@ -166,7 +166,7 @@ describe('GET /todos', () => {
       ])
       const res = await app.inject({
         method: 'GET',
-        url: `/todos?filters=${encodeURIComponent(filters)}`,
+        url: `/api/todos?filters=${encodeURIComponent(filters)}`,
         headers: { cookie: authCookie },
       })
       expect(res.statusCode).toBe(200)
@@ -180,7 +180,7 @@ describe('GET /todos', () => {
       ])
       const res = await app.inject({
         method: 'GET',
-        url: `/todos?filters=${encodeURIComponent(filters)}&sortBy=date&sortOrder=asc`,
+        url: `/api/todos?filters=${encodeURIComponent(filters)}&sortBy=date&sortOrder=asc`,
         headers: { cookie: authCookie },
       })
       expect(res.statusCode).toBe(200)
@@ -198,7 +198,7 @@ describe('GET /todos', () => {
       ])
       const res = await app.inject({
         method: 'GET',
-        url: `/todos?filters=${encodeURIComponent(filters)}`,
+        url: `/api/todos?filters=${encodeURIComponent(filters)}`,
         headers: { cookie: authCookie },
       })
       expect(res.statusCode).toBe(200)
@@ -209,7 +209,7 @@ describe('GET /todos', () => {
       const get = (search: string) =>
         app.inject({
           method: 'GET',
-          url: `/todos?search=${encodeURIComponent(search)}`,
+          url: `/api/todos?search=${encodeURIComponent(search)}`,
           headers: { cookie: authCookie },
         })
       const byTitle = (await get('RUST')).json()
@@ -226,7 +226,7 @@ describe('GET /todos', () => {
       ])
       const res = await app.inject({
         method: 'GET',
-        url: `/todos?search=milk&filters=${encodeURIComponent(filters)}`,
+        url: `/api/todos?search=milk&filters=${encodeURIComponent(filters)}`,
         headers: { cookie: authCookie },
       })
       expect(res.json().total).toBe(0)
@@ -239,7 +239,7 @@ describe('GET /todos', () => {
       ])
       const res = await app.inject({
         method: 'GET',
-        url: `/todos?filters=${encodeURIComponent(filters)}&filterLogic=AND`,
+        url: `/api/todos?filters=${encodeURIComponent(filters)}&filterLogic=AND`,
         headers: { cookie: authCookie },
       })
       expect(res.statusCode).toBe(200)
@@ -255,7 +255,7 @@ describe('GET /todos', () => {
       ])
       const res = await app.inject({
         method: 'GET',
-        url: `/todos?filters=${encodeURIComponent(filters)}&filterLogic=OR`,
+        url: `/api/todos?filters=${encodeURIComponent(filters)}&filterLogic=OR`,
         headers: { cookie: authCookie },
       })
       expect(res.statusCode).toBe(200)
@@ -266,7 +266,7 @@ describe('GET /todos', () => {
     it('returns all todos when filters is an empty array', async () => {
       const res = await app.inject({
         method: 'GET',
-        url: `/todos?filters=${encodeURIComponent('[]')}`,
+        url: `/api/todos?filters=${encodeURIComponent('[]')}`,
         headers: { cookie: authCookie },
       })
       expect(res.statusCode).toBe(200)
@@ -276,7 +276,7 @@ describe('GET /todos', () => {
     it('returns all todos when filters is invalid JSON', async () => {
       const res = await app.inject({
         method: 'GET',
-        url: `/todos?filters=not-valid-json`,
+        url: `/api/todos?filters=not-valid-json`,
         headers: { cookie: authCookie },
       })
       expect(res.statusCode).toBe(200)
@@ -289,7 +289,7 @@ describe('GET /todos/:id', () => {
   it('returns 404 when todo not found', async () => {
     const res = await app.inject({
       method: 'GET',
-      url: '/todos/nonexistent-id',
+      url: '/api/todos/nonexistent-id',
       headers: { cookie: authCookie },
     })
     expect(res.statusCode).toBe(404)
@@ -309,7 +309,7 @@ describe('GET /todos/:id', () => {
 
     const res = await app.inject({
       method: 'GET',
-      url: `/todos/${inserted.id}`,
+      url: `/api/todos/${inserted.id}`,
       headers: { cookie: authCookie },
     })
     expect(res.statusCode).toBe(200)
@@ -329,7 +329,7 @@ describe('POST /todos', () => {
 
     const res = await app.inject({
       method: 'POST',
-      url: '/todos',
+      url: '/api/todos',
       payload: {
         title: 'New Todo',
         description: 'New Desc',
@@ -354,7 +354,7 @@ describe('POST /todos', () => {
   it('returns 400 when body is invalid', async () => {
     const res = await app.inject({
       method: 'POST',
-      url: '/todos',
+      url: '/api/todos',
       payload: { title: '' },
       headers: { cookie: authCookie },
     })
@@ -364,7 +364,7 @@ describe('POST /todos', () => {
   it('returns 400 when fields exceed max length', async () => {
     const res = await app.inject({
       method: 'POST',
-      url: '/todos',
+      url: '/api/todos',
       payload: {
         title: 'a'.repeat(201),
         description: 'b'.repeat(501),
@@ -381,7 +381,7 @@ describe('PATCH /todos/:id', () => {
   it('returns 404 when todo not found', async () => {
     const res = await app.inject({
       method: 'PATCH',
-      url: '/todos/nonexistent-id',
+      url: '/api/todos/nonexistent-id',
       payload: { title: 'Updated' },
       headers: { cookie: authCookie },
     })
@@ -402,7 +402,7 @@ describe('PATCH /todos/:id', () => {
 
     const res = await app.inject({
       method: 'PATCH',
-      url: `/todos/${inserted.id}`,
+      url: `/api/todos/${inserted.id}`,
       payload: { title: 'New Title', status: 'completed' },
       headers: { cookie: authCookie },
     })
@@ -430,7 +430,7 @@ describe('DELETE /todos/:id', () => {
 
     const res = await app.inject({
       method: 'DELETE',
-      url: `/todos/${inserted.id}`,
+      url: `/api/todos/${inserted.id}`,
       headers: { cookie: authCookie },
     })
     expect(res.statusCode).toBe(204)
@@ -441,7 +441,7 @@ describe('DELETE /todos/:id', () => {
     const id = `missing-${crypto.randomUUID()}`
     const res = await app.inject({
       method: 'DELETE',
-      url: `/todos/${id}`,
+      url: `/api/todos/${id}`,
       headers: { cookie: authCookie },
     })
     expect(res.statusCode).toBe(204)
@@ -458,7 +458,7 @@ describe('Attachments', () => {
 
     const res = await app.inject({
       method: 'POST',
-      url: '/todos',
+      url: '/api/todos',
       payload: {
         title: 'With attachment',
         description: 'Desc',
@@ -483,7 +483,7 @@ describe('Attachments', () => {
 
     const createRes = await app.inject({
       method: 'POST',
-      url: '/todos',
+      url: '/api/todos',
       payload: {
         title: 'With attachment',
         description: 'Desc',
@@ -499,7 +499,7 @@ describe('Attachments', () => {
 
     const res = await app.inject({
       method: 'GET',
-      url: `/todos/${todoId}`,
+      url: `/api/todos/${todoId}`,
       headers: { cookie: authCookie },
     })
     expect(res.statusCode).toBe(200)
@@ -525,7 +525,7 @@ describe('Attachments', () => {
 
     const createRes = await app.inject({
       method: 'POST',
-      url: '/todos',
+      url: '/api/todos',
       payload: {
         title: 'Todo',
         description: 'Desc',
@@ -541,7 +541,7 @@ describe('Attachments', () => {
 
     const patchRes = await app.inject({
       method: 'PATCH',
-      url: `/todos/${todoId}`,
+      url: `/api/todos/${todoId}`,
       payload: { attachmentIds: [upload2.id] },
       headers: { cookie: authCookie },
     })
@@ -557,7 +557,7 @@ describe('Attachments', () => {
     const image = await insertUpload('img.jpg', 'image/jpeg')
     const createRes = await app.inject({
       method: 'POST',
-      url: '/todos',
+      url: '/api/todos',
       payload: {
         title: 'To delete',
         description: 'Desc',
@@ -573,7 +573,7 @@ describe('Attachments', () => {
 
     await app.inject({
       method: 'DELETE',
-      url: `/todos/${todoId}`,
+      url: `/api/todos/${todoId}`,
       headers: { cookie: authCookie },
     })
 
@@ -629,7 +629,7 @@ describe('Permission enforcement', () => {
     ])
     const res = await app.inject({
       method: 'GET',
-      url: '/todos',
+      url: '/api/todos',
       headers: { cookie },
     })
     expect(res.statusCode).toBe(200)
@@ -639,7 +639,7 @@ describe('Permission enforcement', () => {
     const cookie = await createRestrictedSession([])
     const res = await app.inject({
       method: 'GET',
-      url: '/todos',
+      url: '/api/todos',
       headers: { cookie },
     })
     expect(res.statusCode).toBe(403)
@@ -652,7 +652,7 @@ describe('Permission enforcement', () => {
     ])
     const res = await app.inject({
       method: 'POST',
-      url: '/todos',
+      url: '/api/todos',
       payload: {
         title: 'New',
         description: 'Desc',
@@ -683,7 +683,7 @@ describe('Permission enforcement', () => {
     ])
     const res = await app.inject({
       method: 'PATCH',
-      url: `/todos/${todo.id}`,
+      url: `/api/todos/${todo.id}`,
       payload: { title: 'Updated' },
       headers: { cookie },
     })
@@ -706,7 +706,7 @@ describe('Permission enforcement', () => {
     ])
     const res = await app.inject({
       method: 'DELETE',
-      url: `/todos/${todo.id}`,
+      url: `/api/todos/${todo.id}`,
       headers: { cookie },
     })
     expect(res.statusCode).toBe(403)

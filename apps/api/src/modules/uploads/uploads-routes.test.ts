@@ -92,7 +92,7 @@ afterAll(async () => {
 })
 
 it('returns 401 on any route when not authenticated', async () => {
-  const res = await app.inject({ method: 'GET', url: '/uploads' })
+  const res = await app.inject({ method: 'GET', url: '/api/uploads' })
   expect(res.statusCode).toBe(401)
 })
 
@@ -108,7 +108,7 @@ describe('POST /uploads', () => {
 
     const res = await app.inject({
       method: 'POST',
-      url: '/uploads',
+      url: '/api/uploads',
       headers: {
         cookie: authCookie,
         'content-type': `multipart/form-data; boundary=${boundary}`,
@@ -120,12 +120,12 @@ describe('POST /uploads', () => {
     expect(upload.originalName).toBe('photo.png')
     expect(upload.mimeType).toBe('image/png')
     expect(upload.fileSize).toBeGreaterThan(0)
-    expect(upload.url).toContain('/files/')
+    expect(upload.url).toContain('/api/files/')
     expect(upload.variants).not.toBeNull()
-    expect(upload.variants.thumbnail.url).toContain('/files/')
-    expect(upload.variants.small.url).toContain('/files/')
-    expect(upload.variants.medium.url).toContain('/files/')
-    expect(upload.variants.large.url).toContain('/files/')
+    expect(upload.variants.thumbnail.url).toContain('/api/files/')
+    expect(upload.variants.small.url).toContain('/api/files/')
+    expect(upload.variants.medium.url).toContain('/api/files/')
+    expect(upload.variants.large.url).toContain('/api/files/')
     expect(await findAuditLogs('create', 'uploads', upload.id)).toHaveLength(1)
   })
 
@@ -140,7 +140,7 @@ describe('POST /uploads', () => {
 
     const res = await app.inject({
       method: 'POST',
-      url: '/uploads',
+      url: '/api/uploads',
       headers: {
         cookie: authCookie,
         'content-type': `multipart/form-data; boundary=${boundary}`,
@@ -164,7 +164,7 @@ describe('POST /uploads', () => {
 
     const res = await app.inject({
       method: 'POST',
-      url: '/uploads',
+      url: '/api/uploads',
       headers: {
         cookie: authCookie,
         'content-type': `multipart/form-data; boundary=${boundary}`,
@@ -181,7 +181,7 @@ describe('POST /uploads', () => {
 
     const res = await app.inject({
       method: 'POST',
-      url: '/uploads',
+      url: '/api/uploads',
       headers: {
         cookie: authCookie,
         'content-type': `multipart/form-data; boundary=${boundary}`,
@@ -196,7 +196,7 @@ describe('GET /uploads', () => {
   it('returns empty list when no uploads', async () => {
     const res = await app.inject({
       method: 'GET',
-      url: '/uploads',
+      url: '/api/uploads',
       headers: { cookie: authCookie },
     })
     expect(res.statusCode).toBe(200)
@@ -215,13 +215,13 @@ describe('GET /uploads', () => {
       mimeType: 'application/pdf',
       fileSize: 100,
       storageKey: 'abc/original.pdf',
-      url: 'http://localhost:3333/files/abc/original.pdf',
+      url: 'http://localhost:3333/api/files/abc/original.pdf',
       variants: null,
     })
 
     const res = await app.inject({
       method: 'GET',
-      url: '/uploads',
+      url: '/api/uploads',
       headers: { cookie: authCookie },
     })
     expect(res.statusCode).toBe(200)
@@ -235,7 +235,7 @@ describe('GET /uploads/:id', () => {
   it('returns 404 for unknown id', async () => {
     const res = await app.inject({
       method: 'GET',
-      url: '/uploads/nonexistent',
+      url: '/api/uploads/nonexistent',
       headers: { cookie: authCookie },
     })
     expect(res.statusCode).toBe(404)
@@ -249,14 +249,14 @@ describe('GET /uploads/:id', () => {
         mimeType: 'application/pdf',
         fileSize: 200,
         storageKey: 'xyz/original.pdf',
-        url: 'http://localhost:3333/files/xyz/original.pdf',
+        url: 'http://localhost:3333/api/files/xyz/original.pdf',
         variants: null,
       })
       .returning()
 
     const res = await app.inject({
       method: 'GET',
-      url: `/uploads/${inserted.id}`,
+      url: `/api/uploads/${inserted.id}`,
       headers: { cookie: authCookie },
     })
     expect(res.statusCode).toBe(200)
@@ -274,14 +274,14 @@ describe('DELETE /uploads/:id', () => {
         mimeType: 'application/pdf',
         fileSize: 50,
         storageKey: 'del/original.pdf',
-        url: 'http://localhost:3333/files/del/original.pdf',
+        url: 'http://localhost:3333/api/files/del/original.pdf',
         variants: null,
       })
       .returning()
 
     const res = await app.inject({
       method: 'DELETE',
-      url: `/uploads/${inserted.id}`,
+      url: `/api/uploads/${inserted.id}`,
       headers: { cookie: authCookie },
     })
     expect(res.statusCode).toBe(204)
@@ -300,7 +300,7 @@ describe('DELETE /uploads/:id', () => {
     const id = `missing-${crypto.randomUUID()}`
     const res = await app.inject({
       method: 'DELETE',
-      url: `/uploads/${id}`,
+      url: `/api/uploads/${id}`,
       headers: { cookie: authCookie },
     })
     expect(res.statusCode).toBe(204)
@@ -343,7 +343,7 @@ describe('Permission enforcement', () => {
     const cookie = await createRestrictedSession([])
     const res = await app.inject({
       method: 'GET',
-      url: '/uploads',
+      url: '/api/uploads',
       headers: { cookie },
     })
     expect(res.statusCode).toBe(403)
@@ -362,7 +362,7 @@ describe('Permission enforcement', () => {
     ])
     const res = await app.inject({
       method: 'POST',
-      url: '/uploads',
+      url: '/api/uploads',
       headers: {
         cookie,
         'content-type': `multipart/form-data; boundary=${boundary}`,
@@ -380,7 +380,7 @@ describe('Permission enforcement', () => {
         mimeType: 'application/pdf',
         fileSize: 10,
         storageKey: 'perm/original.pdf',
-        url: 'http://localhost:3333/files/perm/original.pdf',
+        url: 'http://localhost:3333/api/files/perm/original.pdf',
         variants: null,
       })
       .returning()
@@ -389,7 +389,7 @@ describe('Permission enforcement', () => {
     ])
     const res = await app.inject({
       method: 'DELETE',
-      url: `/uploads/${inserted.id}`,
+      url: `/api/uploads/${inserted.id}`,
       headers: { cookie },
     })
     expect(res.statusCode).toBe(403)

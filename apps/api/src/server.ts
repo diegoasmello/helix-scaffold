@@ -4,6 +4,7 @@ import { buildApp } from './app'
 import { config } from './config'
 import { db } from './db'
 import { env } from './env'
+import { API_PREFIX } from './lib/api-prefix'
 import { deleteOrphanUploads } from './lib/orphan-uploads'
 import { createStorageProvider } from './lib/storage'
 import { getUploadReferenceLoaders } from './lib/upload-references'
@@ -19,7 +20,7 @@ const CLEANUP_INTERVAL_MS = intervalHours * 60 * 60 * 1000
 
 app.listen({ port: config.server.port, host: config.server.host }).then(() => {
   console.log(`HTTP server running on ${env.BASE_URL}`)
-  console.log(`Docs available at ${env.BASE_URL}/docs`)
+  console.log(`Docs available at ${env.BASE_URL}${API_PREFIX}/docs`)
 
   setInterval(async () => {
     try {

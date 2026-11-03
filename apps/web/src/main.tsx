@@ -15,11 +15,11 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 
 import { theme } from './config/theme'
-import { env } from './env'
+import { API_URL } from './lib/api-url'
 import { queryClient } from './lib/query-client.ts'
 import { router } from './routes.ts'
 
-configure({ baseUrl: env.VITE_API_URL })
+configure({ baseUrl: API_URL })
 
 const colorSchemeManager = localStorageColorSchemeManager({
   key: 'helix-color-scheme',

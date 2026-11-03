@@ -35,7 +35,7 @@ afterAll(async () => {
 })
 
 it('returns 401 on any route when not authenticated', async () => {
-  const res = await app.inject({ method: 'GET', url: '/users' })
+  const res = await app.inject({ method: 'GET', url: '/api/users' })
   expect(res.statusCode).toBe(401)
 })
 
@@ -43,7 +43,7 @@ describe('GET /users', () => {
   it('returns paginated response with the authenticated user', async () => {
     const res = await app.inject({
       method: 'GET',
-      url: '/users',
+      url: '/api/users',
       headers: { cookie: authCookie },
     })
     expect(res.statusCode).toBe(200)
@@ -68,7 +68,7 @@ describe('GET /users', () => {
 
     const res = await app.inject({
       method: 'GET',
-      url: '/users',
+      url: '/api/users',
       headers: { cookie: authCookie },
     })
     expect(res.statusCode).toBe(200)
@@ -91,7 +91,7 @@ describe('GET /users', () => {
 
     const res = await app.inject({
       method: 'GET',
-      url: '/users',
+      url: '/api/users',
       headers: { cookie: authCookie },
     })
     expect(res.statusCode).toBe(200)
@@ -119,7 +119,7 @@ describe('GET /users', () => {
 
     const res = await app.inject({
       method: 'GET',
-      url: '/users?page=1&pageSize=2',
+      url: '/api/users?page=1&pageSize=2',
       headers: { cookie: authCookie },
     })
     expect(res.statusCode).toBe(200)
@@ -147,7 +147,7 @@ describe('GET /users', () => {
 
     const res = await app.inject({
       method: 'GET',
-      url: '/users?sortBy=name&sortOrder=asc',
+      url: '/api/users?sortBy=name&sortOrder=asc',
       headers: { cookie: authCookie },
     })
     expect(res.statusCode).toBe(200)
@@ -160,7 +160,7 @@ describe('GET /users/:id', () => {
   it('returns 404 for unknown id', async () => {
     const res = await app.inject({
       method: 'GET',
-      url: '/users/nonexistent-id',
+      url: '/api/users/nonexistent-id',
       headers: { cookie: authCookie },
     })
     expect(res.statusCode).toBe(404)
@@ -180,7 +180,7 @@ describe('GET /users/:id', () => {
 
     const res = await app.inject({
       method: 'GET',
-      url: `/users/${inserted.id}`,
+      url: `/api/users/${inserted.id}`,
       headers: { cookie: authCookie },
     })
     expect(res.statusCode).toBe(200)
@@ -210,7 +210,7 @@ describe('GET /users/:id', () => {
 
     const res = await app.inject({
       method: 'GET',
-      url: `/users/${inserted.id}`,
+      url: `/api/users/${inserted.id}`,
       headers: { cookie: authCookie },
     })
     expect(res.statusCode).toBe(200)
@@ -224,7 +224,7 @@ describe('POST /users', () => {
   it('creates a user and returns 201 with null role', async () => {
     const res = await app.inject({
       method: 'POST',
-      url: '/users',
+      url: '/api/users',
       payload: {
         name: 'Carol',
         email: 'carol@test.com',
@@ -254,7 +254,7 @@ describe('POST /users', () => {
 
     const res = await app.inject({
       method: 'POST',
-      url: '/users',
+      url: '/api/users',
       payload: {
         name: 'Dave',
         email: 'dave@test.com',
@@ -272,7 +272,7 @@ describe('POST /users', () => {
   it('returns 404 when roleId does not exist', async () => {
     const res = await app.inject({
       method: 'POST',
-      url: '/users',
+      url: '/api/users',
       payload: {
         name: 'Eve',
         email: 'eve@test.com',
@@ -291,7 +291,7 @@ describe('POST /users', () => {
   it('returns 409 when email is already in use', async () => {
     await app.inject({
       method: 'POST',
-      url: '/users',
+      url: '/api/users',
       payload: {
         name: 'First',
         email: 'duplicate@test.com',
@@ -302,7 +302,7 @@ describe('POST /users', () => {
 
     const res = await app.inject({
       method: 'POST',
-      url: '/users',
+      url: '/api/users',
       payload: {
         name: 'Second',
         email: 'duplicate@test.com',
@@ -320,7 +320,7 @@ describe('POST /users', () => {
   it('returns 400 for invalid body', async () => {
     const res = await app.inject({
       method: 'POST',
-      url: '/users',
+      url: '/api/users',
       payload: { name: '', email: 'not-an-email', password: 'short' },
       headers: { cookie: authCookie },
     })
@@ -330,7 +330,7 @@ describe('POST /users', () => {
   it('returns 400 when name exceeds max length', async () => {
     const res = await app.inject({
       method: 'POST',
-      url: '/users',
+      url: '/api/users',
       payload: {
         name: 'a'.repeat(101),
         email: 'toolong@test.com',
@@ -354,7 +354,7 @@ describe('PATCH /users/:id', () => {
 
     const res = await app.inject({
       method: 'PATCH',
-      url: `/users/${second.id}`,
+      url: `/api/users/${second.id}`,
       payload: { email: first.email },
       headers: { cookie: authCookie },
     })
@@ -368,7 +368,7 @@ describe('PATCH /users/:id', () => {
   it('returns 404 for unknown id', async () => {
     const res = await app.inject({
       method: 'PATCH',
-      url: '/users/nonexistent-id',
+      url: '/api/users/nonexistent-id',
       payload: { name: 'Updated' },
       headers: { cookie: authCookie },
     })
@@ -392,7 +392,7 @@ describe('PATCH /users/:id', () => {
 
     const res = await app.inject({
       method: 'PATCH',
-      url: `/users/${inserted.id}`,
+      url: `/api/users/${inserted.id}`,
       payload: { name: 'New Name' },
       headers: { cookie: authCookie },
     })
@@ -421,7 +421,7 @@ describe('PATCH /users/:id', () => {
 
     const res = await app.inject({
       method: 'PATCH',
-      url: `/users/${inserted.id}`,
+      url: `/api/users/${inserted.id}`,
       payload: { roleId: role.id },
       headers: { cookie: authCookie },
     })
@@ -448,7 +448,7 @@ describe('PATCH /users/:id', () => {
 
     const res = await app.inject({
       method: 'PATCH',
-      url: `/users/${inserted.id}`,
+      url: `/api/users/${inserted.id}`,
       payload: { roleId: null },
       headers: { cookie: authCookie },
     })
@@ -470,7 +470,7 @@ describe('PATCH /users/:id', () => {
 
     const res = await app.inject({
       method: 'PATCH',
-      url: `/users/${inserted.id}`,
+      url: `/api/users/${inserted.id}`,
       payload: { roleId: 'nonexistent' },
       headers: { cookie: authCookie },
     })
@@ -486,7 +486,7 @@ describe('GET /users/all', () => {
   it('returns all users as a plain array', async () => {
     const res = await app.inject({
       method: 'GET',
-      url: '/users/all',
+      url: '/api/users/all',
       headers: { cookie: authCookie },
     })
     expect(res.statusCode).toBe(200)
@@ -515,7 +515,7 @@ describe('GET /users/all', () => {
 
     const res = await app.inject({
       method: 'GET',
-      url: '/users/all',
+      url: '/api/users/all',
       headers: { cookie: authCookie },
     })
     expect(res.statusCode).toBe(200)
@@ -538,7 +538,7 @@ describe('GET /users/all', () => {
 
     const res = await app.inject({
       method: 'GET',
-      url: '/users/all',
+      url: '/api/users/all',
       headers: { cookie: authCookie },
     })
     expect(res.statusCode).toBe(200)
@@ -563,7 +563,7 @@ describe('DELETE /users/:id', () => {
 
     const res = await app.inject({
       method: 'DELETE',
-      url: `/users/${inserted.id}`,
+      url: `/api/users/${inserted.id}`,
       headers: { cookie: authCookie },
     })
     expect(res.statusCode).toBe(204)
@@ -574,7 +574,7 @@ describe('DELETE /users/:id', () => {
     const id = `missing-${crypto.randomUUID()}`
     const res = await app.inject({
       method: 'DELETE',
-      url: `/users/${id}`,
+      url: `/api/users/${id}`,
       headers: { cookie: authCookie },
     })
     expect(res.statusCode).toBe(204)
@@ -612,7 +612,7 @@ describe('Permission enforcement', () => {
     const cookie = await createRestrictedSession([])
     const res = await app.inject({
       method: 'GET',
-      url: '/users/all',
+      url: '/api/users/all',
       headers: { cookie },
     })
     expect(res.statusCode).toBe(403)
@@ -622,7 +622,7 @@ describe('Permission enforcement', () => {
     const cookie = await createRestrictedSession([])
     const res = await app.inject({
       method: 'GET',
-      url: '/users',
+      url: '/api/users',
       headers: { cookie },
     })
     expect(res.statusCode).toBe(403)
@@ -634,7 +634,7 @@ describe('Permission enforcement', () => {
     ])
     const res = await app.inject({
       method: 'POST',
-      url: '/users',
+      url: '/api/users',
       payload: { name: 'New', email: 'new@test.com', password: 'Password123!' },
       headers: { cookie },
     })
@@ -656,7 +656,7 @@ describe('Permission enforcement', () => {
     ])
     const res = await app.inject({
       method: 'PATCH',
-      url: `/users/${inserted.id}`,
+      url: `/api/users/${inserted.id}`,
       payload: { name: 'Updated' },
       headers: { cookie },
     })
@@ -678,7 +678,7 @@ describe('Permission enforcement', () => {
     ])
     const res = await app.inject({
       method: 'DELETE',
-      url: `/users/${inserted.id}`,
+      url: `/api/users/${inserted.id}`,
       headers: { cookie },
     })
     expect(res.statusCode).toBe(403)

@@ -117,7 +117,7 @@ describe('self-registered (better-auth hook, open registration)', () => {
     await insertDefaultRole()
     const res = await app.inject({
       method: 'POST',
-      url: '/users',
+      url: '/api/users',
       payload: {
         name: 'Created',
         email: 'created@test.com',

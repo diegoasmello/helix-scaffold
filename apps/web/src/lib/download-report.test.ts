@@ -9,12 +9,12 @@ import {
   vi,
 } from 'vitest'
 
-import { env } from '@/env'
+import { API_URL } from '@/lib/api-url'
 
 import { server } from '../mocks/server'
 import { buildReportFilename, downloadReport } from './download-report'
 
-const REPORT_URL = `${env.VITE_API_URL}/reports/test`
+const REPORT_URL = `${API_URL}/reports/test`
 
 describe('buildReportFilename', () => {
   afterEach(() => vi.useRealTimers())

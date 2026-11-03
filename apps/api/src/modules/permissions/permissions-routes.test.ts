@@ -37,7 +37,7 @@ afterAll(async () => {
 it('returns 401 on any route when not authenticated', async () => {
   const res = await app.inject({
     method: 'GET',
-    url: '/permissions/resources',
+    url: '/api/permissions/resources',
   })
   expect(res.statusCode).toBe(401)
 })
@@ -46,7 +46,7 @@ describe('GET /permissions/resources', () => {
   it('returns the catalog of resources and actions', async () => {
     const res = await app.inject({
       method: 'GET',
-      url: '/permissions/resources',
+      url: '/api/permissions/resources',
       headers: { cookie: authCookie },
     })
     expect(res.statusCode).toBe(200)
@@ -63,7 +63,7 @@ describe('GET /me/permissions', () => {
   it('returns grants for the authenticated user', async () => {
     const res = await app.inject({
       method: 'GET',
-      url: '/me/permissions',
+      url: '/api/me/permissions',
       headers: { cookie: authCookie },
     })
     expect(res.statusCode).toBe(200)
@@ -91,7 +91,7 @@ describe('GET /me/permissions', () => {
 
     const res = await app.inject({
       method: 'GET',
-      url: '/me/permissions',
+      url: '/api/me/permissions',
       headers: { cookie: noRoleCookie },
     })
     expect(res.statusCode).toBe(200)
@@ -124,7 +124,7 @@ describe('GET /roles/:id/permissions', () => {
     const targetRole = await createRoleWithPermissions([])
     const res = await app.inject({
       method: 'GET',
-      url: `/roles/${targetRole.id}/permissions`,
+      url: `/api/roles/${targetRole.id}/permissions`,
       headers: { cookie: restrictedCookie },
     })
     expect(res.statusCode).toBe(403)
@@ -138,7 +138,7 @@ describe('GET /roles/:id/permissions', () => {
 
     const res = await app.inject({
       method: 'GET',
-      url: `/roles/${role.id}/permissions`,
+      url: `/api/roles/${role.id}/permissions`,
       headers: { cookie: authCookie },
     })
     expect(res.statusCode).toBe(200)
@@ -152,7 +152,7 @@ describe('GET /roles/:id/permissions', () => {
     const role = await createRoleWithPermissions([])
     const res = await app.inject({
       method: 'GET',
-      url: `/roles/${role.id}/permissions`,
+      url: `/api/roles/${role.id}/permissions`,
       headers: { cookie: authCookie },
     })
     expect(res.statusCode).toBe(200)
@@ -168,7 +168,7 @@ describe('PUT /roles/:id/permissions', () => {
 
     const res = await app.inject({
       method: 'PUT',
-      url: `/roles/${role.id}/permissions`,
+      url: `/api/roles/${role.id}/permissions`,
       payload: {
         grants: {
           users: ['view', 'create', 'edit'],
@@ -192,7 +192,7 @@ describe('PUT /roles/:id/permissions', () => {
 
     const res = await app.inject({
       method: 'PUT',
-      url: `/roles/${role.id}/permissions`,
+      url: `/api/roles/${role.id}/permissions`,
       payload: { grants: {} },
       headers: { cookie: authCookie },
     })
@@ -207,7 +207,7 @@ describe('PUT /roles/:id/permissions', () => {
 
     const res = await app.inject({
       method: 'PUT',
-      url: `/roles/${role.id}/permissions`,
+      url: `/api/roles/${role.id}/permissions`,
       payload: { grants: { users: ['view'], unknown: ['view'] } },
       headers: { cookie: authCookie },
     })
@@ -217,7 +217,7 @@ describe('PUT /roles/:id/permissions', () => {
     // Rejected as a whole: the existing grants are untouched
     const after = await app.inject({
       method: 'GET',
-      url: `/roles/${role.id}/permissions`,
+      url: `/api/roles/${role.id}/permissions`,
       headers: { cookie: authCookie },
     })
     expect(after.json().grants).toEqual({ users: ['view'] })
@@ -228,7 +228,7 @@ describe('PUT /roles/:id/permissions', () => {
 
     const res = await app.inject({
       method: 'PUT',
-      url: `/roles/${role.id}/permissions`,
+      url: `/api/roles/${role.id}/permissions`,
       payload: { grants: { audit: ['view', 'delete'] } },
       headers: { cookie: authCookie },
     })
@@ -239,7 +239,7 @@ describe('PUT /roles/:id/permissions', () => {
   it('returns 404 when the role does not exist', async () => {
     const res = await app.inject({
       method: 'PUT',
-      url: `/roles/${uuidv7()}/permissions`,
+      url: `/api/roles/${uuidv7()}/permissions`,
       payload: { grants: { users: ['view'] } },
       headers: { cookie: authCookie },
     })
@@ -255,7 +255,7 @@ describe('PUT /roles/:id/permissions', () => {
 
     const res = await app.inject({
       method: 'PUT',
-      url: `/roles/${role.id}/permissions`,
+      url: `/api/roles/${role.id}/permissions`,
       payload: { grants: { users: ['view', 'view'] } },
       headers: { cookie: authCookie },
     })
@@ -269,7 +269,7 @@ describe('PUT /roles/:id/permissions', () => {
 
     const res = await app.inject({
       method: 'PUT',
-      url: `/roles/${role.id}/permissions`,
+      url: `/api/roles/${role.id}/permissions`,
       payload: { grants },
       headers: { cookie: authCookie },
     })
@@ -326,7 +326,7 @@ describe('PUT /roles/:id/permissions', () => {
     const targetRole = await createRoleWithPermissions([])
     const res = await app.inject({
       method: 'PUT',
-      url: `/roles/${targetRole.id}/permissions`,
+      url: `/api/roles/${targetRole.id}/permissions`,
       payload: { grants: { users: ['view'] } },
       headers: { cookie: restrictedCookie },
     })
@@ -336,7 +336,10 @@ describe('PUT /roles/:id/permissions', () => {
 
 describe('Bootstrap status', () => {
   it('GET /bootstrap/status returns bootstrapped true when users exist', async () => {
-    const res = await app.inject({ method: 'GET', url: '/bootstrap/status' })
+    const res = await app.inject({
+      method: 'GET',
+      url: '/api/bootstrap/status',
+    })
     expect(res.statusCode).toBe(200)
     expect(res.json().bootstrapped).toBe(true)
   })

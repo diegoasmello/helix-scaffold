@@ -35,7 +35,7 @@ afterAll(async () => {
 })
 
 it('returns 401 on any route when not authenticated', async () => {
-  const res = await app.inject({ method: 'GET', url: '/roles' })
+  const res = await app.inject({ method: 'GET', url: '/api/roles' })
   expect(res.statusCode).toBe(401)
 })
 
@@ -48,7 +48,7 @@ describe('GET /roles', () => {
   it('returns empty paginated response when no application roles exist', async () => {
     const res = await app.inject({
       method: 'GET',
-      url: '/roles',
+      url: '/api/roles',
       headers: { cookie: authCookie },
     })
     expect(res.statusCode).toBe(200)
@@ -66,7 +66,7 @@ describe('GET /roles', () => {
 
     const res = await app.inject({
       method: 'GET',
-      url: '/roles',
+      url: '/api/roles',
       headers: { cookie: authCookie },
     })
     expect(res.statusCode).toBe(200)
@@ -85,7 +85,7 @@ describe('GET /roles', () => {
 
     const res = await app.inject({
       method: 'GET',
-      url: '/roles?page=2&pageSize=2&sortBy=name&sortOrder=asc',
+      url: '/api/roles?page=2&pageSize=2&sortBy=name&sortOrder=asc',
       headers: { cookie: authCookie },
     })
     expect(res.statusCode).toBe(200)
@@ -103,7 +103,7 @@ describe('GET /roles', () => {
 
     const res = await app.inject({
       method: 'GET',
-      url: '/roles?sortBy=name&sortOrder=desc',
+      url: '/api/roles?sortBy=name&sortOrder=desc',
       headers: { cookie: authCookie },
     })
     expect(res.statusCode).toBe(200)
@@ -118,7 +118,7 @@ describe('GET /roles/all', () => {
   it('returns empty array when no application roles exist', async () => {
     const res = await app.inject({
       method: 'GET',
-      url: '/roles/all',
+      url: '/api/roles/all',
       headers: { cookie: authCookie },
     })
     expect(res.statusCode).toBe(200)
@@ -132,7 +132,7 @@ describe('GET /roles/all', () => {
 
     const res = await app.inject({
       method: 'GET',
-      url: '/roles/all',
+      url: '/api/roles/all',
       headers: { cookie: authCookie },
     })
     expect(res.statusCode).toBe(200)
@@ -148,7 +148,7 @@ describe('GET /roles/:id', () => {
   it('returns 404 when role not found', async () => {
     const res = await app.inject({
       method: 'GET',
-      url: '/roles/nonexistent-id',
+      url: '/api/roles/nonexistent-id',
       headers: { cookie: authCookie },
     })
     expect(res.statusCode).toBe(404)
@@ -163,7 +163,7 @@ describe('GET /roles/:id', () => {
 
     const res = await app.inject({
       method: 'GET',
-      url: `/roles/${inserted.id}`,
+      url: `/api/roles/${inserted.id}`,
       headers: { cookie: authCookie },
     })
     expect(res.statusCode).toBe(200)
@@ -178,7 +178,7 @@ describe('POST /roles', () => {
   it('creates a role and returns 201', async () => {
     const res = await app.inject({
       method: 'POST',
-      url: '/roles',
+      url: '/api/roles',
       payload: { name: 'moderator', description: 'Moderates content' },
       headers: { cookie: authCookie },
     })
@@ -194,7 +194,7 @@ describe('POST /roles', () => {
   it('returns 400 when body is invalid', async () => {
     const res = await app.inject({
       method: 'POST',
-      url: '/roles',
+      url: '/api/roles',
       payload: { name: '' },
       headers: { cookie: authCookie },
     })
@@ -206,7 +206,7 @@ describe('POST /roles', () => {
 
     const res = await app.inject({
       method: 'POST',
-      url: '/roles',
+      url: '/api/roles',
       payload: { name: 'moderator' },
       headers: { cookie: authCookie },
     })
@@ -220,7 +220,7 @@ describe('POST /roles', () => {
   it('returns 400 when fields exceed max length', async () => {
     const res = await app.inject({
       method: 'POST',
-      url: '/roles',
+      url: '/api/roles',
       payload: { name: 'a'.repeat(101), description: 'b'.repeat(301) },
       headers: { cookie: authCookie },
     })
@@ -232,7 +232,7 @@ describe('PATCH /roles/:id', () => {
   it('returns 404 when role not found', async () => {
     const res = await app.inject({
       method: 'PATCH',
-      url: '/roles/nonexistent-id',
+      url: '/api/roles/nonexistent-id',
       payload: { name: 'updated' },
       headers: { cookie: authCookie },
     })
@@ -248,7 +248,7 @@ describe('PATCH /roles/:id', () => {
 
     const res = await app.inject({
       method: 'PATCH',
-      url: `/roles/${inserted.id}`,
+      url: `/api/roles/${inserted.id}`,
       payload: { name: 'new-name' },
       headers: { cookie: authCookie },
     })
@@ -268,7 +268,7 @@ describe('PATCH /roles/:id', () => {
 
     const res = await app.inject({
       method: 'PATCH',
-      url: `/roles/${inserted.id}`,
+      url: `/api/roles/${inserted.id}`,
       payload: { name: 'taken' },
       headers: { cookie: authCookie },
     })
@@ -286,7 +286,7 @@ describe('DELETE /roles/:id', () => {
 
     const res = await app.inject({
       method: 'DELETE',
-      url: `/roles/${inserted.id}`,
+      url: `/api/roles/${inserted.id}`,
       headers: { cookie: authCookie },
     })
     expect(res.statusCode).toBe(204)
@@ -297,7 +297,7 @@ describe('DELETE /roles/:id', () => {
     const id = `missing-${crypto.randomUUID()}`
     const res = await app.inject({
       method: 'DELETE',
-      url: `/roles/${id}`,
+      url: `/api/roles/${id}`,
       headers: { cookie: authCookie },
     })
     expect(res.statusCode).toBe(204)
@@ -321,7 +321,7 @@ describe('DELETE /roles/:id', () => {
 
     const res = await app.inject({
       method: 'DELETE',
-      url: `/roles/${inserted.id}`,
+      url: `/api/roles/${inserted.id}`,
       headers: { cookie: authCookie },
     })
     expect(res.statusCode).toBe(409)
@@ -339,7 +339,7 @@ describe('DELETE /roles/:id', () => {
 
     const res = await app.inject({
       method: 'DELETE',
-      url: `/roles/${inserted.id}`,
+      url: `/api/roles/${inserted.id}`,
       headers: { cookie: authCookie },
     })
     expect(res.statusCode).toBe(409)
@@ -380,7 +380,7 @@ describe('Permission enforcement', () => {
     const cookie = await createRestrictedSession([])
     const res = await app.inject({
       method: 'GET',
-      url: '/roles',
+      url: '/api/roles',
       headers: { cookie },
     })
     expect(res.statusCode).toBe(403)
@@ -392,7 +392,7 @@ describe('Permission enforcement', () => {
     ])
     const res = await app.inject({
       method: 'POST',
-      url: '/roles',
+      url: '/api/roles',
       payload: { name: 'new-role' },
       headers: { cookie },
     })
@@ -409,7 +409,7 @@ describe('Permission enforcement', () => {
     ])
     const res = await app.inject({
       method: 'PATCH',
-      url: `/roles/${role.id}`,
+      url: `/api/roles/${role.id}`,
       payload: { name: 'updated' },
       headers: { cookie },
     })
@@ -426,7 +426,7 @@ describe('Permission enforcement', () => {
     ])
     const res = await app.inject({
       method: 'DELETE',
-      url: `/roles/${role.id}`,
+      url: `/api/roles/${role.id}`,
       headers: { cookie },
     })
     expect(res.statusCode).toBe(403)
