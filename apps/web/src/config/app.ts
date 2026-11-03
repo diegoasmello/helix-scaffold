@@ -18,7 +18,11 @@ const languages = [
 type LanguageCode = (typeof languages)[number]['value']
 
 interface WebAppConfig {
-  /** Product name. Used as the browser tab title (`index.html`). */
+  /**
+   * Product name. The browser tab title: alone in `index.html`, after the
+   * page title on each page (`Tasks | Helix` — `DocumentTitleProvider` in
+   * `main.tsx`).
+   */
   name: string
   i18n: {
     /**

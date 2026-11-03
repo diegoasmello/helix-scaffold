@@ -18,11 +18,13 @@ React 19 + Vite — the main application.
 
 | File | Holds |
 | --- | --- |
-| `app.ts` | `appConfig`: product name (browser tab title) and i18n languages + default language |
+| `app.ts` | `appConfig`: product name (browser tab suffix) and i18n languages + default language |
 | `sidebar.ts` | Navigation groups, items and their permissions; `canSeeSidebarItem()` / `findHomeSidebarItem()` (visibility and the `/` landing page) |
 | `theme.ts` | Mantine theme via `createTheme()` |
 
 `appConfig.name` and `appConfig.i18n.defaultLanguage` are injected into `index.html` (`%APP_NAME%`, `%APP_LANG%`) by a small plugin in `vite.config.ts`, so `src/config/app.ts` must stay free of browser-only imports (it is also in `tsconfig.node.json`).
+
+**Browser tab title** — `Tasks | Helix`: the page's `h1` followed by `appConfig.name`. `main.tsx` wraps the router in `DocumentTitleProvider` (``template={`%s | ${appConfig.name}`}``) and every `PageHeader` (so `PageList`, `PageCreate`, `PageEdit`, `PageView`) turns its string `title` into the tab title — nothing to declare per page or per route. A detail page's tab shows the record (`Review quarterly report | Helix`), like its `h1`. A screen without `PageHeader` (auth screens, `/403`, `/404`, the error boundary, `/upgrade`) renders `<DocumentTitle title={...} />` from `@helix/ui` next to its heading. With no page title (while a route loads) the tab shows the static `index.html` title, the product name alone.
 
 **Never put behaviour settings here.** Registration mode, social providers and subscriptions come from the API at runtime (`GET /registration/status`, `GET /subscription/status`) — configure them in `apps/api/src/app.config.ts`. The only env var is `VITE_API_URL` (per-deploy).
 

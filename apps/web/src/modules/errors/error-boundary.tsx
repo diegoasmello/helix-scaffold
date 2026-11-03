@@ -4,6 +4,7 @@ import {
   Code,
   createStyles,
   css,
+  DocumentTitle,
   Group,
   Stack,
   Text,
@@ -30,6 +31,7 @@ export function ErrorBoundary(props: Readonly<ErrorBoundaryProps>) {
         <Text fz={80} fw={900} lh={1} c="dimmed">
           {t('boundary.code')}
         </Text>
+        <DocumentTitle title={t('boundary.title')} />
         <Title order={2}>{t('boundary.title')}</Title>
         <Text c="dimmed" ta="center">
           {t('boundary.description')}

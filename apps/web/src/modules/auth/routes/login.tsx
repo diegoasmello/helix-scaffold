@@ -3,6 +3,7 @@ import {
   Button,
   Center,
   Divider,
+  DocumentTitle,
   Group,
   Paper,
   PasswordInput,
@@ -60,6 +61,7 @@ export function Login() {
       <Paper withBorder shadow="md" p="xl" w={400} radius="md">
         <form onSubmit={form.onSubmit(handleSubmit)}>
           <Stack gap="md">
+            <DocumentTitle title={t('login.title')} />
             <Title order={3}>{t('login.title')}</Title>
             <TextInput
               label={t('login.emailLabel')}

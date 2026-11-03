@@ -4,8 +4,13 @@ import { createStyles } from '@mantine/emotion'
 import type { ReactNode } from 'react'
 
 import { RouteBreadcrumb } from '../breadcrumb/route-breadcrumb'
+import { DocumentTitle } from '../document-title/document-title'
 
 export interface PageHeaderProps {
+  /**
+   * The `h1`. When it is a string it is also the browser tab title
+   * (`DocumentTitle`, in the `DocumentTitleProvider` format).
+   */
   title: ReactNode
   description?: ReactNode
   /** Next to the title — e.g. a status badge. */
@@ -23,9 +28,9 @@ export interface PageHeaderProps {
 
 /**
  * The top of every page: the route's breadcrumb (lists and custom pages), the
- * `h1` title, an optional description and the page actions. Used by
- * `PageList`, `PageCreate`, `PageEdit` and `PageView`; use it directly on
- * custom pages.
+ * `h1` title (also the browser tab title), an optional description and the
+ * page actions. Used by `PageList`, `PageCreate`, `PageEdit` and `PageView`;
+ * use it directly on custom pages.
  */
 export function PageHeader(props: Readonly<PageHeaderProps>) {
   const {
@@ -41,6 +46,7 @@ export function PageHeader(props: Readonly<PageHeaderProps>) {
 
   return (
     <header className={classes.root}>
+      {typeof title === 'string' && <DocumentTitle title={title} />}
       <div className={classes.heading}>
         {withBreadcrumb && <RouteBreadcrumb />}
         <div className={classes.titleRow}>

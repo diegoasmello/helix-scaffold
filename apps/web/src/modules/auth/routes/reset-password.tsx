@@ -2,6 +2,7 @@ import {
   Anchor,
   Button,
   Center,
+  DocumentTitle,
   Paper,
   PasswordInput,
   Stack,
@@ -47,6 +48,7 @@ export function ResetPassword() {
       <Center h="100vh">
         <Paper withBorder shadow="md" p="xl" w={400} radius="md">
           <Stack gap="md">
+            <DocumentTitle title={t('resetPassword.invalidTitle')} />
             <Title order={3}>{t('resetPassword.invalidTitle')}</Title>
             <Text size="sm" c="dimmed">
               {tokenError === 'INVALID_TOKEN'
@@ -83,6 +85,7 @@ export function ResetPassword() {
       <Paper withBorder shadow="md" p="xl" w={400} radius="md">
         <form onSubmit={form.onSubmit(handleSubmit)}>
           <Stack gap="md">
+            <DocumentTitle title={t('resetPassword.title')} />
             <Title order={3}>{t('resetPassword.title')}</Title>
             <PasswordInput
               label={t('resetPassword.newPasswordLabel')}

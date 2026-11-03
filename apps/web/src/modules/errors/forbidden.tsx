@@ -1,4 +1,12 @@
-import { Button, Center, Group, Stack, Text, Title } from '@helix/ui'
+import {
+  Button,
+  Center,
+  DocumentTitle,
+  Group,
+  Stack,
+  Text,
+  Title,
+} from '@helix/ui'
 import { useRouter } from '@tanstack/react-router'
 import { useTranslation } from 'react-i18next'
 
@@ -12,6 +20,7 @@ export function Forbidden() {
         <Text fz={80} fw={900} lh={1} c="dimmed">
           {t('forbidden.code')}
         </Text>
+        <DocumentTitle title={t('forbidden.title')} />
         <Title order={2}>{t('forbidden.title')}</Title>
         <Text c="dimmed" ta="center" maw={400}>
           {t('forbidden.description')}

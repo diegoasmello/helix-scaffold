@@ -59,6 +59,7 @@ Name clashes resolved explicitly in `src/index.ts`:
 | Rich text      | `RichTextEditor`, `RichTextRenderer`                                    | Tiptap editor (HTML string value) and read-only renderer |
 | Navigation     | `NavigationItem` (`navigation/`)                                        | Router-aware nav entry (the sidebar's) |
 | Misc           | `LanguagePicker`                                                        | Language dropdown; options come from the `languages` prop |
+| Document title | `DocumentTitle`, `DocumentTitleProvider` (`document-title/`)            | The browser tab title — see _App shell_ |
 | Theme          | `createTheme()` (`theme/index.ts`)                                      | Base theme — see _Theme_ |
 
 ## Theme (`src/theme/index.ts`)
@@ -82,6 +83,7 @@ Name clashes resolved explicitly in `src/index.ts`:
 - **`HeaderSearch`** — pill input from `md` up (`Ctrl K` focuses it), an icon opening a dialog below; it only collects the query (`onSearch`).
 - **`NotificationsMenu`** — bell with an unread count and a panel (`items`, `onItemClick`, `onMarkAllRead`, `onViewAll`); pure UI.
 - **`RouteBreadcrumb`** — the breadcrumb built from the deepest route's `staticData.breadcrumbs` (labels are `common` keys). Renders nothing for a single crumb, or outside a router. `PageHeader` shows it unless `withBreadcrumb={false}` (create, edit and detail pages).
+- **Document title** — `PageHeader` renders `<DocumentTitle title={title} />` when its `title` is a string, so every page's tab title is its `h1`. `DocumentTitle` is a React 19 `<title>`, hoisted into `<head>` ahead of `index.html`'s static one (which comes back when the page unmounts); it applies the `template` of the nearest `DocumentTitleProvider` (`'%s | Helix'`), or shows the title alone without one. Pages without a `PageHeader` (sign-in, errors) render `DocumentTitle` themselves.
 - **Page gutters** — `Layout`'s content area sets `--helix-page-px`/`--helix-page-pt`/`--helix-page-pb` (28/28/32px, 16/20/28px below `md`). Edge-to-edge pages cancel them with negative margins and reuse them as their inner padding; always read them with a fallback (`var(--helix-page-px, 0px)`) so the component still works outside `Layout` (tests).
 
 ## Page layouts

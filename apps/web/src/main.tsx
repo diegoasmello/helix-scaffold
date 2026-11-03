@@ -2,6 +2,7 @@ import './i18n'
 
 import { configure } from '@helix/api-client'
 import {
+  DocumentTitleProvider,
   emotionTransform,
   localStorageColorSchemeManager,
   MantineEmotionProvider,
@@ -14,6 +15,7 @@ import { RouterProvider } from '@tanstack/react-router'
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 
+import { appConfig } from './config/app'
 import { theme } from './config/theme'
 import { API_URL } from './lib/api-url'
 import { queryClient } from './lib/query-client.ts'
@@ -46,7 +48,9 @@ createRoot(document.getElementById('root')!).render(
               containerWidth={380}
               limit={5}
             />
-            <RouterProvider router={router} />
+            <DocumentTitleProvider template={`%s | ${appConfig.name}`}>
+              <RouterProvider router={router} />
+            </DocumentTitleProvider>
           </ModalsProvider>
         </MantineEmotionProvider>
       </MantineProvider>

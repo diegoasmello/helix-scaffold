@@ -2,6 +2,7 @@ import {
   Anchor,
   Button,
   Center,
+  DocumentTitle,
   Paper,
   Stack,
   Text,
@@ -52,6 +53,7 @@ export function ForgotPassword() {
       <Paper withBorder shadow="md" p="xl" w={400} radius="md">
         {submitted ? (
           <Stack gap="md">
+            <DocumentTitle title={t('forgotPassword.successTitle')} />
             <Title order={3}>{t('forgotPassword.successTitle')}</Title>
             <Text size="sm" c="dimmed">
               {t('forgotPassword.successDescription')}
@@ -63,6 +65,7 @@ export function ForgotPassword() {
         ) : (
           <form onSubmit={form.onSubmit(handleSubmit)}>
             <Stack gap="md">
+              <DocumentTitle title={t('forgotPassword.title')} />
               <Title order={3}>{t('forgotPassword.title')}</Title>
               <Text size="sm" c="dimmed">
                 {t('forgotPassword.description')}

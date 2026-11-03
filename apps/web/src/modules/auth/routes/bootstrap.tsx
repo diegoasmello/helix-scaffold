@@ -3,6 +3,7 @@ import {
   Alert,
   Button,
   Center,
+  DocumentTitle,
   Paper,
   PasswordInput,
   Stack,
@@ -56,6 +57,7 @@ export function Bootstrap() {
         <form onSubmit={form.onSubmit(handleSubmit)}>
           <Stack gap="md">
             <div>
+              <DocumentTitle title={t('bootstrap.title')} />
               <Title order={3}>{t('bootstrap.title')}</Title>
               <Text size="sm" c="dimmed" mt={4}>
                 {t('bootstrap.description')}

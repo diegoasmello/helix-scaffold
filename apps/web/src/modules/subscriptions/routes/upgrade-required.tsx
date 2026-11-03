@@ -2,6 +2,7 @@ import {
   Badge,
   Button,
   Center,
+  DocumentTitle,
   Group,
   Loader,
   Stack,
@@ -36,13 +37,16 @@ export function UpgradeRequired() {
     ? plans.filter((p) => p.features.includes(feature))
     : plans
 
+  const title = subscription
+    ? t('upgrade.planLacks.title')
+    : t('upgrade.noSubscription.title')
+
   return (
     <Center h="100%">
       <Stack align="center" gap="md" maw={480}>
+        <DocumentTitle title={title} />
         <Title order={2} ta="center">
-          {subscription
-            ? t('upgrade.planLacks.title')
-            : t('upgrade.noSubscription.title')}
+          {title}
         </Title>
         <Text c="dimmed" ta="center">
           {subscription
