@@ -938,6 +938,8 @@ Before marking any new module as complete, verify:
 
 When asked to create a new feature module, follow this pattern exactly. Use the `todos` module as reference implementation.
 
+**Before you start:** the module's hooks, types and mocks come from `@helix/api-client`, which `pnpm dev` does not regenerate. If the backend endpoints were just added or changed, run `pnpm spec:sync` from the repo root first (see `packages/api-client/CLAUDE.md` → _Workflow when creating or modifying an API endpoint_). A missing export from `@helix/api-client/*` means exactly that.
+
 ### 1. File structure
 
 ```

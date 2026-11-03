@@ -28,7 +28,7 @@ Run from `apps/api` (or from the root with the `pnpm db:*` / `pnpm spec:*` alias
 | `pnpm db:studio` | Drizzle Studio |
 | `pnpm db:seed` | Dev data (`src/db/seed.ts`). **Refuses to run if any user exists.** Wipes `uploads.dir`, creates Admin/Moderator/User roles (in open registration `User` becomes the default role, through `ensureDefaultRole()`), an admin login (`admin@example.com` / `pass1234`), 20 extra users (same password) and sample todos with uploads |
 | `pnpm db:reset` | Truncates every table in the schema (`drizzle-seed` `reset`). Does not touch `uploads.dir` |
-| `pnpm spec:export <file>` | Writes the OpenAPI spec — see _OpenAPI spec export_ |
+| `pnpm spec:export <file>` | Writes the OpenAPI spec — see _OpenAPI spec export_. After a contract change, run `pnpm spec:sync` from the repo root instead: it exports to `packages/api-client/openapi.json` and regenerates the client |
 | `pnpm test` / `pnpm test:watch` | Vitest against the test DB |
 
 `tsc` never emits (`noEmit: true`) — it only type-checks; `tsdown` produces the build. The seed and the other `src/db/*.ts` scripts are not part of the build: they run through `tsx`.
@@ -104,7 +104,9 @@ The suite therefore never depends on what a product sets in `app.config.ts`. Soc
 
 ### OpenAPI spec export
 
-`pnpm spec:export <file>` (`src/scripts/export-spec.ts`) writes the spec `@helix/api-client` is generated from — `pnpm export-spec` in `packages/api-client` calls it. It builds the app in memory with `src/config/spec-overrides.ts` applied (via `enableSpecExport()`, before `@/config` is imported), so the spec lists every route the codebase can expose regardless of `app.config.ts`. It needs no database (building the app opens no connection) and no `.env` (placeholder values only pass `src/env.ts`). The pre-commit hook runs it whenever a staged non-test file under `src/` changes and stages the result (`lint-staged.config.js` — a function, so the export starts only after ESLint and Prettier have rewritten the sources), so the committed spec never lags behind the routes. `pre-push` (`.husky/pre-push`) re-exports it once more and blocks the push if it changed — this catches dependency bumps, rebases and `--no-verify` commits. The check is skipped while `apps/api` or the spec have uncommitted changes, since the export reads the working tree.
+`pnpm spec:export <file>` (`src/scripts/export-spec.ts`) writes the spec `@helix/api-client` is generated from — `pnpm export-spec` in `packages/api-client` calls it. It builds the app in memory with `src/config/spec-overrides.ts` applied (via `enableSpecExport()`, before `@/config` is imported), so the spec lists every route the codebase can expose regardless of `app.config.ts`. It needs no database (building the app opens no connection) and no `.env` (placeholder values only pass `src/env.ts`). The pre-commit hook runs it whenever a staged non-test file under `src/` changes, stages the result and regenerates the client (`lint-staged.config.js` — a function, so the export starts only after ESLint and Prettier have rewritten the sources), so the committed spec never lags behind the routes. `pre-push` (`.husky/pre-push`) re-exports it once more and blocks the push if it changed — this catches dependency bumps, rebases and `--no-verify` commits. The check is skipped while `apps/api` or the spec have uncommitted changes, since the export reads the working tree.
+
+**While developing, the hooks are not enough:** `pnpm dev` never regenerates `@helix/api-client`, so after changing a route, a request/response schema (including `errorSchema` codes and `.meta({ id })`) or `src/config/permissions.ts`, run `pnpm spec:sync` from the repo root before the web uses it. See `packages/api-client/CLAUDE.md` → _Workflow when creating or modifying an API endpoint_.
 
 `/docs` on a running server keeps serving the spec of its own config. **When a new setting registers routes conditionally** (like `subscriptions.enabled`), turn it on in `spec-overrides.ts`, or its routes vanish from the client. In this profile `requireSubscription()` skips its unknown-feature check, since the placeholder plan declares no features.
 
@@ -539,7 +541,7 @@ The catalog is `as const`, so the names are typed from it:
 
 - `requirePermission(resource, action)` accepts only pairs the catalog declares — `requirePermission('feature', 'view')` (typo) and `requirePermission('audit', 'edit')` (undeclared action) do not compile. A pair that slips past the types (a cast) throws when the route registers, so the API does not start — never a route that answers 403 to everyone.
 - `request.audit()`'s `resource`, the seed's permission lists (`satisfies Permission[]`) and `ALL_PERMISSIONS` use the same types.
-- The resource names go into the spec as the `PermissionResource` enum (`GET /permissions/resources`), so the frontend's `PageAccess`, `hasPermission()` and `<HasPermission>` reject a typo too — after `pnpm spec:export && pnpm spec:generate`.
+- The resource names go into the spec as the `PermissionResource` enum (`GET /permissions/resources`), so the frontend's `PageAccess`, `hasPermission()` and `<HasPermission>` reject a typo too — after `pnpm spec:sync`.
 
 ### 1. Schema (`<feature>-schema.ts`)
 
@@ -886,6 +888,14 @@ Registering at the root instead of inside `authenticated` will leave the routes 
 ### 6. Tests
 
 A module is only complete when the tests are written. See the **Testing** section below.
+
+### 7. Regenerate the client
+
+```bash
+pnpm spec:sync   # from the repo root
+```
+
+Exports `packages/api-client/openapi.json` and regenerates `@helix/api-client` from it. The web side of the module imports the hooks, types and mocks this produces (`getFeatures`, `Feature`, `getFeaturesHandler`…), so run it before starting `apps/web` — and again after every later change to the module's routes or schemas. Commit `openapi.json` with the module.
 
 ---
 

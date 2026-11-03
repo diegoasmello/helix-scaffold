@@ -5,13 +5,13 @@
   "private": true,
   "packageManager": "pnpm@10.33.2+sha512.a90faf6feeab71ad6c6e57f94e0fe1a12f5dcc22cd754db40ae9593eb6a3e0b6b12e3540218bb37ae083404b1f2ce6db2a4121e979829b4aff94b99f49da1cf8",
   "scripts": {
-    "dev": "kubb generate --watch",
     "lint": "eslint .",
     "format": "prettier . --write",
     "type-check": "tsc --noEmit",
     "export-spec": "pnpm --filter api spec:export ../../packages/api-client/openapi.json",
-    "generate": "KUBB_DISABLE_TELEMETRY=1 KUBB_INPUT=./openapi.json kubb generate",
-    "postinstall": "KUBB_DISABLE_TELEMETRY=1 KUBB_INPUT=./openapi.json kubb generate"
+    "generate": "KUBB_DISABLE_TELEMETRY=1 kubb generate",
+    "sync": "pnpm export-spec && pnpm generate",
+    "postinstall": "KUBB_DISABLE_TELEMETRY=1 kubb generate"
   },
   "exports": {
     ".": "./index.ts",

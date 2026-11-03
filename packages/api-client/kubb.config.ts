@@ -9,9 +9,10 @@ const excludeAuth = [{ type: 'path' as const, pattern: /^\/api\/auth/ }]
 
 export default defineConfig({
   input: {
-    // KUBB_INPUT=./openapi.json generates from the committed spec instead of
-    // the running API (whose spec depends on its local app.config.ts).
-    path: process.env.KUBB_INPUT ?? 'http://localhost:3333/docs/openapi.json',
+    // Always the committed contract (`pnpm export-spec`), never the running
+    // API: its `/docs` spec drops every route its local app.config.ts turns
+    // off, and the web imports those hooks statically.
+    path: './openapi.json',
   },
   output: {
     path: './src/generated',

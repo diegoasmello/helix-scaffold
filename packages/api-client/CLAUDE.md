@@ -67,22 +67,19 @@ kubb reads the spec and generates everything in `src/generated/`:
 
 | From the repo root | In `packages/api-client` | Does |
 | --- | --- | --- |
+| `pnpm spec:sync` | `pnpm sync` | **Run this after changing the API contract** — export, then generate (the two rows below) |
 | `pnpm spec:export` | `pnpm export-spec` | Rewrites `openapi.json` from the API code (calls `pnpm --filter api spec:export <file>`) |
-| `pnpm spec:generate` | `pnpm generate` | Regenerates `src/generated/` from the committed `openapi.json` |
-| `pnpm spec:dev` | `pnpm dev` | Watch mode against the running API — see the pitfall below |
+| `pnpm spec:generate` | `pnpm generate` | Regenerates `src/generated/` from the committed `openapi.json` (also the `postinstall`) |
 
-### How kubb determines the spec source
+### The client is generated only on demand
 
-```bash
-# pnpm generate / postinstall — reads the committed file (no API dependency)
-KUBB_INPUT=./openapi.json kubb generate
+kubb's only input is the committed `openapi.json` (`input.path` in `kubb.config.ts`) — never the running API. `src/generated/` changes only when something regenerates it:
 
-# pnpm dev (watch) — reads from the running API
-kubb generate --watch
-# equivalent to: input.path = "http://localhost:3333/docs/openapi.json"
-```
+- `pnpm spec:sync` / `pnpm spec:generate`, by hand;
+- `postinstall`, on every `pnpm install`;
+- the pre-commit hook, when a staged non-test file under `apps/api/src/` changes (`apps/api/lint-staged.config.js`: exports the spec, stages it, then generates).
 
-The `KUBB_INPUT` variable overrides `input.path` in `kubb.config.ts`.
+`pnpm dev` does **not** generate the client, and this package has no `dev` script. That is deliberate: the spec the running API serves at `/docs` holds only the routes its local `app.config.ts` turns on (with `subscriptions.enabled: false`, every subscription route but `/subscription/status` is gone). A client generated from it loses hooks and mocks the web imports statically, and the page dies on load (`does not provide an export named 'getMeSubscriptionQueryOptions'`; in tests, `getMeSubscriptionHandler is not a function`). Never point kubb at the running API, and never `curl` the live spec into `openapi.json`.
 
 ### Where `openapi.json` comes from
 
@@ -90,27 +87,29 @@ The `KUBB_INPUT` variable overrides `input.path` in `kubb.config.ts`.
 
 The committed spec is the contract of the **codebase**, not of one deploy: it lists every route the API can expose (subscriptions included), whatever the local `app.config.ts` enables. `apps/web` compiles against all of them and decides at runtime what to show (`GET /subscription/status`). The spec a deploy serves at `/docs` still reflects its own config.
 
-**Pitfall:** the running API only exposes routes enabled by its local `apps/api/src/app.config.ts` — with `subscriptions.enabled: false`, every subscription route except `/subscription/status` is missing from its spec. That is why `pnpm dev` (watch mode, reading the live server) can drop hooks and mocks, and web tests then fail with `getMeSubscriptionHandler is not a function`. Run `pnpm export-spec && pnpm generate` to get back to the full client. Never `curl` the live spec into `openapi.json`.
-
 ### Excluded routes
 
 `/api/auth/*` is managed by better-auth on the client — excluded from generation in all plugins via `excludeAuth`.
 
 ## Workflow when creating or modifying an API endpoint
 
-1. Modify the schema/route in `apps/api`
-2. Export the updated spec (no API running needed):
-   ```bash
-   pnpm export-spec
-   ```
-   This builds the API with every optional route enabled and rewrites the committed `openapi.json` — see _Where `openapi.json` comes from_. The pre-commit hook does it too: when a staged non-test file under `apps/api/src/` changes, it re-exports the spec and stages it with the commit (`apps/api/lint-staged.config.js`), and `pre-push` blocks the push if the committed spec is still stale. Run it by hand only to regenerate the client before committing.
-3. Regenerate the files in `src/generated/` from it:
-   ```bash
-   pnpm generate
-   ```
-4. Commit `openapi.json` alongside the other changes.
+**Rule: after any change to the API contract, run `pnpm spec:sync` from the repo root before touching `apps/web`.** Nothing regenerates the client while you work — not `pnpm dev`, not the API's `tsx watch`.
 
-The `postinstall` script in package.json runs `kubb generate` with `KUBB_INPUT=./openapi.json` — so `pnpm install` at the root always regenerates `src/generated/` from the committed file, without needing the API running.
+The contract is anything that reaches the spec:
+
+- a route added, removed or renamed (path, method, `operationId`);
+- a request or response schema (body, params, querystring, a status in `response`, an `errorSchema(...)` code, a `.meta({ id })`);
+- the permission catalog (`apps/api/src/config/permissions.ts` → the `PermissionResource` enum);
+- a route registered under a config flag, or `apps/api/src/config/spec-overrides.ts` itself.
+
+A change only to a service, a test or `app.config.ts` does not touch the contract.
+
+1. Modify the schema/route in `apps/api`.
+2. Run `pnpm spec:sync`. It rewrites the committed `openapi.json` with every optional route enabled (see _Where `openapi.json` comes from_; no API, database or `.env` needed), then regenerates `src/generated/` from it. Takes ~15s.
+3. Write the web side against the new hooks, types and mocks.
+4. Commit `openapi.json` with the API change. The pre-commit hook re-exports, stages and regenerates anyway, and `pre-push` blocks the push if the committed spec is stale — but those run only at commit time, so they never replace step 2.
+
+Forgot step 2? The web fails to compile (`Module '"@helix/api-client/hooks"' has no exported member 'getXxx'`), the browser reports `does not provide an export named 'getXxx'`, or a test says `getXxxHandler is not a function`. Run `pnpm spec:sync`. If the name is still missing, check the route: is it registered (and turned on in `spec-overrides.ts` when it hangs on a flag)? Is it outside `/api/auth/*`?
 
 ## How to consume in `apps/web`
 

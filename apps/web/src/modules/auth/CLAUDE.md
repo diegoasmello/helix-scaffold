@@ -64,7 +64,7 @@ type AuthState = {
 }
 ```
 
-`PermissionResource` (`@helix/api-client/types`) is the enum of the API's catalog (`RESOURCE_DEFINITIONS`), so `hasPermission('user', 'view')`, `<HasPermission resource="user">` and a `PageAccess` with a typo do not compile. A resource added in the API reaches it after `pnpm spec:export && pnpm spec:generate`. The action is not checked per resource here — the API's `requirePermission()` is.
+`PermissionResource` (`@helix/api-client/types`) is the enum of the API's catalog (`RESOURCE_DEFINITIONS`), so `hasPermission('user', 'view')`, `<HasPermission resource="user">` and a `PageAccess` with a typo do not compile. A resource added in the API reaches it after `pnpm spec:sync`. The action is not checked per resource here — the API's `requirePermission()` is.
 
 **Three async pieces composed together:**
 

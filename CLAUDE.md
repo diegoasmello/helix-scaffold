@@ -30,7 +30,7 @@ Domain terms (plan, feature, live vs. access-granting subscription, entitlements
 All root scripts run via **Turborepo** — they execute across all workspaces in parallel, with output cached where applicable.
 
 ```bash
-# Development (starts apps/api + apps/web in parallel)
+# Development (starts apps/api + apps/web in parallel — does NOT regenerate @helix/api-client)
 pnpm dev
 
 # Build all workspaces
@@ -62,6 +62,7 @@ pnpm db:seed           # dev data — only on an empty DB
 pnpm db:reset          # truncate every table
 
 # OpenAPI client (packages/api-client) — see its CLAUDE.md
+pnpm spec:sync         # export + generate: run after ANY change to the API contract
 pnpm spec:export       # rewrite openapi.json from the API code (no server needed)
 pnpm spec:generate     # regenerate the client from openapi.json
 
@@ -71,12 +72,14 @@ pnpm --filter web preview
 pnpm --filter api test:watch
 ```
 
+**API contract → client:** the web consumes `@helix/api-client`, generated (gitignored) from the committed `packages/api-client/openapi.json`. Nothing regenerates it while you work — `pnpm dev` does not. **After changing a route, a request/response schema or the permission catalog in `apps/api`, run `pnpm spec:sync` before writing or testing web code**, or the new hooks, types and mocks don't exist yet. What counts as a contract change: `packages/api-client/CLAUDE.md` → _Workflow when creating or modifying an API endpoint_.
+
 **Local databases** (`docker compose up -d`): `db` → `helix` on port 5434, `db_test` → `helix_test` on port 5436. API tests need `db_test` running and migrated (`pnpm db:migrate:test`).
 
 **Git hooks** (Husky):
 
 - `commit-msg` — commitlint with `@commitlint/config-conventional` (`feat(web): …`, `fix(api): …`).
-- `pre-commit` — one `pnpm lint-staged` run. For each staged file lint-staged uses the closest config (`lint-staged` in `apps/web`, `packages/ui` and `packages/api-client` `package.json`; `apps/api/lint-staged.config.js`) and runs `eslint --fix` then `prettier --write` on `*.ts`/`*.tsx`/`*.js` (Prettier only on `*.css`/`*.cjs`/`*.mjs`), with that workspace's ESLint and Prettier config; the fixes are staged automatically. `*.json` and `*.md` are in every `.prettierignore`, so `openapi.json` and the docs are never reformatted. In `apps/api`, a staged non-test file under `src/` also re-exports `packages/api-client/openapi.json` and stages it — after Prettier, since the config is a function that runs its commands in order.
+- `pre-commit` — one `pnpm lint-staged` run. For each staged file lint-staged uses the closest config (`lint-staged` in `apps/web`, `packages/ui` and `packages/api-client` `package.json`; `apps/api/lint-staged.config.js`) and runs `eslint --fix` then `prettier --write` on `*.ts`/`*.tsx`/`*.js` (Prettier only on `*.css`/`*.cjs`/`*.mjs`), with that workspace's ESLint and Prettier config; the fixes are staged automatically. `*.json` and `*.md` are in every `.prettierignore`, so `openapi.json` and the docs are never reformatted. In `apps/api`, a staged non-test file under `src/` also re-exports `packages/api-client/openapi.json`, stages it and regenerates the client from it — after Prettier, since the config is a function that runs its commands in order. This is a safety net at commit time, not a replacement for `pnpm spec:sync` while developing.
 - A new workspace needs its own `lint-staged` config (copy `packages/ui`'s), or its files are committed unformatted.
 - `pre-push` — `pnpm type-check`, then re-exports the spec and blocks the push if it changed (skipped while `apps/api` or the spec have uncommitted changes).
 
@@ -176,7 +179,8 @@ When `subscriptions.enabled` is `true`, the app is responsible for:
 By default, a new module spans **both workspaces** — backend + frontend. Unless the prompt explicitly targets one side (e.g. "add a backend endpoint for X" or "add a frontend page for X"), always implement the full stack:
 
 1. **`apps/api`** — database schema + migration, service, routes, tests
-2. **`apps/web`** — types, validation, route components, shared form, i18n, unit + integration tests
+2. **`pnpm spec:sync`** — exports the spec and regenerates `@helix/api-client`, so the web side has the module's hooks, types and mocks
+3. **`apps/web`** — types, validation, route components, shared form, i18n, unit + integration tests
 
 Before implementing either side, read the workspace-specific `CLAUDE.md` — it contains the exact file structure, patterns, and step-by-step guide to follow:
 
