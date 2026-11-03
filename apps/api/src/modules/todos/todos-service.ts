@@ -1,8 +1,9 @@
-import { and, asc, count, desc, eq, inArray } from 'drizzle-orm'
+import { and, asc, count, desc, eq, inArray, type SQL } from 'drizzle-orm'
 
 import type { Database } from '@/db'
 import {
   TODO_NORMALIZED_FIELDS,
+  TODO_SLUG,
   todoAttachments,
   todos,
   uploads,
@@ -10,6 +11,7 @@ import {
 import { buildFilterWhereClause, buildSearchClause } from '@/lib/filtering'
 import { normalizedValues } from '@/lib/normalize-text'
 import { getPaginationParams } from '@/lib/pagination'
+import { withUniqueSlug } from '@/lib/slug'
 import type { StorageProvider } from '@/lib/storage'
 
 import type {
@@ -167,7 +169,16 @@ export function createTodosService(
   }
 
   async function getById(id: string) {
-    const [todo] = await database.select().from(todos).where(eq(todos.id, id))
+    return findOne(eq(todos.id, id))
+  }
+
+  /** The todo a public page shows at `/…/:slug`. */
+  async function getBySlug(slug: string) {
+    return findOne(eq(todos.slug, slug))
+  }
+
+  async function findOne(where: SQL) {
+    const [todo] = await database.select().from(todos).where(where)
     if (!todo) return null
 
     const singleUploadIds = [todo.fileId, todo.imageId].filter(
@@ -175,13 +186,13 @@ export function createTodosService(
     ) as string[]
 
     const [attachmentsMap, uploadsById] = await Promise.all([
-      getAttachmentsForTodos(database, [id]),
+      getAttachmentsForTodos(database, [todo.id]),
       getUploadsById(database, singleUploadIds),
     ])
 
     return {
       ...todo,
-      attachments: attachmentsMap[id] ?? [],
+      attachments: attachmentsMap[todo.id] ?? [],
       file: todo.fileId ? (uploadsById[todo.fileId] ?? null) : null,
       image: todo.imageId ? (uploadsById[todo.imageId] ?? null) : null,
     }
@@ -189,13 +200,21 @@ export function createTodosService(
 
   async function create(data: CreateTodoInput) {
     const { attachmentIds = [], ...todoData } = data
-    const [todo] = await database
-      .insert(todos)
-      .values({
-        ...todoData,
-        ...normalizedValues(todoData, TODO_NORMALIZED_FIELDS),
-      })
-      .returning()
+    // The slug comes from the title once, here; `update` never touches it.
+    const [todo] = await withUniqueSlug(
+      database,
+      TODO_SLUG,
+      todoData.title,
+      (slug) =>
+        database
+          .insert(todos)
+          .values({
+            ...todoData,
+            ...normalizedValues(todoData, TODO_NORMALIZED_FIELDS),
+            slug,
+          })
+          .returning()
+    )
     await syncAttachments(database, todo.id, attachmentIds)
 
     const singleUploadIds = [todo.fileId, todo.imageId].filter(
@@ -318,7 +337,15 @@ export function createTodosService(
     return renderTodosReport(data)
   }
 
-  return { list, getById, create, update, remove, generateReport }
+  return {
+    list,
+    getById,
+    getBySlug,
+    create,
+    update,
+    remove,
+    generateReport,
+  }
 }
 
 export type TodosService = ReturnType<typeof createTodosService>

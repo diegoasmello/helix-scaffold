@@ -988,6 +988,8 @@ export interface XxxFormValues {
 
 The semantic aliases (`XxxItem`, `XxxStatus`, etc.) give stable, readable names to the rest of the module. The generated names (`Xxx`, `XxxStatusEnumKey`, `PostXxxsMutationRequest`) are an implementation detail of kubb and may change across regenerations.
 
+**`slug`**: an entity with a public URL carries a `slug` (see `apps/api/CLAUDE.md` → _Slugs_). It is for the public site only: the admin never shows it, never puts it in `XxxFormValues` and never sends it — the API generates it and ignores it in a body. Admin routes stay by `id`.
+
 **`date` fields**: kubb generates `date: any` for `z.date()` / `z.coerce.date()` in request bodies (known limitation — see `packages/api-client/CLAUDE.md`). `string` is assignable to `any`, so passing a string works at runtime. No workaround needed in `types.ts`.
 
 ### 3. Hooks and data fetching

@@ -11,6 +11,7 @@ import {
   rolePermissions,
   roles,
   TODO_NORMALIZED_FIELDS,
+  TODO_SLUG,
   todoAttachments,
   todos,
   user,
@@ -18,6 +19,7 @@ import {
 import { env } from '@/env'
 import { createEmailProvider } from '@/lib/email'
 import { normalizedValues } from '@/lib/normalize-text'
+import { distinctSlugs } from '@/lib/slug'
 import { createStorageProvider } from '@/lib/storage'
 import {
   createAccountProvisioning,
@@ -178,11 +180,17 @@ async function main() {
     }),
     imageId: imageUploads.imageIds[i],
     fileId: fileUploads.fileIds[i],
-  })).map((values) => ({
+  }))
+  const slugs = distinctSlugs(
+    todoValues.map((values) => values.title),
+    TODO_SLUG
+  )
+  const todoRows = todoValues.map((values, i) => ({
     ...values,
     ...normalizedValues(values, TODO_NORMALIZED_FIELDS),
+    slug: slugs[i],
   }))
-  const insertedTodos = await db.insert(todos).values(todoValues).returning()
+  const insertedTodos = await db.insert(todos).values(todoRows).returning()
 
   console.log('Creating todo attachments...')
   const attachmentValues = insertedTodos

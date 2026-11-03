@@ -13,6 +13,7 @@ import {
   session,
   subscriptions,
   TODO_NORMALIZED_FIELDS,
+  TODO_SLUG,
   todos,
   uploads,
   user,
@@ -20,6 +21,7 @@ import {
 } from '@/db/schema'
 import { env } from '@/env'
 import { normalizedValues } from '@/lib/normalize-text'
+import { slugBase } from '@/lib/slug'
 
 const TEST_USER_EMAIL = 'test@test.com'
 export const TEST_ROLE_NAME = '__test_admin__'
@@ -84,14 +86,23 @@ type TodoInsert = typeof todos.$inferInsert
 /**
  * A row for `testDb.insert(todos)`, with the normalized columns filled the
  * way the service fills them — tests never write `normalizedTitle` by hand.
+ * `slug` defaults to the title's slug plus a random suffix, so rows with the
+ * same title never collide; pass it when the test looks a row up by slug.
  */
 export function todoRow(
   values: Omit<
     TodoInsert,
-    (typeof TODO_NORMALIZED_FIELDS)[keyof typeof TODO_NORMALIZED_FIELDS]
-  >
+    | (typeof TODO_NORMALIZED_FIELDS)[keyof typeof TODO_NORMALIZED_FIELDS]
+    | 'slug'
+  > & { slug?: string }
 ): TodoInsert {
-  return { ...values, ...normalizedValues(values, TODO_NORMALIZED_FIELDS) }
+  return {
+    ...values,
+    ...normalizedValues(values, TODO_NORMALIZED_FIELDS),
+    slug:
+      values.slug ??
+      `${slugBase(values.title, TODO_SLUG)}-${crypto.randomUUID().slice(0, 8)}`,
+  }
 }
 
 export async function cleanupUploads() {

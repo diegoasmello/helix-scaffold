@@ -405,6 +405,134 @@ describe('Normalized text columns', () => {
   })
 })
 
+describe('Slug', () => {
+  async function createTodo(payload: Record<string, unknown>) {
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/todos',
+      payload: {
+        description: 'Desc',
+        content: '<p>C</p>',
+        date: '2025-03-20',
+        attachmentIds: [(await insertUpload()).id],
+        fileId: (await insertUpload()).id,
+        imageId: (await insertUpload('img.png', 'image/png')).id,
+        ...payload,
+      },
+      headers: { cookie: authCookie },
+    })
+    expect(res.statusCode).toBe(201)
+    return res.json()
+  }
+
+  it('generates it from the title on create', async () => {
+    expect((await createTodo({ title: 'Comprar pão na padaria' })).slug).toBe(
+      'comprar-pao-na-padaria'
+    )
+  })
+
+  it('suffixes a slug already taken', async () => {
+    expect((await createTodo({ title: 'Ação' })).slug).toBe('acao')
+    expect((await createTodo({ title: 'ação' })).slug).toBe('acao-2')
+    expect((await createTodo({ title: 'AÇÃO!' })).slug).toBe('acao-3')
+  })
+
+  it('cuts the base to fit the suffix in 100 characters', async () => {
+    const title = 'a'.repeat(100)
+    expect((await createTodo({ title })).slug).toBe(title)
+    const second = (await createTodo({ title })).slug
+    expect(second).toBe(`${'a'.repeat(98)}-2`)
+    expect(second).toHaveLength(100)
+    expect((await createTodo({ title })).slug).toBe(`${'a'.repeat(98)}-3`)
+  })
+
+  it('falls back to the entity name when the title has no slug character', async () => {
+    expect((await createTodo({ title: '日本語' })).slug).toBe('todo')
+    expect((await createTodo({ title: '!!!' })).slug).toBe('todo-2')
+  })
+
+  it('gives concurrent creates with the same title distinct slugs', async () => {
+    const created = await Promise.all(
+      Array.from({ length: 4 }, () => createTodo({ title: 'Mesmo título' }))
+    )
+    expect(new Set(created.map((todo) => todo.slug)).size).toBe(4)
+  })
+
+  it('ignores a slug sent in the body', async () => {
+    const todo = await createTodo({ title: 'Título', slug: 'escolhido' })
+    expect(todo.slug).toBe('titulo')
+
+    const res = await app.inject({
+      method: 'PATCH',
+      url: `/api/todos/${todo.id}`,
+      payload: { slug: 'outro' },
+      headers: { cookie: authCookie },
+    })
+    expect(res.statusCode).toBe(200)
+    expect(res.json().slug).toBe('titulo')
+  })
+
+  it('keeps the slug when the title changes', async () => {
+    const todo = await createTodo({ title: 'Título original' })
+    const res = await app.inject({
+      method: 'PATCH',
+      url: `/api/todos/${todo.id}`,
+      payload: { title: 'Título novo' },
+      headers: { cookie: authCookie },
+    })
+    expect(res.statusCode).toBe(200)
+    expect(res.json().title).toBe('Título novo')
+    expect(res.json().slug).toBe('titulo-original')
+  })
+
+  it('is unique in the table', async () => {
+    await testDb.insert(todos).values(
+      todoRow({
+        title: 'A',
+        description: 'D',
+        content: 'C',
+        date: new Date('2025-01-01'),
+        slug: 'repetido',
+      })
+    )
+    await expect(
+      testDb.insert(todos).values(
+        todoRow({
+          title: 'B',
+          description: 'D',
+          content: 'C',
+          date: new Date('2025-01-01'),
+          slug: 'repetido',
+        })
+      )
+    ).rejects.toThrow()
+  })
+
+  describe('GET /todos/by-slug/:slug', () => {
+    it('returns the todo with that slug', async () => {
+      const todo = await createTodo({ title: 'Página pública' })
+      const res = await app.inject({
+        method: 'GET',
+        url: '/api/todos/by-slug/pagina-publica',
+        headers: { cookie: authCookie },
+      })
+      expect(res.statusCode).toBe(200)
+      expect(res.json().id).toBe(todo.id)
+      expect(res.json().attachments).toHaveLength(1)
+    })
+
+    it('returns 404 for an unknown slug', async () => {
+      const res = await app.inject({
+        method: 'GET',
+        url: '/api/todos/by-slug/nao-existe',
+        headers: { cookie: authCookie },
+      })
+      expect(res.statusCode).toBe(404)
+      expect(res.json()).toEqual({ message: 'Todo not found' })
+    })
+  })
+})
+
 describe('GET /todos/:id', () => {
   it('returns 404 when todo not found', async () => {
     const res = await app.inject({
@@ -766,6 +894,17 @@ describe('Permission enforcement', () => {
     const res = await app.inject({
       method: 'GET',
       url: '/api/todos',
+      headers: { cookie },
+    })
+    expect(res.statusCode).toBe(403)
+    expect(res.json().code).toBe('permission_denied')
+  })
+
+  it('returns 403 on GET /todos/by-slug/:slug without todo:view', async () => {
+    const cookie = await createRestrictedSession([])
+    const res = await app.inject({
+      method: 'GET',
+      url: '/api/todos/by-slug/any',
       headers: { cookie },
     })
     expect(res.statusCode).toBe(403)

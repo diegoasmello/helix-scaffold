@@ -13,6 +13,11 @@ export const todoSchema = z
   .object({
     id: z.string(),
     title: z.string(),
+    slug: z
+      .string()
+      .describe(
+        'URL identifier for public pages: generated from the title on create, unique, never changed'
+      ),
     description: z.string(),
     content: z.string(),
     status: z.enum(['pending', 'completed']),

@@ -71,6 +71,13 @@
       "when": 1793709311494,
       "tag": "0009_todos_normalized_text",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1793712627015,
+      "tag": "0010_todos_slug",
+      "breakpoints": true
     }
   ]
 }

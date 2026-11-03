@@ -204,6 +204,10 @@ The only exception is a `/all` endpoint for select-field use cases (e.g. `GET /r
 
 Every text column users will search or filter by "contains" (the web's search box and `FilterPanel`, or another client such as a site using the API as a CMS) gets a normalized copy written by the service: `title` → `normalizedTitle`, with accents, case and repeated whitespace removed by `normalizeText()` (`apps/api/src/lib/normalize-text.ts`). Search, `contains`/`startsWith`/`endsWith` and sorting use the copy; `eq`/`in` stay exact on the original. The API contract never mentions it — clients keep filtering by `title`. Full guide: `apps/api/CLAUDE.md` → _Normalized text columns_; `todos` is the reference.
 
+### Slugs
+
+A module whose records a public page shows by URL (a site using the API as a CMS: `/todos/comprar-pao`) gets a `slug` column, **always unique** in its table. It is internal to the API: generated from the title on create by `slugify()` (`apps/api/src/lib/slug.ts` — ASCII, hyphens, max 100 chars, `-2`/`-3` on collision), never accepted in a request body, never changed afterwards. The API returns it and looks records up by it (`GET /todos/by-slug/:slug`); the admin never shows or edits it. Full guide: `apps/api/CLAUDE.md` → _Slugs_; `todos` is the reference.
+
 ### RBAC checklist
 
 When a new module exposes user-facing resources, register it in the permission system as part of module creation:

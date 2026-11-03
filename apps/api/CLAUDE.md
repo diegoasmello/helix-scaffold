@@ -209,6 +209,7 @@ Every list endpoint can optionally support field-level filtering via the reusabl
 | ----------------------- | ------------------------------------------------------------------------------------------------ |
 | `src/lib/filtering.ts`  | `filterQuerySchema`, `buildFilterWhereClause`, `FilterWhereOptions`, `searchQuerySchema`, `buildSearchClause`, `FilterCondition`, `FilterLogic`, `FilterOperator` |
 | `src/lib/normalize-text.ts` | `normalizeText`, `normalizedValues`, `NormalizedFieldMap` — see _Normalized text columns_ |
+| `src/lib/slug.ts` | `slugify`, `withUniqueSlug`, `SlugConfig`… — see _Slugs_ |
 
 **`filterQuerySchema(allowedFields)`** — factory that accepts a non-empty tuple of filterable column names and returns a Zod schema with two fields:
 
@@ -398,6 +399,94 @@ const SORT_COLUMNS = { title: features.normalizedTitle, /* … */ }      // sort
 **4. Tests** — insert rows through a helper that fills the normalized columns the way the service does (`todoRow()` in `src/test/helpers.ts`), never by hand. In the route tests (`todos-routes.test.ts` → `describe('Normalized text columns')` is the reference), cover: search ignoring accents, case and repeated whitespace; `contains`/`startsWith`/`endsWith` on the normalized copy; `eq` still exact; `sortBy` on the field; the normalized columns absent from the response; `POST` fills them and `PATCH` refreshes only the fields sent.
 
 **Index (optional):** a `contains` (`LIKE '%v%'`) cannot use a btree index, so without one it scans the table — fine up to tens of thousands of rows. For more, a trigram index on the normalized column (`index('features_normalized_title_trgm_idx').using('gin', t.normalizedTitle.op('gin_trgm_ops'))`) needs the `pg_trgm` extension, created in a custom migration (`drizzle-kit generate --custom`) — check the host supports it first.
+
+---
+
+## Slugs
+
+A module whose records a public page shows by URL — a site reading the API as a CMS, at `/todos/comprar-pao` — gets a **`slug` column**. It is **internal to the API**: generated from a source field (`title`) on create, never accepted in a request body, never changed afterwards, and **always unique in its table** (a unique index). The admin (`apps/web`) never shows or edits it; it exists for the public URLs only. The API returns it in the entity (the site needs it to build its links) and looks a record up by it.
+
+The helpers are in `src/lib/slug.ts`:
+
+| Export | Does |
+| --- | --- |
+| `slugify(value, maxLength = 100)` | The slug of a text, pure — see the rules below. `''` when nothing is left |
+| `SLUG_PATTERN`, `SLUG_MAX_LENGTH` | `^[a-z0-9]+(?:-[a-z0-9]+)*$`, `100` |
+| `SlugConfig` | `{ column, constraint, fallback, maxLength? }` — declared once per module, next to the table |
+| `slugBase(source, config)` | `slugify(source)`, or `config.fallback` when that is empty. Throws when the fallback is not a valid slug |
+| `freeSlug(base, taken, maxLength?)` | The first of `base`, `base-2`, `base-3`… not in `taken`, pure |
+| `slugCandidatesPattern(base, maxLength?)` | The regex of every suffixed candidate `freeSlug()` can return: `^base-[0-9]+$` for a base of up to 92 characters (room for any suffix, so `todo` never matches `todo-list-2025`), `^<first 92>.*-[0-9]+$` for a longer one, whose candidates are cut |
+| `uniqueSlug(database, config, source)` | A slug no row holds yet — one query (`slug = base OR slug ~ pattern`), then `freeSlug()` |
+| `withUniqueSlug(database, config, source, write)` | Runs the insert with a `uniqueSlug()`, and again with a fresh one when a concurrent insert took it (unique violation on `config.constraint`, up to 5 attempts) |
+| `distinctSlugs(sources, config)` | Slugs distinct among themselves, for rows written together into a table that holds none of them (the seed) |
+
+### The rule (`slugify`)
+
+In this order — the JSDoc of the function and the table in `slug.test.ts` are the reference:
+
+| Step | Example |
+| --- | --- |
+| `normalizeText()` — the same rules as the normalized columns: lowercase, no accents, `ß` → `ss`, ligatures, typographic quotes and dashes → ASCII, invisible characters removed | `Ação RÁPIDA` → `acao rapida` |
+| Remove apostrophes and quotes, so a word stays whole | `It's d’água` → `its dagua` |
+| Every run of anything else (spaces, punctuation, other scripts, emoji) → one `-`, trimmed at the ends | `Versão 2.0 (2025)` → `versao-2-0-2025` |
+| Cut at 100 characters: on the last hyphen before the limit when that keeps at least half, else hard | `a bbb…` (150 `b`s) → `a-bbb…` (100 chars), not `a` |
+
+Only ASCII survives: a title in another script (`日本語`) gives `''`, and the config's `fallback` (`todo`) takes its place. A repeated base gets the first free numeric suffix (`acao`, `acao-2`, `acao-3`); a suffix that would pass the limit cuts the base, so the result never exceeds it.
+
+**Stable on purpose.** Updating the title does not touch the slug: a public URL that changes breaks links and search rankings. A product that needs to change it (or keep old URLs working) adds a slug history table and a redirect — not part of the scaffold.
+
+**Changing the rule** only affects new rows: existing slugs are URLs already out there, so they are never rewritten.
+
+### Adding a slug to a module
+
+**1. Table (`src/db/schema/<feature>.ts`)** — the column after its source, `notNull()`, a named unique index on `text_pattern_ops`, and the `SlugConfig` next to the table:
+
+```ts
+import type { SlugConfig } from '../../lib/slug' // relative: drizzle-kit loads this file
+
+export const features = pgTable(
+  'features',
+  {
+    // ...
+    title: text('title').notNull(),
+    slug: text('slug').notNull(),
+  },
+  (t) => [uniqueIndex('features_slug_unique').on(t.slug.op('text_pattern_ops'))]
+)
+
+export const FEATURE_SLUG = {
+  column: features.slug,
+  constraint: 'features_slug_unique',
+  fallback: 'feature', // the entity name — must be a valid slug, slugBase() throws otherwise
+} as const satisfies SlugConfig
+```
+
+**Why a `uniqueIndex` with `text_pattern_ops`, not `.unique()`:** `uniqueSlug()` looks up the base and its suffixed variants with an anchored regex (`slug ~ '^acao.*-[0-9]+$'`). Under a non-C collation (the databases here are `en_US.utf8`), the default operator class orders by the locale and serves only `=`, so that lookup reads the whole index on every create. With `text_pattern_ops` the planner turns the regex's fixed prefix into a range (`slug ~>=~ 'acao' AND slug ~<~ 'acap'`), and `=` (`getBySlug`) still uses it. It is still a unique index: a collision is a `23505` whose constraint is the index name, which `withUniqueSlug()` compares with `config.constraint`. The prefix only becomes a range when the planner sees the value — node-postgres plans each query with its parameters, but a `.prepare()`d (generic) plan loses it, so never prepare this query. The index does not serve `ORDER BY slug` or `<`/`>` by locale; nothing sorts by slug.
+
+`pnpm db:generate` emits `ADD COLUMN … NOT NULL` + `CREATE UNIQUE INDEX`, which fails on a table with rows: on a dev database, `pnpm db:reset`, migrate, then `pnpm db:seed`. A table that already holds data the product must keep needs the column added nullable, a backfill with `distinctSlugs()`, then `SET NOT NULL` and the index.
+
+**2. Contract (`<feature>-schema.ts`)** — `slug: z.string()` in the entity schema (with a `.describe()`), **never** in the create/update schemas: Zod strips an unknown key, so a `slug` sent in a body is silently ignored.
+
+**3. Service (`<feature>-service.ts`)** — `create` wraps the insert in `withUniqueSlug()`; `update` does nothing (the slug is not in `UpdateFeatureInput`); add `getBySlug()`:
+
+```ts
+const [item] = await withUniqueSlug(database, FEATURE_SLUG, data.title, (slug) =>
+  database.insert(features).values({ ...data, slug }).returning()
+)
+
+async function getBySlug(slug: string) {
+  const [item] = await database.select().from(features).where(eq(features.slug, slug))
+  return item ?? null
+}
+```
+
+`write` is the insert alone. A failed statement aborts a surrounding transaction, so inside one, wrap the insert in a savepoint (`tx.transaction(...)`). Any other writer (the seed, an import, a job) fills the slug too — the column is `notNull()`, so forgetting it is a type error.
+
+**4. Route (`<feature>-routes.ts`)** — `GET /features/by-slug/:slug`, same `preHandler` as `GET /features/:id`, 200 or 404. Give it an explicit `operationId: 'getFeatureBySlug'`: the name kubb derives from `by-slug/{slug}` repeats the word, and its mock then imports a types file that does not exist. Fastify prefers the static `by-slug` segment, so it never clashes with `/:id`.
+
+**5. Seed and tests** — the seed computes the slugs with `distinctSlugs(titles, FEATURE_SLUG)`. The test row helper (`todoRow()` in `src/test/helpers.ts`) defaults `slug` to the title's slug plus a random suffix, so rows with the same title never collide; pass `slug` when the test looks it up. In the route tests (`todos-routes.test.ts` → `describe('Slug')` is the reference), cover: generated from the title; suffix on a repeated title; fallback for a title with no slug character; a 100-character title whose suffixed slugs are cut to stay at 100 (`'a'.repeat(100)` → `aaa…-2`, which runs the long-base lookup); concurrent creates with the same title get distinct slugs; a `slug` in the `POST`/`PATCH` body ignored; a title change keeps the slug; the unique index; `GET /by-slug/:slug` 200 and 404; and the route in _Permission enforcement_. The helpers themselves (the rule, the candidate pattern, the retry with a fake `write`: a collision then success, another constraint rethrown at once, giving up after 5) are tested once in `src/lib/slug.test.ts`.
+
+**Public access:** `GET /by-slug/:slug` sits behind the session, the permission and the subscription like every other route, so a site calls it with a service account. An unauthenticated public read (API keys, a public scope) is a separate pattern.
 
 ---
 
@@ -707,7 +796,7 @@ export const features = pgTable('features', {
 })
 ```
 
-Every text column users will search or filter by "contains" gets a normalized copy (`normalizedTitle`) — see _Normalized text columns_.
+Every text column users will search or filter by "contains" gets a normalized copy (`normalizedTitle`) — see _Normalized text columns_. A record a public page shows by URL gets a `slug` — see _Slugs_.
 
 After creating the schema, generate and apply the migration:
 
@@ -1018,7 +1107,7 @@ The helpers in `src/test/helpers.ts` provide:
 - `createRoleWithPermissions(grants)` — a fresh role with exactly the given permissions, for permission enforcement tests
 - `findAuditLogs(action, resource, resourceId)` — the audit entries written for one record
 - `grantActiveSubscription(email, planId = 'pro')` — an active subscription for that user. Restricted users on a **subscription-gated** route need it (see _Permission enforcement tests_)
-- `todoRow(values)` — a `todos` row for `testDb.insert(todos)` with its normalized columns filled. A module with normalized columns adds its own (`featureRow()`)
+- `todoRow(values)` — a `todos` row for `testDb.insert(todos)` with its normalized columns filled and a unique `slug` (title + random suffix, unless given). A module with normalized columns or a slug adds its own (`featureRow()`)
 - Cleanup: `cleanupAuth()` (session, account, verification, user **and all roles**), `cleanupUsers()` / `cleanupRoles()` (everything except the test user / test role), `cleanupAuditLogs()`, `cleanupSubscriptions()`, `cleanupTodos()`, `cleanupUploads()`
 
 When adding a new module, add a `cleanupFeature()` function to `helpers.ts`:
@@ -1083,7 +1172,7 @@ it('returns 401 on any route when not authenticated', async () => {
 | `PATCH /features/:id`  | 404 for unknown id; updates and returns correct fields (fields not sent remain unchanged)                                                                                                                                |
 | `DELETE /features/:id` | 204 for existing item (one audit entry — `findAuditLogs`); 204 for unknown id and no audit entry (use a fresh id, e.g. `missing-${crypto.randomUUID()}`)                                                                                                                                                                                |
 
-A module with normalized columns also covers what _Normalized text columns_ → _Tests_ lists (search without accents, `eq` still exact, `PATCH` refreshing the copy, columns absent from the response).
+A module with normalized columns also covers what _Normalized text columns_ → _Tests_ lists (search without accents, `eq` still exact, `PATCH` refreshing the copy, columns absent from the response). A module with a slug covers what _Slugs_ → _Adding a slug to a module_ → step 5 lists.
 
 ### Permission enforcement tests
 

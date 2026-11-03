@@ -118,6 +118,33 @@ export async function todosRoutes(
     }
   )
 
+  app.get(
+    '/todos/by-slug/:slug',
+    {
+      schema: {
+        // The derived name repeats `slug` (`by-slug/{slug}`), which makes kubb
+        // generate a mock that imports a types file that does not exist.
+        operationId: 'getTodoBySlug',
+        tags: ['todos'],
+        description: 'Get a todo by slug — the lookup of a public page',
+        params: z.object({ slug: z.string() }),
+        response: {
+          200: todoSchema,
+          404: z.object({ message: z.string() }),
+        },
+      },
+      preHandler: [
+        requireSubscription('todos'),
+        requirePermission('todos', 'view'),
+      ],
+    },
+    async (request, reply) => {
+      const todo = await service.getBySlug(request.params.slug)
+      if (!todo) return reply.status(404).send({ message: 'Todo not found' })
+      return todo
+    }
+  )
+
   app.post(
     '/todos',
     {
