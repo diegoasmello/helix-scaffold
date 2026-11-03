@@ -75,7 +75,7 @@ Note: `description` is required by the form validator even though the API schema
 
 Turning `isDefault` on for one role unsets it on the previous default — the API does it in a transaction (only one default role can exist).
 
-No `isEditing` prop — the form is identical for create and edit.
+The fields sit in one `FormColumn` (no sections), so the same `RolesForm` serves the create and edit pages and `RoleCreateDrawer`. No `isEditing` prop — the form is identical for create and edit.
 
 ## `RoleSelectField` (`components/role-select-field.tsx`)
 

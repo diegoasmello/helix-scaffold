@@ -16,8 +16,8 @@ export interface PageCreateProps {
 }
 
 /**
- * The create form: `FormSection`s, with Cancel/Save in `footerActions`. Wrap
- * it in `Form`. See `PageSectionLayout`.
+ * The create form: a `FormColumn` (short forms) or `FormSection`s, with
+ * Cancel/Save in `footerActions`. Wrap it in `Form`. See `PageSectionLayout`.
  */
 export function PageCreate(props: Readonly<PageCreateProps>) {
   return <PageSectionLayout {...props} />

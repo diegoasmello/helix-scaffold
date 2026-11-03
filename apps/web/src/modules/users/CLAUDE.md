@@ -61,7 +61,7 @@ Use `userCreateFormValidate` in `UsersCreate` and `userEditFormValidate` in `Use
 
 ## Form fields (`components/users-form.tsx`)
 
-`UsersFormProps` has `isEditing?: boolean`. When `true`, the `PasswordInput` is not rendered.
+The fields sit in one `FormColumn` (no sections). `UsersFormProps` has `isEditing?: boolean`. When `true`, the `PasswordInput` is not rendered.
 
 | Field      | Component          | Notes                                                                        |
 | ---------- | ------------------ | ---------------------------------------------------------------------------- |

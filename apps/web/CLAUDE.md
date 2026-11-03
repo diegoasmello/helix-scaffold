@@ -1223,16 +1223,16 @@ Use the page wrapper components from `@helix/ui`:
 | Screen | Wrapper      | Key props                                                                      |
 | ------ | ------------ | ------------------------------------------------------------------------------ |
 | List   | `PageList`   | `title`, `actions` (Create button)                                             |
-| Create | `PageCreate` | `title`, `children` (`FormSection`s), `footerActions` (Cancel + Save)          |
-| Edit   | `PageEdit`   | `title`, `children` (`FormSection`s), `footerActions` (Cancel + Save)          |
+| Create | `PageCreate` | `title`, `children` (a `FormColumn` or `FormSection`s), `footerActions` (Cancel + Save) |
+| Edit   | `PageEdit`   | `title`, `children` (a `FormColumn` or `FormSection`s), `footerActions` (Cancel + Save) |
 | Detail | `PageView`   | `title` (the record's name), `titleAside` (its `StatusBadge`), `actions` (Edit, Delete), `children` (`LabeledValue`s in a `Grid`) |
 
 **Create, edit and detail pages have no breadcrumb** (it only took room) and no Back button — the sidebar and the browser handle going back. Forms and detail pages have **no lines** — not under the title, not between `FormSection`s or fields.
 
 - **Detail** — the `h1` is the record itself (`item.title`, `item.name`), not "View Xxx"; its state goes in `titleAside`. Header `actions`: Edit (primary, `IconPencil`) gated with `<HasPermission>`, and in `todos` also Delete (`variant="default" color="red"`, `IconTrash` — the theme turns that into the bordered red button). The fields are `LabeledValue`s in a `<Grid gap="lg">`: long values (description, rich text, attachments) `span={12}`, short ones `span={{ base: 12, sm: 6 }}`; leave out optional fields that are empty. Do not repeat in the grid what the title, `titleAside` or description already shows.
-- **Forms** — the shared form component returns `FormSection`s (`title`, `description`, fields): title and description on the left, fields on the right (max 720px), stacked on phones. Pairs of short fields go in `<SimpleGrid cols={{ base: 1, xs: 2 }}>`. A form also rendered elsewhere (e.g. `RoleCreateDrawer`) exports its fields alone too (`RolesFormFields`).
+- **Forms** — a short form (a handful of fields with no natural groups: `users`, `roles`) returns its fields in one `FormColumn` (max 720px). Only a longer form whose fields fall into distinct groups (`todos`, `subscriptions`) returns `FormSection`s (`title`, `description`, fields): title and description on the left, fields on the right (max 720px), stacked on phones — never a single `FormSection`. Pairs of short fields go in `<SimpleGrid cols={{ base: 1, xs: 2 }}>`. A `FormColumn` form also works in a drawer as is (`RoleCreateDrawer` renders `RolesForm`); a sectioned form rendered elsewhere exports its fields alone too.
 - **Footer** — `footerActions` is a fragment of buttons (no `Group`): the bar sticks to the bottom of the screen and, inside a `Form`, shows "Unsaved changes" while the form is dirty; on phones the buttons fill the width. After an invalid submit the page shows "Couldn't save. Fix the N highlighted fields below." (`role="alert"`) — both come from `Form` through `useFormSummary()`.
-- Plain children (no `FormSection`s) keep the page padding — every detail page, and `roles-permissions.tsx`.
+- Plain children (no `FormSection`s) keep the page padding — every detail page, `FormColumn` forms, and `roles-permissions.tsx`.
 
 **Footer button conventions** — apply to every Create, Edit, and Detail screen:
 
@@ -1359,7 +1359,9 @@ interface XxxFormProps {
 
 export function XxxForm(props: Readonly<XxxFormProps>) {
   const { form } = props
-  return <Grid>{/* shared fields */}</Grid>
+  // Short form: one column. Longer, grouped forms return `FormSection`s
+  // instead (see `todos-form.tsx`).
+  return <FormColumn>{/* shared fields */}</FormColumn>
 }
 ```
 

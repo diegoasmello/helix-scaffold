@@ -19,12 +19,6 @@ export interface PageSectionLayoutProps {
   /** The bar pinned to the bottom of the screen (forms: Cancel, Save). */
   footerActions?: ReactNode
   children: ReactNode
-  /**
-   * `view` (detail) puts plain content right under the header; `form`
-   * (create/edit) keeps the page padding above it. Neither draws a line under
-   * the header, unless there are `tabs`.
-   */
-  variant?: 'form' | 'view'
 }
 
 /**
@@ -42,7 +36,6 @@ export function PageSectionLayout(props: Readonly<PageSectionLayoutProps>) {
     tabs,
     footerActions,
     children,
-    variant = 'form',
   } = props
 
   const { classes, cx } = useStyles()
@@ -71,13 +64,7 @@ export function PageSectionLayout(props: Readonly<PageSectionLayoutProps>) {
         {tabs}
       </div>
 
-      <div
-        className={cx(
-          classes.content,
-          !tabs && classes.contentUnderHeader,
-          variant === 'view' && !tabs && classes.contentUnderHeaderPlain
-        )}
-      >
+      <div className={classes.content} data-under-header={!tabs || undefined}>
         {errorCount > 0 && (
           <div role="alert" className={classes.errorAlert}>
             <strong>{t('form.saveFailed')}</strong>{' '}
@@ -150,17 +137,13 @@ const useStyles = createStyles((theme, _, u) => {
         padding-top: 20px;
         padding-bottom: 20px;
       }
-    `,
-    // With no line under the header, the first section follows it directly.
-    contentUnderHeader: css`
-      & > [data-page-section]:first-child {
+
+      /* No line under the header (no tabs): the content follows it with no
+         extra gap. */
+      &[data-under-header] {
         padding-top: 0;
       }
-    `,
-    // A detail's content follows its header with no extra gap.
-    contentUnderHeaderPlain: css`
-      padding-top: 0;
-      ${belowSm} {
+      &[data-under-header] > [data-page-section]:first-child {
         padding-top: 0;
       }
     `,

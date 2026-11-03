@@ -22,5 +22,5 @@ export interface PageViewProps {
  * fields as `LabeledValue`s in a grid. See `PageSectionLayout`.
  */
 export function PageView(props: Readonly<PageViewProps>) {
-  return <PageSectionLayout {...props} variant="view" />
+  return <PageSectionLayout {...props} />
 }

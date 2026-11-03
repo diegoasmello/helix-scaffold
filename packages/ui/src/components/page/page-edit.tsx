@@ -16,8 +16,8 @@ export interface PageEditProps {
 }
 
 /**
- * The edit form: `FormSection`s, with Cancel/Save in `footerActions`. Wrap it
- * in `Form`. See `PageSectionLayout`.
+ * The edit form: a `FormColumn` (short forms) or `FormSection`s, with
+ * Cancel/Save in `footerActions`. Wrap it in `Form`. See `PageSectionLayout`.
  */
 export function PageEdit(props: Readonly<PageEditProps>) {
   return <PageSectionLayout {...props} />
