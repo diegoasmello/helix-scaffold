@@ -9,6 +9,7 @@ import {
   inArray,
   isNotNull,
   isNull,
+  like,
   lt,
   lte,
   ne,
@@ -16,6 +17,8 @@ import {
   type SQL,
 } from 'drizzle-orm'
 import z from 'zod'
+
+import { normalizeText } from './normalize-text'
 
 export const FILTER_OPERATORS = [
   'eq',
@@ -95,22 +98,67 @@ export type FilterQuery<T extends string = string> = {
   filterLogic: FilterLogic
 }
 
+export interface FilterWhereOptions<T extends string> {
+  /**
+   * Transforms raw filter values before they are passed to Drizzle. Use it
+   * for columns whose DB type differs from the serialized URL value — e.g.
+   * timestamp columns where the value arrives as an ISO string:
+   * `{ date: (v) => new Date(v) }`. Runs on each item of an array value.
+   */
+  coerce?: Partial<Record<T, (value: unknown) => unknown>>
+  /**
+   * The normalized column of a text field (`{ title: todos.normalizedTitle }`).
+   * `contains`, `startsWith` and `endsWith` on that field then compare the
+   * normalized value with it (accent-, case- and whitespace-insensitive);
+   * `eq`, `neq` and `in` stay exact on the column of `columnMap`.
+   */
+  normalized?: Partial<Record<T, AnyColumn>>
+}
+
+/** Escapes LIKE wildcards so `50%` or `a_b` match literally. */
+function escapeLike(term: string): string {
+  return term.replace(/[\\%_]/g, (char) => `\\${char}`)
+}
+
+type TextOperator = 'contains' | 'startsWith' | 'endsWith'
+
+function likePattern(op: TextOperator, value: string): string {
+  const escaped = escapeLike(value)
+  if (op === 'startsWith') return `${escaped}%`
+  if (op === 'endsWith') return `%${escaped}`
+  return `%${escaped}%`
+}
+
+/**
+ * A text operator on one field: on its normalized column when it has one
+ * (both sides normalized, so a plain `LIKE`), else `ILIKE` on the column.
+ */
+function textCondition(
+  op: TextOperator,
+  value: string,
+  column: AnyColumn,
+  normalizedColumn: AnyColumn | undefined
+): SQL | undefined {
+  if (!normalizedColumn) return ilike(column, likePattern(op, value))
+  const term = normalizeText(value)
+  if (!term) return undefined
+  return like(normalizedColumn, likePattern(op, term))
+}
+
 /**
  * Builds a Drizzle SQL WHERE clause from a list of filter conditions and an AND/OR logic.
  * Returns undefined when the conditions list is empty (no WHERE applied).
- *
- * The optional `coerce` map transforms raw filter values before they are passed to Drizzle.
- * Use it for columns whose DB type differs from the serialized URL value — e.g. timestamp
- * columns where the filter value arrives as an ISO string: `{ date: (v) => new Date(v) }`.
+ * See `FilterWhereOptions` for `coerce` and `normalized`.
  */
 export function buildFilterWhereClause<T extends string>(
   conditions: FilterQuery<T>['filters'],
   logic: FilterLogic,
   columnMap: Record<T, AnyColumn>,
-  coerce?: Partial<Record<T, (value: unknown) => unknown>>
+  options: FilterWhereOptions<T> = {}
 ): SQL | undefined {
   if (conditions.length === 0) return undefined
 
+  const { coerce, normalized } = options
   const sqlConditions: SQL[] = []
 
   for (const { field, op, value } of conditions) {
@@ -134,17 +182,15 @@ export function buildFilterWhereClause<T extends string>(
         if (coercedValue != null) sqlConditions.push(ne(col, coercedValue))
         break
       case 'contains':
-        if (typeof coercedValue === 'string')
-          sqlConditions.push(ilike(col, `%${coercedValue}%`))
-        break
       case 'startsWith':
-        if (typeof coercedValue === 'string')
-          sqlConditions.push(ilike(col, `${coercedValue}%`))
+      case 'endsWith': {
+        const condition =
+          typeof coercedValue === 'string'
+            ? textCondition(op, coercedValue, col, normalized?.[field])
+            : undefined
+        if (condition) sqlConditions.push(condition)
         break
-      case 'endsWith':
-        if (typeof coercedValue === 'string')
-          sqlConditions.push(ilike(col, `%${coercedValue}`))
-        break
+      }
       case 'gt':
         if (coercedValue != null) sqlConditions.push(gt(col, coercedValue))
         break
@@ -199,20 +245,20 @@ export const searchQuerySchema = z.object({
 
 export type SearchQuery = z.infer<typeof searchQuerySchema>
 
-/** Escapes LIKE wildcards so `50%` or `a_b` match literally. */
-function escapeLike(term: string): string {
-  return term.replace(/[\\%_]/g, (char) => `\\${char}`)
-}
-
 /**
- * Case-insensitive "contains" of `term` in any of `columns`, or `undefined`
- * without a term. Combine it with the filter clause: `and(filters, search)`.
+ * Accent-, case- and whitespace-insensitive "contains" of `term` in any of
+ * `normalizedColumns`, or `undefined` without a term. The columns must be
+ * normalized ones (`todos.normalizedTitle`, written with `normalizeText`):
+ * the term is normalized here and compared with a plain `LIKE`. Combine it
+ * with the filter clause: `and(filters, search)`.
  */
 export function buildSearchClause(
   term: string | undefined,
-  columns: AnyColumn[]
+  normalizedColumns: AnyColumn[]
 ): SQL | undefined {
-  if (!term || columns.length === 0) return undefined
-  const pattern = `%${escapeLike(term)}%`
-  return or(...columns.map((column) => ilike(column, pattern)))
+  if (!term || normalizedColumns.length === 0) return undefined
+  const normalized = normalizeText(term)
+  if (!normalized) return undefined
+  const pattern = likePattern('contains', normalized)
+  return or(...normalizedColumns.map((column) => like(column, pattern)))
 }

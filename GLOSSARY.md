@@ -35,3 +35,9 @@ Domain terms used across `apps/api` and `apps/web`. Use these names in code, doc
 | Term | Meaning |
 | --- | --- |
 | **Permission** | A `resource:action` grant held by a role (RBAC, `apps/api/src/config/permissions.ts`). Independent of the subscription axis. A missing one answers 403 with `code: 'permission_denied'`. |
+
+## Data
+
+| Term | Meaning |
+| --- | --- |
+| **Normalized column** | A searchable copy of a text column (`title` → `normalizedTitle`), written by the service with `normalizeText()` — lowercased, without accents, whitespace collapsed. Search, text filters and sorting read it; responses never include it. See `apps/api/CLAUDE.md` → _Normalized text columns_. |

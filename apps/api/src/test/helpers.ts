@@ -12,12 +12,14 @@ import {
   roles,
   session,
   subscriptions,
+  TODO_NORMALIZED_FIELDS,
   todos,
   uploads,
   user,
   verification,
 } from '@/db/schema'
 import { env } from '@/env'
+import { normalizedValues } from '@/lib/normalize-text'
 
 const TEST_USER_EMAIL = 'test@test.com'
 export const TEST_ROLE_NAME = '__test_admin__'
@@ -75,6 +77,21 @@ export async function cleanupSubscriptions() {
 
 export async function cleanupTodos() {
   await testDb.delete(todos)
+}
+
+type TodoInsert = typeof todos.$inferInsert
+
+/**
+ * A row for `testDb.insert(todos)`, with the normalized columns filled the
+ * way the service fills them — tests never write `normalizedTitle` by hand.
+ */
+export function todoRow(
+  values: Omit<
+    TodoInsert,
+    (typeof TODO_NORMALIZED_FIELDS)[keyof typeof TODO_NORMALIZED_FIELDS]
+  >
+): TodoInsert {
+  return { ...values, ...normalizedValues(values, TODO_NORMALIZED_FIELDS) }
 }
 
 export async function cleanupUploads() {

@@ -207,7 +207,8 @@ Every list endpoint can optionally support field-level filtering via the reusabl
 
 | File                    | Exports                                                                                          |
 | ----------------------- | ------------------------------------------------------------------------------------------------ |
-| `src/lib/filtering.ts`  | `filterQuerySchema`, `buildFilterWhereClause`, `FilterCondition`, `FilterLogic`, `FilterOperator` |
+| `src/lib/filtering.ts`  | `filterQuerySchema`, `buildFilterWhereClause`, `FilterWhereOptions`, `searchQuerySchema`, `buildSearchClause`, `FilterCondition`, `FilterLogic`, `FilterOperator` |
+| `src/lib/normalize-text.ts` | `normalizeText`, `normalizedValues`, `NormalizedFieldMap` — see _Normalized text columns_ |
 
 **`filterQuerySchema(allowedFields)`** — factory that accepts a non-empty tuple of filterable column names and returns a Zod schema with two fields:
 
@@ -219,7 +220,7 @@ A condition is `{ field, op, value? }`. Operators (`FILTER_OPERATORS`):
 | `op` | SQL | `value` |
 | --- | --- | --- |
 | `eq`, `neq` | `=`, `<>` | string / number / boolean |
-| `contains`, `startsWith`, `endsWith` | `ILIKE '%v%'`, `'v%'`, `'%v'` (case-insensitive) | string only — other types are ignored |
+| `contains`, `startsWith`, `endsWith` | `LIKE '%v%'`, `'v%'`, `'%v'` on the field's normalized column, with `v` normalized (accent-, case- and whitespace-insensitive — see _Normalized text columns_); `ILIKE` on the column itself for a field without one. LIKE wildcards in `v` are escaped | string only — other types are ignored |
 | `gt`, `gte`, `lt`, `lte` | `>`, `>=`, `<`, `<=` | number, or a date string with a `coerce` entry |
 | `isNull`, `isNotNull` | `IS NULL`, `IS NOT NULL` | omitted |
 | `in` | `IN (...)` | non-empty array of strings/numbers |
@@ -229,9 +230,11 @@ A condition whose value does not fit its operator is skipped, not rejected. A fi
 
 Merge this into the module's `listQuerySchema` alongside pagination and sorting.
 
-**Search box** — `searchQuerySchema` adds `search` (trimmed, blank → `undefined`, max 200 chars) and `buildSearchClause(term, columns)` turns it into a case-insensitive "contains" on any of the columns (LIKE wildcards in the term are escaped). Combine both clauses with Drizzle's `and()`, which skips `undefined`: `and(buildFilterWhereClause(...), buildSearchClause(query.search, SEARCH_COLUMNS))`. Add `searchQuerySchema` to the export schema too, and audit only whether a search was used (`searched: Boolean(query.search)`), never the text.
+**Search box** — `searchQuerySchema` adds `search` (trimmed, blank → `undefined`, max 200 chars) and `buildSearchClause(term, normalizedColumns)` normalizes the term and turns it into a "contains" (`LIKE`, wildcards escaped) on any of the columns. **Pass normalized columns only** (`[features.normalizedTitle]`, see _Normalized text columns_): a plain column would be compared, case-sensitively, with an already-lowercased term. Combine both clauses with Drizzle's `and()`, which skips `undefined`: `and(buildFilterWhereClause(...), buildSearchClause(query.search, SEARCH_COLUMNS))`. Add `searchQuerySchema` to the export schema too, and audit only whether a search was used (`searched: Boolean(query.search)`), never the text.
 
-**`buildFilterWhereClause(conditions, logic, columnMap, coerce?)`** — builds a Drizzle `SQL | undefined` from the parsed filter conditions. Returns `undefined` when the list is empty (no `.where()` added). Pass the result to both the data query and the count query so pagination totals remain consistent.
+**`buildFilterWhereClause(conditions, logic, columnMap, { coerce?, normalized? })`** — builds a Drizzle `SQL | undefined` from the parsed filter conditions. Returns `undefined` when the list is empty (no `.where()` added). Pass the result to both the data query and the count query so pagination totals remain consistent.
+
+`normalized` maps a text field to its normalized column (`{ title: features.normalizedTitle }`), for the text operators — see _Normalized text columns_.
 
 The optional `coerce` map transforms raw filter values before Drizzle receives them. This is required for columns whose DB type differs from the serialized URL value — most commonly `timestamp` columns where the filter value arrives as an ISO string. For array values (`in`, `between`) it runs on each item:
 
@@ -274,6 +277,11 @@ const FILTER_COLUMNS = {
   date: features.date,
 } as const
 
+// Text fields: `contains`/`startsWith`/`endsWith` read the normalized copy
+const NORMALIZED_FILTER_COLUMNS = {
+  title: features.normalizedTitle,
+} as const
+
 // Only needed when a column type differs from the serialized URL value
 const FILTER_COERCE = {
   date: (v: unknown) => (typeof v === 'string' ? new Date(v) : v),
@@ -287,7 +295,7 @@ async function list(query: FeaturesListQuery) {
     query.filters,
     query.filterLogic,
     FILTER_COLUMNS,
-    FILTER_COERCE
+    { coerce: FILTER_COERCE, normalized: NORMALIZED_FILTER_COLUMNS }
   )
 
   const [data, [{ total }]] = await Promise.all([
@@ -307,7 +315,7 @@ Add a `describe('Filtering')` block inside `describe('GET /features')`:
 | Test | What to verify |
 |------|----------------|
 | `filters` with `eq` on an enum field (e.g. `status=pending`) | returns only matching records |
-| `filters` with `contains` on a text field | case-insensitive match |
+| `filters` with `contains` on a text field | accent- and case-insensitive match (see _Normalized text columns_ → _Tests_) |
 | `filters` with `gte` on a date/number field | range boundary respected |
 | two conditions with `AND` logic | returns intersection |
 | two conditions with `OR` logic | returns union |
@@ -317,6 +325,79 @@ Add a `describe('Filtering')` block inside `describe('GET /features')`:
 Seed the data via `testDb.insert` before each test case. Pass `filters` as a JSON-encoded string in the query string: `filters=JSON.stringify([{ field: 'status', op: 'eq', value: 'pending' }])`.
 
 See `apps/api/src/modules/todos/todos-routes.test.ts` for the reference implementation.
+
+---
+
+## Normalized text columns
+
+Every text column users search or filter by "contains" — through the web's search box and `FilterPanel`, or another client (a site reading the API as a CMS) — gets a **normalized copy**: `title` → `normalizedTitle` (`normalized_title`). The service writes it on every insert and update with `normalizeText()` (`src/lib/normalize-text.ts`); the search and the text filters compare a normalized term with it. So `acao` finds `Ação`, `SAO  paulo` finds `São Paulo`, and `Árvore` sorts next to `arvore`.
+
+It is written in TypeScript, not by the database (no generated column, no `unaccent` extension): the rule is explicit in the service layer, runs the same on any Postgres host, and the term and the stored value always go through the same function.
+
+**The API contract does not change.** Clients keep filtering by `title`; the service maps it to the normalized column. The normalized columns are never in a response schema (the Zod serializer drops them) and never in `*_FILTER_FIELDS` or `*_SORT_COLUMNS`.
+
+### The normalization (`normalizeText`)
+
+In this order — the JSDoc of the function and the table in `normalize-text.test.ts` are the reference:
+
+| Step | Example |
+| --- | --- |
+| `toLowerCase()` — locale-independent, before NFKD (so `İ` loses its dot in the next steps) | `RÁPIDO` → `rápido` |
+| NFKD + remove the marks (`\p{M}`) — accents, also already-decomposed ones (macOS), ligatures and full-width forms | `ação` → `acao`, `ﬁ` → `fi`, `Ｆｕｌｌ` → `full` |
+| `toLowerCase()` again — some characters only become capitals once decomposed | `ℌilbert` → `hilbert`, `㎒` → `mhz` |
+| Map what does not decompose — `ß æ œ ø ł đ ð þ`, typographic quotes and dashes | `Straße` → `strasse`, `“a” — b` → `"a" - b` |
+| Remove invisible format characters (`\p{Cf}`: soft hyphen, zero-width space, BOM) — text pasted from Word or the web | `co\u00ADope` → `coope` |
+| Collapse whitespace (tabs, line breaks, NBSP) into one space and trim | `"  a \n b "` → `a b` |
+
+Punctuation is kept (`e-mail` does not match `email`) and other scripts are only lowercased. Not normalized: rich text / HTML (`content`) — it would match tag names; searching it is a full-text concern (`tsvector`), a different pattern.
+
+**Changing the rule** changes what every stored value should be: existing rows keep the old form until they are written again. Ship a rule change with a backfill that rewrites every normalized column.
+
+### Adding a normalized column
+
+**1. Table (`src/db/schema/<feature>.ts`)** — the column right after its source, `notNull()`, no default, and the map of source field → normalized column next to the table:
+
+```ts
+export const features = pgTable('features', {
+  // ...
+  title: text('title').notNull(),
+  normalizedTitle: text('normalized_title').notNull(),
+})
+
+export const FEATURE_NORMALIZED_FIELDS = {
+  title: 'normalizedTitle',
+} as const satisfies Record<string, keyof typeof features.$inferInsert>
+```
+
+`notNull()` without a default makes every `insert(features)` that forgets the column a type error — the service, the seed and the tests alike. `pnpm db:generate` emits a plain `ADD COLUMN … NOT NULL`, which fails on a table with rows: on a dev database, `pnpm db:reset`, migrate, then `pnpm db:seed`. A table that already holds data the product must keep needs the column added nullable, a backfill, then `SET NOT NULL`.
+
+**2. Writes (`<feature>-service.ts`)** — spread `normalizedValues(data, MAP)` into every insert and update. It returns a column for each mapped field present in `data` — every one on create, only the fields sent on a partial update — so the same line fits both:
+
+```ts
+await database.insert(features).values({ ...data, ...normalizedValues(data, FEATURE_NORMALIZED_FIELDS) })
+await database.update(features).set({ ...data, ...normalizedValues(data, FEATURE_NORMALIZED_FIELDS) })
+```
+
+The seed does the same for its rows. Any other writer (a job, an import, raw SQL) must too — it is the price of doing it in TypeScript.
+
+**3. Reads (`<feature>-service.ts`)**:
+
+```ts
+const SEARCH_COLUMNS = [features.normalizedTitle]                    // buildSearchClause
+const NORMALIZED_FILTER_COLUMNS = { title: features.normalizedTitle } // buildFilterWhereClause → { normalized }
+const SORT_COLUMNS = { title: features.normalizedTitle, /* … */ }      // sortBy=title
+// .orderBy(sortFn(sortCol), asc(features.id)) — rows equal once normalized keep a stable order
+```
+
+| Operator | Column |
+| --- | --- |
+| `search`, `contains`, `startsWith`, `endsWith` | normalized (`LIKE`, both sides normalized) |
+| `eq`, `neq`, `in` | original — exact, for a slug or a title a CMS looks up |
+| `sortBy=title` | normalized, with `id` as the tie-breaker |
+
+**4. Tests** — insert rows through a helper that fills the normalized columns the way the service does (`todoRow()` in `src/test/helpers.ts`), never by hand. In the route tests (`todos-routes.test.ts` → `describe('Normalized text columns')` is the reference), cover: search ignoring accents, case and repeated whitespace; `contains`/`startsWith`/`endsWith` on the normalized copy; `eq` still exact; `sortBy` on the field; the normalized columns absent from the response; `POST` fills them and `PATCH` refreshes only the fields sent.
+
+**Index (optional):** a `contains` (`LIKE '%v%'`) cannot use a btree index, so without one it scans the table — fine up to tens of thousands of rows. For more, a trigram index on the normalized column (`index('features_normalized_title_trgm_idx').using('gin', t.normalizedTitle.op('gin_trgm_ops'))`) needs the `pg_trgm` extension, created in a custom migration (`drizzle-kit generate --custom`) — check the host supports it first.
 
 ---
 
@@ -428,7 +509,7 @@ async function generateReport(query: FeaturesExportQuery): Promise<Buffer> {
     query.filters,
     query.filterLogic,
     FILTER_COLUMNS,
-    FILTER_COERCE,
+    { coerce: FILTER_COERCE, normalized: NORMALIZED_FILTER_COLUMNS },
   )
 
   const data = await database
@@ -626,6 +707,8 @@ export const features = pgTable('features', {
 })
 ```
 
+Every text column users will search or filter by "contains" gets a normalized copy (`normalizedTitle`) — see _Normalized text columns_.
+
 After creating the schema, generate and apply the migration:
 
 ```bash
@@ -639,6 +722,8 @@ pnpm db:migrate:test
 A factory function that receives `database: Database` and returns the data access methods. No business logic beyond SQL — any logic that is not plain SQL must be extracted and tested separately.
 
 `list()` always accepts `FeaturesListQuery` and applies both pagination and ordering. The `SORT_COLUMNS` map translates the string column name (from the query param) to the actual Drizzle column reference. The default sort column is used when `sortBy` is absent.
+
+The example below has no normalized columns. With them (see _Normalized text columns_), `create` and `update` spread `normalizedValues(data, FEATURE_NORMALIZED_FIELDS)` into `.values()` / `.set()`, and `SEARCH_COLUMNS`, the text filters and `SORT_COLUMNS.title` read the normalized copy. Forgetting it in `create` is a type error; in `update` it is not, and the search goes stale silently.
 
 ```ts
 import { asc, count, desc, eq } from 'drizzle-orm'
@@ -933,6 +1018,7 @@ The helpers in `src/test/helpers.ts` provide:
 - `createRoleWithPermissions(grants)` — a fresh role with exactly the given permissions, for permission enforcement tests
 - `findAuditLogs(action, resource, resourceId)` — the audit entries written for one record
 - `grantActiveSubscription(email, planId = 'pro')` — an active subscription for that user. Restricted users on a **subscription-gated** route need it (see _Permission enforcement tests_)
+- `todoRow(values)` — a `todos` row for `testDb.insert(todos)` with its normalized columns filled. A module with normalized columns adds its own (`featureRow()`)
 - Cleanup: `cleanupAuth()` (session, account, verification, user **and all roles**), `cleanupUsers()` / `cleanupRoles()` (everything except the test user / test role), `cleanupAuditLogs()`, `cleanupSubscriptions()`, `cleanupTodos()`, `cleanupUploads()`
 
 When adding a new module, add a `cleanupFeature()` function to `helpers.ts`:
@@ -996,6 +1082,8 @@ it('returns 401 on any route when not authenticated', async () => {
 | `POST /features`       | 201 with correct body; 400 for invalid body                                                                                                                                                                              |
 | `PATCH /features/:id`  | 404 for unknown id; updates and returns correct fields (fields not sent remain unchanged)                                                                                                                                |
 | `DELETE /features/:id` | 204 for existing item (one audit entry — `findAuditLogs`); 204 for unknown id and no audit entry (use a fresh id, e.g. `missing-${crypto.randomUUID()}`)                                                                                                                                                                                |
+
+A module with normalized columns also covers what _Normalized text columns_ → _Tests_ lists (search without accents, `eq` still exact, `PATCH` refreshing the copy, columns absent from the response).
 
 ### Permission enforcement tests
 

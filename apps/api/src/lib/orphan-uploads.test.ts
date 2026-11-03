@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it } from 'vitest'
 
 import { todoAttachments, todos, uploads } from '@/db/schema'
 import type { StorageProvider } from '@/lib/storage'
-import { cleanupTodos, cleanupUploads, testDb } from '@/test/helpers'
+import { cleanupTodos, cleanupUploads, testDb, todoRow } from '@/test/helpers'
 
 import { deleteOrphanUploads } from './orphan-uploads'
 import type { UploadReferenceLoader } from './upload-references'
@@ -108,12 +108,14 @@ describe('deleteOrphanUploads', () => {
 
     const [todo] = await testDb
       .insert(todos)
-      .values({
-        title: 'T',
-        description: 'D',
-        content: '<p>C</p>',
-        date: new Date(),
-      })
+      .values(
+        todoRow({
+          title: 'T',
+          description: 'D',
+          content: '<p>C</p>',
+          date: new Date(),
+        })
+      )
       .returning()
 
     await testDb
@@ -135,13 +137,15 @@ describe('deleteOrphanUploads', () => {
     const storage = createMockStorage()
     const upload = await insertUpload()
 
-    await testDb.insert(todos).values({
-      title: 'T',
-      description: 'D',
-      content: '<p>C</p>',
-      date: new Date(),
-      fileId: upload.id,
-    })
+    await testDb.insert(todos).values(
+      todoRow({
+        title: 'T',
+        description: 'D',
+        content: '<p>C</p>',
+        date: new Date(),
+        fileId: upload.id,
+      })
+    )
 
     const { deleted } = await deleteOrphanUploads(
       testDb,
@@ -159,13 +163,15 @@ describe('deleteOrphanUploads', () => {
     const orphan = await insertUpload()
     const referenced = await insertUpload()
 
-    await testDb.insert(todos).values({
-      title: 'T',
-      description: 'D',
-      content: '<p>C</p>',
-      date: new Date(),
-      imageId: referenced.id,
-    })
+    await testDb.insert(todos).values(
+      todoRow({
+        title: 'T',
+        description: 'D',
+        content: '<p>C</p>',
+        date: new Date(),
+        imageId: referenced.id,
+      })
+    )
 
     const { deleted } = await deleteOrphanUploads(
       testDb,

@@ -17,6 +17,7 @@ import {
   findAuditLogs,
   grantActiveSubscription,
   testDb,
+  todoRow,
 } from '@/test/helpers'
 
 const app = createTestApp()
@@ -76,18 +77,18 @@ describe('GET /todos', () => {
 
   it('returns all todos', async () => {
     await testDb.insert(todos).values([
-      {
+      todoRow({
         title: 'First',
         description: 'Desc 1',
         content: 'Content 1',
         date: new Date('2025-01-01'),
-      },
-      {
+      }),
+      todoRow({
         title: 'Second',
         description: 'Desc 2',
         content: 'Content 2',
         date: new Date('2025-01-02'),
-      },
+      }),
     ])
 
     const res = await app.inject({
@@ -106,27 +107,27 @@ describe('GET /todos', () => {
   describe('Filtering', () => {
     beforeEach(async () => {
       await testDb.insert(todos).values([
-        {
+        todoRow({
           title: 'Buy milk',
           description: 'Grocery errand',
           content: 'Content A',
           status: 'pending',
           date: new Date('2025-01-01'),
-        },
-        {
+        }),
+        todoRow({
           title: 'Learn Rust',
           description: 'Programming task',
           content: 'Content B',
           status: 'pending',
           date: new Date('2025-03-01'),
-        },
-        {
+        }),
+        todoRow({
           title: 'Read book',
           description: 'Leisure activity',
           content: 'Content C',
           status: 'completed',
           date: new Date('2025-06-01'),
-        },
+        }),
       ])
     })
 
@@ -285,6 +286,125 @@ describe('GET /todos', () => {
   })
 })
 
+describe('Normalized text columns', () => {
+  const titles = (body: { data: { title: string }[] }) =>
+    body.data.map((t) => t.title)
+
+  async function list(query: string) {
+    const res = await app.inject({
+      method: 'GET',
+      url: `/api/todos?${query}`,
+      headers: { cookie: authCookie },
+    })
+    expect(res.statusCode).toBe(200)
+    return res.json()
+  }
+
+  const containsFilter = (field: string, op: string, value: string) =>
+    `filters=${encodeURIComponent(JSON.stringify([{ field, op, value }]))}`
+
+  beforeEach(async () => {
+    await testDb.insert(todos).values([
+      todoRow({
+        title: 'Ação  RÁPIDA',
+        description: 'Reunião em São Paulo',
+        content: 'Content A',
+        date: new Date('2025-01-01'),
+      }),
+      todoRow({
+        title: 'abacate',
+        description: 'Feira',
+        content: 'Content B',
+        date: new Date('2025-01-02'),
+      }),
+      todoRow({
+        title: 'Zebra',
+        description: 'Zoo',
+        content: 'Content C',
+        date: new Date('2025-01-03'),
+      }),
+    ])
+  })
+
+  it('searches ignoring accents, case and repeated whitespace', async () => {
+    expect(titles(await list('search=acao%20rapida'))).toEqual(['Ação  RÁPIDA'])
+    expect(titles(await list('search=AÇÃO'))).toEqual(['Ação  RÁPIDA'])
+    expect(
+      titles(await list(`search=${encodeURIComponent('sao   paulo')}`))
+    ).toEqual(['Ação  RÁPIDA'])
+  })
+
+  it('applies contains, startsWith and endsWith on the normalized copy', async () => {
+    expect(
+      titles(await list(containsFilter('title', 'contains', 'acao')))
+    ).toEqual(['Ação  RÁPIDA'])
+    expect(
+      titles(await list(containsFilter('title', 'startsWith', 'ACAO R')))
+    ).toEqual(['Ação  RÁPIDA'])
+    expect(
+      titles(await list(containsFilter('description', 'endsWith', 'PAULO')))
+    ).toEqual(['Ação  RÁPIDA'])
+  })
+
+  it('keeps eq exact', async () => {
+    expect(
+      (await list(containsFilter('title', 'eq', 'acao rapida'))).total
+    ).toBe(0)
+    expect(
+      titles(await list(containsFilter('title', 'eq', 'Ação  RÁPIDA')))
+    ).toEqual(['Ação  RÁPIDA'])
+  })
+
+  it('sorts the title by its normalized copy', async () => {
+    expect(titles(await list('sortBy=title&sortOrder=asc'))).toEqual([
+      'abacate',
+      'Ação  RÁPIDA',
+      'Zebra',
+    ])
+  })
+
+  it('never returns the normalized columns', async () => {
+    const [item] = (await list('')).data
+    expect(item).not.toHaveProperty('normalizedTitle')
+    expect(item).not.toHaveProperty('normalizedDescription')
+  })
+
+  it('fills them on create and refreshes them on update', async () => {
+    const create = await app.inject({
+      method: 'POST',
+      url: '/api/todos',
+      payload: {
+        title: 'Café com pão',
+        description: 'Padaria',
+        content: '<p>C</p>',
+        date: '2025-03-20',
+        attachmentIds: [(await insertUpload()).id],
+        fileId: (await insertUpload()).id,
+        imageId: (await insertUpload('img.png', 'image/png')).id,
+      },
+      headers: { cookie: authCookie },
+    })
+    expect(create.statusCode).toBe(201)
+    const { id } = create.json()
+    expect(titles(await list('search=cafe%20com%20pao'))).toEqual([
+      'Café com pão',
+    ])
+
+    await app.inject({
+      method: 'PATCH',
+      url: `/api/todos/${id}`,
+      payload: { title: 'Pão de queijo' },
+      headers: { cookie: authCookie },
+    })
+    expect((await list('search=cafe')).total).toBe(0)
+    expect(titles(await list('search=pao%20de%20queijo'))).toEqual([
+      'Pão de queijo',
+    ])
+    // `description` was not sent: its normalized copy is untouched.
+    expect(titles(await list('search=padaria'))).toEqual(['Pão de queijo'])
+  })
+})
+
 describe('GET /todos/:id', () => {
   it('returns 404 when todo not found', async () => {
     const res = await app.inject({
@@ -299,12 +419,14 @@ describe('GET /todos/:id', () => {
   it('returns the todo when found', async () => {
     const [inserted] = await testDb
       .insert(todos)
-      .values({
-        title: 'My Todo',
-        description: 'My Desc',
-        content: 'My Content',
-        date: new Date('2025-06-15'),
-      })
+      .values(
+        todoRow({
+          title: 'My Todo',
+          description: 'My Desc',
+          content: 'My Content',
+          date: new Date('2025-06-15'),
+        })
+      )
       .returning()
 
     const res = await app.inject({
@@ -392,12 +514,14 @@ describe('PATCH /todos/:id', () => {
   it('updates and returns the todo', async () => {
     const [inserted] = await testDb
       .insert(todos)
-      .values({
-        title: 'Old Title',
-        description: 'Old Desc',
-        content: 'Old Content',
-        date: new Date('2025-01-01'),
-      })
+      .values(
+        todoRow({
+          title: 'Old Title',
+          description: 'Old Desc',
+          content: 'Old Content',
+          date: new Date('2025-01-01'),
+        })
+      )
       .returning()
 
     const res = await app.inject({
@@ -420,12 +544,14 @@ describe('DELETE /todos/:id', () => {
   it('returns 204 on successful delete', async () => {
     const [inserted] = await testDb
       .insert(todos)
-      .values({
-        title: 'To Delete',
-        description: 'Desc',
-        content: 'Content',
-        date: new Date('2025-01-01'),
-      })
+      .values(
+        todoRow({
+          title: 'To Delete',
+          description: 'Desc',
+          content: 'Content',
+          date: new Date('2025-01-01'),
+        })
+      )
       .returning()
 
     const res = await app.inject({
@@ -671,12 +797,14 @@ describe('Permission enforcement', () => {
   it('returns 403 on PATCH /todos/:id without todo:edit', async () => {
     const [todo] = await testDb
       .insert(todos)
-      .values({
-        title: 'T',
-        description: 'D',
-        content: 'C',
-        date: new Date('2025-01-01'),
-      })
+      .values(
+        todoRow({
+          title: 'T',
+          description: 'D',
+          content: 'C',
+          date: new Date('2025-01-01'),
+        })
+      )
       .returning()
     const cookie = await createRestrictedSession([
       { resource: 'todos', action: 'view' },
@@ -694,12 +822,14 @@ describe('Permission enforcement', () => {
   it('returns 403 on DELETE /todos/:id without todo:delete', async () => {
     const [todo] = await testDb
       .insert(todos)
-      .values({
-        title: 'T',
-        description: 'D',
-        content: 'C',
-        date: new Date('2025-01-01'),
-      })
+      .values(
+        todoRow({
+          title: 'T',
+          description: 'D',
+          content: 'C',
+          date: new Date('2025-01-01'),
+        })
+      )
       .returning()
     const cookie = await createRestrictedSession([
       { resource: 'todos', action: 'view' },

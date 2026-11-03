@@ -200,6 +200,10 @@ Unless the prompt explicitly says otherwise:
 
 The only exception is a `/all` endpoint for select-field use cases (e.g. `GET /roles/all`) — this returns a plain array with no pagination and is added only when another module needs it for a UI selector.
 
+### Normalized text columns
+
+Every text column users will search or filter by "contains" (the web's search box and `FilterPanel`, or another client such as a site using the API as a CMS) gets a normalized copy written by the service: `title` → `normalizedTitle`, with accents, case and repeated whitespace removed by `normalizeText()` (`apps/api/src/lib/normalize-text.ts`). Search, `contains`/`startsWith`/`endsWith` and sorting use the copy; `eq`/`in` stay exact on the original. The API contract never mentions it — clients keep filtering by `title`. Full guide: `apps/api/CLAUDE.md` → _Normalized text columns_; `todos` is the reference.
+
 ### RBAC checklist
 
 When a new module exposes user-facing resources, register it in the permission system as part of module creation:

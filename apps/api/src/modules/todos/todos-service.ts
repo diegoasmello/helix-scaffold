@@ -1,8 +1,14 @@
 import { and, asc, count, desc, eq, inArray } from 'drizzle-orm'
 
 import type { Database } from '@/db'
-import { todoAttachments, todos, uploads } from '@/db/schema'
+import {
+  TODO_NORMALIZED_FIELDS,
+  todoAttachments,
+  todos,
+  uploads,
+} from '@/db/schema'
 import { buildFilterWhereClause, buildSearchClause } from '@/lib/filtering'
+import { normalizedValues } from '@/lib/normalize-text'
 import { getPaginationParams } from '@/lib/pagination'
 import type { StorageProvider } from '@/lib/storage'
 
@@ -13,8 +19,9 @@ import type {
   UpdateTodoInput,
 } from './todos-schema'
 
+// `title` sorts by its normalized copy: `Árvore` next to `arvore`, not after `z`.
 const SORT_COLUMNS = {
-  title: todos.title,
+  title: todos.normalizedTitle,
   status: todos.status,
   date: todos.date,
   createdAt: todos.createdAt,
@@ -27,8 +34,15 @@ const FILTER_COLUMNS = {
   date: todos.date,
 } as const
 
+// `contains`/`startsWith`/`endsWith` on these fields use the normalized copy;
+// `eq`/`neq`/`in` stay exact on `FILTER_COLUMNS`.
+const NORMALIZED_FILTER_COLUMNS = {
+  title: todos.normalizedTitle,
+  description: todos.normalizedDescription,
+} as const
+
 // The list's search box matches the title or the description.
-const SEARCH_COLUMNS = [todos.title, todos.description]
+const SEARCH_COLUMNS = [todos.normalizedTitle, todos.normalizedDescription]
 
 const FILTER_COERCE = {
   date: (v: unknown) => (typeof v === 'string' ? new Date(v) : v),
@@ -111,12 +125,10 @@ export function createTodosService(
     const sortCol = SORT_COLUMNS[query.sortBy ?? 'createdAt']
     const sortFn = query.sortOrder === 'desc' ? desc : asc
     const where = and(
-      buildFilterWhereClause(
-        query.filters,
-        query.filterLogic,
-        FILTER_COLUMNS,
-        FILTER_COERCE
-      ),
+      buildFilterWhereClause(query.filters, query.filterLogic, FILTER_COLUMNS, {
+        coerce: FILTER_COERCE,
+        normalized: NORMALIZED_FILTER_COLUMNS,
+      }),
       buildSearchClause(query.search, SEARCH_COLUMNS)
     )
 
@@ -125,7 +137,7 @@ export function createTodosService(
         .select()
         .from(todos)
         .where(where)
-        .orderBy(sortFn(sortCol))
+        .orderBy(sortFn(sortCol), asc(todos.id))
         .limit(limit)
         .offset(offset),
       database.select({ total: count() }).from(todos).where(where),
@@ -177,7 +189,13 @@ export function createTodosService(
 
   async function create(data: CreateTodoInput) {
     const { attachmentIds = [], ...todoData } = data
-    const [todo] = await database.insert(todos).values(todoData).returning()
+    const [todo] = await database
+      .insert(todos)
+      .values({
+        ...todoData,
+        ...normalizedValues(todoData, TODO_NORMALIZED_FIELDS),
+      })
+      .returning()
     await syncAttachments(database, todo.id, attachmentIds)
 
     const singleUploadIds = [todo.fileId, todo.imageId].filter(
@@ -204,7 +222,10 @@ export function createTodosService(
     if (Object.keys(todoData).length > 0) {
       const [updated] = await database
         .update(todos)
-        .set(todoData)
+        .set({
+          ...todoData,
+          ...normalizedValues(todoData, TODO_NORMALIZED_FIELDS),
+        })
         .where(eq(todos.id, id))
         .returning()
       todo = updated
@@ -279,12 +300,10 @@ export function createTodosService(
     const sortCol = SORT_COLUMNS[query.sortBy ?? 'createdAt']
     const sortFn = query.sortOrder === 'desc' ? desc : asc
     const where = and(
-      buildFilterWhereClause(
-        query.filters,
-        query.filterLogic,
-        FILTER_COLUMNS,
-        FILTER_COERCE
-      ),
+      buildFilterWhereClause(query.filters, query.filterLogic, FILTER_COLUMNS, {
+        coerce: FILTER_COERCE,
+        normalized: NORMALIZED_FILTER_COLUMNS,
+      }),
       buildSearchClause(query.search, SEARCH_COLUMNS)
     )
 
@@ -292,7 +311,7 @@ export function createTodosService(
       .select()
       .from(todos)
       .where(where)
-      .orderBy(sortFn(sortCol))
+      .orderBy(sortFn(sortCol), asc(todos.id))
       .limit(5000)
 
     const { renderTodosReport } = await import('./templates/todos-report')

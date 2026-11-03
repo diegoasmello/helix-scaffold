@@ -11,6 +11,10 @@ export const todos = pgTable('todos', {
     .$defaultFn(() => uuidv7()),
   title: text('title').notNull(),
   description: text('description').notNull(),
+  // Searchable copies of `title`/`description` (see `TODO_NORMALIZED_FIELDS`).
+  // Never returned by the API.
+  normalizedTitle: text('normalized_title').notNull(),
+  normalizedDescription: text('normalized_description').notNull(),
   content: text('content').notNull(),
   status: todoStatusEnum('status').default('pending').notNull(),
   date: timestamp('date').notNull(),
@@ -26,3 +30,14 @@ export const todos = pgTable('todos', {
     .defaultNow()
     .$onUpdateFn(() => new Date()),
 })
+
+/**
+ * The text fields of `todos` with a normalized copy (`src/lib/normalize-text.ts`):
+ * every write fills it with `normalizedValues(data, TODO_NORMALIZED_FIELDS)` —
+ * the service, the seed and the tests' `todoRow()`. Search and the text filters
+ * read it. A new normalized column goes in the table above and here.
+ */
+export const TODO_NORMALIZED_FIELDS = {
+  title: 'normalizedTitle',
+  description: 'normalizedDescription',
+} as const satisfies Record<string, keyof typeof todos.$inferInsert>

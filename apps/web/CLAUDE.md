@@ -183,6 +183,8 @@ Field types and their operators (`text`, `number`, `date`, `select`, `boolean`) 
 
 ### Search box and "no results"
 
+The API already ignores accents, case and repeated whitespace in `search` and in the text operators (`contains`, `startsWith`, `endsWith` — see `apps/api/CLAUDE.md` → _Normalized text columns_): send what the user typed, never normalize it in the web.
+
 A list whose API accepts `search` (see `apps/api/CLAUDE.md` → _Search box_) adds `search: searchSearchParam` (`@/lib/list-filters`) to `validateSearch` and `loaderDeps`, passes it to the list hook and to `useExportPdf`, and calls `getFilterBarProps(search, navigate, { withSearch: true })`. Besides `value`/`onChange`/`search` (spread into `FilterBar`, with the module's placeholder), it returns `active` (filters or a search narrow the list) and `clearAll` — keep those two out of the spread:
 
 ```tsx

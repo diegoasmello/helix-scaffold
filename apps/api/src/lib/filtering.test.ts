@@ -17,6 +17,7 @@ function toSQL(expr: SQL) {
 
 const testTable = pgTable('items', {
   name: text('name').notNull(),
+  normalizedName: text('normalized_name').notNull(),
   status: text('status').notNull(),
   count: integer('count').notNull(),
 })
@@ -389,7 +390,7 @@ describe('buildFilterWhereClause', () => {
         [{ field: 'count', op: 'between', value: ['2', '5'] }],
         'AND',
         columnMap,
-        { count: (v) => Number(v) }
+        { coerce: { count: (v) => Number(v) } }
       )!
       expect(toSQL(result).params).toEqual([2, 5])
     })
@@ -401,7 +402,7 @@ describe('buildFilterWhereClause', () => {
         [{ field: 'count', op: 'in', value: ['1', '2'] }],
         'AND',
         columnMap,
-        { count: (v) => Number(v) }
+        { coerce: { count: (v) => Number(v) } }
       )!
       expect(toSQL(result).params).toEqual([1, 2])
     })
@@ -463,7 +464,7 @@ describe('buildFilterWhereClause', () => {
         [{ field: 'count', op: 'eq', value: 5 }],
         'AND',
         columnMap,
-        coerce
+        { coerce }
       )!
       expect(toSQL(result).params).toEqual([10])
     })
@@ -479,7 +480,7 @@ describe('buildFilterWhereClause', () => {
           [{ field: 'name', op: 'eq', value: null }],
           'AND',
           columnMap,
-          coerce
+          { coerce }
         )
       ).not.toThrow()
     })
@@ -494,7 +495,7 @@ describe('buildFilterWhereClause', () => {
         [{ field: 'name', op: 'isNull' }],
         'AND',
         columnMap,
-        coerce
+        { coerce }
       )
       expect(result).toBeDefined()
     })
@@ -506,10 +507,84 @@ describe('buildFilterWhereClause', () => {
         [{ field: 'name', op: 'eq', value: iso }],
         'AND',
         columnMap,
-        coerce
+        { coerce }
       )!
       expect(toSQL(result).params).toEqual([new Date(iso)])
     })
+  })
+})
+
+describe('normalized text columns', () => {
+  const normalized: Partial<Record<keyof typeof columnMap, AnyColumn>> = {
+    name: testTable.normalizedName,
+  }
+
+  it.each([
+    ['contains', '%acao rapida%'],
+    ['startsWith', 'acao rapida%'],
+    ['endsWith', '%acao rapida'],
+  ] as const)(
+    '%s: LIKE on the normalized column with the normalized value',
+    (op, pattern) => {
+      const { sql, params } = toSQL(
+        buildFilterWhereClause(
+          [{ field: 'name', op, value: '  Ação   RÁPIDA ' }],
+          'AND',
+          columnMap,
+          { normalized }
+        )!
+      )
+      expect(sql).toContain('"normalized_name" like')
+      expect(params).toEqual([pattern])
+    }
+  )
+
+  it('keeps eq exact on the original column', () => {
+    const { sql, params } = toSQL(
+      buildFilterWhereClause(
+        [{ field: 'name', op: 'eq', value: 'Ação' }],
+        'AND',
+        columnMap,
+        { normalized }
+      )!
+    )
+    expect(sql).toContain('"name" =')
+    expect(params).toEqual(['Ação'])
+  })
+
+  it('escapes LIKE wildcards after normalizing', () => {
+    const { params } = toSQL(
+      buildFilterWhereClause(
+        [{ field: 'name', op: 'contains', value: '50%_OFF' }],
+        'AND',
+        columnMap,
+        { normalized }
+      )!
+    )
+    expect(params).toEqual(['%50\\%\\_off%'])
+  })
+
+  it('escapes LIKE wildcards on a field without a normalized column', () => {
+    const { params } = toSQL(
+      buildFilterWhereClause(
+        [{ field: 'status', op: 'contains', value: '50%' }],
+        'AND',
+        columnMap,
+        { normalized }
+      )!
+    )
+    expect(params).toEqual(['%50\\%%'])
+  })
+
+  it('skips a value that normalizes to nothing', () => {
+    expect(
+      buildFilterWhereClause(
+        [{ field: 'name', op: 'contains', value: '\u0301' }],
+        'AND',
+        columnMap,
+        { normalized }
+      )
+    ).toBeUndefined()
   })
 })
 
@@ -530,20 +605,34 @@ describe('searchQuerySchema', () => {
 
 describe('buildSearchClause', () => {
   it('returns undefined without a term', () => {
-    expect(buildSearchClause(undefined, [testTable.name])).toBeUndefined()
+    expect(
+      buildSearchClause(undefined, [testTable.normalizedName])
+    ).toBeUndefined()
   })
 
-  it('matches the term in any of the columns, case-insensitively', () => {
+  it('matches the normalized term in any of the columns with LIKE', () => {
     const { sql, params } = toSQL(
-      buildSearchClause('milk', [testTable.name, testTable.status])!
+      buildSearchClause('  São   PAULO ', [
+        testTable.normalizedName,
+        testTable.status,
+      ])!
     )
-    expect(sql.toLowerCase()).toContain('ilike')
+    expect(sql.toLowerCase()).toContain(' like ')
+    expect(sql.toLowerCase()).not.toContain('ilike')
     expect(sql.toLowerCase()).toContain(' or ')
-    expect(params).toEqual(['%milk%', '%milk%'])
+    expect(params).toEqual(['%sao paulo%', '%sao paulo%'])
   })
 
   it('escapes LIKE wildcards in the term', () => {
-    const { params } = toSQL(buildSearchClause('50%_off', [testTable.name])!)
+    const { params } = toSQL(
+      buildSearchClause('50%_off', [testTable.normalizedName])!
+    )
     expect(params).toEqual(['%50\\%\\_off%'])
+  })
+
+  it('returns undefined when the term normalizes to nothing', () => {
+    expect(
+      buildSearchClause('\u0301', [testTable.normalizedName])
+    ).toBeUndefined()
   })
 })

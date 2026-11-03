@@ -14,6 +14,8 @@ This module also serves as the **reference implementation for `requireSubscripti
 | `id`          | `text` PK              | UUIDv7, generated at insert     |
 | `title`       | `text NOT NULL`        |                                 |
 | `description` | `text NOT NULL`        |                                 |
+| `normalizedTitle` | `text NOT NULL` | `normalizeText(title)` — written by the service, never returned |
+| `normalizedDescription` | `text NOT NULL` | `normalizeText(description)` — same |
 | `content`     | `text NOT NULL`        | Rich text (HTML string)         |
 | `status`      | `todo_status NOT NULL` | Default `'pending'` at DB level |
 | `date`        | `timestamp NOT NULL`   | User-supplied date, no timezone |
@@ -24,6 +26,8 @@ This module also serves as the **reference implementation for `requireSubscripti
 
 **Junction table**: `todo_attachments` (`src/db/schema/todo-attachments.ts`) — `(todo_id, upload_id)` composite PK, both FKs `ON DELETE CASCADE`. Holds the multi-file `attachments`.
 
+**Normalized text columns:** `TODO_NORMALIZED_FIELDS` (next to the table) maps `title`/`description` to their normalized copies. This module is the reference for the pattern — see `apps/api/CLAUDE.md` → _Normalized text columns_.
+
 All three upload references (`todo_attachments.upload_id`, `todos.file_id`, `todos.image_id`) are registered in `src/config/upload-references.ts`, so the orphan cleanup job never deletes them.
 
 ## Schema (`todos-schema.ts`)
@@ -33,16 +37,16 @@ All three upload references (`todo_attachments.upload_id`, `todos.file_id`, `tod
 - `updateTodoSchema` — all fields optional: `title`, `description`, `content`, `status`, `date`, `attachmentIds` (min 1 when sent), `fileId`, `imageId`. This is the only way to change status.
 - `todosExportQuerySchema` — sorting + filtering only (no pagination): `todosSortingSchema.merge(todosFilterQuerySchema)`. Used by `GET /todos/export`.
 - `date` uses `z.coerce.date()` in both create and update schemas so ISO strings from the request body are coerced to `Date`.
-- Sort columns: `['title', 'status', 'date', 'createdAt']`. Default sort: `createdAt`.
+- Sort columns: `['title', 'status', 'date', 'createdAt']`. Default sort: `createdAt`. `title` sorts by `normalizedTitle`; `id` breaks ties.
 - Filter fields: `['title', 'description', 'status', 'date']`.
 
 ## Service (`todos-service.ts`)
 
 Factory `createTodosService(database, storage)` returns `{ list, getById, create, update, remove, generateReport }`. Not pure SQL — it also assembles the embedded uploads and cleans up storage, but that logic is covered by the route tests (`describe('Attachments')`), so there is no separate service test.
 
-- `list` applies filters (`FILTER_COLUMNS` + `FILTER_COERCE` for `date`) and the `search` param (`SEARCH_COLUMNS`: title, description — combined with `and()`), ordering (`SORT_COLUMNS`) and pagination, then loads attachments (one query for the page, via `todo_attachments`) and the single `file`/`image` uploads (one `inArray` query).
-- `create` inserts the row (no `status` — the DB default applies), then inserts one `todo_attachments` row per `attachmentId`.
-- `update` updates only the sent columns; when `attachmentIds` is sent it fully resyncs the junction rows (delete all, insert new). Returns `null` for an unknown id.
+- `list` applies filters (`FILTER_COLUMNS`, `FILTER_COERCE` for `date`, `NORMALIZED_FILTER_COLUMNS` for the text operators on `title`/`description`) and the `search` param (`SEARCH_COLUMNS`: `normalizedTitle`, `normalizedDescription` — combined with `and()`), ordering (`SORT_COLUMNS`, then `id`) and pagination, then loads attachments (one query for the page, via `todo_attachments`) and the single `file`/`image` uploads (one `inArray` query).
+- `create` inserts the row with `normalizedValues(data, TODO_NORMALIZED_FIELDS)` (no `status` — the DB default applies), then inserts one `todo_attachments` row per `attachmentId`.
+- `update` updates only the sent columns, and the normalized copy of each text field sent (same `normalizedValues` call); when `attachmentIds` is sent it fully resyncs the junction rows (delete all, insert new). Returns `null` for an unknown id.
 - `remove` is a hard delete: collects the todo's attachment, file and image uploads → deletes the todo (cascades the junction rows) → deletes those `uploads` rows → deletes their storage keys, original + variants (best-effort, `Promise.allSettled`).
 - `generateReport` queries up to 5000 rows (hard limit) with the same sort/filter params as `list`, then delegates to `renderTodosReport` via dynamic import.
 
@@ -108,6 +112,8 @@ Route integration tests against the real test database (`helix_test`).
 - `POST /todos` sends `date` as an ISO string (`'2025-03-20'`) — `z.coerce.date()` parses it — plus real upload ids from the local `insertUpload()` helper (a `testDb.insert(uploads)` row — reuse it when a test needs uploads).
 - `PATCH` asserts that fields not sent in the body (`description`) remain unchanged.
 - `DELETE` asserts 204 both for existing and non-existing ids.
+- Rows are inserted with `todoRow({...})` (`src/test/helpers.ts`), which fills the normalized columns.
+- `describe('Normalized text columns')` is the reference for the pattern's tests: accent/case/whitespace-insensitive search and text filters, `eq` exact, sort, columns absent from the response, `POST`/`PATCH` writing them.
 - `describe('Filtering')` is the reference for filter tests (see `apps/api/CLAUDE.md` → _Filtering_).
 - `describe('Attachments')` covers create/read/update of `attachmentIds` and that deleting a todo removes its attachment rows.
 

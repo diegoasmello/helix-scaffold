@@ -10,12 +10,14 @@ import { db } from '@/db'
 import {
   rolePermissions,
   roles,
+  TODO_NORMALIZED_FIELDS,
   todoAttachments,
   todos,
   user,
 } from '@/db/schema'
 import { env } from '@/env'
 import { createEmailProvider } from '@/lib/email'
+import { normalizedValues } from '@/lib/normalize-text'
 import { createStorageProvider } from '@/lib/storage'
 import {
   createAccountProvisioning,
@@ -176,6 +178,9 @@ async function main() {
     }),
     imageId: imageUploads.imageIds[i],
     fileId: fileUploads.fileIds[i],
+  })).map((values) => ({
+    ...values,
+    ...normalizedValues(values, TODO_NORMALIZED_FIELDS),
   }))
   const insertedTodos = await db.insert(todos).values(todoValues).returning()
 
