@@ -1,5 +1,8 @@
 pnpm type-check
 
+# Unused files, exports and dependencies (knip.json). Reads the working tree.
+pnpm --silent knip
+
 # The committed OpenAPI spec must match the routes. pre-commit re-exports it
 # when apps/api/src changes; this catches what it can't see (dependency bumps,
 # rebases, --no-verify). The export reads the working tree, so it only proves
