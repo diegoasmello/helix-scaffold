@@ -20,9 +20,9 @@ export interface PageSectionLayoutProps {
   footerActions?: ReactNode
   children: ReactNode
   /**
-   * `form` (create/edit) lets `FormSection`s run edge to edge. `view`
-   * (detail) keeps the header and the content together. Neither draws a line
-   * under the header, unless there are `tabs`.
+   * `view` (detail) puts plain content right under the header; `form`
+   * (create/edit) keeps the page padding above it. Neither draws a line under
+   * the header, unless there are `tabs`.
    */
   variant?: 'form' | 'view'
 }
@@ -30,9 +30,8 @@ export interface PageSectionLayoutProps {
 /**
  * Shared body of `PageCreate`, `PageEdit` and `PageView`: a header without
  * breadcrumb, the content and `footerActions` stuck to the bottom of the
- * screen. In forms the `FormSection`s are separated by full-width borders.
- * Inside a `Form`, it shows the "fix N fields" alert after
- * a failed submit and "Unsaved changes" next to the footer buttons.
+ * screen. Inside a `Form`, it shows the "fix N fields" alert after a failed
+ * submit and "Unsaved changes" next to the footer buttons.
  */
 export function PageSectionLayout(props: Readonly<PageSectionLayoutProps>) {
   const {
@@ -111,7 +110,8 @@ const useStyles = createStyles((theme, _, u) => {
   const belowSm = `@media (max-width: calc(${theme.breakpoints.sm} - 0.0625em))`
 
   return {
-    // Cancels the Layout's gutters: borders run edge to edge.
+    // Cancels the Layout's gutters: the footer and the tabs' border run edge
+    // to edge.
     root: css`
       flex: 1;
       display: flex;

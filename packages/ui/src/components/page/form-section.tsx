@@ -14,7 +14,7 @@ export interface FormSectionProps {
 /**
  * A group of fields in a form page (`PageCreate`, `PageEdit`): the title and
  * description on the left, the fields on the right — stacked on narrow
- * screens. Separated from the next group by a full-width border.
+ * screens.
  */
 export function FormSection(props: Readonly<FormSectionProps>) {
   const { title, description, children } = props
@@ -41,29 +41,18 @@ export function FormSection(props: Readonly<FormSectionProps>) {
 
 const useSectionStyles = createStyles((theme, _, u) => {
   const belowSm = `@media (max-width: calc(${theme.breakpoints.sm} - 0.0625em))`
-  const bordered = css`
-    padding: 28px var(--helix-page-px, 0px);
-    ${u.light} {
-      border-bottom: 1px solid ${theme.colors.gray[3]};
-    }
-    ${u.dark} {
-      border-bottom: 1px solid ${theme.colors.dark[5]};
-    }
-    ${belowSm} {
-      padding-top: 20px;
-      padding-bottom: 20px;
-    }
-    &:last-child {
-      border-bottom: 0;
-    }
-  `
 
   return {
     formSection: css`
-      ${bordered};
+      padding: 28px var(--helix-page-px, 0px);
       display: flex;
       flex-wrap: wrap;
       gap: 20px 48px;
+
+      ${belowSm} {
+        padding-top: 20px;
+        padding-bottom: 20px;
+      }
     `,
     title: css`
       margin: 0;
