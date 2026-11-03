@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import type { TodoFormValues } from './types'
+import type { TodoFormValues, UploadItem } from './types'
 import { todoFormValidate } from './validation'
 
 const base: TodoFormValues = {
@@ -110,7 +110,7 @@ describe('todoFormValidate', () => {
     })
 
     it('returns null when a file is provided', () => {
-      const upload = { id: 'file-1' } as import('./types').UploadItem
+      const upload = { id: 'file-1' } as UploadItem
       expect(todoFormValidate.file(upload, base)).toBeNull()
     })
   })
@@ -121,7 +121,7 @@ describe('todoFormValidate', () => {
     })
 
     it('returns null when an image is provided', () => {
-      const upload = { id: 'img-1' } as import('./types').UploadItem
+      const upload = { id: 'img-1' } as UploadItem
       expect(todoFormValidate.image(upload, base)).toBeNull()
     })
   })

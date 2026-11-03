@@ -46,7 +46,7 @@ export const subscriptionsListRoute = createRoute({
     queryClient.ensureQueryData(getSubscriptionsSuspenseQueryOptions(deps)),
 })
 
-export const subscriptionsCreateRoute = createRoute({
+const subscriptionsCreateRoute = createRoute({
   getParentRoute: () => authenticatedRoute,
   path: '/subscriptions/create',
   component: SubscriptionsCreate,

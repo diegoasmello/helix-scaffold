@@ -50,11 +50,9 @@ Layout: a `PageView` titled "Account settings" with a `PageTabs` (one underlined
 
 | Alias | Source |
 |---|---|
-| `MeProfile` | `GetMeQueryResponse` from `@helix/api-client/types` |
-| `UpdateMeInput` | `PatchMeMutationRequest` |
+| `UpdateMeInput` | `PatchMeMutationRequest` from `@helix/api-client/types` |
 | `UpdateMeEmailInput` | `PatchMeEmailMutationRequest` |
 | `UpdateMePasswordInput` | `PatchMePasswordMutationRequest` |
-| `SetPasswordInput` | `PostMeSetPasswordMutationRequest` |
 
 Form-specific interfaces (not from the API):
 

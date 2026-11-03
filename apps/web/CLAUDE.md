@@ -1108,7 +1108,7 @@ Outside these cases, keeping the mutation inline is preferable — avoids indire
 
 ### 4. Routes (`routes/index.ts`)
 
-Export each route as a named constant and collect them in a combined array. **Never use a factory function** — `getParentRoute` receives `authenticatedRoute` directly:
+Declare each route as a named constant and collect them in a combined array. Export a route only when a component or test reads it (`xxxCreateRoute.useNavigate()`, `xxxDetailRoute.useLoaderData()`); the others stay local — `pnpm knip` reports an export nobody imports. **Never use a factory function** — `getParentRoute` receives `authenticatedRoute` directly:
 
 ```ts
 import { z } from 'zod'

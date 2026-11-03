@@ -52,7 +52,7 @@ export const signUpRoute = createRoute({
   },
 })
 
-export const forgotPasswordRoute = createRoute({
+const forgotPasswordRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/forgot-password',
   component: ForgotPassword,

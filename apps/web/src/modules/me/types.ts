@@ -1,16 +1,12 @@
 import type {
-  GetMeQueryResponse,
   PatchMeEmailMutationRequest,
   PatchMeMutationRequest,
   PatchMePasswordMutationRequest,
-  PostMeSetPasswordMutationRequest,
 } from '@helix/api-client/types'
 
-export type MeProfile = GetMeQueryResponse
 export type UpdateMeInput = PatchMeMutationRequest
 export type UpdateMeEmailInput = PatchMeEmailMutationRequest
 export type UpdateMePasswordInput = PatchMePasswordMutationRequest
-export type SetPasswordInput = PostMeSetPasswordMutationRequest
 
 export interface LinkedAccount {
   id: string
