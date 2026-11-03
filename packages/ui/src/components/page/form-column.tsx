@@ -2,6 +2,8 @@ import { css } from '@emotion/react'
 import { createStyles } from '@mantine/emotion'
 import type { ReactNode } from 'react'
 
+import { FORM_MAX_WIDTH } from './form-widths'
+
 export interface FormColumnProps {
   /** The fields. */
   children: ReactNode
@@ -9,7 +11,8 @@ export interface FormColumnProps {
 
 /**
  * The fields of a short form page (`PageCreate`, `PageEdit`) in one column,
- * up to 720px wide. Longer forms group their fields in `FormSection`s instead.
+ * as wide as a sectioned form. Longer forms group their fields in
+ * `FormSection`s instead.
  */
 export function FormColumn(props: Readonly<FormColumnProps>) {
   const { children } = props
@@ -22,7 +25,7 @@ export function FormColumn(props: Readonly<FormColumnProps>) {
 const useStyles = createStyles(() => ({
   root: css`
     width: 100%;
-    max-width: 720px;
+    max-width: ${FORM_MAX_WIDTH}px;
     display: flex;
     flex-direction: column;
     gap: 18px;

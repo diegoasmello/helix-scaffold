@@ -2,6 +2,12 @@ import { css } from '@emotion/react'
 import { createStyles } from '@mantine/emotion'
 import { type ReactNode, useId } from 'react'
 
+import {
+  FORM_COLUMN_GAP,
+  FORM_FIELDS_MAX_WIDTH,
+  FORM_INTRO_MAX_WIDTH,
+} from './form-widths'
+
 export interface FormSectionProps {
   /** The section's `h2`. */
   title: ReactNode
@@ -47,7 +53,7 @@ const useSectionStyles = createStyles((theme, _, u) => {
       padding: 28px var(--helix-page-px, 0px);
       display: flex;
       flex-wrap: wrap;
-      gap: 20px 48px;
+      gap: 20px ${FORM_COLUMN_GAP}px;
 
       ${belowSm} {
         padding-top: 20px;
@@ -62,7 +68,7 @@ const useSectionStyles = createStyles((theme, _, u) => {
     `,
     intro: css`
       flex: 1 1 240px;
-      max-width: 300px;
+      max-width: ${FORM_INTRO_MAX_WIDTH}px;
       display: flex;
       flex-direction: column;
       gap: 4px;
@@ -85,7 +91,7 @@ const useSectionStyles = createStyles((theme, _, u) => {
     fields: css`
       flex: 999 1 420px;
       min-width: 0;
-      max-width: 720px;
+      max-width: ${FORM_FIELDS_MAX_WIDTH}px;
       display: flex;
       flex-direction: column;
       gap: 18px;
