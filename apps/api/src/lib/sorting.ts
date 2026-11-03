@@ -8,8 +8,3 @@ export function sortingQuerySchema<const T extends string>(
     sortOrder: z.enum(['asc', 'desc']).default('asc'),
   })
 }
-
-export type SortingQuery<T extends string = string> = {
-  sortBy?: T
-  sortOrder: 'asc' | 'desc'
-}

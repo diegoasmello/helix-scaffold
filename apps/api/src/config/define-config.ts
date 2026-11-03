@@ -5,14 +5,14 @@ import { z } from 'zod'
 // Every field is optional; omitted fields fall back to the defaults below.
 // ─────────────────────────────────────────────
 
-export type ConfigMode = 'development' | 'production' | 'test'
+type ConfigMode = 'development' | 'production' | 'test'
 
-export interface ConfigContext {
+interface ConfigContext {
   /** Current `NODE_ENV`. Use it for values that differ between environments. */
   mode: ConfigMode
 }
 
-export interface SocialProviderConfig {
+interface SocialProviderConfig {
   /**
    * Enables this provider for sign-in and account linking.
    * Requires the provider's `CLIENT_ID` and `CLIENT_SECRET` in `.env` —
@@ -22,12 +22,12 @@ export interface SocialProviderConfig {
   enabled?: boolean
 }
 
-export interface AppleProviderConfig extends SocialProviderConfig {
+interface AppleProviderConfig extends SocialProviderConfig {
   /** Bundle ID of your native iOS app. Only needed for native sign-in. */
   appBundleId?: string
 }
 
-export interface PlanConfig {
+interface PlanConfig {
   /**
    * Stable identifier stored on each subscription (`planId`) and sent by your
    * payment processor's webhooks. Do not rename it once subscriptions use it.
@@ -44,7 +44,7 @@ export interface PlanConfig {
   features: string[]
 }
 
-export interface TrialConfig {
+interface TrialConfig {
   /** Trial length in days. */
   days: number
   /** Plan assigned to the trial subscription. Must be one of `subscriptions.plans`. */

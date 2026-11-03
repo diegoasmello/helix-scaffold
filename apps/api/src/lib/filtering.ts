@@ -20,7 +20,7 @@ import z from 'zod'
 
 import { normalizeText } from './normalize-text'
 
-export const FILTER_OPERATORS = [
+const FILTER_OPERATORS = [
   'eq',
   'neq',
   'contains',
@@ -35,10 +35,10 @@ export const FILTER_OPERATORS = [
   'in',
   'between',
 ] as const
-export type FilterOperator = (typeof FILTER_OPERATORS)[number]
+type FilterOperator = (typeof FILTER_OPERATORS)[number]
 
-export const filterOperatorSchema = z.enum(FILTER_OPERATORS)
-export const filterLogicSchema = z.enum(['AND', 'OR'])
+const filterOperatorSchema = z.enum(FILTER_OPERATORS)
+const filterLogicSchema = z.enum(['AND', 'OR'])
 export type FilterLogic = z.infer<typeof filterLogicSchema>
 
 const filterValueSchema = z.union([
@@ -50,13 +50,10 @@ const filterValueSchema = z.union([
 
 const filterArrayValueSchema = z.array(z.union([z.string(), z.number()]))
 
-export const filterConditionSchema = z.object({
-  field: z.string(),
-  op: filterOperatorSchema,
-  value: z.union([filterValueSchema, filterArrayValueSchema]).optional(),
-})
-
-export type FilterCondition = z.infer<typeof filterConditionSchema>
+const filterConditionValueSchema = z.union([
+  filterValueSchema,
+  filterArrayValueSchema,
+])
 
 /**
  * Factory that creates a Zod schema for filter query params scoped to a module's allowed fields.
@@ -70,7 +67,7 @@ export function filterQuerySchema<T extends string>(
   const conditionSchema = z.object({
     field: fieldSchema,
     op: filterOperatorSchema,
-    value: z.union([filterValueSchema, filterArrayValueSchema]).optional(),
+    value: filterConditionValueSchema.optional(),
   })
 
   return z.object({
@@ -93,7 +90,7 @@ export type FilterQuery<T extends string = string> = {
   filters: Array<{
     field: T
     op: FilterOperator
-    value?: FilterCondition['value']
+    value?: z.infer<typeof filterConditionValueSchema>
   }>
   filterLogic: FilterLogic
 }
@@ -242,8 +239,6 @@ export const searchQuerySchema = z.object({
     .optional()
     .transform((v) => v || undefined),
 })
-
-export type SearchQuery = z.infer<typeof searchQuerySchema>
 
 /**
  * Accent-, case- and whitespace-insensitive "contains" of `term` in any of

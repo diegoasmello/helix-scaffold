@@ -1,6 +1,6 @@
 import sharp from 'sharp'
 
-export const IMAGE_MIME_TYPES = new Set([
+const IMAGE_MIME_TYPES = new Set([
   'image/jpeg',
   'image/png',
   'image/gif',

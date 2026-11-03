@@ -171,7 +171,7 @@ Every list endpoint must be paginated and sortable. The reusable utilities live 
 | File                    | Exports                                                                                                                |
 | ----------------------- | ---------------------------------------------------------------------------------------------------------------------- |
 | `src/lib/pagination.ts` | `paginationQuerySchema`, `PaginationQuery`, `getPaginationParams`, `buildPaginatedResponse`, `paginatedResponseSchema` |
-| `src/lib/sorting.ts`    | `sortingQuerySchema`, `SortingQuery`                                                                                   |
+| `src/lib/sorting.ts`    | `sortingQuerySchema`                                                                                                   |
 
 **`paginationQuerySchema`** — Zod schema for `page` (int ≥ 1, default 1) and `pageSize` (int 1–100, default 10). Used as `querystring` in list routes.
 
@@ -207,7 +207,7 @@ Every list endpoint can optionally support field-level filtering via the reusabl
 
 | File                    | Exports                                                                                          |
 | ----------------------- | ------------------------------------------------------------------------------------------------ |
-| `src/lib/filtering.ts`  | `filterQuerySchema`, `buildFilterWhereClause`, `FilterWhereOptions`, `searchQuerySchema`, `buildSearchClause`, `FilterCondition`, `FilterLogic`, `FilterOperator` |
+| `src/lib/filtering.ts`  | `filterQuerySchema`, `buildFilterWhereClause`, `FilterWhereOptions`, `searchQuerySchema`, `buildSearchClause`, `FilterLogic` |
 | `src/lib/normalize-text.ts` | `normalizeText`, `normalizedValues`, `NormalizedFieldMap` — see _Normalized text columns_ |
 | `src/lib/slug.ts` | `slugify`, `withUniqueSlug`, `SlugConfig`… — see _Slugs_ |
 
@@ -411,7 +411,7 @@ The helpers are in `src/lib/slug.ts`:
 | Export | Does |
 | --- | --- |
 | `slugify(value, maxLength = 100)` | The slug of a text, pure — see the rules below. `''` when nothing is left |
-| `SLUG_PATTERN`, `SLUG_MAX_LENGTH` | `^[a-z0-9]+(?:-[a-z0-9]+)*$`, `100` |
+| `SLUG_PATTERN` | `^[a-z0-9]+(?:-[a-z0-9]+)*$` |
 | `SlugConfig` | `{ column, constraint, fallback, maxLength? }` — declared once per module, next to the table |
 | `slugBase(source, config)` | `slugify(source)`, or `config.fallback` when that is empty. Throws when the fallback is not a valid slug |
 | `freeSlug(base, taken, maxLength?)` | The first of `base`, `base-2`, `base-3`… not in `taken`, pure |
