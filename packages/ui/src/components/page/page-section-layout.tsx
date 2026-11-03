@@ -20,9 +20,9 @@ export interface PageSectionLayoutProps {
   footerActions?: ReactNode
   children: ReactNode
   /**
-   * `form` (create/edit) draws a border under the header and lets
-   * `FormSection`s run edge to edge. `view` (detail) keeps the header and the
-   * content together, with no line between them (unless there are `tabs`).
+   * `form` (create/edit) lets `FormSection`s run edge to edge. `view`
+   * (detail) keeps the header and the content together. Neither draws a line
+   * under the header, unless there are `tabs`.
    */
   variant?: 'form' | 'view'
 }
@@ -30,8 +30,8 @@ export interface PageSectionLayoutProps {
 /**
  * Shared body of `PageCreate`, `PageEdit` and `PageView`: a header without
  * breadcrumb, the content and `footerActions` stuck to the bottom of the
- * screen. In forms the header and each `FormSection` are separated by
- * full-width borders. Inside a `Form`, it shows the "fix N fields" alert after
+ * screen. In forms the `FormSection`s are separated by full-width borders.
+ * Inside a `Form`, it shows the "fix N fields" alert after
  * a failed submit and "Unsaved changes" next to the footer buttons.
  */
 export function PageSectionLayout(props: Readonly<PageSectionLayoutProps>) {
@@ -57,7 +57,7 @@ export function PageSectionLayout(props: Readonly<PageSectionLayoutProps>) {
       <div
         className={cx(
           classes.header,
-          (variant === 'form' || tabs) && classes.headerDivider,
+          tabs && classes.headerDivider,
           tabs && classes.headerWithTabs
         )}
       >
@@ -75,7 +75,8 @@ export function PageSectionLayout(props: Readonly<PageSectionLayoutProps>) {
       <div
         className={cx(
           classes.content,
-          variant === 'view' && !tabs && classes.contentUnderHeader
+          !tabs && classes.contentUnderHeader,
+          variant === 'view' && !tabs && classes.contentUnderHeaderPlain
         )}
       >
         {errorCount > 0 && (
@@ -150,8 +151,14 @@ const useStyles = createStyles((theme, _, u) => {
         padding-bottom: 20px;
       }
     `,
-    // A detail's content follows its header with no extra gap.
+    // With no line under the header, the first section follows it directly.
     contentUnderHeader: css`
+      & > [data-page-section]:first-child {
+        padding-top: 0;
+      }
+    `,
+    // A detail's content follows its header with no extra gap.
+    contentUnderHeaderPlain: css`
       padding-top: 0;
       ${belowSm} {
         padding-top: 0;
