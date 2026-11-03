@@ -134,7 +134,7 @@ describe('TodoCreate', () => {
   it('renders the create form', async () => {
     renderTodoCreate()
     expect(
-      await screen.findByRole('heading', { name: 'Create Todo' })
+      await screen.findByRole('heading', { name: 'Create todo' })
     ).toBeInTheDocument()
     expect(screen.getByPlaceholderText('Todo title')).toBeInTheDocument()
     expect(screen.getByPlaceholderText('Todo description')).toBeInTheDocument()
@@ -142,7 +142,7 @@ describe('TodoCreate', () => {
 
   it('shows validation errors when submitting empty form', async () => {
     renderTodoCreate()
-    await screen.findByRole('heading', { name: 'Create Todo' })
+    await screen.findByRole('heading', { name: 'Create todo' })
     await userEvent.click(screen.getByRole('button', { name: 'Save' }))
     const errors = await screen.findAllByText('Required')
     expect(errors.length).toBeGreaterThanOrEqual(2)
@@ -150,7 +150,7 @@ describe('TodoCreate', () => {
 
   it('sums up the fields to fix after an invalid submit', async () => {
     renderTodoCreate()
-    await screen.findByRole('heading', { name: 'Create Todo' })
+    await screen.findByRole('heading', { name: 'Create todo' })
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
     await userEvent.click(screen.getByRole('button', { name: 'Save' }))
     const alert = await screen.findByRole('alert')
@@ -160,7 +160,7 @@ describe('TodoCreate', () => {
 
   it('flags unsaved changes next to the save button', async () => {
     renderTodoCreate()
-    await screen.findByRole('heading', { name: 'Create Todo' })
+    await screen.findByRole('heading', { name: 'Create todo' })
     expect(screen.queryByText('Unsaved changes')).not.toBeInTheDocument()
     await userEvent.type(screen.getByPlaceholderText('Todo title'), 'New')
     expect(screen.getByText('Unsaved changes')).toBeInTheDocument()
@@ -178,7 +178,7 @@ describe('TodoCreate', () => {
     )
 
     renderTodoCreate()
-    await screen.findByRole('heading', { name: 'Create Todo' })
+    await screen.findByRole('heading', { name: 'Create todo' })
 
     // set required upload fields
     await userEvent.click(screen.getByTestId('set-attachment'))
@@ -227,7 +227,7 @@ describe('TodoCreate', () => {
     )
 
     renderTodoCreate()
-    await screen.findByRole('heading', { name: 'Create Todo' })
+    await screen.findByRole('heading', { name: 'Create todo' })
 
     await userEvent.click(screen.getByTestId('set-attachment'))
     await userEvent.click(screen.getByTestId('set-file'))

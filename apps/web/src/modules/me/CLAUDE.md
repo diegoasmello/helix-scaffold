@@ -240,7 +240,7 @@ vi.mock('../../../lib/authentication', () => ({
 
 ### Key assertions
 
-- Wait for both queries in `SignInMethods` before asserting absence. `await screen.findByText('Email & Password')` proves the accounts resolved. Then wrap the absence assertion in `waitFor` so the providers query settles too.
+- Wait for both queries in `SignInMethods` before asserting absence. `await screen.findByText('Email & password')` proves the accounts resolved. Then wrap the absence assertion in `waitFor` so the providers query settles too.
 - Use `findAllByRole` (async), not `getAllByRole`, for Connect buttons: the providers query resolves after the accounts query.
 
 ## Handlers for `me` endpoints

@@ -65,7 +65,7 @@ function AuditReportDocument(props: Readonly<AuditReportDocumentProps>) {
   const { items } = props
 
   return (
-    <BaseDocument title="Audit Log Report">
+    <BaseDocument title="Audit log report">
       <Text style={styles.summary}>{items.length} log entry(s)</Text>
       <PdfTable
         columns={columns}

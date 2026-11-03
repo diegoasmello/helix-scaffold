@@ -149,7 +149,7 @@ describe('SubscriptionsEdit', () => {
   it('renders the edit form heading', async () => {
     renderSubscriptionsEdit()
     expect(
-      await screen.findByRole('heading', { name: 'Edit Subscription' })
+      await screen.findByRole('heading', { name: 'Edit subscription' })
     ).toBeInTheDocument()
   })
 

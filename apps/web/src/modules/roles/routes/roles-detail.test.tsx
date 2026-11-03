@@ -109,26 +109,26 @@ describe('RolesDetail', () => {
     expect(await screen.findByText('Permissions')).toBeInTheDocument()
   })
 
-  it('shows Edit Permissions button when user has permissions:edit', async () => {
+  it('shows Edit permissions button when user has permissions:edit', async () => {
     renderRolesDetail()
     expect(
-      await screen.findByRole('button', { name: 'Edit Permissions' })
+      await screen.findByRole('button', { name: 'Edit permissions' })
     ).toBeInTheDocument()
   })
 
-  it('hides Edit Permissions button when user lacks permissions:edit', async () => {
+  it('hides Edit permissions button when user lacks permissions:edit', async () => {
     server.use(getMePermissionsHandler({ grants: { roles: ['view'] } }))
     renderRolesDetail()
     await screen.findByText('Admin')
     expect(
-      screen.queryByRole('button', { name: 'Edit Permissions' })
+      screen.queryByRole('button', { name: 'Edit permissions' })
     ).not.toBeInTheDocument()
   })
 
-  it('navigates to permissions edit when Edit Permissions is clicked', async () => {
+  it('navigates to permissions edit when Edit permissions is clicked', async () => {
     renderRolesDetail()
     const editBtn = await screen.findByRole('button', {
-      name: 'Edit Permissions',
+      name: 'Edit permissions',
     })
     await userEvent.click(editBtn)
     expect(mockNavigate).toHaveBeenCalledWith({

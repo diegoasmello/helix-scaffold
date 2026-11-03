@@ -818,7 +818,7 @@ Follow these steps every time a new module is created:
   "form": {
     "name": { "label": "Name", "placeholder": "Feature name" }
   },
-  "labels": { "name": "Name", "createdAt": "Created At" },
+  "labels": { "name": "Name", "createdAt": "Created at" },
   "status": { "active": "Active", "archived": "Archived" },
   "delete": {
     "title": "Delete feature",
@@ -837,7 +837,7 @@ Follow these steps every time a new module is created:
 
 Mirror the exact same key structure in `apps/web/src/i18n/locales/pt-BR/<module>.json` with Portuguese translations. **Key parity is mandatory** — a key present in `en` but absent in `pt-BR` will silently fall back to English; a key absent in both will render the raw key string.
 
-**pt-BR capitalization:** only the first word of a title, label or button is capitalized, plus proper nouns — `Criar usuário`, `Nova senha`, `Editar permissões`, `Continuar com Google`. Never carry the English title case over (`Create User` ↛ `Criar Usuário`).
+**Capitalization (both languages):** sentence case everywhere — only the first word of a title, label, column or button is capitalized, plus proper nouns and acronyms: `Create user` / `Criar usuário`, `Change password` / `Alterar senha`, `Edit permissions` / `Editar permissões`, `Continue with Google`, `Resource ID`. Never title case (`Create User`, `Criar Usuário`).
 
 **Step 2 — Register in i18n/index.ts**
 
@@ -925,7 +925,8 @@ vi.mock('@tanstack/react-router', async (importOriginal) => {
 Before marking any new module as complete, verify:
 
 - [ ] `locales/en/<module>.json` exists with all keys (titles, columns, filters, form labels, placeholders, status labels, delete confirmation, notifications — including `deleteFailed`)
-- [ ] `locales/pt-BR/<module>.json` exists with identical key structure, capitalized like a sentence (`Criar tarefa`, not `Criar Tarefa`)
+- [ ] `locales/pt-BR/<module>.json` exists with identical key structure
+- [ ] Every string in both files is in sentence case (`Create todo` / `Criar tarefa`, not `Create Todo` / `Criar Tarefa`)
 - [ ] Both files registered in `i18n/index.ts` (`resources.en` and `resources['pt-BR']`)
 - [ ] Namespace added to `types.d.ts` (`CustomTypeOptions.resources`)
 - [ ] Nav label key added to `common.json` and `pt-BR/common.json` under `nav.*`

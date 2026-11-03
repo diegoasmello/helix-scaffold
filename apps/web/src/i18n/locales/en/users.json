@@ -1,13 +1,13 @@
 {
   "title": "Users",
   "create": {
-    "title": "Create User"
+    "title": "Create user"
   },
   "edit": {
-    "title": "Edit User"
+    "title": "Edit user"
   },
   "detail": {
-    "title": "View User"
+    "title": "View user"
   },
   "columns": {
     "name": "Name",
@@ -38,8 +38,8 @@
     "name": "Name",
     "email": "Email",
     "role": "Role",
-    "emailVerified": "Email Verified",
-    "createdAt": "Created At",
+    "emailVerified": "Email verified",
+    "createdAt": "Created at",
     "yes": "Yes",
     "no": "No"
   },

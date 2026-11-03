@@ -180,7 +180,7 @@ describe('App', () => {
   it('shows the sidebar items the user has permission for', async () => {
     renderApp()
     await screen.findByTestId('user-name')
-    expect(sidebarLinks()).toEqual(['Todos', 'Users', 'Roles', 'Audit Log'])
+    expect(sidebarLinks()).toEqual(['Todos', 'Users', 'Roles', 'Audit log'])
     expect(
       screen.getByRole('heading', { name: 'Settings' })
     ).toBeInTheDocument()
@@ -231,7 +231,7 @@ describe('App', () => {
       mockSubscriptionsEnabled(null)
       renderApp()
       await screen.findByTestId('user-name')
-      expect(sidebarLinks()).toEqual(['Users', 'Roles', 'Audit Log'])
+      expect(sidebarLinks()).toEqual(['Users', 'Roles', 'Audit log'])
     })
 
     it('hides feature-gated items when the plan lacks the feature', async () => {

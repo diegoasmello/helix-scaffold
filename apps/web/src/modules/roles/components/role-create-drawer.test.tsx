@@ -89,7 +89,7 @@ describe('RoleCreateDrawer', () => {
   it('renders the role form when opened', async () => {
     renderDrawer()
     const dialog = await screen.findByRole('dialog')
-    expect(within(dialog).getByText('Create Role')).toBeInTheDocument()
+    expect(within(dialog).getByText('Create role')).toBeInTheDocument()
     expect(within(dialog).getByPlaceholderText('Role name')).toBeInTheDocument()
     expect(
       within(dialog).getByPlaceholderText('Role description')

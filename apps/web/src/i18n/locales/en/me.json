@@ -32,7 +32,7 @@
       "label": "Name"
     },
     "email": {
-      "sectionTitle": "Email Address",
+      "sectionTitle": "Email address",
       "sectionDescription": "A verification link will be sent to your new address.",
       "currentLabel": "Current email",
       "newLabel": "New email",
@@ -53,12 +53,12 @@
     "sectionTitle": "Password",
     "sectionDescription": "Choose a strong password with at least 8 characters.",
     "passwordNotSetDescription": "You signed up via a social provider and have no password yet. Set one to also be able to sign in with your email address.",
-    "currentPassword": "Current Password",
-    "newPassword": "New Password",
+    "currentPassword": "Current password",
+    "newPassword": "New password",
     "newPasswordPlaceholder": "At least 8 characters",
-    "confirmNewPassword": "Confirm New Password",
+    "confirmNewPassword": "Confirm new password",
     "confirmPasswordPlaceholder": "Repeat your password",
-    "changeButton": "Change Password",
+    "changeButton": "Change password",
     "setPasswordButton": "Set password",
     "validation": {
       "passwordsNoMatch": "Passwords do not match"
@@ -85,7 +85,7 @@
       "google": "Google",
       "facebook": "Facebook",
       "apple": "Apple",
-      "credential": "Email & Password"
+      "credential": "Email & password"
     },
     "errors": {
       "loadFailed": "Could not load your connected accounts. Please refresh the page.",

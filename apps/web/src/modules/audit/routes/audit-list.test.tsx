@@ -158,7 +158,7 @@ describe('AuditList', () => {
       )
     )
     renderAuditList()
-    await screen.findByText('Audit Log')
+    await screen.findByText('Audit log')
     expect(
       screen.queryByRole('row', { name: /alice/i })
     ).not.toBeInTheDocument()

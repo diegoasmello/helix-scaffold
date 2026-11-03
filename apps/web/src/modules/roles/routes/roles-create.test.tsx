@@ -89,7 +89,7 @@ describe('RolesCreate', () => {
   it('renders the create form', async () => {
     renderRolesCreate()
     expect(
-      await screen.findByRole('heading', { name: 'Create Role' })
+      await screen.findByRole('heading', { name: 'Create role' })
     ).toBeInTheDocument()
     expect(screen.getByPlaceholderText('Role name')).toBeInTheDocument()
     expect(screen.getByPlaceholderText('Role description')).toBeInTheDocument()
@@ -97,7 +97,7 @@ describe('RolesCreate', () => {
 
   it('shows validation errors when submitting empty form', async () => {
     renderRolesCreate()
-    await screen.findByRole('heading', { name: 'Create Role' })
+    await screen.findByRole('heading', { name: 'Create role' })
     await userEvent.click(screen.getByRole('button', { name: 'Save' }))
     const errors = await screen.findAllByText('Required')
     expect(errors.length).toBeGreaterThanOrEqual(2)
@@ -115,7 +115,7 @@ describe('RolesCreate', () => {
     )
 
     renderRolesCreate()
-    await screen.findByRole('heading', { name: 'Create Role' })
+    await screen.findByRole('heading', { name: 'Create role' })
 
     await userEvent.type(screen.getByPlaceholderText('Role name'), 'Admin')
     await userEvent.type(
@@ -144,7 +144,7 @@ describe('RolesCreate', () => {
     )
 
     renderRolesCreate()
-    await screen.findByRole('heading', { name: 'Create Role' })
+    await screen.findByRole('heading', { name: 'Create role' })
 
     await userEvent.type(screen.getByPlaceholderText('Role name'), 'Admin')
     await userEvent.type(
@@ -170,7 +170,7 @@ describe('RolesCreate', () => {
     )
 
     renderRolesCreate()
-    await screen.findByRole('heading', { name: 'Create Role' })
+    await screen.findByRole('heading', { name: 'Create role' })
 
     await userEvent.type(screen.getByPlaceholderText('Role name'), 'Admin')
     await userEvent.type(

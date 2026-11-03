@@ -80,7 +80,7 @@ describe('AuditDetail', () => {
   it('renders the page title', async () => {
     renderAuditDetail()
     expect(
-      await screen.findByRole('heading', { name: 'View Audit Log' })
+      await screen.findByRole('heading', { name: 'View audit log' })
     ).toBeInTheDocument()
   })
 

@@ -7,13 +7,13 @@
     "createButton": "Create first todo"
   },
   "create": {
-    "title": "Create Todo"
+    "title": "Create todo"
   },
   "edit": {
-    "title": "Edit Todo"
+    "title": "Edit todo"
   },
   "detail": {
-    "title": "View Todo"
+    "title": "View todo"
   },
   "columns": {
     "title": "Title",
@@ -71,7 +71,7 @@
     "content": "Content",
     "date": "Date",
     "status": "Status",
-    "createdAt": "Created At",
+    "createdAt": "Created at",
     "file": "File",
     "image": "Image",
     "attachments": "Attachments"

@@ -1,14 +1,14 @@
 {
   "title": "Roles",
   "create": {
-    "title": "Create Role",
-    "drawerTitle": "Create Role"
+    "title": "Create role",
+    "drawerTitle": "Create role"
   },
   "edit": {
-    "title": "Edit Role"
+    "title": "Edit role"
   },
   "detail": {
-    "title": "View Role"
+    "title": "View role"
   },
   "columns": {
     "name": "Name",
@@ -39,7 +39,7 @@
   "labels": {
     "name": "Name",
     "description": "Description",
-    "createdAt": "Created At",
+    "createdAt": "Created at",
     "isDefault": "Default for new users",
     "yes": "Yes",
     "no": "No"
@@ -50,8 +50,8 @@
   },
   "permissions": {
     "title": "Permissions",
-    "editTitle": "Edit Permissions",
-    "editButton": "Edit Permissions",
+    "editTitle": "Edit permissions",
+    "editButton": "Edit permissions",
     "resources": {
       "todos": "Todos",
       "users": "Users",

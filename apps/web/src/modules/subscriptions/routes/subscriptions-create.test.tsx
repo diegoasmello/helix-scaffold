@@ -114,7 +114,7 @@ describe('SubscriptionsCreate', () => {
   it('renders the create form heading', async () => {
     renderSubscriptionsCreate()
     expect(
-      await screen.findByRole('heading', { name: 'Create Subscription' })
+      await screen.findByRole('heading', { name: 'Create subscription' })
     ).toBeInTheDocument()
   })
 
@@ -127,7 +127,7 @@ describe('SubscriptionsCreate', () => {
 
   it('shows validation errors when submitting empty form', async () => {
     renderSubscriptionsCreate()
-    await screen.findByRole('heading', { name: 'Create Subscription' })
+    await screen.findByRole('heading', { name: 'Create subscription' })
     await userEvent.click(screen.getByRole('button', { name: 'Save' }))
     const errors = await screen.findAllByText('Required')
     expect(errors).toHaveLength(2)
@@ -145,7 +145,7 @@ describe('SubscriptionsCreate', () => {
     )
 
     renderSubscriptionsCreate()
-    await screen.findByRole('heading', { name: 'Create Subscription' })
+    await screen.findByRole('heading', { name: 'Create subscription' })
     await fillRequiredFields()
     await userEvent.click(screen.getByRole('button', { name: 'Save' }))
 
@@ -180,7 +180,7 @@ describe('SubscriptionsCreate', () => {
     )
 
     renderSubscriptionsCreate()
-    await screen.findByRole('heading', { name: 'Create Subscription' })
+    await screen.findByRole('heading', { name: 'Create subscription' })
     await fillRequiredFields()
     await userEvent.type(
       screen.getByPlaceholderText('Payment processor subscription ID'),
@@ -195,7 +195,7 @@ describe('SubscriptionsCreate', () => {
 
   it('navigates back to the list when Cancel is clicked', async () => {
     renderSubscriptionsCreate()
-    await screen.findByRole('heading', { name: 'Create Subscription' })
+    await screen.findByRole('heading', { name: 'Create subscription' })
     await userEvent.click(screen.getByRole('button', { name: 'Cancel' }))
     expect(mockNavigate).toHaveBeenCalledWith({ to: '/subscriptions' })
   })
@@ -211,7 +211,7 @@ describe('SubscriptionsCreate', () => {
     )
 
     renderSubscriptionsCreate()
-    await screen.findByRole('heading', { name: 'Create Subscription' })
+    await screen.findByRole('heading', { name: 'Create subscription' })
     await fillRequiredFields()
     await userEvent.click(screen.getByRole('button', { name: 'Save' }))
 
@@ -240,7 +240,7 @@ describe('SubscriptionsCreate', () => {
     )
 
     renderSubscriptionsCreate()
-    await screen.findByRole('heading', { name: 'Create Subscription' })
+    await screen.findByRole('heading', { name: 'Create subscription' })
     await fillRequiredFields()
     await userEvent.click(screen.getByRole('button', { name: 'Save' }))
 

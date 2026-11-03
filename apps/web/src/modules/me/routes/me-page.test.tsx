@@ -222,7 +222,7 @@ describe('Profile display', () => {
     renderMeAccount()
     await screen.findByRole('heading', { name: 'Name' })
     expect(
-      screen.getByRole('heading', { name: 'Email Address' })
+      screen.getByRole('heading', { name: 'Email address' })
     ).toBeInTheDocument()
   })
 
@@ -272,14 +272,14 @@ describe('Password change — user with existing password', () => {
     )
 
     renderMeSecurity()
-    await screen.findByRole('button', { name: 'Change Password' })
+    await screen.findByRole('button', { name: 'Change password' })
     const [currentPwdInput, newPwdInput, confirmPwdInput] =
       document.querySelectorAll('input[type="password"]')
 
     await user.type(currentPwdInput, 'Password123!')
     await user.type(newPwdInput, 'NewPass456!')
     await user.type(confirmPwdInput, 'NewPass456!')
-    await user.click(screen.getByRole('button', { name: 'Change Password' }))
+    await user.click(screen.getByRole('button', { name: 'Change password' }))
 
     await screen.findByText('Password changed successfully')
   })
@@ -296,14 +296,14 @@ describe('Password change — user with existing password', () => {
     )
 
     renderMeSecurity()
-    await screen.findByRole('button', { name: 'Change Password' })
+    await screen.findByRole('button', { name: 'Change password' })
     const [currentPwdInput, newPwdInput, confirmPwdInput] =
       document.querySelectorAll('input[type="password"]')
 
     await user.type(currentPwdInput, 'WrongPass!')
     await user.type(newPwdInput, 'NewPass456!')
     await user.type(confirmPwdInput, 'NewPass456!')
-    await user.click(screen.getByRole('button', { name: 'Change Password' }))
+    await user.click(screen.getByRole('button', { name: 'Change password' }))
 
     await screen.findByText('Current password is incorrect')
   })
@@ -311,14 +311,14 @@ describe('Password change — user with existing password', () => {
   it('shows validation error when passwords do not match', async () => {
     const user = userEvent.setup()
     renderMeSecurity()
-    await screen.findByRole('button', { name: 'Change Password' })
+    await screen.findByRole('button', { name: 'Change password' })
     const [currentPwdInput, newPwdInput, confirmPwdInput] =
       document.querySelectorAll('input[type="password"]')
 
     await user.type(currentPwdInput, 'Password123!')
     await user.type(newPwdInput, 'NewPass456!')
     await user.type(confirmPwdInput, 'Different!')
-    await user.click(screen.getByRole('button', { name: 'Change Password' }))
+    await user.click(screen.getByRole('button', { name: 'Change password' }))
 
     await screen.findByText('Passwords do not match')
   })
@@ -326,14 +326,14 @@ describe('Password change — user with existing password', () => {
   it('shows validation error when new password is too short', async () => {
     const user = userEvent.setup()
     renderMeSecurity()
-    await screen.findByRole('button', { name: 'Change Password' })
+    await screen.findByRole('button', { name: 'Change password' })
     const [currentPwdInput, newPwdInput, confirmPwdInput] =
       document.querySelectorAll('input[type="password"]')
 
     await user.type(currentPwdInput, 'Password123!')
     await user.type(newPwdInput, 'short')
     await user.type(confirmPwdInput, 'short')
-    await user.click(screen.getByRole('button', { name: 'Change Password' }))
+    await user.click(screen.getByRole('button', { name: 'Change password' }))
 
     await screen.findByText('Min 8 characters')
   })
@@ -350,7 +350,7 @@ describe('Password setup — social-only user', () => {
       await screen.findByRole('button', { name: /set password/i })
     ).toBeInTheDocument()
     expect(
-      screen.queryByRole('button', { name: 'Change Password' })
+      screen.queryByRole('button', { name: 'Change password' })
     ).not.toBeInTheDocument()
   })
 

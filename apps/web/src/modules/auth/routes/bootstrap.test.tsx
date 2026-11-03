@@ -50,7 +50,7 @@ describe('Bootstrap', () => {
   it('renders the setup form', () => {
     renderBootstrap()
     expect(
-      screen.getByRole('heading', { name: 'System Setup' })
+      screen.getByRole('heading', { name: 'System setup' })
     ).toBeInTheDocument()
     expect(
       screen.getByText(

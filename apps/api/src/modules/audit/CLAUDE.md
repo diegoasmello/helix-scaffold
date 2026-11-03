@@ -94,7 +94,7 @@ Registered once in the authenticated scope in `app.ts` via `registerAuditRequest
 ## Permissions config
 
 ```ts
-{ resource: 'audit', label: 'Audit Log', actions: ['view'] }
+{ resource: 'audit', label: 'Audit', actions: ['view'] }
 ```
 
 Only `view` is registered — there is no create/edit/delete permission.

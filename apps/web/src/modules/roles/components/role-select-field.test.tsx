@@ -103,7 +103,7 @@ describe('RoleSelectField', () => {
         await screen.findByRole('button', { name: 'Create role' })
       )
       const dialog = await screen.findByRole('dialog')
-      expect(within(dialog).getByText('Create Role')).toBeInTheDocument()
+      expect(within(dialog).getByText('Create role')).toBeInTheDocument()
     })
 
     it('selects the newly created role and refreshes the options', async () => {

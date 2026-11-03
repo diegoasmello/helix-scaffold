@@ -85,7 +85,7 @@ describe('RolesPermissions', () => {
   it('renders the page title', async () => {
     renderRolesPermissions()
     expect(
-      await screen.findByRole('heading', { name: 'Edit Permissions' })
+      await screen.findByRole('heading', { name: 'Edit permissions' })
     ).toBeInTheDocument()
   })
 

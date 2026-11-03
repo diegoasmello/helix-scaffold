@@ -1,7 +1,7 @@
 {
-  "title": "Audit Log",
+  "title": "Audit log",
   "detail": {
-    "title": "View Audit Log"
+    "title": "View audit log"
   },
   "columns": {
     "date": "Date",
@@ -19,7 +19,7 @@
     "resource": "Resource",
     "resourceId": "Resource ID",
     "ip": "IP",
-    "userAgent": "User Agent",
+    "userAgent": "User agent",
     "metadata": "Metadata"
   },
   "actionLabels": {

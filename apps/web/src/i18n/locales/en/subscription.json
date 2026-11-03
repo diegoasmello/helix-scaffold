@@ -1,8 +1,8 @@
 {
   "title": "Subscriptions",
-  "create": { "title": "Create Subscription" },
-  "edit": { "title": "Edit Subscription" },
-  "detail": { "title": "View Subscription" },
+  "create": { "title": "Create subscription" },
+  "edit": { "title": "Edit subscription" },
+  "detail": { "title": "View subscription" },
   "empty": {
     "title": "No subscriptions yet",
     "description": "Create a subscription to grant a user access.",

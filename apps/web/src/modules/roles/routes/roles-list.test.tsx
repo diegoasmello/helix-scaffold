@@ -116,7 +116,7 @@ describe('RolesList', () => {
     const labels = items.map((item) => item.textContent)
     expect(labels).toContain('View')
     expect(labels).toContain('Edit')
-    expect(labels).toContain('Edit Permissions')
+    expect(labels).toContain('Edit permissions')
     expect(labels).toContain('Delete')
   })
 
@@ -215,14 +215,14 @@ describe('RolesList', () => {
       screen.queryByRole('button', { name: 'Edit' })
     ).not.toBeInTheDocument()
     expect(
-      screen.queryByRole('button', { name: 'Edit Permissions' })
+      screen.queryByRole('button', { name: 'Edit permissions' })
     ).not.toBeInTheDocument()
     expect(
       screen.queryByRole('button', { name: 'Delete' })
     ).not.toBeInTheDocument()
   })
 
-  it('hides Edit Permissions when user lacks permissions:edit', async () => {
+  it('hides Edit permissions when user lacks permissions:edit', async () => {
     server.use(
       getMePermissionsHandler({
         grants: { roles: ['view', 'edit', 'delete'] },
@@ -236,7 +236,7 @@ describe('RolesList', () => {
     expect(screen.queryByLabelText('Actions')).not.toBeInTheDocument()
     expect(screen.getAllByRole('button', { name: 'Delete' })).toHaveLength(2)
     expect(
-      screen.queryByRole('button', { name: 'Edit Permissions' })
+      screen.queryByRole('button', { name: 'Edit permissions' })
     ).not.toBeInTheDocument()
   })
 })

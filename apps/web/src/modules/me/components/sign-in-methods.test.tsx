@@ -89,13 +89,13 @@ describe('Connected accounts section', () => {
     expect(screen.getByText(/connected on january/i)).toBeInTheDocument()
   })
 
-  it('renders credential account as "Email & Password"', async () => {
+  it('renders credential account as "Email & password"', async () => {
     mockListAccounts.mockResolvedValue({
       data: [credentialAccount],
       error: null,
     })
     renderSignInMethods()
-    expect(await screen.findByText('Email & Password')).toBeInTheDocument()
+    expect(await screen.findByText('Email & password')).toBeInTheDocument()
   })
 
   it('renders unknown provider with its raw id', async () => {
@@ -120,7 +120,7 @@ describe('Connected accounts section', () => {
     })
     renderSignInMethods()
     expect(await screen.findByText('Google')).toBeInTheDocument()
-    expect(screen.getByText('Email & Password')).toBeInTheDocument()
+    expect(screen.getByText('Email & password')).toBeInTheDocument()
   })
 })
 
@@ -134,7 +134,7 @@ describe('Link another account section', () => {
 
   it('does not show the section when no providers are configured', async () => {
     renderSignInMethods()
-    await screen.findByText('Email & Password')
+    await screen.findByText('Email & password')
     await waitFor(() =>
       expect(
         screen.queryByRole('heading', { name: /link another account/i })
