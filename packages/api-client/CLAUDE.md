@@ -24,7 +24,7 @@ openapi.json      ← static committed spec (API contract)
 
 ## Fetch client (`src/client.ts`)
 
-Implements the interface expected by kubb. Responsible for:
+Implements the interface expected by kubb. The generated hooks import exactly the default export (the fetch function) and the types `Client`, `RequestConfig` and `ResponseErrorConfig` (`client.importPath` in `kubb.config.ts`) — keep those exported, and nothing else: the package's public API (`ApiError`, `configure`) goes through `index.ts`. Responsible for:
 
 - Building the URL by appending the path to `_baseUrl` (`${_baseUrl}${url}`) — `new URL(url, base)` would drop the base's `/api`
 - Sending `credentials: "include"` (better-auth session cookies)

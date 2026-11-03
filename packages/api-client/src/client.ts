@@ -9,7 +9,7 @@ export type RequestConfig<TData = unknown> = {
   headers?: HeadersInit
 }
 
-export type ResponseConfig<TData = unknown> = {
+type ResponseConfig<TData = unknown> = {
   data: TData
   status: number
   statusText: string
@@ -48,7 +48,7 @@ export function configure(options: { baseUrl: string }) {
   _baseUrl = options.baseUrl
 }
 
-export const client = async <TData, _TError = unknown, TVariables = unknown>(
+const client = async <TData, _TError = unknown, TVariables = unknown>(
   config: RequestConfig<TVariables>
 ): Promise<ResponseConfig<TData>> => {
   const { url, method, data, params, signal, headers: configHeaders } = config
