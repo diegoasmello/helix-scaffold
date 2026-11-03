@@ -1,0 +1,17 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+  "tags": ["-lintignore"],
+  "workspaces": {
+    "apps/api": {
+      "entry": ["drizzle.config.ts"],
+      "drizzle": false,
+      "ignoreDependencies": ["pino-pretty"]
+    },
+    "apps/web": {
+      "entry": ["e2e/*.setup.ts"]
+    },
+    "packages/api-client": {
+      "entry": ["kubb.config.ts", "src/generated/**/*.ts"]
+    }
+  }
+}
