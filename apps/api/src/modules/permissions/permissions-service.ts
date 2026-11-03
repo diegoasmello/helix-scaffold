@@ -61,5 +61,3 @@ export function createPermissionsService(database: Database) {
 
   return { getByRoleId, replaceForRole, hasPermission }
 }
-
-export type PermissionsService = ReturnType<typeof createPermissionsService>

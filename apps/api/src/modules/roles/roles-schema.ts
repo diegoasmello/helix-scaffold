@@ -32,10 +32,9 @@ export const updateRoleSchema = z.object({
 export type CreateRoleInput = z.infer<typeof createRoleSchema>
 export type UpdateRoleInput = z.infer<typeof updateRoleSchema>
 
-export const ROLE_SORT_COLUMNS = ['name', 'createdAt'] as const
-export type RoleSortColumn = (typeof ROLE_SORT_COLUMNS)[number]
+const ROLE_SORT_COLUMNS = ['name', 'createdAt'] as const
 
-export const rolesSortingSchema = sortingQuerySchema([...ROLE_SORT_COLUMNS])
+const rolesSortingSchema = sortingQuerySchema([...ROLE_SORT_COLUMNS])
 export const rolesListQuerySchema =
   paginationQuerySchema.merge(rolesSortingSchema)
 export type RolesListQuery = z.infer<typeof rolesListQuerySchema>
@@ -44,4 +43,3 @@ export const paginatedRolesSchema = paginatedResponseSchema(roleSchema).meta({
   id: 'PaginatedRoles',
   title: 'PaginatedRoles',
 })
-export type PaginatedRoles = z.infer<typeof paginatedRolesSchema>

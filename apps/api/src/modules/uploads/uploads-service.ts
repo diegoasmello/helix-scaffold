@@ -83,5 +83,3 @@ export function createUploadsService(
 
   return { list, getById, create, remove }
 }
-
-export type UploadsService = ReturnType<typeof createUploadsService>

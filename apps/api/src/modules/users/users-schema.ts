@@ -6,7 +6,7 @@ import {
 } from '@/lib/pagination'
 import { sortingQuerySchema } from '@/lib/sorting'
 
-export const userSchema = z.object({
+const userSchema = z.object({
   id: z.string(),
   name: z.string(),
   email: z.email(),
@@ -38,10 +38,9 @@ export const updateUserSchema = z.object({
 export type CreateUserInput = z.infer<typeof createUserSchema>
 export type UpdateUserInput = z.infer<typeof updateUserSchema>
 
-export const USER_SORT_COLUMNS = ['name', 'email', 'createdAt'] as const
-export type UserSortColumn = (typeof USER_SORT_COLUMNS)[number]
+const USER_SORT_COLUMNS = ['name', 'email', 'createdAt'] as const
 
-export const usersSortingSchema = sortingQuerySchema([...USER_SORT_COLUMNS])
+const usersSortingSchema = sortingQuerySchema([...USER_SORT_COLUMNS])
 export const usersListQuerySchema =
   paginationQuerySchema.merge(usersSortingSchema)
 export type UsersListQuery = z.infer<typeof usersListQuerySchema>
@@ -52,4 +51,3 @@ export const paginatedUsersSchema = paginatedResponseSchema(
   id: 'PaginatedUsers',
   title: 'PaginatedUsers',
 })
-export type PaginatedUsers = z.infer<typeof paginatedUsersSchema>

@@ -22,17 +22,14 @@ export const auditLogSchema = z
   })
   .meta({ id: 'AuditLog', title: 'AuditLog' })
 
-export const AUDIT_LOG_SORT_COLUMNS = [
+const AUDIT_LOG_SORT_COLUMNS = [
   'createdAt',
   'userName',
   'action',
   'resource',
 ] as const
-export type AuditLogSortColumn = (typeof AUDIT_LOG_SORT_COLUMNS)[number]
 
-export const auditLogsSortingSchema = sortingQuerySchema([
-  ...AUDIT_LOG_SORT_COLUMNS,
-])
+const auditLogsSortingSchema = sortingQuerySchema([...AUDIT_LOG_SORT_COLUMNS])
 export const auditLogsListQuerySchema = paginationQuerySchema.merge(
   auditLogsSortingSchema
 )
@@ -44,7 +41,6 @@ export const paginatedAuditLogsSchema = paginatedResponseSchema(
   id: 'PaginatedAuditLogs',
   title: 'PaginatedAuditLogs',
 })
-export type PaginatedAuditLogs = z.infer<typeof paginatedAuditLogsSchema>
 
 export const auditLogsExportQuerySchema = auditLogsSortingSchema
 export type AuditLogsExportQuery = z.infer<typeof auditLogsExportQuerySchema>

@@ -59,7 +59,7 @@ export const entitlementsSchema = z
 // the client — the frontend reads it from GET /subscription/status.
 const planIdSchema = z.string().min(1).max(100)
 
-export const createSubscriptionSchema = z.object({
+const createSubscriptionSchema = z.object({
   userId: z.string().min(1),
   planId: planIdSchema,
   status: z.enum(SUBSCRIPTION_STATUSES).default('active'),
@@ -70,7 +70,7 @@ export const createSubscriptionSchema = z.object({
   metadata: z.record(z.string(), z.unknown()).optional(),
 })
 
-export const updateSubscriptionSchema = z.object({
+const updateSubscriptionSchema = z.object({
   planId: planIdSchema.optional(),
   status: z.enum(SUBSCRIPTION_STATUSES).optional(),
   currentPeriodStart: z.coerce.date().optional(),
@@ -96,15 +96,14 @@ export function subscriptionBodySchemas(plans: PlanCatalog) {
   }
 }
 
-export const SUBSCRIPTION_SORT_COLUMNS = [
+const SUBSCRIPTION_SORT_COLUMNS = [
   'planId',
   'status',
   'currentPeriodEnd',
   'createdAt',
 ] as const
-export type SubscriptionSortColumn = (typeof SUBSCRIPTION_SORT_COLUMNS)[number]
 
-export const subscriptionsSortingSchema = sortingQuerySchema([
+const subscriptionsSortingSchema = sortingQuerySchema([
   ...SUBSCRIPTION_SORT_COLUMNS,
 ])
 export const subscriptionsListQuerySchema = paginationQuerySchema.merge(
@@ -123,6 +122,3 @@ export const paginatedSubscriptionsSchema = paginatedResponseSchema(
 
 export type CreateSubscriptionInput = z.infer<typeof createSubscriptionSchema>
 export type UpdateSubscriptionInput = z.infer<typeof updateSubscriptionSchema>
-export type PaginatedSubscriptions = z.infer<
-  typeof paginatedSubscriptionsSchema
->

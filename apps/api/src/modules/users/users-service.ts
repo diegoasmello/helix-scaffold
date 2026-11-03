@@ -171,5 +171,3 @@ export function createUsersService(
 
   return { list, getById, create, update, remove, listAll }
 }
-
-export type UsersService = ReturnType<typeof createUsersService>

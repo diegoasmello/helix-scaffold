@@ -268,5 +268,3 @@ export function createSubscriptionsService(database: Database) {
     expireLapsed,
   }
 }
-
-export type SubscriptionsService = ReturnType<typeof createSubscriptionsService>

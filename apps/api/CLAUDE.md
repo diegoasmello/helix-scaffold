@@ -126,6 +126,8 @@ src/modules/<feature>/
 └── <feature>-routes.ts   ← Fastify route registrations
 ```
 
+**Export only what another file imports.** The schema file exports the schemas and inferred types its routes and service use; the sort columns, the sorting and filter schemas, and any type nobody imports stay local. The service exports its factory, no `ReturnType` alias. `pnpm knip` (from the repo root) reports an export no file imports.
+
 **Every route lives under `/api`** (`API_PREFIX`, `src/lib/api-prefix.ts`): `buildApp` registers all route plugins — public, better-auth, docs, static files and the `authenticated` scope — inside one plugin with `{ prefix: API_PREFIX }`. Route files declare paths without it (`app.get('/features', …)`), tests inject with it (`url: '/api/features'`), and the spec lists `/api` as its server with prefix-less paths (`@fastify/swagger`'s `stripBasePath`), so the generated client keeps `getFeatures`. `src/app.test.ts` checks that nothing answers outside the prefix. Code building a public URL from `env.BASE_URL` (the API's origin) adds `API_PREFIX` itself (`local-storage.ts`).
 
 The entry point is `src/app.ts`, which exports `buildApp(database: Database, options?)` (`options.config` replaces the default settings and `options.billingWebhookAdapter` overrides `src/config/billing-webhook.ts` — both used by tests). Each route module is registered there, inside the `/api` scope, via `api.register(featureRoutes, { database })`, plus `config` when the module reads a setting.
@@ -254,10 +256,9 @@ Without coercion, Drizzle will pass the raw string to PostgreSQL and the compari
 ```ts
 import { filterQuerySchema } from '@/lib/filtering'
 
-export const FEATURE_FILTER_FIELDS = ['title', 'status', 'date'] as const
-export type FeatureFilterField = (typeof FEATURE_FILTER_FIELDS)[number]
+const FEATURE_FILTER_FIELDS = ['title', 'status', 'date'] as const
 
-export const featuresFilterQuerySchema = filterQuerySchema([...FEATURE_FILTER_FIELDS])
+const featuresFilterQuerySchema = filterQuerySchema([...FEATURE_FILTER_FIELDS])
 
 // Merge into the existing list query schema
 export const featuresListQuerySchema = paginationQuerySchema
@@ -751,12 +752,9 @@ export type CreateFeatureInput = z.infer<typeof createFeatureSchema>
 export type UpdateFeatureInput = z.infer<typeof updateFeatureSchema>
 
 // Pagination + sorting for the list endpoint
-export const FEATURE_SORT_COLUMNS = ['title', 'createdAt'] as const
-export type FeatureSortColumn = (typeof FEATURE_SORT_COLUMNS)[number]
+const FEATURE_SORT_COLUMNS = ['title', 'createdAt'] as const
 
-export const featuresSortingSchema = sortingQuerySchema([
-  ...FEATURE_SORT_COLUMNS,
-])
+const featuresSortingSchema = sortingQuerySchema([...FEATURE_SORT_COLUMNS])
 export const featuresListQuerySchema = paginationQuerySchema.merge(
   featuresSortingSchema
 )
@@ -768,7 +766,6 @@ export const paginatedFeaturesSchema = paginatedResponseSchema(
   id: 'PaginatedFeatures',
   title: 'PaginatedFeatures',
 })
-export type PaginatedFeatures = z.infer<typeof paginatedFeaturesSchema>
 ```
 
 Choose `FEATURE_SORT_COLUMNS` based on the fields users are likely to sort by. Always include `createdAt` as a fallback — it is the default sort column when `sortBy` is absent.
@@ -880,8 +877,6 @@ export function createFeatureService(database: Database) {
 
   return { list, getById, create, update, remove }
 }
-
-export type FeatureService = ReturnType<typeof createFeatureService>
 ```
 
 ### 4. Routes (`<feature>-routes.ts`)

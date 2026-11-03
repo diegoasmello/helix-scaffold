@@ -137,5 +137,3 @@ export function createRolesService(database: Database) {
 
   return { list, listAll, getById, hasUsers, create, update, remove }
 }
-
-export type RolesService = ReturnType<typeof createRolesService>

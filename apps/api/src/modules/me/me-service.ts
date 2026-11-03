@@ -104,5 +104,3 @@ export function createMeService(
 
   return { getMe, updateMe, changeEmail, updatePassword, setPassword }
 }
-
-export type MeService = ReturnType<typeof createMeService>

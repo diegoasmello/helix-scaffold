@@ -56,24 +56,12 @@ export const paginatedTodosSchema = paginatedResponseSchema(todoSchema).meta({
   title: 'PaginatedTodos',
 })
 
-export const TODO_SORT_COLUMNS = [
-  'title',
-  'status',
-  'date',
-  'createdAt',
-] as const
-export type TodoSortColumn = (typeof TODO_SORT_COLUMNS)[number]
+const TODO_SORT_COLUMNS = ['title', 'status', 'date', 'createdAt'] as const
 
-export const TODO_FILTER_FIELDS = [
-  'title',
-  'description',
-  'status',
-  'date',
-] as const
-export type TodoFilterField = (typeof TODO_FILTER_FIELDS)[number]
+const TODO_FILTER_FIELDS = ['title', 'description', 'status', 'date'] as const
 
-export const todosSortingSchema = sortingQuerySchema([...TODO_SORT_COLUMNS])
-export const todosFilterQuerySchema = filterQuerySchema([...TODO_FILTER_FIELDS])
+const todosSortingSchema = sortingQuerySchema([...TODO_SORT_COLUMNS])
+const todosFilterQuerySchema = filterQuerySchema([...TODO_FILTER_FIELDS])
 export const todosListQuerySchema = paginationQuerySchema
   .merge(todosSortingSchema)
   .merge(todosFilterQuerySchema)
@@ -87,4 +75,3 @@ export type TodosExportQuery = z.infer<typeof todosExportQuerySchema>
 
 export type CreateTodoInput = z.infer<typeof createTodoSchema>
 export type UpdateTodoInput = z.infer<typeof updateTodoSchema>
-export type PaginatedTodos = z.infer<typeof paginatedTodosSchema>

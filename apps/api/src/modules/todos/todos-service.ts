@@ -347,5 +347,3 @@ export function createTodosService(
     generateReport,
   }
 }
-
-export type TodosService = ReturnType<typeof createTodosService>

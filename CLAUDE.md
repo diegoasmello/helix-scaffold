@@ -54,6 +54,9 @@ pnpm test:e2e
 # Format all workspaces (Prettier)
 pnpm format
 
+# Unused files, exports and dependencies across the monorepo (knip.json)
+pnpm knip
+
 # Database (apps/api) — see apps/api/CLAUDE.md → Scripts
 pnpm db:generate       # migration from the Drizzle schema
 pnpm db:migrate        # apply to the dev DB

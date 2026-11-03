@@ -292,5 +292,3 @@ export function createAccountProvisioning(
 
   return { isBootstrapped, provisionFirstAdmin, provisionAccount }
 }
-
-export type AccountProvisioning = ReturnType<typeof createAccountProvisioning>

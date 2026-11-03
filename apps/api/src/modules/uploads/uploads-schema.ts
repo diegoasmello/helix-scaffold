@@ -32,12 +32,9 @@ export const uploadSchema = z
   })
   .meta({ id: 'Upload', title: 'Upload' })
 
-export type Upload = z.infer<typeof uploadSchema>
+const UPLOAD_SORT_COLUMNS = ['originalName', 'createdAt'] as const
 
-export const UPLOAD_SORT_COLUMNS = ['originalName', 'createdAt'] as const
-export type UploadSortColumn = (typeof UPLOAD_SORT_COLUMNS)[number]
-
-export const uploadsSortingSchema = sortingQuerySchema([...UPLOAD_SORT_COLUMNS])
+const uploadsSortingSchema = sortingQuerySchema([...UPLOAD_SORT_COLUMNS])
 export const uploadsListQuerySchema =
   paginationQuerySchema.merge(uploadsSortingSchema)
 export type UploadsListQuery = z.infer<typeof uploadsListQuerySchema>
@@ -45,7 +42,6 @@ export type UploadsListQuery = z.infer<typeof uploadsListQuerySchema>
 export const paginatedUploadsSchema = paginatedResponseSchema(
   uploadSchema
 ).meta({ id: 'PaginatedUploads', title: 'PaginatedUploads' })
-export type PaginatedUploads = z.infer<typeof paginatedUploadsSchema>
 
 export const ALLOWED_MIME_TYPES = [
   // Images
@@ -74,5 +70,3 @@ export const ALLOWED_MIME_TYPES = [
   'video/ogg',
   'video/quicktime',
 ] as const
-
-export type AllowedMimeType = (typeof ALLOWED_MIME_TYPES)[number]

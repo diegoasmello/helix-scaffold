@@ -23,8 +23,8 @@ Full CRUD module. Differs significantly from other modules because user creation
 
 Two entity shapes exist:
 
-- `userSchema` — raw user fields without role embed. **No `.meta()`** — not emitted as a named ref.
-- `userWithRoleSchema` — extends `userSchema` with `role: { id: string, name: string } | null`. Has `.meta({ id: 'UserWithRole', title: 'UserWithRole' })`. **Every `/users` endpoint returns this** — plain `userSchema` is only used by `GET /me` / `PATCH /me` in the `me` module.
+- `userSchema` (internal) — raw user fields without role embed. **No `.meta()`** — not emitted as a named ref. Only the base of `userWithRoleSchema`; no endpoint returns it.
+- `userWithRoleSchema` — extends `userSchema` with `role: { id: string, name: string } | null`. Has `.meta({ id: 'UserWithRole', title: 'UserWithRole' })`. **Every `/users` endpoint returns this**, and so do `GET /me` / `PATCH /me` in the `me` module.
 
 `createUserSchema` — `{ name, email, password (min 8), roleId? (optional string) }`.  
 `updateUserSchema` — `{ name?, email?, roleId?: string | null }`. `roleId: null` removes the role. Password change is **not** supported via this endpoint.

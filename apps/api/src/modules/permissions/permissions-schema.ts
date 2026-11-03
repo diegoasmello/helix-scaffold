@@ -13,7 +13,7 @@ export const resourceDefinitionSchema = z
   })
   .meta({ id: 'ResourceDefinition', title: 'ResourceDefinition' })
 
-export const grantsSchema = z
+const grantsSchema = z
   .record(z.string(), z.array(z.string()))
   .meta({ id: 'Grants', title: 'Grants' })
 
