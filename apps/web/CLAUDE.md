@@ -1310,7 +1310,7 @@ When active filters are present and the result is empty, skip the `EmptyState` �
 
 Form screens use the `<Form>` component from `@helix/ui` wrapping `PageCreate`/`PageEdit`. `Form` receives `form` (the `useForm` instance) and `onSubmit` (a plain function that receives the validated values — not `form.onSubmit(...)`). It handles validation and submission internally.
 
-**Per-row actions** — always `<RowActions>` from `@helix/ui`, in a column with `accessor: 'actions'`, `textAlign: 'right'`, `width: '1%'`. It applies the list rules by itself: **≤ 3 visible actions** are text buttons side by side (`size="xs"`, `variant="default"`); **more than 3** collapse into a single "⋯" menu (accessible name "Actions"). Mark destructive actions `danger: true` (red text / red menu item) and permission-gated ones `hidden: !hasPermission(...)` — hidden actions are left out **before** the ≤ 3 count, so a row with 4 declared actions whose user may see 3 shows buttons. Never make the row text itself clickable (no `onRowClick`).
+**Per-row actions** — always `<RowActions>` from `@helix/ui`, in a column with `accessor: 'actions'`, `textAlign: 'center'` (the title is centred over the buttons — never `'right'`), `width: '1%'`. It applies the list rules by itself: **≤ 3 visible actions** are text buttons side by side (`size="xs"`, `variant="default"`); **more than 3** collapse into a single "⋯" menu (accessible name "Actions"). Mark destructive actions `danger: true` (red text / red menu item) and permission-gated ones `hidden: !hasPermission(...)` — hidden actions are left out **before** the ≤ 3 count, so a row with 4 declared actions whose user may see 3 shows buttons. Never make the row text itself clickable (no `onRowClick`).
 
 ```tsx
 const { hasPermission } = useAuth() // from '../../auth/use-auth'
@@ -1318,7 +1318,7 @@ const { hasPermission } = useAuth() // from '../../auth/use-auth'
 {
   accessor: 'actions',
   title: t('columns.actions'),
-  textAlign: 'right',
+  textAlign: 'center',
   width: '1%',
   render: (item) => (
     <RowActions

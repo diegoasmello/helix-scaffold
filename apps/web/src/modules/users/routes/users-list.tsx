@@ -103,7 +103,7 @@ export function UsersList() {
     {
       accessor: 'actions',
       title: t('columns.actions'),
-      textAlign: 'right',
+      textAlign: 'center',
       width: '1%',
       render: (item) => (
         <RowActions
