@@ -1777,18 +1777,21 @@ afterEach(() => vi.clearAllMocks())
 
 **List fixtures**: always build the array manually from single-item factories — do not use `createGetXxx200([...])`, which prepends random faker items to the given array.
 
-When you need to test that action buttons are hidden when the user lacks a permission, override `getMePermissionsHandler` inside that test:
+When you need to test that action buttons are hidden when the user lacks a permission, override `getMePermissionsHandler` inside that test — with a **positive control**. The grants come from `GET /me/permissions`, which resolves after the records: until it does, every gated button is hidden for lack of data, so an absence asserted right after the records render proves nothing (a button checking the wrong permission would appear a moment later and the test would still pass). Grant one action that shows a button, wait for that button, then assert the others are absent. Never wait with a timer:
 
 ```ts
-it('hides edit and delete buttons when user lacks permissions', async () => {
-  server.use(getMePermissionsHandler({ grants: { xxx: ['view'] } }))
+it('hides Create and Delete without the permissions', async () => {
+  server.use(getMePermissionsHandler({ grants: { xxx: ['view', 'edit'] } }))
   renderXxxList()
-  await screen.findByText('Item one')
+  // The positive control: Edit shows up only once the grants have arrived
+  await screen.findAllByRole('button', { name: 'Edit' })
   // Row actions have no aria-label: query them by role and visible name
-  expect(screen.queryByRole('button', { name: 'Edit' })).not.toBeInTheDocument()
   expect(screen.queryByRole('button', { name: 'Delete' })).not.toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: 'Create' })).not.toBeInTheDocument()
 })
 ```
+
+Cover each gated button in some test this way — a second test with `['view', 'delete']` hides Edit. For the same reason, the tests that click a gated button find it with `findBy*`, not `getBy*`.
 
 **Response helpers** — every generated handler ships with typed response helpers for each status code it can return. Always use these instead of constructing raw `Response`/`HttpResponse` objects — they encode the correct status, headers, and body shape:
 

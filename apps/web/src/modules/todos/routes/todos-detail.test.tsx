@@ -88,15 +88,25 @@ afterEach(() => {
 })
 
 describe('TodoDetail', () => {
-  it('hides Edit and Delete without the permissions', async () => {
-    server.use(getMePermissionsHandler({ grants: { todos: ['view'] } }))
+  it('hides Delete without the permission', async () => {
+    server.use(getMePermissionsHandler({ grants: { todos: ['view', 'edit'] } }))
     renderTodoDetail()
-    await screen.findByText('Review quarterly report')
-    expect(
-      screen.queryByRole('button', { name: 'Edit' })
-    ).not.toBeInTheDocument()
+    // The positive control: Edit shows up only once the grants have arrived
+    await screen.findByRole('button', { name: 'Edit' })
     expect(
       screen.queryByRole('button', { name: 'Delete' })
+    ).not.toBeInTheDocument()
+  })
+
+  it('hides Edit without the permission', async () => {
+    server.use(
+      getMePermissionsHandler({ grants: { todos: ['view', 'delete'] } })
+    )
+    renderTodoDetail()
+    // The positive control: Delete shows up only once the grants have arrived
+    await screen.findByRole('button', { name: 'Delete' })
+    expect(
+      screen.queryByRole('button', { name: 'Edit' })
     ).not.toBeInTheDocument()
   })
 

@@ -124,20 +124,28 @@ afterEach(() => {
 })
 
 describe('TodoList', () => {
-  it('hides Create, Edit and Delete without the permissions', async () => {
-    server.use(getMePermissionsHandler({ grants: { todos: ['view'] } }))
+  it('hides Create and Delete without the permissions', async () => {
+    server.use(getMePermissionsHandler({ grants: { todos: ['view', 'edit'] } }))
     renderTodoList()
-    await screen.findByText('Review quarterly report')
-    // Row actions have no aria-label: query them by role and visible name
-    expect(screen.getAllByRole('button', { name: 'View' })).toHaveLength(2)
-    expect(
-      screen.queryByRole('button', { name: 'Edit' })
-    ).not.toBeInTheDocument()
+    // The positive control: Edit shows up only once the grants have arrived
+    await screen.findAllByRole('button', { name: 'Edit' })
     expect(
       screen.queryByRole('button', { name: 'Delete' })
     ).not.toBeInTheDocument()
     expect(
       screen.queryByRole('button', { name: 'Create' })
+    ).not.toBeInTheDocument()
+  })
+
+  it('hides Edit without the permission', async () => {
+    server.use(
+      getMePermissionsHandler({ grants: { todos: ['view', 'delete'] } })
+    )
+    renderTodoList()
+    // The positive control: Delete shows up only once the grants have arrived
+    await screen.findAllByRole('button', { name: 'Delete' })
+    expect(
+      screen.queryByRole('button', { name: 'Edit' })
     ).not.toBeInTheDocument()
   })
 
