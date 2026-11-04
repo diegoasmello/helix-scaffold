@@ -6,6 +6,7 @@ import {
   checkPageAccess,
   createPermissionChecker,
   guardPage,
+  hasPagePermission,
   type PageAccess,
 } from './page-access'
 
@@ -63,6 +64,39 @@ describe('checkPageAccess', () => {
         checkers({ subscriptionEnabled: false, hasPermission: () => false })
       )
     ).toEqual({ allowed: false, redirectTo: '/' })
+  })
+})
+
+describe('hasPagePermission', () => {
+  const editor: PageAccess = {
+    permission: [
+      { resource: 'permissions', action: 'view' },
+      { resource: 'permissions', action: 'edit' },
+    ],
+  }
+
+  it('needs every permission of a list', () => {
+    const editOnly = createPermissionChecker({ permissions: ['edit'] })
+    const both = createPermissionChecker({ permissions: ['view', 'edit'] })
+    expect(hasPagePermission(editor, editOnly)).toBe(false)
+    expect(hasPagePermission(editor, both)).toBe(true)
+  })
+
+  it('accepts a single permission, or none', () => {
+    const hasPermission = createPermissionChecker({ todos: ['view'] })
+    expect(hasPagePermission(todosList, hasPermission)).toBe(true)
+    expect(hasPagePermission({}, () => false)).toBe(true)
+  })
+
+  it('sends to /403 when one permission of the list is missing', () => {
+    expect(
+      checkPageAccess(
+        editor,
+        checkers({
+          hasPermission: createPermissionChecker({ permissions: ['edit'] }),
+        })
+      )
+    ).toEqual({ allowed: false, redirectTo: '/403' })
   })
 })
 

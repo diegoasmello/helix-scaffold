@@ -5,14 +5,25 @@ import type {
 } from '@helix/api-client/types'
 import { redirect } from '@tanstack/react-router'
 
+/** One RBAC permission (`src/config/permissions.ts` in the API). */
+interface PagePermission {
+  resource: PermissionResource
+  action: PermissionAction
+}
+
 /**
  * What a page requires. Declared once per page (in the module's
  * `routes/access.ts`) and read by both its route guard (`guardPage`) and,
  * for pages in the sidebar, the sidebar item — so the two can never disagree.
  */
 export interface PageAccess {
-  /** RBAC permission (`src/config/permissions.ts` in the API). Missing → `/403`. */
-  permission?: { resource: PermissionResource; action: PermissionAction }
+  /**
+   * RBAC permission (`src/config/permissions.ts` in the API) — or several,
+   * all required, for a page whose data come from routes guarded by different
+   * permissions (the permission editor reads `permissions:view` data and
+   * saves with `permissions:edit`). Any missing → `/403`.
+   */
+  permission?: PagePermission | readonly PagePermission[]
   /** Plan feature (`subscriptions.plans` in the API config). Missing → `/upgrade?feature=…`. */
   feature?: string
   /** The page only exists while subscriptions are enabled. Off → `/`. */
@@ -49,16 +60,25 @@ export function checkPageAccess(
   if (access.feature && !checkers.hasSubscriptionAccess(access.feature)) {
     return { allowed: false, redirectTo: '/upgrade', feature: access.feature }
   }
-  if (
-    access.permission &&
-    !checkers.hasPermission(
-      access.permission.resource,
-      access.permission.action
-    )
-  ) {
+  if (!hasPagePermission(access, checkers.hasPermission)) {
     return { allowed: false, redirectTo: '/403' }
   }
   return { allowed: true }
+}
+
+/**
+ * Whether `hasPermission` grants every permission the page requires — the
+ * permission half of `checkPageAccess`, for a button or row action leading to
+ * the page: `hidden: !hasPagePermission(ROLES_ACCESS.permissions, hasPermission)`.
+ */
+export function hasPagePermission(
+  access: PageAccess,
+  hasPermission: AccessCheckers['hasPermission']
+): boolean {
+  const required = ([] as PagePermission[]).concat(access.permission ?? [])
+  return required.every(({ resource, action }) =>
+    hasPermission(resource, action)
+  )
 }
 
 /** A `beforeLoad` that also says which `PageAccess` it enforces. */

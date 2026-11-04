@@ -21,7 +21,7 @@ Unique index on `(roleId, resource, action)` — no duplicate grants per role.
 
 No entity schema for a "permission" object. The schemas are:
 
-- `resourceDefinitionSchema` — `{ resource: PermissionResource, label, actions: PermissionAction[] }`. Used for the catalog endpoint. `PermissionResource` is a named enum of the catalog's resources, so the generated client types the frontend's permission checks with it.
+- `resourceDefinitionSchema` — `{ resource: PermissionResource, label, actions: PermissionAction[], requires }`. `requires` maps an action to its direct requirements (`PermissionRef[]` — `{ resource, action }`), from `PERMISSION_REQUIREMENTS` (`src/config/permissions.ts`, via `directRequirementsOf()`); an action without requirements has no key. Used for the catalog endpoint. `PermissionResource` is a named enum of the catalog's resources, so the generated client types the frontend's permission checks with it.
 - `grantsSchema` — `Record<string, string[]>` — the shape `{ [resource]: action[] }`. Named ref `Grants`. Keys stay `string`: a role may still hold rows for a resource a fork has since removed from the catalog.
 - `rolePermissionsResponseSchema` — `{ grants: Grants }`. Named ref `RolePermissionsResponse`. Used for all read/write endpoints on role permissions.
 
@@ -55,7 +55,7 @@ Four endpoints across two URL namespaces:
 | --- | --- | --- | --- |
 | `GET` | `/permissions/resources` | none (authenticated only) | Returns the static `RESOURCE_DEFINITIONS` catalog |
 | `GET` | `/me/permissions` | none (authenticated only) | Returns the current user's own grants |
-| `GET` | `/roles/:id/permissions` | `permissions:view` | Returns grants for any role |
+| `GET` | `/roles/:id/permissions` | `permissions:view` | Returns grants for any role. `permissions:edit` alone does not open it — the requirement makes the editor grant both |
 | `PUT` | `/roles/:id/permissions` | `permissions:edit` | Replaces all grants for a role |
 
 **`GET /permissions/resources`** — no `requirePermission` guard, but it lives inside the `authenticated` scope so it still requires a valid session. Spreads `RESOURCE_DEFINITIONS` with `[...def.actions]` to convert the `readonly` tuple to a mutable array before serialisation.
@@ -65,7 +65,8 @@ Four endpoints across two URL namespaces:
 **`PUT /roles/:id/permissions`** — uses `PUT` (full replacement), not `PATCH`. The body is `{ grants: Grants }`, identical in shape to the response.
 
 - **400** `{ message: 'Unknown permissions: <resource:action>, …' }` when any grant is not declared in `RESOURCE_DEFINITIONS` — checked by `findUnknownGrants()` (`src/config/permissions.ts`) before anything is written, so the request is all-or-nothing.
-- **403** — privilege ceiling, checked after the 400 and before anything is written: `role_not_editable` when the role grants something the caller's role lacks (even to remove grants from it), `permissions_not_grantable` when the body grants a pair the caller's role lacks (`message` lists them). `permission_denied` is `requirePermission()`'s.
+- **400** `missing_required_permissions` when a grant comes without what it requires (`PERMISSION_REQUIREMENTS`, checked by `findMissingRequirements()`; `message` lists the missing pairs) — `permissions:edit` without `permissions:view`, `users:edit` without `roles:view`. Checked after the privilege ceiling, so a refused grant answers 403 whatever else the body lacks. Grants saved before a requirement existed stay as they are until the role's permissions are saved again.
+- **403** — privilege ceiling, checked after the `unknown_permissions` 400 and before anything is written: `role_not_editable` when the role grants something the caller's role lacks (even to remove grants from it), `permissions_not_grantable` when the body grants a pair the caller's role lacks (`message` lists them). `permission_denied` is `requirePermission()`'s.
 - **404** `{ message: 'Role not found' }` for an unknown role id (Postgres FK violation, read with `getPgErrorCode`).
 - **Audit:** `request.audit('edit', 'permissions', roleId, { grants })` after a successful replace.
 
@@ -91,13 +92,13 @@ Only `view` and `edit` — there is no `create` or `delete` action. Permissions 
 
 `beforeEach` runs `cleanupAuditLogs()`, then `cleanupUsers()` and `cleanupRoles()` — same FK order as the users module.
 
-**`GET /permissions/resources`** — asserts shape only (`resource`, `label`, `actions` properties), not the exact list, so the test stays valid when new modules are added.
+**`GET /permissions/resources`** — asserts shape only (`resource`, `label`, `actions`, `requires` properties), not the exact list, so the test stays valid when new modules are added; plus the `permissions` resource's `requires`.
 
 **`GET /me/permissions`** — tests two cases: authenticated user with a role (the `__test_admin__` role from `createTestSession`), and a freshly signed-up user with no role (returns `{ grants: {} }`).
 
 **`GET /roles/:id/permissions`** — uses `createRoleWithPermissions` seeder; asserts with `expect.arrayContaining` (order of actions in the array is not guaranteed).
 
-**`PUT /roles/:id/permissions`** — covers: replace with new grants, clear all grants with `{}`, 400 for an unknown resource (and existing grants untouched), 400 for an undeclared action, 404 for an unknown role, duplicate actions deduplicated, audit entry written.
+**`PUT /roles/:id/permissions`** — covers: replace with new grants, clear all grants with `{}`, 400 for an unknown resource (and existing grants untouched), 400 for an undeclared action, 400 `missing_required_permissions` (and the role unchanged) and a body that brings its requirements, 404 for an unknown role, duplicate actions deduplicated, audit entry written.
 
 **`describe('Privilege ceiling')`** — a moderator (`roles:view/edit`, `permissions:view/edit`, `todos:view/edit`) built with `createRoleWithPermissions` + `createSessionWithRole` (`src/test/helpers.ts`): grants what it holds to a lower role (200), a pair it lacks (403 `permissions_not_grantable`, the role unchanged), any change to a broader role (403 `role_not_editable`), raising its own role (403), no audit entry for a refusal.
 

@@ -52,6 +52,7 @@
     "title": "Permissions",
     "editTitle": "Edit permissions",
     "editButton": "Edit permissions",
+    "requires": "Requires: {{list}}",
     "resources": {
       "todos": "Todos",
       "users": "Users",
@@ -79,6 +80,7 @@
     "role_in_use": "This role still has users. Move them to another role first.",
     "role_not_found": "This role no longer exists.",
     "role_not_editable": "This role has permissions your own role doesn't have, so you can't change or delete it.",
-    "permissions_not_grantable": "You can't grant permissions your own role doesn't have."
+    "permissions_not_grantable": "You can't grant permissions your own role doesn't have.",
+    "missing_required_permissions": "Some permissions need others that aren't checked. Check them too."
   }
 }

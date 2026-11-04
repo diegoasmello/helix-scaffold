@@ -72,11 +72,15 @@ export const rolesDetailRoute = createRoute({
     ],
   },
   beforeLoad: guardPage(ROLES_ACCESS.view),
-  loader: ({ params }) => {
-    queryClient.ensureQueryData(getPermissionsResourcesSuspenseQueryOptions())
-    queryClient.ensureQueryData(
-      getRolesIdPermissionsSuspenseQueryOptions(params.id)
-    )
+  loader: ({ params, context }) => {
+    // The grants need `permissions:view` — without it the page shows the role
+    // alone (see `RolesDetail`), so they are not even requested.
+    if (context.hasPermission('permissions', 'view')) {
+      queryClient.ensureQueryData(getPermissionsResourcesSuspenseQueryOptions())
+      queryClient.ensureQueryData(
+        getRolesIdPermissionsSuspenseQueryOptions(params.id)
+      )
+    }
     return queryClient.ensureQueryData(
       getRolesIdSuspenseQueryOptions(params.id)
     )

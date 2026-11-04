@@ -1,6 +1,11 @@
 import z from 'zod'
 
-import { findUnknownGrants, RESOURCE_DEFINITIONS } from '@/config/permissions'
+import {
+  directRequirementsOf,
+  findMissingRequirements,
+  findUnknownGrants,
+  RESOURCE_DEFINITIONS,
+} from '@/config/permissions'
 import { DomainError, errorSchema } from '@/lib/domain-errors'
 import { getPgErrorCode, PG_FOREIGN_KEY_VIOLATION } from '@/lib/pg-errors'
 
@@ -31,7 +36,11 @@ export async function permissionsRoutes(
       },
     },
     async () =>
-      RESOURCE_DEFINITIONS.map((def) => ({ ...def, actions: [...def.actions] }))
+      RESOURCE_DEFINITIONS.map((def) => ({
+        ...def,
+        actions: [...def.actions],
+        requires: directRequirementsOf(def.resource),
+      }))
   )
 
   app.get(
@@ -78,7 +87,10 @@ export async function permissionsRoutes(
         body: rolePermissionsResponseSchema,
         response: {
           200: rolePermissionsResponseSchema,
-          400: errorSchema('unknown_permissions'),
+          400: errorSchema(
+            'unknown_permissions',
+            'missing_required_permissions'
+          ),
           403: errorSchema(
             'permission_denied',
             'role_not_editable',
@@ -117,6 +129,17 @@ export async function permissionsRoutes(
           403,
           'permissions_not_grantable',
           `Your own role lacks: ${ungrantable.join(', ')}`
+        )
+      }
+
+      // Checked after the ceiling: a refused grant answers 403 whatever else
+      // the body lacks.
+      const missing = findMissingRequirements(request.body.grants)
+      if (missing.length > 0) {
+        throw new DomainError(
+          400,
+          'missing_required_permissions',
+          `Missing required permissions: ${missing.join(', ')}`
         )
       }
 

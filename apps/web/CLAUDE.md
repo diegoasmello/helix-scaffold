@@ -265,7 +265,7 @@ const xxxListRoute = createRoute({
 | --- | --- |
 | `requiresSubscriptions: true` — the page exists only while subscriptions are enabled | `/` |
 | `feature: '<key>'` — the user's plan must include it (see `src/modules/subscriptions/CLAUDE.md`) | `/upgrade?feature=<key>` |
-| `permission: { resource, action }` — the RBAC grant | `/403` |
+| `permission: { resource, action }` — the RBAC grant; or a list, all required, for a page whose data come from routes guarded by different permissions (`ROLES_ACCESS.permissions`: `roles:view`, `permissions:view`, `permissions:edit`) | `/403` |
 
 Permission per route type:
 
@@ -278,7 +278,11 @@ Permission per route type:
 
 `guardPage()` reads `context.hasPermission`, `context.hasSubscriptionAccess` and `context.subscriptionEnabled` from `authenticatedRoute.beforeLoad` (see _Route tree_). Write a custom `beforeLoad` only for pages with their own rule (`/upgrade`, `/me/subscription`). **The sidebar uses the same constant** (`access: XXX_ACCESS.view` — see _Register the module_), and `src/routes.test.ts` checks against the real router that every sidebar item carries its route's access and that every authenticated page (except the ones open to every user: `/`, `/me/*`, `/upgrade`) is protected by `guardPage()`.
 
-The `/403` page (`src/modules/errors/forbidden.tsx`) renders inside the app layout so the user can navigate to sections they do have access to. The `/404` and generic error pages (`src/modules/errors/`) are full-screen and set on `createRootRoute`.
+A button or row action leading to a page checks the same constant: `hasPagePermission(XXX_ACCESS.page, hasPermission)` (the permission half of `checkPageAccess`) — `<HasPermission>` takes a single pair.
+
+**A page that shows another resource's data** guards that part separately: the route's loader prefetches it only when `context.hasPermission(...)` allows, and the component renders it inside `<HasPermission>`, in a child component that holds the query (so the query never runs without the permission). `RolesDetail` is the reference: the role is `roles:view`, its grants `permissions:view`. Declare in the API what each permission needs to work (`PERMISSION_REQUIREMENTS` — see `apps/api/CLAUDE.md` → _Step 0_), so the permission editor never builds a role that opens pages it cannot load.
+
+The `/403` page (`src/modules/errors/forbidden.tsx`) renders inside the app layout so the user can navigate to sections they do have access to. The `/404` and generic error pages (`src/modules/errors/`) are full-screen and set on `createRootRoute`. A 403 from the API that reaches the error boundary (a loader asking for data its guard did not cover) is not shown as a crash: `ErrorBoundary` redirects (`replace`) to `/403`, or to `/upgrade` for `subscription_required`.
 
 ## Module structure convention
 

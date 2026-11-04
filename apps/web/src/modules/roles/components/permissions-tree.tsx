@@ -2,8 +2,14 @@ import type {
   PermissionAction,
   ResourceDefinition,
 } from '@helix/api-client/types'
-import { Checkbox, Group, Paper, Stack, Text } from '@helix/ui'
+import { Box, Checkbox, Group, Paper, Stack, Text, Tooltip } from '@helix/ui'
 import { useTranslation } from 'react-i18next'
+
+import {
+  grantWithRequirements,
+  requirementsOf,
+  revokeWithDependents,
+} from '../permission-requirements'
 
 export interface PermissionsTreeProps {
   definitions: ResourceDefinition[]
@@ -20,13 +26,25 @@ export function PermissionsTree(props: Readonly<PermissionsTreeProps>) {
 
   // Resources come from the API catalog: a resource without a translation
   // (e.g. a module added later) falls back to the catalog's English label.
-  const resourceLabel = (def: ResourceDefinition) =>
-    t(
-      `permissions.resources.${def.resource}` as 'permissions.resources.todos',
-      {
-        defaultValue: def.label,
-      }
-    )
+  const resourceLabel = (resource: string) =>
+    t(`permissions.resources.${resource}` as 'permissions.resources.todos', {
+      defaultValue:
+        definitions.find((def) => def.resource === resource)?.label ?? resource,
+    })
+
+  // "Requires: Roles › View" — why checking an action checks others too.
+  const requirementsHint = (resource: string, action: PermissionAction) => {
+    const required = requirementsOf(definitions, resource, action)
+    if (required.length === 0) return null
+    return t('permissions.requires', {
+      list: required
+        .map(
+          (ref) =>
+            `${resourceLabel(ref.resource)} › ${tc(`actions.${ref.action}`)}`
+        )
+        .join(', '),
+    })
+  }
 
   return (
     <Stack gap="sm">
@@ -35,21 +53,33 @@ export function PermissionsTree(props: Readonly<PermissionsTreeProps>) {
         const allChecked = def.actions.every((a) => resourceGrants.includes(a))
         const someChecked = def.actions.some((a) => resourceGrants.includes(a))
 
+        // Checking an action also checks what it requires; unchecking one
+        // also unchecks what depends on it (`requires` in the catalog).
         const handleToggleAll = () => {
           if (disabled) return
-          onChange({
-            ...grants,
-            [def.resource]: allChecked ? [] : [...def.actions],
-          })
+          onChange(
+            allChecked
+              ? revokeWithDependents(
+                  grants,
+                  definitions,
+                  def.resource,
+                  def.actions
+                )
+              : grantWithRequirements(
+                  grants,
+                  definitions,
+                  def.resource,
+                  def.actions
+                )
+          )
         }
 
         const handleToggleAction = (action: PermissionAction) => {
           if (disabled) return
-          const current = grants[def.resource] ?? []
-          const next = current.includes(action)
-            ? current.filter((a) => a !== action)
-            : [...current, action]
-          onChange({ ...grants, [def.resource]: next })
+          const toggle = resourceGrants.includes(action)
+            ? revokeWithDependents
+            : grantWithRequirements
+          onChange(toggle(grants, definitions, def.resource, [action]))
         }
 
         return (
@@ -57,7 +87,7 @@ export function PermissionsTree(props: Readonly<PermissionsTreeProps>) {
             <Checkbox
               label={
                 <Text component="span" fw={600} size="sm">
-                  {resourceLabel(def)}
+                  {resourceLabel(def.resource)}
                 </Text>
               }
               checked={allChecked}
@@ -66,15 +96,21 @@ export function PermissionsTree(props: Readonly<PermissionsTreeProps>) {
               disabled={disabled}
             />
             <Group ml={28} mt="sm" gap="xl">
-              {def.actions.map((action) => (
-                <Checkbox
-                  key={action}
-                  label={tc(`actions.${action}`)}
-                  checked={resourceGrants.includes(action)}
-                  onChange={() => handleToggleAction(action)}
-                  disabled={disabled}
-                />
-              ))}
+              {def.actions.map((action) => {
+                const hint = requirementsHint(def.resource, action)
+                return (
+                  <Tooltip key={action} label={hint} disabled={!hint} withArrow>
+                    <Box>
+                      <Checkbox
+                        label={tc(`actions.${action}`)}
+                        checked={resourceGrants.includes(action)}
+                        onChange={() => handleToggleAction(action)}
+                        disabled={disabled}
+                      />
+                    </Box>
+                  </Tooltip>
+                )
+              })}
             </Group>
           </Paper>
         )

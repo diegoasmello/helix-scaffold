@@ -38,8 +38,14 @@ const definitions: ResourceDefinition[] = [
     resource: 'todos',
     label: 'Todos',
     actions: ['view', 'create', 'edit', 'delete'],
+    requires: {},
   },
-  { resource: 'users', label: 'Users', actions: ['view', 'create'] },
+  {
+    resource: 'users',
+    label: 'Users',
+    actions: ['view', 'create'],
+    requires: {},
+  },
 ]
 
 function renderRolesPermissions() {

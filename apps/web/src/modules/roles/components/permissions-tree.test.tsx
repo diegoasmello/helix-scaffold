@@ -19,9 +19,29 @@ const definitions: ResourceDefinition[] = [
     resource: 'todos',
     label: 'Todos',
     actions: ['view', 'create', 'edit', 'delete'],
+    requires: {},
   },
   // `label` is the API catalog's English label; the UI shows the translation
-  { resource: 'audit', label: 'Audit', actions: ['view'] },
+  { resource: 'audit', label: 'Audit', actions: ['view'], requires: {} },
+]
+
+// The real catalog's chain: permissions:edit → permissions:view → roles:view
+const withRequirements: ResourceDefinition[] = [
+  {
+    resource: 'roles',
+    label: 'Roles',
+    actions: ['view', 'edit'],
+    requires: { edit: [{ resource: 'roles', action: 'view' }] },
+  },
+  {
+    resource: 'permissions',
+    label: 'Permissions',
+    actions: ['view', 'edit'],
+    requires: {
+      view: [{ resource: 'roles', action: 'view' }],
+      edit: [{ resource: 'permissions', action: 'view' }],
+    },
+  },
 ]
 
 function renderTree(grants: Grants, options: { disabled?: boolean } = {}) {
@@ -39,13 +59,15 @@ function renderTree(grants: Grants, options: { disabled?: boolean } = {}) {
   return onChange
 }
 
-function StatefulTree(props: Readonly<{ initial: Grants }>) {
-  const { initial } = props
+function StatefulTree(
+  props: Readonly<{ initial: Grants; catalog?: ResourceDefinition[] }>
+) {
+  const { initial, catalog = definitions } = props
   const [grants, setGrants] = useState(initial)
 
   return (
     <PermissionsTree
-      definitions={definitions}
+      definitions={catalog}
       grants={grants}
       onChange={setGrants}
     />
@@ -78,6 +100,7 @@ describe('PermissionsTree', () => {
               resource: 'reports' as PermissionResource,
               label: 'Reports',
               actions: ['view'],
+              requires: {},
             },
           ]}
           grants={{}}
@@ -178,5 +201,55 @@ describe('PermissionsTree', () => {
     await userEvent.click(actionCheckbox('Todos', 'Edit'))
     await userEvent.click(resourceCheckbox('Todos'))
     expect(onChange).not.toHaveBeenCalled()
+  })
+
+  describe('requirements', () => {
+    function renderStateful(initial: Grants) {
+      render(
+        <MantineProvider>
+          <StatefulTree initial={initial} catalog={withRequirements} />
+        </MantineProvider>
+      )
+    }
+
+    it('checks what an action requires, transitively', async () => {
+      renderStateful({})
+      await userEvent.click(actionCheckbox('Permissions', 'Edit'))
+      expect(actionCheckbox('Permissions', 'Edit')).toBeChecked()
+      expect(actionCheckbox('Permissions', 'View')).toBeChecked()
+      expect(actionCheckbox('Roles', 'View')).toBeChecked()
+      expect(actionCheckbox('Roles', 'Edit')).not.toBeChecked()
+    })
+
+    it('unchecks what depends on an unchecked action, transitively', async () => {
+      renderStateful({ roles: ['view', 'edit'], permissions: ['view', 'edit'] })
+      await userEvent.click(actionCheckbox('Roles', 'View'))
+      for (const [resource, action] of [
+        ['Roles', 'View'],
+        ['Roles', 'Edit'],
+        ['Permissions', 'View'],
+        ['Permissions', 'Edit'],
+      ]) {
+        expect(actionCheckbox(resource, action)).not.toBeChecked()
+      }
+    })
+
+    it('applies them to the resource checkbox too', async () => {
+      renderStateful({})
+      await userEvent.click(resourceCheckbox('Permissions'))
+      expect(actionCheckbox('Roles', 'View')).toBeChecked()
+
+      await userEvent.click(resourceCheckbox('Roles'))
+      await userEvent.click(resourceCheckbox('Roles'))
+      expect(actionCheckbox('Permissions', 'View')).not.toBeChecked()
+    })
+
+    it('explains the requirements on hover', async () => {
+      renderStateful({})
+      await userEvent.hover(actionCheckbox('Permissions', 'Edit'))
+      expect(
+        await screen.findByText('Requires: Permissions › View, Roles › View')
+      ).toBeInTheDocument()
+    })
   })
 })

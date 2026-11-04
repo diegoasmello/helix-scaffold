@@ -9,6 +9,8 @@ src/modules/roles/
 ├── types.ts
 ├── validation.ts
 ├── validation.test.ts
+├── permission-requirements.ts       ← checks/unchecks permissions with their requirements (catalog `requires`)
+├── permission-requirements.test.ts
 ├── components/
 │   ├── roles-form.tsx               ← shared form fields (create + edit)
 │   ├── roles-form.test.tsx
@@ -109,7 +111,7 @@ Props: `opened`, `onClose`, `onSuccess(roleId)`. On success: `resourceCache.chan
 | `rolesCreateRoute` | `/roles/create`    | `roles:create` |
 | `rolesDetailRoute` | `/roles/$id`       | `roles:view`   |
 | `rolesEditRoute`   | `/roles/$id/edit`  | `roles:edit`   |
-| `rolesPermissionsRoute` | `/roles/$id/permissions` | `permissions:edit` |
+| `rolesPermissionsRoute` | `/roles/$id/permissions` | `roles:view` + `permissions:view` + `permissions:edit` (it loads the role and its grants before saving) |
 
 `rolesListRoute` validateSearch: `page` (default 1), `pageSize` (default 10), `sortBy` (enum `name | createdAt`, optional), `sortOrder` (default `'desc'`).
 
@@ -142,7 +144,7 @@ Inline in each component — no `hooks.ts`.
 `RolesList` gates its actions by permission:
 
 - Create button → `<HasPermission resource="roles" action="create">`
-- Row actions (`RowActions`): View (always), Edit (`hidden: !hasPermission('roles', 'edit')`), Edit permissions (`hidden: !hasPermission('permissions', 'edit')`), Delete (`hidden: !hasPermission('roles', 'delete')`, `danger: true`)
+- Row actions (`RowActions`): View (always), Edit (`hidden: !hasPermission('roles', 'edit')`), Edit permissions (`hidden: !hasPagePermission(ROLES_ACCESS.permissions, hasPermission)` — the editor page's whole access), Delete (`hidden: !hasPermission('roles', 'delete')`, `danger: true`)
 
 With all four allowed, the row shows the "⋯" menu; with 3 or fewer, text buttons — the tests cover both.
 
@@ -165,9 +167,9 @@ The list handler is called with a `createPaginatedRoles({...})` object — not a
 
 ## Permission editor
 
-`RolesDetail` shows the role's grants read-only (`<PermissionsTree disabled>`) and, for users with `permissions:edit`, a button to `/roles/$id/permissions`.
+`RolesDetail` (`roles:view`) shows the role and, only with `permissions:view`, its grants read-only (`RoleGrants`, a child component holding the grants and catalog queries, inside `<HasPermission resource="permissions" action="view">`; the loader prefetches them under the same check). Without it the page shows the role alone and never calls `GET /roles/:id/permissions`, which would answer 403. The button to `/roles/$id/permissions` shows with `hasPagePermission(ROLES_ACCESS.permissions, hasPermission)`.
 
-`rolesPermissionsRoute` (`/roles/$id/permissions`, guarded by `permissions:edit`) renders `RolesPermissions`: a `PageEdit` around `<PermissionsEditor roleId onCancel>`. Its loader awaits the role (for the breadcrumb) and prefetches the catalog and the grants.
+`rolesPermissionsRoute` (`/roles/$id/permissions`, guarded by `ROLES_ACCESS.permissions` — `roles:view`, `permissions:view` and `permissions:edit`) renders `RolesPermissions`: a `PageEdit` around `<PermissionsEditor roleId onCancel>`. Its loader awaits the role (for the breadcrumb) and prefetches the catalog and the grants.
 
 **`PermissionsEditor`** (`components/permissions-editor.tsx`):
 
@@ -177,6 +179,8 @@ The list handler is called with a `createPaginatedRoles({...})` object — not a
 - The API rejects grants outside the catalog with 400 and audits every save, so the editor only ever sends what the catalog offers.
 
 **`PermissionsTree`** (`components/permissions-tree.tsx`): pure controlled component — `definitions`, `grants`, `onChange`, `disabled?`. One block per resource with a parent checkbox (checked when all actions are granted, indeterminate when some are) and one checkbox per action the resource declares. Actions come from the catalog, so a new action in `RESOURCE_DEFINITIONS` shows up with no frontend change. Resource labels are translated via `roles:permissions.resources.<resource>`, falling back to the catalog's English `label` for a resource without a key — add one in both locales when you add a resource to `RESOURCE_DEFINITIONS`. Action labels reuse `common:actions.<action>`.
+
+**Requirements** — the catalog's `requires` (API: `PERMISSION_REQUIREMENTS`) says what each permission needs. The tree applies it through `permission-requirements.ts` (pure functions, unit-tested): checking an action (or a whole resource) also checks what it requires, transitively (`grantWithRequirements` — `permissions:edit` → `permissions:view` → `roles:view`); unchecking one also unchecks every held permission that depends on it (`revokeWithDependents`). An action with requirements shows them in a tooltip (`permissions.requires`: "Requires: Permissions › View, Roles › View"). Nothing is hard-coded in the web: a new requirement in the API shows up after `pnpm spec:sync`. Grants saved before a requirement existed load as they are; saving them unchanged answers 400 `missing_required_permissions`, notified through `errors.missing_required_permissions`.
 
 ## Sidebar
 

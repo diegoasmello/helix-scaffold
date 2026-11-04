@@ -20,18 +20,20 @@ import { useTranslation } from 'react-i18next'
 import { formatDate } from '@/utils/date'
 
 import { HasPermission } from '../../auth/components/has-permission'
+import { hasPagePermission } from '../../auth/page-access'
+import { useAuth } from '../../auth/use-auth'
 import { PermissionsTree } from '../components/permissions-tree'
 import { rolesDetailRoute } from '.'
+import { ROLES_ACCESS } from './access'
 
 export function RolesDetail() {
   const { id } = rolesDetailRoute.useParams()
   const navigate = rolesDetailRoute.useNavigate()
   const { t } = useTranslation('roles')
   const { t: tc } = useTranslation('common')
+  const { hasPermission } = useAuth()
 
   const { data: item } = useGetRolesIdSuspense(id)
-  const { data: grants } = useGetRolesIdPermissionsSuspense(id)
-  const { data: definitions } = useGetPermissionsResourcesSuspense()
 
   return (
     <PageView
@@ -39,7 +41,7 @@ export function RolesDetail() {
       description={item.description}
       actions={
         <>
-          <HasPermission resource="permissions" action="edit">
+          {hasPagePermission(ROLES_ACCESS.permissions, hasPermission) && (
             <Button
               variant="default"
               onClick={() =>
@@ -48,7 +50,7 @@ export function RolesDetail() {
             >
               {t('permissions.editButton')}
             </Button>
-          </HasPermission>
+          )}
           <HasPermission resource="roles" action="edit">
             <Button
               leftSection={<IconPencil size={17} />}
@@ -77,20 +79,43 @@ export function RolesDetail() {
             </Text>
           </LabeledValue>
         </Grid.Col>
-        <Grid.Col span={12}>
-          <Stack gap="sm">
-            <Title order={2} size="h3">
-              {t('permissions.title')}
-            </Title>
-            <PermissionsTree
-              definitions={definitions}
-              grants={grants.grants as Record<string, PermissionAction[]>}
-              onChange={() => {}}
-              disabled
-            />
-          </Stack>
-        </Grid.Col>
+        <HasPermission resource="permissions" action="view">
+          <Grid.Col span={12}>
+            <RoleGrants roleId={id} />
+          </Grid.Col>
+        </HasPermission>
       </Grid>
     </PageView>
+  )
+}
+
+interface RoleGrantsProps {
+  roleId: string
+}
+
+/**
+ * The role's grants, read-only. Its own component so the queries run only for
+ * a user with `permissions:view` — `GET /roles/:id/permissions` answers 403
+ * to anyone else, who sees the role without this section.
+ */
+function RoleGrants(props: Readonly<RoleGrantsProps>) {
+  const { roleId } = props
+
+  const { t } = useTranslation('roles')
+  const { data: grants } = useGetRolesIdPermissionsSuspense(roleId)
+  const { data: definitions } = useGetPermissionsResourcesSuspense()
+
+  return (
+    <Stack gap="sm">
+      <Title order={2} size="h3">
+        {t('permissions.title')}
+      </Title>
+      <PermissionsTree
+        definitions={definitions}
+        grants={grants.grants as Record<string, PermissionAction[]>}
+        onChange={() => {}}
+        disabled
+      />
+    </Stack>
   )
 }

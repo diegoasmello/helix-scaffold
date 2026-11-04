@@ -18,9 +18,11 @@ import { apiErrorMessage } from '@/lib/api-errors'
 import { useResourceCache } from '@/lib/resource-cache'
 
 import { HasPermission } from '../../auth/components/has-permission'
+import { hasPagePermission } from '../../auth/page-access'
 import { useAuth } from '../../auth/use-auth'
 import type { RoleItem } from '../types'
 import { rolesListRoute } from '.'
+import { ROLES_ACCESS } from './access'
 
 export function RolesList() {
   const resourceCache = useResourceCache()
@@ -94,7 +96,10 @@ export function RolesList() {
             },
             {
               label: t('permissions.editButton'),
-              hidden: !hasPermission('permissions', 'edit'),
+              hidden: !hasPagePermission(
+                ROLES_ACCESS.permissions,
+                hasPermission
+              ),
               onClick: () =>
                 navigate({
                   to: '/roles/$id/permissions',

@@ -1,3 +1,4 @@
+import { ApiError } from '@helix/api-client'
 import {
   Button,
   Center,
@@ -10,7 +11,7 @@ import {
   Text,
   Title,
 } from '@helix/ui'
-import { useRouter } from '@tanstack/react-router'
+import { Navigate, useRouter } from '@tanstack/react-router'
 import { useTranslation } from 'react-i18next'
 
 interface ErrorBoundaryProps {
@@ -24,6 +25,19 @@ export function ErrorBoundary(props: Readonly<ErrorBoundaryProps>) {
   const router = useRouter()
   const { t } = useTranslation('errors')
   const { classes } = useStyles()
+
+  // A request the API refused (403) is not a crash: a page asked for data its
+  // guard did not cover. Show what the guard would have shown.
+  // `feature_not_in_plan` goes to /403 on purpose: its body does not name the
+  // feature, and /upgrade without one sends a subscribed user back to `/`.
+  if (error instanceof ApiError && error.status === 403) {
+    return (
+      <Navigate
+        to={error.code === 'subscription_required' ? '/upgrade' : '/403'}
+        replace
+      />
+    )
+  }
 
   return (
     <Center h="100vh">

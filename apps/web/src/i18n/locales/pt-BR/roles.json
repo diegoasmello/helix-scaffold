@@ -52,6 +52,7 @@
     "title": "Permissões",
     "editTitle": "Editar permissões",
     "editButton": "Editar permissões",
+    "requires": "Requer: {{list}}",
     "resources": {
       "todos": "Tarefas",
       "users": "Usuários",
@@ -79,6 +80,7 @@
     "role_in_use": "Este perfil ainda tem usuários. Mova-os para outro perfil antes.",
     "role_not_found": "Este perfil não existe mais.",
     "role_not_editable": "Este perfil tem permissões que o seu próprio perfil não tem, então você não pode alterá-lo nem excluí-lo.",
-    "permissions_not_grantable": "Você não pode conceder permissões que o seu próprio perfil não tem."
+    "permissions_not_grantable": "Você não pode conceder permissões que o seu próprio perfil não tem.",
+    "missing_required_permissions": "Algumas permissões dependem de outras que não estão marcadas. Marque-as também."
   }
 }

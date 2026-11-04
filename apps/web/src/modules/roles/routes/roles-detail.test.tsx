@@ -76,7 +76,7 @@ beforeEach(() => {
     getRolesIdPermissionsHandler(mockGrants),
     getPermissionsResourcesHandler([]),
     getMePermissionsHandler({
-      grants: { roles: ['view'], permissions: ['edit'] },
+      grants: { roles: ['view'], permissions: ['view', 'edit'] },
     })
   )
 })
@@ -118,6 +118,34 @@ describe('RolesDetail', () => {
 
   it('hides Edit permissions button when user lacks permissions:edit', async () => {
     server.use(getMePermissionsHandler({ grants: { roles: ['view'] } }))
+    renderRolesDetail()
+    await screen.findByText('Admin')
+    expect(
+      screen.queryByRole('button', { name: 'Edit permissions' })
+    ).not.toBeInTheDocument()
+  })
+
+  it('shows the role without its permissions when user lacks permissions:view', async () => {
+    const grantsRequested = vi.fn()
+    server.use(
+      getMePermissionsHandler({ grants: { roles: ['view'] } }),
+      getRolesIdPermissionsHandler(() => {
+        grantsRequested()
+        return new Response(null, { status: 403 })
+      })
+    )
+    renderRolesDetail()
+    expect(await screen.findByText('Admin')).toBeInTheDocument()
+    expect(screen.queryByText('Permissions')).not.toBeInTheDocument()
+    expect(grantsRequested).not.toHaveBeenCalled()
+  })
+
+  it('hides Edit permissions button when user can edit but not view permissions', async () => {
+    server.use(
+      getMePermissionsHandler({
+        grants: { roles: ['view'], permissions: ['edit'] },
+      })
+    )
     renderRolesDetail()
     await screen.findByText('Admin')
     expect(

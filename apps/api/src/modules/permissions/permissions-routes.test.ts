@@ -57,6 +57,22 @@ describe('GET /permissions/resources', () => {
     expect(body[0]).toHaveProperty('resource')
     expect(body[0]).toHaveProperty('label')
     expect(body[0]).toHaveProperty('actions')
+    expect(body[0]).toHaveProperty('requires')
+  })
+
+  it("lists each action's requirements", async () => {
+    const res = await app.inject({
+      method: 'GET',
+      url: '/api/permissions/resources',
+      headers: { cookie: authCookie },
+    })
+    const permissions = res
+      .json()
+      .find((def: { resource: string }) => def.resource === 'permissions')
+    expect(permissions.requires).toEqual({
+      view: [{ resource: 'roles', action: 'view' }],
+      edit: [{ resource: 'permissions', action: 'view' }],
+    })
   })
 })
 
@@ -235,6 +251,65 @@ describe('PUT /roles/:id/permissions', () => {
     })
     expect(res.statusCode).toBe(400)
     expect(res.json().message).toContain('audit:delete')
+  })
+
+  it('returns 400 when a grant comes without its requirements', async () => {
+    const role = await createRoleWithPermissions([
+      { resource: 'roles', action: 'view' },
+    ])
+
+    const res = await app.inject({
+      method: 'PUT',
+      url: `/api/roles/${role.id}/permissions`,
+      payload: { grants: { permissions: ['edit'], users: ['edit'] } },
+      headers: { cookie: authCookie },
+    })
+    expect(res.statusCode).toBe(400)
+    expect(res.json().code).toBe('missing_required_permissions')
+    expect(res.json().message).toContain('permissions:view')
+    expect(res.json().message).toContain('users:view')
+    expect(res.json().message).toContain('roles:view')
+
+    const after = await app.inject({
+      method: 'GET',
+      url: `/api/roles/${role.id}/permissions`,
+      headers: { cookie: authCookie },
+    })
+    expect(after.json().grants).toEqual({ roles: ['view'] })
+  })
+
+  it('requires uploads for creating todos, not for editing them', async () => {
+    const role = await createRoleWithPermissions([])
+    const put = (grants: object) =>
+      app.inject({
+        method: 'PUT',
+        url: `/api/roles/${role.id}/permissions`,
+        payload: { grants },
+        headers: { cookie: authCookie },
+      })
+
+    const create = await put({ todos: ['view', 'create'] })
+    expect(create.statusCode).toBe(400)
+    expect(create.json().message).toContain('uploads:create')
+
+    expect((await put({ todos: ['view', 'edit'] })).statusCode).toBe(200)
+    expect(
+      (await put({ todos: ['view', 'create'], uploads: ['create'] })).statusCode
+    ).toBe(200)
+  })
+
+  it('accepts grants that bring their requirements', async () => {
+    const role = await createRoleWithPermissions([])
+
+    const res = await app.inject({
+      method: 'PUT',
+      url: `/api/roles/${role.id}/permissions`,
+      payload: {
+        grants: { roles: ['view'], permissions: ['view', 'edit'] },
+      },
+      headers: { cookie: authCookie },
+    })
+    expect(res.statusCode).toBe(200)
   })
 
   it('returns 404 when the role does not exist', async () => {

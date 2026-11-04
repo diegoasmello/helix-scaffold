@@ -5,11 +5,23 @@ import {
   permissionResourceSchema,
 } from '@/config/permissions'
 
+const permissionRefSchema = z
+  .object({
+    resource: permissionResourceSchema,
+    action: permissionActionSchema,
+  })
+  .meta({ id: 'PermissionRef', title: 'PermissionRef' })
+
 export const resourceDefinitionSchema = z
   .object({
     resource: permissionResourceSchema,
     label: z.string(),
     actions: z.array(permissionActionSchema),
+    requires: z
+      .record(z.string(), z.array(permissionRefSchema))
+      .describe(
+        "Each action's direct requirements — `{ edit: [{ resource: 'users', action: 'view' }] }`. An action without requirements has no key."
+      ),
   })
   .meta({ id: 'ResourceDefinition', title: 'ResourceDefinition' })
 

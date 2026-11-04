@@ -93,7 +93,7 @@ beforeEach(() => {
     getMePermissionsHandler({
       grants: {
         roles: ['view', 'create', 'edit', 'delete'],
-        permissions: ['edit'],
+        permissions: ['view', 'edit'],
       },
     })
   )
@@ -235,6 +235,22 @@ describe('RolesList', () => {
     )
     expect(screen.queryByLabelText('Actions')).not.toBeInTheDocument()
     expect(screen.getAllByRole('button', { name: 'Delete' })).toHaveLength(2)
+    expect(
+      screen.queryByRole('button', { name: 'Edit permissions' })
+    ).not.toBeInTheDocument()
+  })
+
+  it('hides Edit permissions when user can edit but not view permissions', async () => {
+    server.use(
+      getMePermissionsHandler({
+        grants: { roles: ['view', 'edit', 'delete'], permissions: ['edit'] },
+      })
+    )
+    renderRolesList()
+    await screen.findByText('Admin')
+    expect(await screen.findAllByRole('button', { name: 'Edit' })).toHaveLength(
+      2
+    )
     expect(
       screen.queryByRole('button', { name: 'Edit permissions' })
     ).not.toBeInTheDocument()
