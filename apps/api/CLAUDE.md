@@ -686,7 +686,7 @@ response: { 201: roleSchema, 409: errorSchema('name_taken') },
 | subscriptions | 400, 409 | `user_not_found` (FK), `live_subscription_exists`, `external_id_taken` (`toDomainError()` in `subscriptions-routes.ts`) |
 | permissions | 400, 403, 404 | `unknown_permissions`, `role_not_editable`, `permissions_not_grantable` (privilege ceiling), `role_not_found` |
 | todos | 400 | `invalid_upload` (`assertUsableUploads()`, `src/lib/upload-ownership.ts`) |
-| me | 400, 429 | `current_password_required`, `invalid_password`, `email_taken`, `email_change_rejected`, `password_change_rejected`, `too_many_attempts` (`me-service` — re-authentication and `createAttemptLimiter()`, `src/lib/attempt-limiter.ts`) |
+| me | 400, 429 | `current_password_required`, `invalid_password`, `email_change_rejected`, `password_change_rejected`, `too_many_attempts` (`me-service` — re-authentication and `createAttemptLimiter()`, `src/lib/attempt-limiter.ts`) |
 | requireSubscription / requirePermission | 403 | `subscription_required`, `feature_not_in_plan`, `permission_denied` (sent by the hooks) |
 
 Plain "not found" 404s of `GET /xxx/:id` stay `reply.status(404).send({ message })` — nothing for the client to do but show "not found". Tested in `src/lib/domain-errors.test.ts` (status + body, inside plugins; validation 400 and 500 untouched).

@@ -97,7 +97,6 @@
   "errors": {
     "current_password_required": "Enter your current password to change your email.",
     "invalid_password": "Current password is incorrect",
-    "email_taken": "This email is already in use.",
     "too_many_attempts": "Too many wrong passwords. Wait 15 minutes and try again."
   }
 }

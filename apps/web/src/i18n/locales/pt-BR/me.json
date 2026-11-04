@@ -97,7 +97,6 @@
   "errors": {
     "current_password_required": "Digite sua senha atual para alterar o e-mail.",
     "invalid_password": "Senha atual incorreta",
-    "email_taken": "Este e-mail já está em uso.",
     "too_many_attempts": "Muitas senhas erradas. Aguarde 15 minutos e tente de novo."
   }
 }

@@ -100,14 +100,15 @@ export function createMeService(
   ) {
     await confirmPassword(userId, data.currentPassword)
 
+    // Same answer whether the address is free or another account's: telling
+    // the caller would let any signed-in user test which emails are
+    // registered. better-auth already answers 200 for a taken address
+    // (sending nothing); its owner gets a notice instead, below.
     const newEmail = data.newEmail.toLowerCase()
-    const [existing] = await database
+    const [taken] = await database
       .select({ id: user.id })
       .from(user)
       .where(and(eq(user.email, newEmail), ne(user.id, userId)))
-    if (existing) {
-      throw new DomainError(400, 'email_taken', 'This email is already in use')
-    }
     await auth.api.changeEmail({
       headers,
       body: {
@@ -124,6 +125,18 @@ export function createMeService(
          <p>If you did not request it, change your password now and contact your system administrator.</p>`
       )
       .catch(() => {})
+
+    // Not awaited, like every send here: the answer must take as long either way.
+    if (taken) {
+      emailProvider
+        .send(
+          newEmail,
+          'This email address is already in use',
+          `<p>Someone asked to move their account to this email address, but it already belongs to an account. Nothing was changed.</p>
+           <p>If it was you, sign in with this address instead. If not, you can ignore this email.</p>`
+        )
+        .catch(() => {})
+    }
   }
 
   /**

@@ -190,3 +190,44 @@ describe('account linking', () => {
     })
   })
 })
+
+describe('change-email verification', () => {
+  it('answers without waiting for the email, so its timing does not reveal a taken address', async () => {
+    // better-auth sends nothing for an address another account holds, so an
+    // awaited send would make a free address answer slower.
+    let failSend: (error: Error) => void = () => {}
+    const pendingProvider: EmailProvider = {
+      send: () =>
+        new Promise<void>((_, reject) => {
+          failSend = reject
+        }),
+    }
+    const logger = { error: vi.fn(), warn: vi.fn() }
+    const auth = createAuth(testDb, pendingProvider, config, logger)
+
+    const email = `verify-${crypto.randomUUID()}@test.com`
+    const signUp = await app.inject({
+      method: 'POST',
+      url: '/api/auth/sign-up/email',
+      payload: { email, name: 'Verify', password: 'Password123!' },
+    })
+    const answer = await Promise.race([
+      auth.api.changeEmail({
+        body: { newEmail: `new-${email}` },
+        headers: new Headers({
+          cookie: cookieHeader(signUp.headers['set-cookie']),
+        }),
+      }),
+      new Promise((resolve) => setTimeout(() => resolve('timed out'), 2000)),
+    ])
+    expect(answer).toEqual(expect.objectContaining({ status: true }))
+
+    failSend(new Error('Resend down'))
+    await vi.waitFor(() =>
+      expect(logger.error).toHaveBeenCalledWith(
+        expect.objectContaining({ err: expect.any(Error) }),
+        'Failed to send email verification'
+      )
+    )
+  })
+})

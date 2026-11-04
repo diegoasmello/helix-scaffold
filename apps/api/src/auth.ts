@@ -92,15 +92,26 @@ export function createAuth(
     },
     emailVerification: {
       sendOnSignUp: false,
+      // Not awaited, for the reason `sendResetPassword` is not: better-auth
+      // sends nothing when the new address already has an account, so an
+      // awaited send would make `changeEmail` slower for a free address than
+      // for a taken one. It already ignored a failed send; it is logged here.
       sendVerificationEmail: async ({ user, url }) => {
-        await emailProvider.send(
-          user.email,
-          'Confirm your new email address',
-          `<p>You requested an email address change.</p>
+        emailProvider
+          .send(
+            user.email,
+            'Confirm your new email address',
+            `<p>You requested an email address change.</p>
            <p>Click the link below to confirm your new email address:</p>
            <p><a href="${escapeHtml(url)}">Confirm new email address</a></p>
            <p>This link expires in 1 hour. If you did not request this change, you can safely ignore this email.</p>`
-        )
+          )
+          .catch((error: unknown) => {
+            logger.error(
+              { err: error, userId: user.id },
+              'Failed to send email verification'
+            )
+          })
       },
     },
     user: {

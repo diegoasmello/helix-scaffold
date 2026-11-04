@@ -93,7 +93,6 @@ export async function meRoutes(
           400: errorSchema(
             'current_password_required',
             'invalid_password',
-            'email_taken',
             'email_change_rejected'
           ),
           429: errorSchema('too_many_attempts'),

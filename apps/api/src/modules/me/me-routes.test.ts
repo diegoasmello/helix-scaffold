@@ -180,34 +180,41 @@ describe('PATCH /me/email', () => {
     expect(res.statusCode).toBe(400)
   })
 
-  it('returns 400 when the email is already in use by another account', async () => {
-    const { user } = await import('@/db/schema/authentication')
-    const { uuidv7 } = await import('uuidv7')
-    const existingEmail = 'already-taken@test.com'
+  it('answers an address another account holds exactly like a free one, and tells that address', async () => {
+    const log = vi.spyOn(console, 'log').mockImplementation(() => {})
+    const takenEmail = `taken-${crypto.randomUUID()}@test.com`
     await testDb.insert(user).values({
-      id: uuidv7(),
+      id: crypto.randomUUID(),
       name: 'Other User',
-      email: existingEmail,
+      email: takenEmail,
       emailVerified: false,
       createdAt: new Date(),
       updatedAt: new Date(),
     })
+    const request = (newEmail: string) =>
+      app.inject({
+        method: 'PATCH',
+        url: '/api/me/email',
+        payload: { newEmail, currentPassword: 'Password123!' },
+        headers: { cookie: authCookie },
+      })
 
-    const res = await app.inject({
-      method: 'PATCH',
-      url: '/api/me/email',
-      payload: { newEmail: existingEmail, currentPassword: 'Password123!' },
-      headers: { cookie: authCookie },
-    })
-    expect(res.statusCode).toBe(400)
-    expect(res.json()).toEqual({
-      message: 'This email is already in use',
-      code: 'email_taken',
-    })
+    const taken = await request(takenEmail)
+    const free = await request(`free-${crypto.randomUUID()}@test.com`)
+    expect(taken.statusCode).toBe(200)
+    expect(taken.json()).toEqual(free.json())
 
-    await testDb
-      .delete(user)
-      .where((await import('drizzle-orm')).eq(user.email, existingEmail))
+    await vi.waitFor(() =>
+      expect(log).toHaveBeenCalledWith(
+        expect.stringContaining(
+          `To: ${takenEmail} | Subject: This email address is already in use`
+        )
+      )
+    )
+
+    log.mockRestore()
+    await testDb.delete(user).where(eq(user.email, takenEmail))
+    await testDb.delete(verification)
   })
 })
 
