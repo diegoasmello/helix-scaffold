@@ -20,27 +20,35 @@ Interview the user until you understand the module completely, in **rounds**:
 1. Start with the module's **purpose**: what it is, what it is for, who uses it. It shapes names, labels, validation limits, empty states and seed data, and opens the module's `CLAUDE.md` later.
 2. Draft the sheet below from the request. Mark each item **given** (the user said it), **deduced** (you inferred it — say from what) or **missing**.
 3. Ask for every missing or ambiguous item **in one message per round**, grouped and numbered. Their answers may raise new questions — keep going, round after round, until nothing is missing or ambiguous and you could build every part without guessing. Never fill a gap with an assumption just to move on.
-4. **Owned records** — if a record belongs to a user ("each user sees only their own"), **stop**: the scaffold has no pattern for per-user ownership yet (`todos` has no owner column). Tell the user, and don't improvise one; an improvised ownership filter is how IDORs are born.
+4. **No pattern, no improvising** — stop and tell the user when the module needs something the scaffold has no pattern for:
+   - **owned records** ("each user sees only their own"): `todos` has no owner column, and an improvised ownership filter is how IDORs are born;
+   - **soft delete** (records hidden instead of deleted): every module deletes for real.
 5. A relation to a module that doesn't exist yet: say so, and settle whether it is built first or left out.
-6. Show the final sheet and **wait for explicit approval**. The approved sheet is the contract for the rest of the task; if the context is compacted mid-task, rebuild from it.
+6. Limits come from the module's purpose — ask when it doesn't settle them. Never copy them from `todos`: its limits (1000 characters of content) fit an example, not real content.
+7. **Code names** matter when singular and plural coincide (`news`): the generated hooks and types get ambiguous, so settle the entity and singular names explicitly.
+8. Show the final sheet and **wait for explicit approval**. The approved sheet is the contract for the rest of the task; if the context is compacted mid-task, rebuild from it.
 
 ### Module sheet
 
 ```
 Purpose:      <what it is and what it's for>
 Resource:     <plural, kebab> / <singular>   Labels: en "<…>" · pt-BR "<…>"
+Code names:   resource `<news>` · entity (`.meta({ id })`, the generated types) `<NewsItem>` · singular in names `<newsItem>`
 Actions:      view · create · edit · delete   (drop any the module lacks)
 
-Fields:
+Fields (the user fills them):
 | name | type | required | limits / enum values | default | normalized |
 
+System fields:        <field — who writes it and when, from which transition (publishedAt: the service, when status becomes published)>, or none
 Business uniqueness:  <field(s) unique by product rule, or none>
 Slug:                 <no | yes, from <field>>
 Relations:            <field → module (select needs its /all), or none>
 Uploads:              <none | single file <field> | multiple; required?>
+Delete:               hard delete · the record's uploads <deleted with it | kept>
 Plan feature:         <none | <feature key>, declared in plan(s) <…>>
 
 Deduced (confirm):
+  Form:               <the control of each non-text field: two states → Switch, more → Select or SegmentedControl; rich text → RichTextEditor>
   Indexes:            FK on every reference · slug · business uniques · <performance only if the user brought up volume>
   Filters / sort:     <filters> · default sort <field dir>
   PERMISSION_REQUIREMENTS: <…>
@@ -68,6 +76,10 @@ Read the sections the sheet calls for, at the phase that needs them. The root `C
 | exports PDF (only if asked) | `CLAUDE.md` → _PDF export_ | `CLAUDE.md` → _PDF export_ | `GET /todos/export`, `templates/todos-report.tsx`; `useExportPdf` in `todos-list.tsx` |
 | sends email (only if asked) | `CLAUDE.md` → _Email_ | — | not in `todos` |
 
+## Gate 0 — baseline (after approval, before any change)
+
+`pnpm type-check` and `pnpm test`. Write down every failure: it already existed, so a later gate that fails the same way is not yours to fix — report it, don't touch it. Without this baseline you cannot prove which failures came with the module.
+
 ## Phase 1 — Database and API
 
 Follow `apps/api/CLAUDE.md` → _Creating a new module (CRUD)_ in its order, with the sections the map adds. Then the seed: `src/db/seed.ts`, the way `todos` does it — sample rows from the sheet (realistic for the module's purpose; slugs through `distinctSlugs()`, normalized copies through `normalizedValues()`), and the module's permissions in the seed roles' lists as the sheet says.
@@ -76,7 +88,7 @@ Follow `apps/api/CLAUDE.md` → _Creating a new module (CRUD)_ in its order, wit
 
 1. `pnpm db:generate`, then **read the generated SQL** against the sheet: table, columns, nullability, defaults, enums, an index on every FK, uniques, slug index. Fix the Drizzle schema and regenerate on any mismatch.
 2. `pnpm db:migrate` (dev) and `pnpm db:migrate:test`.
-3. `pnpm --filter api type-check` and `pnpm --filter api test` (needs `db_test` up: `docker compose up -d`).
+3. `pnpm --filter api type-check`, `pnpm --filter api lint` and `pnpm --filter api test` (needs `db_test` up: `docker compose up -d`).
 4. `pnpm spec:sync`, then confirm the module's paths are in `packages/api-client/openapi.json`.
 
 ## Phase 2 — Web
@@ -93,6 +105,11 @@ Written last, so they describe what was built, not what was planned.
 
 - `apps/api/src/modules/<feature>/CLAUDE.md` and `apps/web/src/modules/<feature>/CLAUDE.md` — modelled on the `todos` ones, opening with the module's purpose from the sheet. Document what is specific to this module; point to the workspace docs for the shared patterns.
 - Add the module to the root `CLAUDE.md` → _Architecture_ → module docs table, on both rows.
+- Update the shared docs that **enumerate modules**. The known ones:
+  - `apps/api/CLAUDE.md`: the `pnpm db:seed` row in _Scripts_, the code table in _Errors the client can act on_ (if the module returns one), and the helper list in _Test infrastructure_ (`xxxRow()`, `cleanupXxx()`);
+  - `apps/web/CLAUDE.md`: the route tree in _Route tree_.
+
+  The list is not complete: also search the `CLAUDE.md` files for where `todos` appears in an enumeration (`cleanupTodos()`, "users, roles, …, todos").
 
 ## Phase 4 — Final gate and report
 
@@ -115,12 +132,13 @@ Written last, so they describe what was built, not what was planned.
 - [ ] Web unit + integration tests → `apps/web/CLAUDE.md` → _Testing_
 - [ ] If gated: `requireSubscription('<feature>')` on the routes, `feature` in the `PageAccess`, the feature's label in both `subscription.json`, and the feature **declared in a plan** in `apps/api/src/app.config.ts` (an undeclared feature stops the API at startup) → root _Subscription checklist_
 - [ ] Seed rows and seed role grants
-- [ ] Module `CLAUDE.md` on both sides, and the root module docs table
+- [ ] Module `CLAUDE.md` on both sides, the root module docs table, and every shared doc that enumerates modules
+- [ ] Every failure in Gate 3 either fixed or present in the Gate 0 baseline
 
 ### Report
 
 - The sheet as built, and any deviation from the approved one with its reason.
-- Each gate's result.
+- Each gate's result, and the baseline failures of Gate 0 apart.
 - The checklist with its evidence.
 - Seed: `pnpm db:seed` refuses to run on a database with users, so the sample rows show up only after `pnpm db:reset && pnpm db:seed` — **which wipes the dev database**. Tell the user; never run it yourself.
 - Ask the user to open `/<feature>` in the browser and send a screenshot.
