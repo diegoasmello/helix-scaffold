@@ -1,0 +1,125 @@
+---
+name: new-module
+description: Create a full-stack CRUD module (apps/api + apps/web) following the helix conventions — an interview until the module is fully understood, an approved module sheet, then database, API, client sync, web, docs, seed and verification gates.
+disable-model-invocation: true
+argument-hint: <module name and a free description of what it holds>
+---
+
+# New module
+
+Request: $ARGUMENTS
+
+The `CLAUDE.md` files are the source of truth for **how** each part is built. This skill sets the **order**, **what to read when**, and **what "done" means**. It never restates a rule from the docs — it points to the section by its heading. If a heading named here no longer exists, find where its content moved instead of improvising.
+
+`todos` is the reference implementation on both sides. Follow its patterns; leave out the parts the sheet doesn't call for (slug, uploads, PDF…).
+
+## Phase 0 — Interview and module sheet (no code before approval)
+
+Interview the user until you understand the module completely, in **rounds**:
+
+1. Start with the module's **purpose**: what it is, what it is for, who uses it. It shapes names, labels, validation limits, empty states and seed data, and opens the module's `CLAUDE.md` later.
+2. Draft the sheet below from the request. Mark each item **given** (the user said it), **deduced** (you inferred it — say from what) or **missing**.
+3. Ask for every missing or ambiguous item **in one message per round**, grouped and numbered. Their answers may raise new questions — keep going, round after round, until nothing is missing or ambiguous and you could build every part without guessing. Never fill a gap with an assumption just to move on.
+4. **Owned records** — if a record belongs to a user ("each user sees only their own"), **stop**: the scaffold has no pattern for per-user ownership yet (`todos` has no owner column). Tell the user, and don't improvise one; an improvised ownership filter is how IDORs are born.
+5. A relation to a module that doesn't exist yet: say so, and settle whether it is built first or left out.
+6. Show the final sheet and **wait for explicit approval**. The approved sheet is the contract for the rest of the task; if the context is compacted mid-task, rebuild from it.
+
+### Module sheet
+
+```
+Purpose:      <what it is and what it's for>
+Resource:     <plural, kebab> / <singular>   Labels: en "<…>" · pt-BR "<…>"
+Actions:      view · create · edit · delete   (drop any the module lacks)
+
+Fields:
+| name | type | required | limits / enum values | default | normalized |
+
+Business uniqueness:  <field(s) unique by product rule, or none>
+Slug:                 <no | yes, from <field>>
+Relations:            <field → module (select needs its /all), or none>
+Uploads:              <none | single file <field> | multiple; required?>
+Plan feature:         <none | <feature key>, declared in plan(s) <…>>
+
+Deduced (confirm):
+  Indexes:            FK on every reference · slug · business uniques · <performance only if the user brought up volume>
+  Filters / sort:     <filters> · default sort <field dir>
+  PERMISSION_REQUIREMENTS: <…>
+  List columns:       <…>
+  Sidebar:            <group / position>
+  Seed:               <how many sample rows, what they look like> · seed roles granted <…>
+```
+
+## Section map
+
+Read the sections the sheet calls for, at the phase that needs them. The root `CLAUDE.md` → _Module rules_ applies to every module.
+
+| If the module… | `apps/api` | `apps/web` |
+| --- | --- | --- |
+| always | `CLAUDE.md` → _Creating a new module (CRUD)_, _Pagination and sorting_, _Testing_ | `CLAUDE.md` → _Creating a new module (CRUD)_, _Pagination and sorting_, _Testing_, _Internationalization (i18n)_ |
+| has business uniques | `CLAUDE.md` → _Errors the client can act on (`DomainError`)_ | — |
+| has filters | `CLAUDE.md` → _Filtering_ | `CLAUDE.md` → _Filtering_ |
+| has normalized columns | `CLAUDE.md` → _Normalized text columns_ | — |
+| has a slug | `CLAUDE.md` → _Slugs_ | — (the admin never shows it) |
+| relates to another module | `CLAUDE.md` → _Non-paginated "all" endpoints_ | `CLAUDE.md` → _Relational select fields with inline creation_ |
+| has uploads | `src/modules/uploads/CLAUDE.md` → _Adding uploads to another module_ | `CLAUDE.md` → _Adding uploads to a new module_ |
+| is gated by a plan feature | `src/modules/subscriptions/CLAUDE.md` → _`requireSubscription` hook_ | `src/modules/subscriptions/CLAUDE.md` → _Route guards (`feature` in `PageAccess`)_ |
+| exports PDF (only if asked) | `CLAUDE.md` → _PDF export_ | `CLAUDE.md` → _PDF export_ |
+| sends email (only if asked) | `CLAUDE.md` → _Email_ | — |
+
+## Phase 1 — Database and API
+
+Follow `apps/api/CLAUDE.md` → _Creating a new module (CRUD)_ in its order, with the sections the map adds. Then the seed: `src/db/seed.ts`, the way `todos` does it — sample rows from the sheet (realistic for the module's purpose; slugs through `distinctSlugs()`, normalized copies through `normalizedValues()`), and the module's permissions in the seed roles' lists as the sheet says.
+
+### Gate 1 — the API is done (before touching `apps/web`)
+
+1. `pnpm db:generate`, then **read the generated SQL** against the sheet: table, columns, nullability, defaults, enums, an index on every FK, uniques, slug index. Fix the Drizzle schema and regenerate on any mismatch.
+2. `pnpm db:migrate` (dev) and `pnpm db:migrate:test`.
+3. `pnpm --filter api type-check` and `pnpm --filter api test` (needs `db_test` up: `docker compose up -d`).
+4. `pnpm spec:sync`, then confirm the module's paths are in `packages/api-client/openapi.json`.
+
+## Phase 2 — Web
+
+Follow `apps/web/CLAUDE.md` → _Creating a new module (CRUD)_ in its order, with the sections the map adds.
+
+### Gate 2 — the web is done
+
+`pnpm --filter web type-check`, `pnpm --filter web lint`, `pnpm --filter web test`.
+
+## Phase 3 — Docs
+
+Written last, so they describe what was built, not what was planned.
+
+- `apps/api/src/modules/<feature>/CLAUDE.md` and `apps/web/src/modules/<feature>/CLAUDE.md` — modelled on the `todos` ones, opening with the module's purpose from the sheet. Document what is specific to this module; point to the workspace docs for the shared patterns.
+- Add the module to the root `CLAUDE.md` → _Architecture_ → module docs table, on both rows.
+
+## Phase 4 — Final gate and report
+
+### Gate 3
+
+`pnpm type-check`, `pnpm lint`, `pnpm test`, `pnpm knip`.
+
+**On any failed gate:** fix the cause and rerun the gate. Never weaken, skip or delete a test, and never silence knip, to get through. If you're stuck, stop and report what fails and why.
+
+### Checklist — each item with its evidence (`file:line`), not a tick
+
+- [ ] Resource and actions in `apps/api/src/config/permissions.ts`, plus `PERMISSION_REQUIREMENTS` → root _RBAC checklist_
+- [ ] `request.audit()` after every mutation, asserted in the tests for create, edit and delete → root _Audit logging checklist_
+- [ ] List paginated and sortable, `DataTable` on the web → root _Pagination defaults_
+- [ ] An index on every FK; business uniques turned into a `DomainError` (409), with a test → `apps/api/CLAUDE.md` → _2. Database schema_, _Errors the client can act on_
+- [ ] Normalized columns and slug exactly as the sheet says → root _Normalized text columns_, _Slugs_
+- [ ] Route tests, including _Permission enforcement tests_ → `apps/api/CLAUDE.md` → _Testing_
+- [ ] `PageAccess` in `routes/access.ts`, `guardPage()` on every route, the sidebar entry with the same access, `<HasPermission>` on Create, `hidden` on row actions → root _RBAC checklist_
+- [ ] Locale files in `en` and `pt-BR`, registered in `src/i18n/index.ts`; the resource's label in both `roles.json` (`permissions.resources.<resource>`); no hardcoded string → root _i18n checklist_
+- [ ] Web unit + integration tests → `apps/web/CLAUDE.md` → _Testing_
+- [ ] If gated: `requireSubscription('<feature>')` on the routes, `feature` in the `PageAccess`, the feature's label in both `subscription.json`, and the feature **declared in a plan** in `apps/api/src/app.config.ts` (an undeclared feature stops the API at startup) → root _Subscription checklist_
+- [ ] Seed rows and seed role grants
+- [ ] Module `CLAUDE.md` on both sides, and the root module docs table
+
+### Report
+
+- The sheet as built, and any deviation from the approved one with its reason.
+- Each gate's result.
+- The checklist with its evidence.
+- Seed: `pnpm db:seed` refuses to run on a database with users, so the sample rows show up only after `pnpm db:reset && pnpm db:seed` — **which wipes the dev database**. Tell the user; never run it yourself.
+- Ask the user to open `/<feature>` in the browser and send a screenshot.
+- E2E specs are not part of this skill — write them only if the user asks.

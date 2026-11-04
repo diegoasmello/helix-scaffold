@@ -183,18 +183,13 @@ When `subscriptions.enabled` is `true`, the app is responsible for:
 
 ## Creating a new module
 
-By default, a new module spans **both workspaces** — backend + frontend. Unless the prompt explicitly targets one side (e.g. "add a backend endpoint for X" or "add a frontend page for X"), always implement the full stack:
+Follow `.agents/skills/new-module/SKILL.md` (in Claude Code: `/new-module <description>`): an interview until the module is fully understood, an approved module sheet, then `apps/api` → `pnpm spec:sync` → `apps/web` → docs and seed, with a verification gate after each side.
 
-1. **`apps/api`** — database schema + migration, service, routes, tests
-2. **`pnpm spec:sync`** — exports the spec and regenerates `@helix/api-client`, so the web side has the module's hooks, types and mocks
-3. **`apps/web`** — types, validation, route components, shared form, i18n, unit + integration tests
+By default, a new module spans **both workspaces** — backend + frontend — unless the prompt explicitly targets one side (e.g. "add a backend endpoint for X" or "add a frontend page for X"). A module is only complete when both sides are implemented and their unit + integration tests are written. E2E specs cover journeys across modules and layers and are written only when asked — see `apps/web/CLAUDE.md` → _3. E2E tests_.
 
-Before implementing either side, read the workspace-specific `CLAUDE.md` — it contains the exact file structure, patterns, and step-by-step guide to follow:
+## Module rules
 
-- **Backend**: `apps/api/CLAUDE.md` → _Creating a new module (CRUD)_
-- **Frontend**: `apps/web/CLAUDE.md` → _Creating a new module (CRUD)_
-
-A module is only complete when both sides are implemented and their unit + integration tests are written. E2E specs cover journeys across modules and layers and are written only when asked — see `apps/web/CLAUDE.md` → _3. E2E tests_.
+These apply to every module — when creating one, and whenever you change one (a new route, a new column, a new screen).
 
 ### Pagination defaults
 
