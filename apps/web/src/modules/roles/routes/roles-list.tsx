@@ -97,6 +97,7 @@ export function RolesList() {
       width: '1%',
       render: (item) => (
         <RowActions
+          maxInlineActions={4}
           actions={[
             {
               label: tc('actions.view'),

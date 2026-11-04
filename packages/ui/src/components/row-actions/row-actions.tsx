@@ -19,10 +19,9 @@ export interface RowActionsProps {
   actions: RowAction[]
   /** Accessible name of the "⋯" menu button. Defaults to "Actions". */
   menuLabel?: string
+  /** Up to this many visible actions are buttons; more collapse into a menu. */
+  maxInlineActions?: number
 }
-
-/** Up to this many visible actions are buttons; more collapse into a menu. */
-const MAX_INLINE_ACTIONS = 3
 
 /**
  * A `DataTable` row's actions: up to 3 text buttons side by side, or a single
@@ -30,7 +29,7 @@ const MAX_INLINE_ACTIONS = 3
  * card layout the buttons fill the card's width.
  */
 export function RowActions(props: Readonly<RowActionsProps>) {
-  const { actions, menuLabel } = props
+  const { actions, menuLabel, maxInlineActions = 3 } = props
 
   const { t } = useTranslation('ui')
   const { classes } = useStyles()
@@ -42,7 +41,7 @@ export function RowActions(props: Readonly<RowActionsProps>) {
 
   if (visible.length === 0) return null
 
-  if (visible.length > MAX_INLINE_ACTIONS) {
+  if (visible.length > maxInlineActions) {
     return (
       <Menu position="bottom-end" withinPortal>
         <Menu.Target>
