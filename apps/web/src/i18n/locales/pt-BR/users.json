@@ -59,7 +59,7 @@
     "email_taken": "Este email já está em uso por outro usuário.",
     "role_not_found": "O perfil selecionado não existe mais.",
     "role_not_assignable": "Você não pode atribuir um perfil com permissões que o seu próprio perfil não tem.",
-    "user_not_editable": "Você não pode alterar o email ou o perfil, nem excluir, um usuário com permissões que o seu próprio perfil não tem.",
+    "user_not_editable": "Você não pode alterar o email ou o perfil de um usuário com permissões que o seu próprio perfil não tem, nem excluí-lo.",
     "user_not_found": "Este usuário não existe mais.",
     "admin_role_not_assignable": "O perfil de administrador não pode ser atribuído a ninguém.",
     "admin_user_locked": "A conta de administrador não pode ser editada nem excluída aqui."
