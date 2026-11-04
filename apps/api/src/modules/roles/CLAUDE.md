@@ -13,8 +13,8 @@ Full CRUD module. Used as a dependency by the users module (assigns `roleId` to 
 | `description` | `text` (nullable)    | No `.notNull()` — absence and `null` are valid                                                                                                                           |
 | `isDefault`   | `boolean NOT NULL`   | Default `false`. At most one row can have `true` (partial unique index).                                                                                                 |
 | `isAdmin`     | `boolean NOT NULL`   | Default `false`. The admin role — at most one (`roles_is_admin_unique`). Set only by the bootstrap and the seed. See `src/modules/permissions/CLAUDE.md` → _Admin role_. |
-| `createdAt`   | `timestamp NOT NULL` | `defaultNow()`                                                                                                                                                           |
-| `updatedAt`   | `timestamp NOT NULL` | `$onUpdateFn(() => new Date())`                                                                                                                                          |
+| `createdAt`   | `timestamptz NOT NULL` | `defaultNow()`                                                                                                                                                           |
+| `updatedAt`   | `timestamptz NOT NULL` | `$onUpdateFn(() => new Date())`                                                                                                                                          |
 
 `name` has a unique constraint (`roles_name_unique`). The service's `create()` and `update()` turn its violation into a `DomainError` — **409** `{ message: 'A role with this name already exists', code: 'name_taken' }` (via `getPgErrorConstraint`). The frontend shows it on the name field.
 

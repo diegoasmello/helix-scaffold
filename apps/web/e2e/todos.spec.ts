@@ -10,6 +10,10 @@ import { API_URL } from './stack'
 // operator, so no subscription is needed.
 
 test.describe('Todos', () => {
+  // West of UTC, a calendar day sent as an instant at UTC midnight shows as
+  // the day before: the dates below must come back as the day picked.
+  test.use({ timezoneId: 'America/Sao_Paulo' })
+
   test('creates a todo with its files and shows it', async ({ page }) => {
     const title = uniqueName('Todo')
 
@@ -21,6 +25,7 @@ test.describe('Todos', () => {
     await page
       .getByRole('textbox', { name: 'Content' })
       .fill('Rich text typed in the editor.')
+    await page.getByRole('textbox', { name: 'Date' }).fill('June 15, 2025')
 
     // Each upload field is a group named by its label; the file goes
     // straight to the API (`POST /uploads`) and comes back as a card
@@ -58,6 +63,7 @@ test.describe('Todos', () => {
       .click()
     await expect(page.getByRole('heading', { name: title })).toBeVisible()
     await expect(page.getByText('Rich text typed in the editor.')).toBeVisible()
+    await expect(page.getByText('6/15/25')).toBeVisible()
     for (const file of [sampleFiles.png, sampleFiles.txt, sampleFiles.pdf]) {
       await expect(page.getByRole('link', { name: file.name })).toBeVisible()
     }

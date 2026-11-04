@@ -69,13 +69,11 @@ describe('TodoForm', () => {
     )
   })
 
-  it('date is not required when status is pending', () => {
-    renderForm('pending')
-    expect(screen.getByPlaceholderText('Pick a date')).not.toBeRequired()
-  })
-
-  it('date is required when status is not pending', () => {
-    renderForm('completed')
-    expect(screen.getByPlaceholderText('Pick a date')).toBeRequired()
-  })
+  it.each(['pending', 'completed'] as const)(
+    'date is required, whatever the status (%s)',
+    (status) => {
+      renderForm(status)
+      expect(screen.getByPlaceholderText('Pick a date')).toBeRequired()
+    }
+  )
 })

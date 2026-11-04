@@ -1,4 +1,5 @@
 import {
+  date,
   index,
   pgEnum,
   pgTable,
@@ -31,15 +32,19 @@ export const todos = pgTable(
     normalizedDescription: text('normalized_description').notNull(),
     content: text('content').notNull(),
     status: todoStatusEnum('status').default('pending').notNull(),
-    date: timestamp('date').notNull(),
+    // A calendar day, not an instant: `date`, read and written as `YYYY-MM-DD`
+    // (`mode: 'string'`), so it is the same day in every time zone.
+    date: date('date', { mode: 'string' }).notNull(),
     fileId: text('file_id').references(() => uploads.id, {
       onDelete: 'set null',
     }),
     imageId: text('image_id').references(() => uploads.id, {
       onDelete: 'set null',
     }),
-    createdAt: timestamp('created_at').notNull().defaultNow(),
-    updatedAt: timestamp('updated_at')
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true })
       .notNull()
       .defaultNow()
       .$onUpdateFn(() => new Date()),

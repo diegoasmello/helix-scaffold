@@ -152,7 +152,7 @@ function createAdminApi(request: APIRequestContext) {
       title: uniqueName('Todo'),
       description: 'Created by the E2E suite.',
       content: '<p>Created by the E2E suite.</p>',
-      date: new Date().toISOString(),
+      date: new Date().toISOString().slice(0, 10),
       imageId: image.id,
       fileId: file.id,
       attachmentIds: [attachment.id],

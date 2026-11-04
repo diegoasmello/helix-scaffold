@@ -16,7 +16,9 @@ export const auditLogs = pgTable(
     metadata: jsonb('metadata'),
     ip: text('ip'),
     userAgent: text('user_agent'),
-    createdAt: timestamp('created_at').notNull().defaultNow(),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
   },
   (t) => [index('audit_logs_created_at_idx').on(t.createdAt)]
 )

@@ -85,17 +85,14 @@ describe('todoFormValidate', () => {
   })
 
   describe('date', () => {
-    it('returns error when null and status is completed', () => {
-      expect(
-        todoFormValidate.date(null, { ...base, status: 'completed' })
-      ).toBe('Required')
-    })
-
-    it('returns null when null and status is pending', () => {
-      expect(
-        todoFormValidate.date(null, { ...base, status: 'pending' })
-      ).toBeNull()
-    })
+    it.each(['pending', 'completed'] as const)(
+      'returns error when null, whatever the status (%s)',
+      (status) => {
+        expect(todoFormValidate.date(null, { ...base, status })).toBe(
+          'Required'
+        )
+      }
+    )
 
     it('returns null when date is provided', () => {
       expect(

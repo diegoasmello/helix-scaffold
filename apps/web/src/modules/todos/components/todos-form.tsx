@@ -54,7 +54,7 @@ export function TodoForm(props: Readonly<TodoFormProps>) {
           <DateInput
             label={t('form.date.label')}
             placeholder={t('form.date.placeholder')}
-            required={form.values.status !== 'pending'}
+            required
             {...form.getInputProps('date')}
           />
           <Switch

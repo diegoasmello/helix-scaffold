@@ -227,6 +227,19 @@ export function buildFilterWhereClause<T extends string>(
   return logic === 'AND' ? and(...sqlConditions) : or(...sqlConditions)
 }
 
+const calendarDaySchema = z.iso.date()
+
+/**
+ * `coerce` for a `date` column (a calendar day): keeps a `YYYY-MM-DD` value
+ * and turns anything else into `null`, which skips the condition — an invalid
+ * date never reaches Postgres (a 500). `{ date: coerceCalendarDay }`.
+ */
+export function coerceCalendarDay(value: unknown): string | null {
+  return typeof value === 'string' && calendarDaySchema.safeParse(value).success
+    ? value
+    : null
+}
+
 /**
  * `search`: free text a list matches against a few text columns (the list
  * screen's search box). Blank becomes `undefined`; capped at 200 characters.

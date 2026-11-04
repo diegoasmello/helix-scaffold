@@ -23,8 +23,10 @@ export const roles = pgTable(
      * seed, never through the API.
      */
     isAdmin: boolean('is_admin').notNull().default(false),
-    createdAt: timestamp('created_at').notNull().defaultNow(),
-    updatedAt: timestamp('updated_at')
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true })
       .notNull()
       .defaultNow()
       .$onUpdateFn(() => new Date()),

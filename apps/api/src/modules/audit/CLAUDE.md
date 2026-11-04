@@ -51,7 +51,7 @@ Unit tests: `audit-recorder.test.ts` (user actor, system actor mapping, failure 
 | `metadata`   | `jsonb` (nullable)   | Request body for create/edit; null for delete; export params summary for export |
 | `ip`         | `text` (nullable)    | From `request.ip`                               |
 | `userAgent`  | `text` (nullable)    | From `request.headers['user-agent']`            |
-| `createdAt`  | `timestamp NOT NULL` | `defaultNow()`; **no `updatedAt`** (immutable)  |
+| `createdAt`  | `timestamptz NOT NULL` | `defaultNow()`; **no `updatedAt`** (immutable)  |
 
 User fields (`userId`, `userName`, `userEmail`) are snapshotted at write time — there is **no FK** to the `user` table. This means logs remain accurate even if the user is later renamed or deleted.
 

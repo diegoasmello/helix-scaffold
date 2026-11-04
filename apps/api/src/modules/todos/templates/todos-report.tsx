@@ -33,8 +33,13 @@ const columns: PdfColumn<TodoRow>[] = [
   {
     header: 'Date',
     style: styles.colDate,
+    // A calendar day (`YYYY-MM-DD`): formatted in UTC, the zone its midnight
+    // is read in, so the server's time zone never moves it to another day.
     render: (item) =>
-      item.date.toLocaleDateString('en-US', { dateStyle: 'short' }),
+      new Date(item.date).toLocaleDateString('en-US', {
+        dateStyle: 'short',
+        timeZone: 'UTC',
+      }),
   },
 ]
 

@@ -73,7 +73,7 @@ SVG files are stored as-is (no variants generated).
   url: text                  // URL of the original file (see Serving files)
   variants: jsonb | null     // { thumbnail, small, medium, large } — each { key, url }
   uploadedBy: text | null    // FK → user.id, set null on user delete; index uploads_uploaded_by_idx
-  createdAt: timestamp
+  createdAt: timestamptz
 }
 ```
 

@@ -146,6 +146,7 @@ export async function renderFeatureReport(items: FeatureRow[]): Promise<Buffer> 
 **Rules:**
 - Always use `StyleSheet.create` — never inline style objects (`style={{ ... }}`)
 - `@react-pdf/renderer` does not render HTML. Never pass rich-text HTML strings into `<Text>` — strip tags or use a plain-text fallback
+- A calendar day (a `date` column, `YYYY-MM-DD`) is formatted with `timeZone: 'UTC'` — `new Date(item.date).toLocaleDateString('en-US', { dateStyle: 'short', timeZone: 'UTC' })` — or a server west of UTC prints the day before (`todos-report.tsx`). An instant (`timestamptz`) is printed in the server's time zone
 - The exported function must be `async` and return `Promise<Buffer>`
 - Import the template via dynamic `import()` in the service (see below) so the React/PDF runtime is only loaded when the route is actually called
 - Use `PdfTable` for tabular data — only build rows manually for non-tabular layouts

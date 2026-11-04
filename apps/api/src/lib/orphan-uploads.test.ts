@@ -113,7 +113,7 @@ describe('deleteOrphanUploads', () => {
           title: 'T',
           description: 'D',
           content: '<p>C</p>',
-          date: new Date(),
+          date: '2025-01-01',
         })
       )
       .returning()
@@ -142,7 +142,7 @@ describe('deleteOrphanUploads', () => {
         title: 'T',
         description: 'D',
         content: '<p>C</p>',
-        date: new Date(),
+        date: '2025-01-01',
         fileId: upload.id,
       })
     )
@@ -168,7 +168,7 @@ describe('deleteOrphanUploads', () => {
         title: 'T',
         description: 'D',
         content: '<p>C</p>',
-        date: new Date(),
+        date: '2025-01-01',
         imageId: referenced.id,
       })
     )

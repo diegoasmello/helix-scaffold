@@ -186,7 +186,8 @@ export const xxxFormValidate = createValidator<XxxFormValues>()({
   title: [required, maxLength(200)],
 
   // function syntax — access other fields for cross-field rules
-  date: (v, values) => (values.status !== 'pending' ? required(v) : null),
+  publishedAt: (v, values) =>
+    values.status === 'published' ? required(v) : null,
 
   // use requiredHtml for RichTextEditor fields (strips tags before checking)
   content: [requiredHtml, maxLength(1000)],

@@ -29,17 +29,23 @@ export const subscriptions = pgTable(
       .references(() => user.id, { onDelete: 'cascade' }),
     planId: text('plan_id').notNull(),
     status: text('status').$type<SubscriptionStatus>().notNull(),
-    trialEndsAt: timestamp('trial_ends_at'),
-    currentPeriodStart: timestamp('current_period_start').notNull(),
-    currentPeriodEnd: timestamp('current_period_end').notNull(),
-    canceledAt: timestamp('canceled_at'),
+    trialEndsAt: timestamp('trial_ends_at', { withTimezone: true }),
+    currentPeriodStart: timestamp('current_period_start', {
+      withTimezone: true,
+    }).notNull(),
+    currentPeriodEnd: timestamp('current_period_end', {
+      withTimezone: true,
+    }).notNull(),
+    canceledAt: timestamp('canceled_at', { withTimezone: true }),
     // Set when status becomes 'past_due', cleared when it leaves it. Start of
     // the `subscriptions.pastDueGraceDays` grace period. Never set by clients.
-    pastDueSince: timestamp('past_due_since'),
+    pastDueSince: timestamp('past_due_since', { withTimezone: true }),
     externalId: text('external_id'),
     metadata: jsonb('metadata'),
-    createdAt: timestamp('created_at').notNull().defaultNow(),
-    updatedAt: timestamp('updated_at')
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true })
       .notNull()
       .defaultNow()
       .$onUpdateFn(() => new Date()),

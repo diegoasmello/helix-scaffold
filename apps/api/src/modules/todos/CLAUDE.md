@@ -19,11 +19,11 @@ This module also serves as the **reference implementation for `requireSubscripti
 | `normalizedDescription` | `text NOT NULL` | `normalizeText(description)` — same |
 | `content`     | `text NOT NULL`        | Rich text (HTML string)         |
 | `status`      | `todo_status NOT NULL` | Default `'pending'` at DB level |
-| `date`        | `timestamp NOT NULL`   | User-supplied date, no timezone |
+| `date`        | `date NOT NULL`        | A calendar day, `YYYY-MM-DD` (`mode: 'string'`) — the same day in every time zone |
 | `fileId`      | `text` (nullable)      | FK → `uploads.id`, `ON DELETE SET NULL`, index `todos_file_id_idx` — single PDF |
 | `imageId`     | `text` (nullable)      | FK → `uploads.id`, `ON DELETE SET NULL`, index `todos_image_id_idx` — single image |
-| `createdAt`   | `timestamp NOT NULL`   | `defaultNow()`                  |
-| `updatedAt`   | `timestamp NOT NULL`   | `$onUpdateFn(() => new Date())` |
+| `createdAt`   | `timestamptz NOT NULL`   | `defaultNow()`                  |
+| `updatedAt`   | `timestamptz NOT NULL`   | `$onUpdateFn(() => new Date())` |
 
 **Junction table**: `todo_attachments` (`src/db/schema/todo-attachments.ts`) — `(todo_id, upload_id)` composite PK, both FKs `ON DELETE CASCADE`, index `todo_attachments_upload_id_idx` (the PK covers `todo_id` only). Holds the multi-file `attachments`.
 
@@ -41,7 +41,7 @@ All four upload references (`todo_attachments.upload_id`, `todos.file_id`, `todo
 - `createTodoSchema` — `{ title, description, content, date, attachmentIds (min 1), fileId, imageId }`. All required. **No `status` field** — status defaults to `'pending'` via the DB column default and is not accepted on create.
 - `updateTodoSchema` — all fields optional: `title`, `description`, `content`, `status`, `date`, `attachmentIds` (min 1 when sent), `fileId`, `imageId`. This is the only way to change status.
 - `todosExportQuerySchema` — sorting + filtering only (no pagination): `todosSortingSchema.merge(todosFilterQuerySchema)`. Used by `GET /todos/export`.
-- `date` uses `z.coerce.date()` in both create and update schemas so ISO strings from the request body are coerced to `Date`.
+- `date` is `z.iso.date()` in the entity, create and update schemas: `YYYY-MM-DD` in and out, a datetime or an impossible day (`2025-02-30`) is a 400. See `apps/api/CLAUDE.md` → _2. Database schema_ → _Dates and times_.
 - Sort columns: `['title', 'status', 'date', 'createdAt']`. Default sort: `createdAt`. `title` sorts by `normalizedTitle`; `id` breaks ties.
 - Filter fields: `['title', 'description', 'status', 'date']`.
 - `slug` is in no request schema: a `slug` sent in a body is stripped by Zod.
@@ -50,7 +50,7 @@ All four upload references (`todo_attachments.upload_id`, `todos.file_id`, `todo
 
 Factory `createTodosService(database, storage)` returns `{ list, getById, getBySlug, create, update, remove, generateReport }`. Not pure SQL — it also assembles the embedded uploads and cleans up storage, but that logic is covered by the route tests (`describe('Attachments')`), so there is no separate service test.
 
-- `list` applies filters (`FILTER_COLUMNS`, `FILTER_COERCE` for `date`, `NORMALIZED_FILTER_COLUMNS` for the text operators on `title`/`description`) and the `search` param (`SEARCH_COLUMNS`: `normalizedTitle`, `normalizedDescription` — combined with `and()`), ordering (`SORT_COLUMNS`, then `id`) and pagination, then loads attachments (one query for the page, via `todo_attachments`) and the single `file`/`image` uploads (one `inArray` query).
+- `list` applies filters (`FILTER_COLUMNS`, `FILTER_COERCE` for `date` — `coerceCalendarDay`, which skips a value that is not a day, `NORMALIZED_FILTER_COLUMNS` for the text operators on `title`/`description`) and the `search` param (`SEARCH_COLUMNS`: `normalizedTitle`, `normalizedDescription` — combined with `and()`), ordering (`SORT_COLUMNS`, then `id`) and pagination, then loads attachments (one query for the page, via `todo_attachments`) and the single `file`/`image` uploads (one `inArray` query).
 - `getById` / `getBySlug` share `findOne(where)`, which assembles the embedded uploads.
 - `create(data, actorId)` / `update(id, data, actorId)` first check the referenced uploads with `assertUsableUploads()` (`src/lib/upload-ownership.ts`): each `attachmentIds` / `fileId` / `imageId`, and each image of `content` (`uploadIdsInHtml()`, `src/lib/rich-text-uploads.ts`), must have been uploaded by `actorId` (`request.sessionUser.id`), or already belong to this todo on update (another editor re-sends them) — else **400** `invalid_upload`, before anything is written. In the same call, `imageId` and the images of `content` must be images (`IMAGE_TYPES`) and `fileId` a PDF (`PDF_TYPES`) — else **400** `invalid_upload_type`, on the todo's current files too; `attachmentIds` take any file. `update` answers `null` for an unknown id before looking at uploads.
 - `create` inserts the row with `normalizedValues(data, TODO_NORMALIZED_FIELDS)` (no `status` — the DB default applies) and a slug from `withUniqueSlug(database, TODO_SLUG, title, insert)`, then inserts one `todo_attachments` row per `attachmentId` and one `todo_content_images` row per image of `content`.
@@ -118,7 +118,7 @@ Route integration tests against the real test database (`helix_test`).
 
 - `beforeEach` runs `cleanupTodos()` and `cleanupUploads()`.
 - The top-level 401 test hits `GET /todos` without a cookie.
-- `POST /todos` sends `date` as an ISO string (`'2025-03-20'`) — `z.coerce.date()` parses it — plus real upload ids from the local `insertUpload()` helper (a `testDb.insert(uploads)` row owned by the test user — `uploadedBy: null` stands for someone else's; reuse it when a test needs uploads).
+- `POST /todos` sends `date` as a day (`'2025-03-20'`); `todoRow()` takes it the same way — plus real upload ids from the local `insertUpload()` helper (a `testDb.insert(uploads)` row owned by the test user — `uploadedBy: null` stands for someone else's; reuse it when a test needs uploads).
 - `PATCH` asserts that fields not sent in the body (`description`) remain unchanged.
 - `DELETE` asserts 204 both for existing and non-existing ids.
 - Rows are inserted with `todoRow({...})` (`src/test/helpers.ts`), which fills the normalized columns and a unique `slug` (title + random suffix, unless given).
@@ -126,6 +126,7 @@ Route integration tests against the real test database (`helix_test`).
 - `describe('Normalized text columns')` is the reference for the pattern's tests: accent/case/whitespace-insensitive search and text filters, `eq` exact, sort, columns absent from the response, `POST`/`PATCH` writing them.
 - `describe('Filtering')` is the reference for filter tests (see `apps/api/CLAUDE.md` → _Filtering_).
 - `describe('Upload ownership')` — someone else's upload in `attachmentIds`/`fileId`/`imageId` on create (400, nothing written), an unknown id, adding one on update (400, attachments unchanged), another editor re-sending the todo's own files (200), 404 before the upload check.
+- `describe('Date (a calendar day)')` — the day comes back as sent, a datetime or an impossible day is a 400, `PATCH` changes it; `describe('Filtering')` also skips a date condition that is not a day.
 - `describe('Upload types')` — a PDF as `imageId` and an image as `fileId` (400 `invalid_upload_type`, nothing written), a PDF inside `content`, any image type (SVG) as the image, any file as an attachment, a wrong type on update (the old image kept), the todo's own PDF moved to `imageId` (still refused), `invalid_upload` before the type for someone else's file.
 - `describe('Images in the content')` — the reference for _Images inside rich text_: recorded on create, external images and unknown keys ignored, kept by the orphan cleanup (`deleteOrphanUploads()` with the registered loaders and `graceHours: 0`), someone else's image on create/update (400), another editor re-sending the text (200), a `PATCH` without `content` keeps them, an image taken out gets cleaned up, deleted with the todo.
 - `describe('Attachments')` covers create/read/update of `attachmentIds` and that deleting a todo removes its attachment rows.

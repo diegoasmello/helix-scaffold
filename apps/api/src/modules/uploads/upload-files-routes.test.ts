@@ -141,7 +141,7 @@ async function attachToTodo(reference: TodoReference, uploadId: string) {
         title: 'With a file',
         description: 'Desc',
         content: 'Content',
-        date: new Date('2025-01-01'),
+        date: '2025-01-01',
         fileId: reference === 'file' ? uploadId : null,
         imageId: reference === 'image' ? uploadId : null,
       })

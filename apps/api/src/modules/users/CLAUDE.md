@@ -14,8 +14,8 @@ Full CRUD module. Differs significantly from other modules because user creation
 | `email`         | `text NOT NULL UNIQUE` |                                                     |
 | `emailVerified` | `boolean NOT NULL`     | Default `false`                                     |
 | `roleId`        | `text` (nullable FK)   | References `roles.id` — no cascade on update/delete; index `user_role_id_idx` |
-| `createdAt`     | `timestamp NOT NULL`   | `defaultNow()`                                      |
-| `updatedAt`     | `timestamp NOT NULL`   | `$onUpdateFn()`                                     |
+| `createdAt`     | `timestamptz NOT NULL`   | `defaultNow()`                                      |
+| `updatedAt`     | `timestamptz NOT NULL`   | `$onUpdateFn()`                                     |
 
 `password` is **never** stored on the `user` table — better-auth manages it in the `account` table. It is accepted as input on create only and must never appear in any API response.
 

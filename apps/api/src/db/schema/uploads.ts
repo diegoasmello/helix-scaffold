@@ -37,7 +37,9 @@ export const uploads = pgTable(
     uploadedBy: text('uploaded_by').references(() => user.id, {
       onDelete: 'set null',
     }),
-    createdAt: timestamp('created_at').notNull().defaultNow(),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
   },
   // Every foreign key gets an index: deleting a user sets it to null.
   (t) => [index('uploads_uploaded_by_idx').on(t.uploadedBy)]

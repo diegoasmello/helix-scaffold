@@ -173,7 +173,7 @@ describe('against the database', () => {
           title: 'T',
           description: 'D',
           content: 'C',
-          date: new Date('2025-01-01'),
+          date: '2025-01-01',
           slug,
         })
       )

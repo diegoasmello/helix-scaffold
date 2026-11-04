@@ -997,7 +997,7 @@ The semantic aliases (`XxxItem`, `XxxStatus`, etc.) give stable, readable names 
 
 **`slug`**: an entity with a public URL carries a `slug` (see `apps/api/CLAUDE.md` → _Slugs_). It is for the public site only: the admin never shows it, never puts it in `XxxFormValues` and never sends it — the API generates it and ignores it in a body. Admin routes stay by `id`.
 
-**`date` fields**: kubb generates `date: any` for `z.date()` / `z.coerce.date()` in request bodies (known limitation — see `packages/api-client/CLAUDE.md`). `string` is assignable to `any`, so passing a string works at runtime. No workaround needed in `types.ts`.
+**`date` fields**: a calendar day (`z.iso.date()`, a `date` column) is typed `string` (`YYYY-MM-DD`) — `DateInput` gives exactly that, and `parseISO()` reads it back as local midnight, the right day in every time zone. An instant sent in a body with `z.coerce.date()` is `any` (known limitation — see `packages/api-client/CLAUDE.md`); `string` is assignable to `any`, so passing a string works at runtime. No workaround needed in `types.ts`.
 
 ### 3. Hooks and data fetching
 
@@ -1481,7 +1481,8 @@ export const xxxFormValidate = createValidator<XxxFormValues>()({
   title: [required, maxLength(200)],
 
   // function: access other fields for cross-field rules
-  date: (v, values) => (values.status !== 'pending' ? required(v) : null),
+  publishedAt: (v, values) =>
+    values.status === 'published' ? required(v) : null,
 
   // RichTextEditor fields must use requiredHtml (strips tags before checking)
   content: [requiredHtml, maxLength(1000)],
@@ -2032,7 +2033,7 @@ Rules:
 - No `QueryClientProvider` or `Suspense` needed — the form component is purely presentational and makes no API calls.
 - Use `getByPlaceholderText` to find native inputs (`TextInput`, `Textarea`, `DateInput`) and assert `toBeRequired()`. `getByLabelText` does not reliably resolve Mantine's `for`/`id` label association in jsdom.
 - `toBeRequired()` only works on native HTML inputs/textareas — not on custom components (`FileInput`, `FilesInput`, `Switch`). Check those fields by asserting their label text is present instead.
-- If the form has a field with conditional `required` (e.g. `date` required only when `status !== 'pending'`), parameterise `FormWrapper` with the relevant prop and add two tests — one per branch.
+- If the form has a field with conditional `required` (e.g. `publishedAt` required only when `status === 'published'`), parameterise `FormWrapper` with the relevant prop and add two tests — one per branch.
 - `RichTextEditor` never reaches jsdom: `vitest.config.ts` aliases `@helix/ui` to `__mocks__/@helix/ui.tsx`, which re-exports the real package with the editor replaced by a `<textarea aria-label={label}>`. Assert it like any field (`getByLabelText('Content')`) and type into it; the real editor (TipTap) is covered by E2E.
 
 **When to add a new endpoint to `src/mocks/handlers.ts`**: every new API endpoint needs a default handler. Follow the pattern below — use generated response helpers for all status codes, never construct raw `Response` objects:

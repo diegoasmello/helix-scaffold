@@ -148,7 +148,7 @@ See `apps/web/CLAUDE.md` → _PDF export_ for the full implementation guide and 
 | `status` | `select` | `todos.status` |
 | `date` | `date` | `todos.date` (needs `FILTER_COERCE` — see `todos-service.ts`) |
 
-The `date` column is a `timestamp` in Postgres; the filter value arrives as an ISO string. `FILTER_COERCE` in `todos-service.ts` converts it with `new Date(v)` before passing to Drizzle.
+The `date` column is a Postgres `date` (a calendar day); the filter value arrives as `YYYY-MM-DD`. `FILTER_COERCE` in `todos-service.ts` (`coerceCalendarDay`) keeps it and skips anything else.
 
 See `apps/web/CLAUDE.md` → _Filtering_ and `apps/api/CLAUDE.md` → _Filtering_ for the full implementation guide.
 

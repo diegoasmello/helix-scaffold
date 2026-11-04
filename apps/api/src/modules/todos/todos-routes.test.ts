@@ -94,13 +94,13 @@ describe('GET /todos', () => {
         title: 'First',
         description: 'Desc 1',
         content: 'Content 1',
-        date: new Date('2025-01-01'),
+        date: '2025-01-01',
       }),
       todoRow({
         title: 'Second',
         description: 'Desc 2',
         content: 'Content 2',
-        date: new Date('2025-01-02'),
+        date: '2025-01-02',
       }),
     ])
 
@@ -125,21 +125,21 @@ describe('GET /todos', () => {
           description: 'Grocery errand',
           content: 'Content A',
           status: 'pending',
-          date: new Date('2025-01-01'),
+          date: '2025-01-01',
         }),
         todoRow({
           title: 'Learn Rust',
           description: 'Programming task',
           content: 'Content B',
           status: 'pending',
-          date: new Date('2025-03-01'),
+          date: '2025-03-01',
         }),
         todoRow({
           title: 'Read book',
           description: 'Leisure activity',
           content: 'Content C',
           status: 'completed',
-          date: new Date('2025-06-01'),
+          date: '2025-06-01',
         }),
       ])
     })
@@ -296,6 +296,20 @@ describe('GET /todos', () => {
       expect(res.statusCode).toBe(200)
       expect(res.json().total).toBe(3)
     })
+
+    it.each(['not-a-date', '2025-02-30', '2025-03-01T00:00:00Z'])(
+      'skips a date condition whose value is not a day (%s)',
+      async (value) => {
+        const filters = JSON.stringify([{ field: 'date', op: 'gte', value }])
+        const res = await app.inject({
+          method: 'GET',
+          url: `/api/todos?filters=${encodeURIComponent(filters)}`,
+          headers: { cookie: authCookie },
+        })
+        expect(res.statusCode).toBe(200)
+        expect(res.json().total).toBe(3)
+      }
+    )
   })
 })
 
@@ -322,19 +336,19 @@ describe('Normalized text columns', () => {
         title: 'Ação  RÁPIDA',
         description: 'Reunião em São Paulo',
         content: 'Content A',
-        date: new Date('2025-01-01'),
+        date: '2025-01-01',
       }),
       todoRow({
         title: 'abacate',
         description: 'Feira',
         content: 'Content B',
-        date: new Date('2025-01-02'),
+        date: '2025-01-02',
       }),
       todoRow({
         title: 'Zebra',
         description: 'Zoo',
         content: 'Content C',
-        date: new Date('2025-01-03'),
+        date: '2025-01-03',
       }),
     ])
   })
@@ -504,7 +518,7 @@ describe('Slug', () => {
         title: 'A',
         description: 'D',
         content: 'C',
-        date: new Date('2025-01-01'),
+        date: '2025-01-01',
         slug: 'repetido',
       })
     )
@@ -514,7 +528,7 @@ describe('Slug', () => {
           title: 'B',
           description: 'D',
           content: 'C',
-          date: new Date('2025-01-01'),
+          date: '2025-01-01',
           slug: 'repetido',
         })
       )
@@ -565,7 +579,7 @@ describe('GET /todos/:id', () => {
           title: 'My Todo',
           description: 'My Desc',
           content: 'My Content',
-          date: new Date('2025-06-15'),
+          date: '2025-06-15',
         })
       )
       .returning()
@@ -660,7 +674,7 @@ describe('PATCH /todos/:id', () => {
           title: 'Old Title',
           description: 'Old Desc',
           content: 'Old Content',
-          date: new Date('2025-01-01'),
+          date: '2025-01-01',
         })
       )
       .returning()
@@ -690,7 +704,7 @@ describe('DELETE /todos/:id', () => {
           title: 'To Delete',
           description: 'Desc',
           content: 'Content',
-          date: new Date('2025-01-01'),
+          date: '2025-01-01',
         })
       )
       .returning()
@@ -714,6 +728,63 @@ describe('DELETE /todos/:id', () => {
     expect(res.statusCode).toBe(204)
     // Nothing was deleted, so nothing is audited
     expect(await findAuditLogs('delete', 'todos', id)).toHaveLength(0)
+  })
+})
+
+describe('Date (a calendar day)', () => {
+  async function createTodo(date: unknown) {
+    const [attachment, file, image] = await Promise.all([
+      insertUpload(),
+      insertUpload('doc.pdf'),
+      insertUpload('img.jpg', 'image/jpeg'),
+    ])
+    return app.inject({
+      method: 'POST',
+      url: '/api/todos',
+      payload: {
+        title: 'Todo',
+        description: 'Desc',
+        content: 'Content',
+        date,
+        attachmentIds: [attachment.id],
+        fileId: file.id,
+        imageId: image.id,
+      },
+      headers: { cookie: authCookie },
+    })
+  }
+
+  it('returns the day it was given, with no time', async () => {
+    const created = await createTodo('2025-12-31')
+    expect(created.statusCode).toBe(201)
+    expect(created.json().date).toBe('2025-12-31')
+
+    const res = await app.inject({
+      method: 'GET',
+      url: `/api/todos/${created.json().id}`,
+      headers: { cookie: authCookie },
+    })
+    expect(res.json().date).toBe('2025-12-31')
+  })
+
+  it.each(['2025-12-31T10:00:00Z', '31/12/2025', '2025-02-30', 'tomorrow'])(
+    'refuses a value that is not a day (%s)',
+    async (date) => {
+      const res = await createTodo(date)
+      expect(res.statusCode).toBe(400)
+    }
+  )
+
+  it('changes on update', async () => {
+    const created = (await createTodo('2025-01-01')).json()
+    const res = await app.inject({
+      method: 'PATCH',
+      url: `/api/todos/${created.id}`,
+      payload: { date: '2025-02-01' },
+      headers: { cookie: authCookie },
+    })
+    expect(res.statusCode).toBe(200)
+    expect(res.json().date).toBe('2025-02-01')
   })
 })
 
@@ -980,7 +1051,7 @@ describe('Images in the content', () => {
           title: 'Theirs',
           description: 'Desc',
           content: img(theirs),
-          date: new Date('2025-01-01'),
+          date: '2025-01-01',
         })
       )
       .returning()
@@ -1124,7 +1195,7 @@ describe('Upload ownership', () => {
           title: 'Theirs',
           description: 'Desc',
           content: 'Content',
-          date: new Date('2025-01-01'),
+          date: '2025-01-01',
           fileId: file.id,
           imageId: image.id,
         })
@@ -1357,7 +1428,7 @@ describe('Permission enforcement', () => {
           title: 'T',
           description: 'D',
           content: 'C',
-          date: new Date('2025-01-01'),
+          date: '2025-01-01',
         })
       )
       .returning()
@@ -1382,7 +1453,7 @@ describe('Permission enforcement', () => {
           title: 'T',
           description: 'D',
           content: 'C',
-          date: new Date('2025-01-01'),
+          date: '2025-01-01',
         })
       )
       .returning()

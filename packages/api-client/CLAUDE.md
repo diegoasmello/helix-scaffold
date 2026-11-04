@@ -136,7 +136,7 @@ See `apps/web/CLAUDE.md` → _Step 3_ for the full mutation pattern and cache in
 
 ### `Date` fields are `any` in request bodies
 
-`z.date()` / `z.coerce.date()` produce an empty schema (`{}`) in OpenAPI, which kubb turns into `any` — e.g. `PostTodosMutationRequest.date`. Send ISO date strings; `string` is assignable to `any`, so no cast is needed. Response dates arrive as ISO strings too (parse with `parseISO` from `date-fns` before formatting).
+`z.date()` / `z.coerce.date()` produce an empty schema (`{}`) in OpenAPI, which kubb turns into `any` — e.g. `PostSubscriptionsMutationRequest.currentPeriodStart`. A calendar day (`z.iso.date()`) is a `string` with `format: date` instead — e.g. `PostTodosMutationRequest.date`. Send ISO date strings; `string` is assignable to `any`, so no cast is needed. Response dates arrive as ISO strings too (parse with `parseISO` from `date-fns` before formatting).
 
 ### `z.string()` fields stay `string`
 

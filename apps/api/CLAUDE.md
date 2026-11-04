@@ -212,7 +212,7 @@ Every list endpoint can optionally support field-level filtering via the reusabl
 
 | File                    | Exports                                                                                          |
 | ----------------------- | ------------------------------------------------------------------------------------------------ |
-| `src/lib/filtering.ts`  | `filterQuerySchema`, `buildFilterWhereClause`, `FilterWhereOptions`, `searchQuerySchema`, `buildSearchClause`, `FilterLogic` |
+| `src/lib/filtering.ts`  | `filterQuerySchema`, `buildFilterWhereClause`, `FilterWhereOptions`, `coerceCalendarDay`, `searchQuerySchema`, `buildSearchClause`, `FilterLogic` |
 | `src/lib/normalize-text.ts` | `normalizeText`, `normalizedValues`, `NormalizedFieldMap` — see _Normalized text columns_ |
 | `src/lib/slug.ts` | `slugify`, `withUniqueSlug`, `SlugConfig`… — see _Slugs_ |
 
@@ -242,15 +242,20 @@ Merge this into the module's `listQuerySchema` alongside pagination and sorting.
 
 `normalized` maps a text field to its normalized column (`{ title: features.normalizedTitle }`), for the text operators — see _Normalized text columns_.
 
-The optional `coerce` map transforms raw filter values before Drizzle receives them. This is required for columns whose DB type differs from the serialized URL value — most commonly `timestamp` columns where the filter value arrives as an ISO string. For array values (`in`, `between`) it runs on each item:
+The optional `coerce` map transforms raw filter values before Drizzle receives them. This is required for columns whose DB type differs from the serialized URL value — the date columns. For array values (`in`, `between`) it runs on each item; a value it turns into `null` skips the condition:
 
 ```ts
+import { coerceCalendarDay } from '@/lib/filtering'
+
 const FILTER_COERCE = {
-  date: (v: unknown) => (typeof v === 'string' ? new Date(v) : v),
+  // `date` column (a calendar day): keeps `YYYY-MM-DD`, skips anything else
+  dueDate: coerceCalendarDay,
+  // `timestamptz` column (an instant): the ISO string becomes a `Date`
+  publishedAt: (v: unknown) => (typeof v === 'string' ? new Date(v) : v),
 } as const
 ```
 
-Without coercion, Drizzle will pass the raw string to PostgreSQL and the comparison will fail or error at runtime.
+Without coercion, Drizzle will pass the raw string to PostgreSQL and the comparison will fail or error at runtime (an invalid date is a 500).
 
 ### Adding filtering to a module
 
@@ -289,7 +294,7 @@ const NORMALIZED_FILTER_COLUMNS = {
 
 // Only needed when a column type differs from the serialized URL value
 const FILTER_COERCE = {
-  date: (v: unknown) => (typeof v === 'string' ? new Date(v) : v),
+  date: coerceCalendarDay, // a `date` column — see `coerce` above
 } as const
 
 async function list(query: FeaturesListQuery) {
@@ -804,13 +809,24 @@ export const features = pgTable('features', {
     .primaryKey()
     .$defaultFn(() => uuidv7()),
   title: text('title').notNull(),
-  createdAt: timestamp('created_at').notNull().defaultNow(),
-  updatedAt: timestamp('updated_at')
+  createdAt: timestamp('created_at', { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true })
     .notNull()
     .defaultNow()
     .$onUpdateFn(() => new Date()),
 })
 ```
+
+**Dates and times.** Pick the column by what the value is:
+
+| The value is… | Column | Contract (Zod) | Example |
+| --- | --- | --- | --- |
+| an instant (when something happened or ends) | `timestamp(name, { withTimezone: true })` — `timestamptz` | `z.date()` in the entity (serialized as ISO, UTC) | `createdAt`, `expiresAt`, `publishedAt` |
+| a calendar day, no time | `date(name, { mode: 'string' })` | `z.iso.date()` — `YYYY-MM-DD`, in and out | `todos.date`, a birthday, a due date |
+
+**Never `timestamp` without a time zone.** It stores a wall time with no zone: `defaultNow()` and `now()` write it in the Postgres session's time zone while Drizzle reads it back as UTC, so a database outside UTC shifts every date. `src/db/schema/schema.test.ts` fails on any `timestamp` column without `withTimezone` (and checks `defaultNow()` on a session in `America/Sao_Paulo`). A calendar day stored as an instant (UTC midnight) is the opposite trap: west of UTC the browser shows the day before — it is a `date`. The web parses a `YYYY-MM-DD` with `parseISO()`, which reads it as local midnight (the right day), and sends what `DateInput` gives (`YYYY-MM-DD`). Filter a `date` column with `coerceCalendarDay` (_Filtering_).
 
 Every text column users will search or filter by "contains" gets a normalized copy (`normalizedTitle`) — see _Normalized text columns_. A record a public page shows by URL gets a `slug` — see _Slugs_.
 

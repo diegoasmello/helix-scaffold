@@ -36,15 +36,15 @@ All admin routes, `GET /me/subscription` and `GET /me/entitlements` are **only r
 | `userId` | `text NOT NULL` | FK → `user.id` ON DELETE CASCADE, index `subscriptions_user_id_idx` (the partial unique index below covers live rows only) |
 | `planId` | `text NOT NULL` | One of `subscriptions.plans[].id` (validated on create/update, not by the DB) |
 | `status` | `text NOT NULL` | See status values below |
-| `trialEndsAt` | `timestamp` | Null for non-trial subscriptions |
-| `currentPeriodStart` | `timestamp NOT NULL` | Start of the current billing period |
-| `currentPeriodEnd` | `timestamp NOT NULL` | End of the current billing period |
-| `canceledAt` | `timestamp` | Set automatically when status is changed to `'canceled'` |
-| `pastDueSince` | `timestamp` | Set automatically when status **becomes** `past_due`, kept while it stays there, cleared when it leaves (admin create/edit and webhook sync). Never accepted from clients. Start of the grace period |
+| `trialEndsAt` | `timestamptz` | Null for non-trial subscriptions |
+| `currentPeriodStart` | `timestamptz NOT NULL` | Start of the current billing period |
+| `currentPeriodEnd` | `timestamptz NOT NULL` | End of the current billing period |
+| `canceledAt` | `timestamptz` | Set automatically when status is changed to `'canceled'` |
+| `pastDueSince` | `timestamptz` | Set automatically when status **becomes** `past_due`, kept while it stays there, cleared when it leaves (admin create/edit and webhook sync). Never accepted from clients. Start of the grace period |
 | `externalId` | `text` UNIQUE | Payment processor subscription ID (Stripe, etc.) — the webhook sync key (`subscriptions_external_id_unique`; NULLs don't collide) |
 | `metadata` | `jsonb` | Provider-specific data — arbitrary JSON |
-| `createdAt` | `timestamp NOT NULL` | `defaultNow()` |
-| `updatedAt` | `timestamp NOT NULL` | `$onUpdateFn(() => new Date())` |
+| `createdAt` | `timestamptz NOT NULL` | `defaultNow()` |
+| `updatedAt` | `timestamptz NOT NULL` | `$onUpdateFn(() => new Date())` |
 
 **One live subscription per user:** the partial unique index `subscriptions_one_live_per_user` (`user_id WHERE status IN ('active', 'trialing')`) allows at most one active/trialing row per user. Any number of `canceled`/`expired`/`past_due` rows can coexist as history. To change plans, update the live subscription's `planId` (or cancel it first) — do not insert a second live row. Migration `0005` cancels pre-existing duplicates (keeping the most recent) before creating the index.
 

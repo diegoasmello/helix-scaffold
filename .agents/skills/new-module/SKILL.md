@@ -38,6 +38,7 @@ Actions:      view · create · edit · delete   (drop any the module lacks)
 
 Fields (the user fills them):
 | name | type | required | limits / enum values | default | normalized |
+(a date is either an instant → timestamptz, or a calendar day → date — see apps/api/CLAUDE.md → _2. Database schema_, "Dates and times")
 
 System fields:        <field — who writes it and when, from which transition (publishedAt: the service, when status becomes published)>, or none
 Business uniqueness:  <field(s) unique by product rule, or none>

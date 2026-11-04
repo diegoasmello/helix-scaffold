@@ -9,7 +9,11 @@ import {
   todos,
   uploads,
 } from '@/db/schema'
-import { buildFilterWhereClause, buildSearchClause } from '@/lib/filtering'
+import {
+  buildFilterWhereClause,
+  buildSearchClause,
+  coerceCalendarDay,
+} from '@/lib/filtering'
 import { normalizedValues } from '@/lib/normalize-text'
 import { getPaginationParams } from '@/lib/pagination'
 import { uploadIdsInHtml } from '@/lib/rich-text-uploads'
@@ -53,8 +57,9 @@ const NORMALIZED_FILTER_COLUMNS = {
 // The list's search box matches the title or the description.
 const SEARCH_COLUMNS = [todos.normalizedTitle, todos.normalizedDescription]
 
+// `date` is a calendar day: a filter value that is not `YYYY-MM-DD` is skipped.
 const FILTER_COERCE = {
-  date: (v: unknown) => (typeof v === 'string' ? new Date(v) : v),
+  date: coerceCalendarDay,
 } as const
 
 async function getAttachmentsForTodos(

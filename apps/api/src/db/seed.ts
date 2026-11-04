@@ -168,10 +168,10 @@ async function main() {
     description: faker.lorem.sentences(2),
     content: faker.lorem.sentences(5),
     status: faker.helpers.arrayElement(['pending', 'completed'] as const),
-    date: faker.date.between({
-      from: new Date('2024-01-01'),
-      to: new Date('2025-12-31'),
-    }),
+    date: faker.date
+      .between({ from: new Date('2024-01-01'), to: new Date('2025-12-31') })
+      .toISOString()
+      .slice(0, 10),
     imageId: imageUploads.imageIds[i],
     fileId: fileUploads.fileIds[i],
   }))
