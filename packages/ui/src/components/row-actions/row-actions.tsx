@@ -19,13 +19,16 @@ export interface RowActionsProps {
   actions: RowAction[]
   /** Accessible name of the "⋯" menu button. Defaults to "Actions". */
   menuLabel?: string
-  /** Up to this many visible actions are buttons; more collapse into a menu. */
+  /**
+   * Up to this many visible actions are buttons; more collapse into a menu.
+   * Defaults to 3 — raise it only where the row has room (roles: 4).
+   */
   maxInlineActions?: number
 }
 
 /**
- * A `DataTable` row's actions: up to 3 text buttons side by side, or a single
- * "⋯" menu when there are more. Hidden actions do not count. In the mobile
+ * A `DataTable` row's actions: up to `maxInlineActions` (3) text buttons side
+ * by side, or a single "⋯" menu when there are more. Hidden actions do not count. In the mobile
  * card layout the buttons fill the card's width.
  */
 export function RowActions(props: Readonly<RowActionsProps>) {

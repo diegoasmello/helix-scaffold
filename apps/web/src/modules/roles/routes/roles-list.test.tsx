@@ -107,6 +107,15 @@ beforeEach(() => {
 
 afterEach(() => vi.clearAllMocks())
 
+// The first row is "Admin" (id '1'). The permissions query resolves after
+// the list, so the gated buttons are awaited.
+async function clickDeleteOnFirstRow() {
+  const [deleteButton] = await screen.findAllByRole('button', {
+    name: 'Delete',
+  })
+  await userEvent.click(deleteButton)
+}
+
 describe('RolesList', () => {
   it('renders all roles', async () => {
     renderRolesList()
@@ -114,25 +123,19 @@ describe('RolesList', () => {
     expect(screen.getByText('Viewer')).toBeInTheDocument()
   })
 
-  it('opens the actions menu showing all items', async () => {
+  // `maxInlineActions={4}`: all four actions stay buttons, never the menu
+  it('shows all four actions as buttons in each row', async () => {
     renderRolesList()
-    const menuButtons = await screen.findAllByLabelText('Actions')
-    await userEvent.click(menuButtons[0])
-    const items = await screen.findAllByRole('menuitem')
-    const labels = items.map((item) => item.textContent)
-    expect(labels).toContain('View')
-    expect(labels).toContain('Edit')
-    expect(labels).toContain('Edit permissions')
-    expect(labels).toContain('Delete')
+    await screen.findByText('Admin')
+    for (const name of ['View', 'Edit', 'Edit permissions', 'Delete']) {
+      expect(await screen.findAllByRole('button', { name })).toHaveLength(2)
+    }
+    expect(screen.queryByLabelText('Actions')).not.toBeInTheDocument()
   })
 
-  it('opens delete modal when delete menu item is clicked', async () => {
+  it('opens delete modal when Delete is clicked', async () => {
     renderRolesList()
-    const menuButtons = await screen.findAllByLabelText('Actions')
-    await userEvent.click(menuButtons[0])
-    await userEvent.click(
-      await screen.findByRole('menuitem', { name: 'Delete' })
-    )
+    await clickDeleteOnFirstRow()
     const dialog = await screen.findByRole('dialog')
     expect(within(dialog).getByText('Delete role')).toBeInTheDocument()
     expect(
@@ -151,11 +154,7 @@ describe('RolesList', () => {
       })
     )
     renderRolesList()
-    const menuButtons = await screen.findAllByLabelText('Actions')
-    await userEvent.click(menuButtons[0])
-    await userEvent.click(
-      await screen.findByRole('menuitem', { name: 'Delete' })
-    )
+    await clickDeleteOnFirstRow()
     const dialog = await screen.findByRole('dialog')
     await userEvent.click(
       within(dialog).getByRole('button', { name: 'Delete' })
@@ -177,11 +176,7 @@ describe('RolesList', () => {
       )
     )
     renderRolesList()
-    const menuButtons = await screen.findAllByLabelText('Actions')
-    await userEvent.click(menuButtons[0])
-    await userEvent.click(
-      await screen.findByRole('menuitem', { name: 'Delete' })
-    )
+    await clickDeleteOnFirstRow()
     const dialog = await screen.findByRole('dialog')
     await userEvent.click(
       within(dialog).getByRole('button', { name: 'Delete' })
@@ -197,11 +192,7 @@ describe('RolesList', () => {
 
   it('closes delete modal on cancel', async () => {
     renderRolesList()
-    const menuButtons = await screen.findAllByLabelText('Actions')
-    await userEvent.click(menuButtons[0])
-    await userEvent.click(
-      await screen.findByRole('menuitem', { name: 'Delete' })
-    )
+    await clickDeleteOnFirstRow()
     const dialog = await screen.findByRole('dialog')
     await userEvent.click(
       within(dialog).getByRole('button', { name: 'Cancel' })
@@ -211,7 +202,7 @@ describe('RolesList', () => {
     )
   })
 
-  it('shows the remaining actions as buttons when at most 3 are allowed', async () => {
+  it('shows only View when the user may only view roles', async () => {
     server.use(getMePermissionsHandler({ grants: { roles: ['view'] } }))
     renderRolesList()
     await screen.findByText('Admin')

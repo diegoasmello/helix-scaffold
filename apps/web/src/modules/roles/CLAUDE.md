@@ -152,7 +152,7 @@ Inline in each component — no `hooks.ts`.
 - Create button → `<HasPermission resource="roles" action="create">`
 - Row actions (`RowActions`): View (always), Edit (`hidden: !hasPermission('roles', 'edit')`), Edit permissions (`hidden: !hasPagePermission(ROLES_ACCESS.permissions, hasPermission)` — the editor page's whole access), Delete (`hidden: !hasPermission('roles', 'delete')`, `danger: true`)
 
-With all four allowed, the row shows the "⋯" menu; with 3 or fewer, text buttons — the tests cover both. The admin role's row hides Edit, Edit permissions and Delete whatever the user may do (`item.isAdmin || ...`), so it shows View alone.
+`maxInlineActions={4}`: all four stay text buttons, never the "⋯" menu — the tests cover all four, and fewer when permissions hide some. The admin role's row hides Edit, Edit permissions and Delete whatever the user may do (`item.isAdmin || ...`), so it shows View alone.
 
 ## List test (`routes/roles-list.test.tsx`)
 
