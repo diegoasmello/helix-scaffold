@@ -111,14 +111,28 @@ describe('slugCandidatesPattern', () => {
         .slice(offset, offset + 100)
         .replace(/^-+|-+$/g, '')
       const pattern = new RegExp(slugCandidatesPattern(base))
-      const taken = new Set([base])
-      for (let i = 0; i < 1200; i++) {
-        const candidate = freeSlug(base, taken)
-        expect(candidate.length).toBeLessThanOrEqual(100)
-        expect(candidate).toMatch(SLUG_PATTERN)
-        expect(candidate).toMatch(pattern)
-        taken.add(candidate)
-      }
+      // One call walks the candidates in order (`-2`, `-3`… past the 4-digit
+      // suffixes): `taken` records each one it is asked about and holds the
+      // first 1200. Growing a real Set one slug per call would walk them all
+      // again on every call — quadratic, seconds instead of milliseconds.
+      const candidates: string[] = []
+      const taken = {
+        has: (slug: string) => {
+          if (slug === base) return true
+          candidates.push(slug)
+          return candidates.length <= 1200
+        },
+      } as ReadonlySet<string>
+      freeSlug(base, taken)
+      expect(candidates).toHaveLength(1201)
+      expect(new Set(candidates).size).toBe(candidates.length)
+      const invalid = candidates.filter(
+        (candidate) =>
+          candidate.length > 100 ||
+          !SLUG_PATTERN.test(candidate) ||
+          !pattern.test(candidate)
+      )
+      expect(invalid).toEqual([])
     }
   })
 })
