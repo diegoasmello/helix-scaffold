@@ -8,6 +8,7 @@ import {
   appConfigSchema,
   type ResolvedAppConfig,
 } from './define-config'
+import { e2eConfigOverrides, isE2E } from './e2e-overrides'
 import { isSpecExport, specConfigOverrides } from './spec-overrides'
 import { testConfigOverrides } from './test-overrides'
 
@@ -113,9 +114,11 @@ function resolveConfig(): Config {
     typeof appConfig === 'function' ? appConfig({ mode }) : appConfig
   const overrides = isSpecExport()
     ? specConfigOverrides
-    : mode === 'test'
-      ? testConfigOverrides
-      : undefined
+    : isE2E()
+      ? deepMerge(testConfigOverrides, e2eConfigOverrides)
+      : mode === 'test'
+        ? testConfigOverrides
+        : undefined
   return parseConfig(overrides ? deepMerge(raw, overrides) : raw)
 }
 

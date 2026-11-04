@@ -48,7 +48,7 @@ pnpm test
 # Test with coverage
 pnpm test:coverage
 
-# E2E tests (requires dev server + API running)
+# E2E tests — Playwright starts its own API (3334) + web (5174) on the db_e2e database
 pnpm test:e2e
 
 # Format all workspaces (Prettier)
@@ -79,7 +79,7 @@ pnpm --filter api test:watch
 
 **API contract → client:** the web consumes `@helix/api-client`, generated (gitignored) from the committed `packages/api-client/openapi.json`. Nothing regenerates it while you work — `pnpm dev` does not. **After changing a route, a request/response schema or the permission catalog in `apps/api`, run `pnpm spec:sync` before writing or testing web code**, or the new hooks, types and mocks don't exist yet. What counts as a contract change: `packages/api-client/CLAUDE.md` → _Workflow when creating or modifying an API endpoint_.
 
-**Local databases** (`docker compose up -d`): `db` → `helix` on port 5434, `db_test` → `helix_test` on port 5436. API tests need `db_test` running and migrated (`pnpm db:migrate:test`).
+**Local databases** (`docker compose up -d`): `db` → `helix` on port 5434, `db_test` → `helix_test` on port 5436, `db_e2e` → `helix_e2e` on port 5438. API tests need `db_test` running and migrated (`pnpm db:migrate:test`); E2E needs `db_e2e` running — the suite migrates and empties it itself.
 
 **Git hooks** (Husky):
 
@@ -95,7 +95,7 @@ pnpm --filter api test:watch
 | Workspace  | Tool                        | Notes                   |
 | ---------- | --------------------------- | ----------------------- |
 | `apps/web` | Vitest + RTL + MSW          | Unit + integration      |
-| `apps/web` | Playwright                  | E2E via `pnpm test:e2e` — only `e2e/auth.setup.ts` exists, no specs yet |
+| `apps/web` | Playwright                  | E2E via `pnpm test:e2e` — journeys across web and API against a stack it starts itself (`e2e/rbac.spec.ts`) |
 | `apps/api` | Vitest + real test database | Route integration tests |
 
 See each workspace's `CLAUDE.md` for the full testing guide.
@@ -194,7 +194,7 @@ Before implementing either side, read the workspace-specific `CLAUDE.md` — it 
 - **Backend**: `apps/api/CLAUDE.md` → _Creating a new module (CRUD)_
 - **Frontend**: `apps/web/CLAUDE.md` → _Creating a new module (CRUD)_
 
-A module is only complete when both sides are implemented and their unit + integration tests are written. E2E specs are written only when asked (the Playwright setup exists, but no module has specs yet).
+A module is only complete when both sides are implemented and their unit + integration tests are written. E2E specs cover journeys across modules and layers and are written only when asked — see `apps/web/CLAUDE.md` → _3. E2E tests_.
 
 ### Pagination defaults
 

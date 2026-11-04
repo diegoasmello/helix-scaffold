@@ -1536,7 +1536,7 @@ The confirm button is automatically colored with `status: "danger"`. `onConfirm`
 
 ### 11. Tests
 
-Every module ships with unit and integration tests — a module is only complete when both are covered. E2E specs are not part of the definition of done yet: no module has one (see _3. E2E tests_).
+Every module ships with unit and integration tests — a module is only complete when both are covered. E2E specs are not part of a module's definition of done: they cover journeys across modules and layers, written when asked (see _3. E2E tests_).
 
 **Unit — `validation.test.ts`**
 
@@ -1546,9 +1546,9 @@ One `describe` per field. Cover: empty, boundary values, valid input.
 
 Use MSW to control API responses. Add the module's endpoints to `src/mocks/handlers.ts` as default handlers, then override per test as needed. See the Testing section below for the full pattern and coverage table.
 
-**E2E — `e2e/<feature>.spec.ts`** (only when asked)
+**E2E — `e2e/<journey>.spec.ts`** (only when asked)
 
-One helper function per data-creation step (e.g. `createXxx`). Cover: list, create, detail, edit, delete (confirm + cancel). Each test creates its own data — no shared state.
+A few journeys that cross the web and the API — not the module's CRUD again, which the integration tests already cover. Each test creates its own data through `adminApi` and walks the journey through the UI — see _3. E2E tests_.
 
 ---
 
@@ -1560,7 +1560,7 @@ One helper function per data-creation step (e.g. `createXxx`). Cover: list, crea
 pnpm test              # Single run (used by Turbo / CI)
 pnpm test:watch        # Watch mode for local development
 pnpm test:coverage     # Single run with coverage report
-pnpm test:e2e          # Playwright (requires dev server + API running)
+pnpm test:e2e          # Playwright — starts its own API + web (needs `docker compose up -d db_e2e`)
 pnpm test:e2e:ui       # Playwright with interactive UI
 ```
 
@@ -1570,7 +1570,7 @@ pnpm test:e2e:ui       # Playwright with interactive UI
 | ----------- | ------------------ | ------------------------------------------------------------------------------ |
 | Unit        | Vitest             | `validation.ts` — pure validator functions; service logic when non-trivial     |
 | Integration | Vitest + RTL + MSW | Route components — rendering, form flows, modal interactions, API error states |
-| E2E         | Playwright         | Full CRUD flows against the real backend — infrastructure only, no specs yet   |
+| E2E         | Playwright         | Journeys across the web and the real API (`e2e/rbac.spec.ts`)                  |
 
 ### MSW setup
 
@@ -2070,41 +2070,58 @@ The default for `GET /me/permissions` already returns `{ grants: {} }` — test 
 
 ---
 
-### 3. E2E tests (`e2e/<feature>.spec.ts`)
+### 3. E2E tests (`e2e/<journey>.spec.ts`)
 
-**Current state:** only the infrastructure exists — `playwright.config.ts` (starts `pnpm dev` or reuses it), and `e2e/auth.setup.ts`, which signs in with `E2E_USER_EMAIL`/`E2E_USER_PASSWORD` from `apps/web/.env` (an existing user, e.g. the bootstrap admin) and saves the session to `e2e/.auth/user.json`. There are no specs yet; write them only when asked, following the pattern below.
+E2E specs check that the layers agree — what the UI offers, what the guards let in and what the API accepts — on journeys no single layer can test: a role granted in the editor and the pages its user then sees, the session across the login, a file uploaded and shown. They do not repeat a module's CRUD: the MSW integration tests already cover each screen, and the API route tests each rule. Keep them few. `e2e/rbac.spec.ts` is the reference.
 
-Tests run against the real dev server and real backend. All tests are pre-authenticated via Playwright's `storageState`.
+#### The stack
 
-**Each test must be self-contained** — create any data it needs via the UI and do not rely on pre-existing database state.
+`pnpm test:e2e` brings up everything it needs — no dev server, no `.env`, no existing user. Only the database must be running: `docker compose up -d db_e2e` (`helix_e2e`, port 5438), and the browsers installed once (`pnpm --filter web exec playwright install chromium`).
+
+| Piece | Where | What it does |
+| --- | --- | --- |
+| API | `pnpm --filter api e2e:server` (`apps/api/src/scripts/e2e-server.ts`), port **3334** | Migrates and empties `helix_e2e`, then listens with the API suite's config (`test-overrides.ts`: open registration, subscriptions on, the `starter`/`pro`/`enterprise` plans) plus `e2e-overrides.ts` (port, its own uploads dir, `warn` logs). Its environment (`DATABASE_URL`, `AUTH_SECRET`, `BASE_URL`, `CLIENT_URL`) is set in `playwright.config.ts` — not secret, it exists only for this database. `E2E_DATABASE_URL` overrides the database |
+| Web | `vite --port 5174 --strictPort`, `VITE_API_URL=http://localhost:3334` | The app as in development, pointed at that API |
+| Setup | `e2e/global.setup.ts` (project `setup`, before every other project) | Creates the first admin through the real `POST /bootstrap` (`ADMIN` in `e2e/personas.ts`), signs in through the login screen and saves the session to `e2e/.auth/admin.json` |
+
+Both ports are apart from `pnpm dev` (3333 / 5173), so it can keep running. Locally, Playwright reuses servers already listening on those ports (`reuseExistingServer`) — the database is then not emptied again, which is harmless: the setup only signs in when the admin exists, and every test uses unique names. `e2e/stack.ts` holds the URLs.
+
+#### Fixtures (`e2e/fixtures.ts`)
+
+Specs import `test` and `expect` from `./fixtures`, never from `@playwright/test`. Every test starts signed in as the admin (the project's `storageState`).
+
+| Export | Use |
+| --- | --- |
+| `adminApi` (fixture) | The API as the admin, to set the stage before the journey: `createRole(grants?, body?)` (`POST /roles` + `PUT /roles/:id/permissions`), `createUser(body?)` (`POST /users`, returns the password too). Typed with the generated contract (`@helix/api-client/types`), so an API change breaks it at type-check. Add a helper here when a journey needs another resource |
+| `signInAs(browser, credentials)` | A page in a new context, signed in through the login screen as another user. Close its context at the end of the test |
+| `signIn(page, credentials)` | The login itself (used by the setup) |
+| `uniqueName(prefix)`, `uniqueEmail(prefix)` | Names that never collide — tests run in parallel against one database |
+
+**Data through the API, the journey through the UI.** What the test is about happens on screen; what it only needs to exist (a role to edit, a user to sign in as) comes from `adminApi`. Never write to the database directly, and never rely on data another test created.
 
 ```ts
-import { expect, test, type Page } from '@playwright/test'
+import { expect, signInAs, test } from './fixtures'
 
-async function createXxx(page: Page, title: string) {
-  await page.goto('/xxx/create')
-  await page.getByLabel('Title').fill(title)
-  await page.getByRole('button', { name: 'Save' }).click()
-  await page.waitForURL('/xxx')
-}
+test('a user whose role grants nothing lands on the profile', async ({ adminApi, browser }) => {
+  const role = await adminApi.createRole()
+  const user = await adminApi.createUser({ roleId: role.id })
 
-test.describe('Xxx', () => {
-  test.beforeEach(async ({ page }) => {
-    await page.goto('/xxx')
-  })
+  const userPage = await signInAs(browser, user)
+  await expect(userPage).toHaveURL(/\/me\/account$/)
 
-  test('displays the list', async ({ page }) => {
-    await expect(page.getByRole('heading', { name: 'Xxx' })).toBeVisible()
-  })
-
-  test('creates a new item and shows it in the list', async ({ page }) => {
-    await createXxx(page, 'My item')
-    await expect(page.getByRole('cell', { name: 'My item' })).toBeVisible()
-  })
+  await userPage.context().close()
 })
 ```
 
-Use `getByRole`, `getByLabel`, and row-scoped locators (`page.getByRole("row", { name: /.../ }).getByLabel("Edit")`) to keep selectors resilient to layout changes.
+#### Selectors
+
+The texts are English (`locale: 'en-US'`). Query by role and accessible name — `getByRole('textbox', { name: 'Email' })`, `getByRole('combobox', { name: 'Role' })` for a `Select`, `getByRole('row').filter({ hasText: email })` for a table row — never by CSS class.
+
+- **Pass `exact: true` for short names.** Names match by substring by default: `{ name: 'Create' }` also finds the sortable "Created at" column header (a `role="button"`).
+- **`getByLabel` misses required fields**: their label reads "Password *". Use `getByRole('textbox', { name: 'Password', exact: true })`.
+- A list's URL carries its search params (`/users?page=1&pageSize=10&sortOrder=desc`): match `/\/users(\?|$)/`.
+- When a group of controls has no accessible name to scope by, give it one in the component (`role="group"` + `aria-label` — the permission editor's resources: `getByRole('group', { name: 'Users' }).getByRole('checkbox', { name: 'View' })`). It helps screen readers too.
+- On a failure, the report's page snapshot is the `page` fixture's (the admin's), not a page opened with `signInAs`.
 
 **Unauthenticated specs** (e.g. a future `e2e/auth.spec.ts`) override the storageState:
 

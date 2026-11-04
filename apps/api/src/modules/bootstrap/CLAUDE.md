@@ -46,7 +46,7 @@ Returns `409 { message: 'System already bootstrapped' }` if any user exists at s
 
 **Leftover roles are reused.** With no users, roles left in the table (users deleted by hand) are leftovers, not data to protect: a leftover `Admin` is reused (it stops being the default, becomes the admin role and loses its leftover rows), a leftover default role is kept as the default with its permissions, and a leftover non-default `User` is made the default. Bootstrap never fails on the unique `roles.name`.
 
-There is deliberately no other public way to create an admin — a dev-only `POST /bootstrap/e2e-user` used to exist and was removed; `bootstrap-routes.test.ts` asserts it stays gone. E2E tests sign in with an existing user instead (`apps/web/e2e/auth.setup.ts`).
+There is deliberately no other public way to create an admin — a dev-only `POST /bootstrap/e2e-user` used to exist and was removed; `bootstrap-routes.test.ts` asserts it stays gone. The E2E suite creates its admin through this same `POST /bootstrap`, on a database it empties first (`apps/web/e2e/global.setup.ts`).
 
 ## Open registration mode
 

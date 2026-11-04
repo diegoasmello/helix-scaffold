@@ -19,6 +19,7 @@
     "db:reset": "tsx --env-file=.env src/db/reset.ts",
     "db:migrate:test": "dotenv -e .env.test -- drizzle-kit migrate",
     "spec:export": "tsx src/scripts/export-spec.ts",
+    "e2e:server": "drizzle-kit migrate && tsx src/db/reset.ts && tsx src/scripts/e2e-server.ts",
     "test": "vitest run",
     "test:watch": "vitest"
   },

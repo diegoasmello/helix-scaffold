@@ -74,12 +74,13 @@ pnpm install
 docker compose up -d
 ```
 
-This starts two PostgreSQL 17 containers (user/password `postgres`):
+This starts three PostgreSQL 17 containers (user/password `postgres`):
 
 | Service   | Database     | Port   |
 | --------- | ------------ | ------ |
 | `db`      | `helix`      | `5434` |
 | `db_test` | `helix_test` | `5436` |
+| `db_e2e`  | `helix_e2e`  | `5438` |
 
 **3. Configure environment**
 
@@ -93,7 +94,7 @@ cp apps/web/.env.example apps/web/.env
 | -------------------- | ------------------------------------------------------------------------------------ |
 | `apps/api/.env`      | Backend secrets and per-deploy URLs (see [Configuration](#configuration))            |
 | `apps/api/.env.test` | Overrides `.env` when running API tests — points `DATABASE_URL` to the test database |
-| `apps/web/.env`      | Frontend API URL (`VITE_API_URL`) and E2E login credentials                          |
+| `apps/web/.env`      | Frontend API URL (`VITE_API_URL`)                                                    |
 
 Edit `apps/api/.env` and fill in at minimum:
 
@@ -149,12 +150,9 @@ pnpm test:e2e          # Playwright E2E
 | ---------- | ----------------------- | ---------------------------------------------------------------------- |
 | `apps/api` | Vitest + real database  | Requires `apps/api/.env.test` and `pnpm db:migrate:test`               |
 | `apps/web` | Vitest + RTL + MSW      | No backend needed — API calls are intercepted by MSW                   |
-| `apps/web` | Playwright              | Starts `pnpm dev` automatically (or reuses a running one). Only the sign-in setup exists so far |
+| `apps/web` | Playwright              | Starts its own API (3334) and web (5174) on `helix_e2e`, emptied every run — `pnpm dev` can keep running |
 
-Before the first E2E run:
-
-1. Install the Playwright browsers: `pnpm --filter web exec playwright install`
-2. Set `E2E_USER_EMAIL` and `E2E_USER_PASSWORD` in `apps/web/.env` to an existing user (e.g. the admin created via `/bootstrap`). `e2e/auth.setup.ts` signs in once with these credentials and every E2E test reuses the saved session.
+Before the first E2E run, install the Playwright browser: `pnpm --filter web exec playwright install chromium`. Nothing else to configure: the suite migrates and empties `helix_e2e`, creates its admin through `POST /bootstrap` and signs in once (`e2e/global.setup.ts`).
 
 ## Configuration
 

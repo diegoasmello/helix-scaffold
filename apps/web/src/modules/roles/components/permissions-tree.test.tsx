@@ -95,10 +95,8 @@ function resourceCheckbox(label: string) {
 }
 
 function actionCheckbox(resourceLabel: string, action: string) {
-  const card = resourceCheckbox(resourceLabel).closest<HTMLElement>(
-    '.mantine-Paper-root'
-  )!
-  return within(card).getByRole('checkbox', { name: action })
+  const group = screen.getByRole('group', { name: resourceLabel })
+  return within(group).getByRole('checkbox', { name: action })
 }
 
 describe('PermissionsTree', () => {

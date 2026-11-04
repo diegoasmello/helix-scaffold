@@ -21,6 +21,20 @@ services:
     volumes:
       - db_test_data:/var/lib/postgresql/data
 
+  # The web's Playwright suite (apps/web/playwright.config.ts): emptied on
+  # every run, apart from db_test, which the API suite empties.
+  db_e2e:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: helix_e2e
+    ports:
+      - "5438:5432"
+    volumes:
+      - db_e2e_data:/var/lib/postgresql/data
+
 volumes:
   db_data:
   db_test_data:
+  db_e2e_data:

@@ -190,6 +190,10 @@ export function PermissionsTree(props: Readonly<PermissionsTreeProps>) {
         return (
           <Paper
             key={def.resource}
+            // Names the actions' group ("Users" → View, Create…) for
+            // assistive technology, and for tests to find them
+            role="group"
+            aria-label={resourceLabel(def.resource)}
             p="md"
             withBorder
             className={hasMissing ? classes.missing : undefined}

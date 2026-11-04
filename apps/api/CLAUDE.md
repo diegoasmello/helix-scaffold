@@ -28,6 +28,7 @@ Run from `apps/api` (or from the root with the `pnpm db:*` / `pnpm spec:*` alias
 | `pnpm db:studio` | Drizzle Studio |
 | `pnpm db:seed` | Dev data (`src/db/seed.ts`). **Refuses to run if any user exists.** Wipes `uploads.dir`, creates Admin (the admin role — `isAdmin`, no permission rows)/Moderator/User roles (in open registration `User` becomes the default role, through `ensureDefaultRole()`), an admin login (`admin@example.com` / `pass1234`), 20 extra users (same password) and sample todos with uploads |
 | `pnpm db:reset` | Truncates every table in the schema (`drizzle-seed` `reset`). Does not touch `uploads.dir` |
+| `pnpm e2e:server` | The API of the web's E2E suite — started by `apps/web/playwright.config.ts`, which provides its environment (no `.env`). Migrates and empties the database (`drizzle-kit migrate`, `src/db/reset.ts`), then runs `src/scripts/e2e-server.ts`: `src/server.ts` with the test config plus `src/config/e2e-overrides.ts` (port 3334, uploads in `/tmp/helix-e2e-uploads`, `warn` logs) |
 | `pnpm spec:export <file>` | Writes the OpenAPI spec — see _OpenAPI spec export_. After a contract change, run `pnpm spec:sync` from the repo root instead: it exports to `packages/api-client/openapi.json` and regenerates the client |
 | `pnpm test` / `pnpm test:watch` | Vitest against the test DB |
 
@@ -67,8 +68,9 @@ The file a developer edits to shape the app. Written with `defineConfig()` (Vite
 | File | Purpose |
 | --- | --- |
 | `define-config.ts` | `AppConfig` interface (the JSDoc users see), `defineConfig()` (identity, typing only), `appConfigSchema` (Zod: defaults + runtime validation, strict objects reject unknown keys) |
-| `index.ts` | Resolves the config once: calls the factory with `{ mode }`, merges `spec-overrides.ts` when exporting the spec or `test-overrides.ts` in test mode, parses, cross-validates against `env` (enabled social provider without credentials → startup error), deep-freezes. Exports `config` (the default), the `Config` type, and `overrideConfig(base, overrides)` — the same merge + validation on top of another config, used by tests to build an app in another mode. |
+| `index.ts` | Resolves the config once: calls the factory with `{ mode }`, merges `spec-overrides.ts` when exporting the spec, `test-overrides.ts` then `e2e-overrides.ts` for the E2E server, or `test-overrides.ts` in test mode, parses, cross-validates against `env` (enabled social provider without credentials → startup error), deep-freezes. Exports `config` (the default), the `Config` type, and `overrideConfig(base, overrides)` — the same merge + validation on top of another config, used by tests to build an app in another mode. |
 | `test-overrides.ts` | Pinned values for the test suite — see below |
+| `e2e-overrides.ts` | Applied on top of the test overrides by `src/scripts/e2e-server.ts` (`enableE2E()`, before `@/config` is imported): only what lets the E2E API run beside `pnpm dev` and the API suite — port, uploads dir, log level. E2E runs in the API suite's mode. Tested in `src/config/index.test.ts` |
 | `spec-overrides.ts` | Profile for `pnpm spec:export` (`src/scripts/export-spec.ts`): every optional route registered, placeholder plan, social providers off. Only settings that decide which routes exist belong here — see _OpenAPI spec export_ |
 | `billing-webhook.ts` | Registry, not config: the payment processor adapter (`null` = webhook off). See `src/modules/billing-webhook/CLAUDE.md` |
 | `permissions.ts` | Registry: `RESOURCE_DEFINITIONS` (RBAC resources and actions, `as const`), the types derived from it (`PermissionResource`, `ResourceAction<R>`, `Permission`), `ALL_PERMISSIONS`, `isDeclaredPermission()`, `findUnknownGrants()`; `PERMISSION_REQUIREMENTS` (which permissions each one needs), `directRequirementsOf()`, `findMissingRequirements()` — see _Creating a new module_ → _Step 0_ |
@@ -1102,7 +1104,7 @@ Backend tests are route integration tests: they exercise the full Fastify stack 
 
 - **Do not mock the database.** Replacing the database with a mock eliminates exactly what makes these tests valuable: verifying that the SQL is correct, that constraints are respected, and that Drizzle behaves as expected.
 - **Do not test the service directly when it has no logic of its own.** The `audit` service, for example, is pure SQL delegated to Drizzle — testing `createAuditService` in isolation would only re-assert that `.insert().returning()` works, which is not this project's responsibility. Route tests already cover it.
-- **Do not write E2E tests here.** Playwright E2E tests live in `apps/web/e2e/` and cover full CRUD flows against the real backend. Do not duplicate that level here.
+- **Do not write E2E tests here.** Playwright E2E tests live in `apps/web/e2e/` and cover journeys across the web and this API (`pnpm e2e:server`). Do not duplicate that level here.
 
 ### Test infrastructure
 
