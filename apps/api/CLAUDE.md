@@ -87,7 +87,7 @@ Validated with Zod in `src/env.ts` at startup. If a required variable is missing
 | `DATABASE_URL`, `AUTH_SECRET` | Required |
 | `BASE_URL` | Public URL of this API. Also prefixes public upload URLs. |
 | `CLIENT_URL` | Public URL of the frontend (CORS, trusted origins, email links) |
-| `RESEND_API_KEY` | Optional. Omit to fall back to console email logging. |
+| `RESEND_API_KEY` | Required with `NODE_ENV=production` (the API refuses to start without it — the console fallback would print reset links to the logs). Omit in development to fall back to console email logging. |
 | `GOOGLE_*`, `FACEBOOK_*`, `APPLE_*` (`CLIENT_ID` / `CLIENT_SECRET`) | Credentials for social providers enabled in `app.config.ts`. `APPLE_CLIENT_SECRET` is a JWT signed with the `.p8` private key (max 6-month expiry). |
 
 ### Test config
@@ -539,7 +539,7 @@ The provider instance is created once in `app.ts` and injected into `createAuth`
 
 | Setting | Where | Notes |
 |---|---|---|
-| `RESEND_API_KEY` | `.env` | Optional. Omit in dev/test to fall back to console logging. |
+| `RESEND_API_KEY` | `.env` | Required in production — `createEmailProvider` throws without it. Omit in dev/test to fall back to console logging. |
 | `email.from` | `src/app.config.ts` | Sender address (default `noreply@localhost`). Must be from a domain verified in Resend for production. |
 
 In `NODE_ENV=test` the console provider is always used, regardless of `RESEND_API_KEY`.

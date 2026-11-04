@@ -33,6 +33,12 @@ function createConsoleEmailProvider(): EmailProvider {
   }
 }
 
+/**
+ * Resend when `RESEND_API_KEY` is set (outside tests), the console otherwise.
+ * Throws in production without a key: the console provider prints every email
+ * body — live password-reset and verification links included — to stdout, so
+ * a production API must never fall back to it.
+ */
 export function createEmailProvider(options: {
   resendApiKey?: string
   from: string
@@ -40,6 +46,11 @@ export function createEmailProvider(options: {
 }): EmailProvider {
   if (options.nodeEnv !== 'test' && options.resendApiKey) {
     return createResendEmailProvider(options.resendApiKey, options.from)
+  }
+  if (options.nodeEnv === 'production') {
+    throw new Error(
+      'RESEND_API_KEY is required when NODE_ENV=production: without it, emails would be printed to stdout with their reset and verification links'
+    )
   }
   return createConsoleEmailProvider()
 }

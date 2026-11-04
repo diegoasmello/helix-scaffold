@@ -66,15 +66,28 @@ export function createAuth(
       // A reset signs out every session of the account, a stolen one included
       // — like PATCH /me/password does.
       revokeSessionsOnPasswordReset: true,
+      // Not awaited: better-auth only calls this for a registered email, and
+      // waits for it before answering — so an awaited send (a round trip to
+      // Resend) would make `POST /auth/request-password-reset` slower for
+      // registered addresses than for unknown ones, telling anyone which
+      // emails have an account. better-auth already answered 200 when the send
+      // failed, so the client sees no difference; the failure is logged here.
       sendResetPassword: async ({ user, url }) => {
-        await emailProvider.send(
-          user.email,
-          'Reset your password',
-          `<p>You requested a password reset.</p>
+        emailProvider
+          .send(
+            user.email,
+            'Reset your password',
+            `<p>You requested a password reset.</p>
            <p>Click the link below to reset your password:</p>
            <p><a href="${url.replace(/"/g, '&quot;')}">Reset password</a></p>
            <p>This link expires in 1 hour. If you did not request this change, you can safely ignore this email.</p>`
-        )
+          )
+          .catch((error: unknown) => {
+            logger.error(
+              { err: error, userId: user.id },
+              'Failed to send password reset email'
+            )
+          })
       },
     },
     emailVerification: {

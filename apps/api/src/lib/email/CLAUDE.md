@@ -19,9 +19,10 @@ Both are private factory functions in `index.ts`; only `EmailProvider` (the inte
 | Implementation | When used |
 |---|---|
 | `createResendEmailProvider` | `NODE_ENV !== 'test'` and `RESEND_API_KEY` is set |
-| `createConsoleEmailProvider` | dev without `RESEND_API_KEY`, and all test runs |
+| `createConsoleEmailProvider` | `development` without `RESEND_API_KEY`, and all test runs |
+| — (throws) | `NODE_ENV=production` without `RESEND_API_KEY`: `createEmailProvider` refuses, so `buildApp` (and the API) does not start |
 
-The console provider logs the full HTML body to stdout including the verification URL — sufficient for local testing without any external account.
+The console provider logs the full HTML body to stdout including the verification URL — sufficient for local testing without any external account. That is exactly why production never falls back to it: the body carries live password-reset and verification links, and anyone reading the logs could take over the account. A production deploy must set `RESEND_API_KEY` — and `NODE_ENV=production`, since an unset `NODE_ENV` means `development` (`src/env.ts`).
 
 The Resend provider uses Resend's REST API directly via `fetch` (no SDK dependency). On a non-2xx response it logs the raw body to stderr and throws a generic message, so Resend error details never leak to the caller or to error-monitoring payloads.
 
@@ -45,7 +46,7 @@ Called once in `app.ts`. The returned instance is injected into `createAuth` and
 
 | Setting | Where | Default | Notes |
 |---|---|---|---|
-| `RESEND_API_KEY` | `.env` | — | Optional. Omit to fall back to console logging. |
+| `RESEND_API_KEY` | `.env` | — | Required in production. Omit in development to fall back to console logging. |
 | `email.from` | `src/app.config.ts` | `noreply@localhost` | Sender address. Must be from a domain verified in Resend for production. |
 
 **Resend domain requirement**: Resend rejects sends from unverified domains (including `gmail.com` or any domain you don't own). For production, add and verify your domain at resend.com/domains. For local testing without a verified domain, omit `RESEND_API_KEY` and use the console provider.
@@ -105,6 +106,8 @@ better-auth calls `emailVerification.sendVerificationEmail` inside `runBackgroun
 
 - **Errors are swallowed** — if `send` throws, better-auth logs "Failed to run background task" but returns 200 to the client. The frontend sees success even if the email was never sent.
 - **The verification token IS created synchronously** in the `verification` DB table before the background task fires.
+
+**Password reset is not awaited on purpose.** `emailAndPassword.sendResetPassword` in `src/auth.ts` starts `emailProvider.send(...)` and returns, logging a failure (`'Failed to send password reset email'`). better-auth calls it only for a registered email and waits for it before answering, so an awaited send — a Resend round trip — would make `POST /api/auth/request-password-reset` measurably slower for registered addresses, an unauthenticated way to tell which emails have an account. The client already got 200 when the send failed, so nothing changes for it. Keep any future change to that callback non-blocking. Covered in `src/auth.test.ts` (a provider whose send never settles).
 
 **Current state**: the email change flow (`PATCH /me/email`) accepts this limitation. `me-service.changeEmail` calls `auth.api.changeEmail` and relies on the background task. If delivery fails, the user never receives the link but the API returns 200.
 

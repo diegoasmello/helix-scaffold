@@ -135,7 +135,7 @@ pnpm --filter api migrate        # apply pending migrations (node dist/migrate.j
 pnpm --filter api start          # node dist/server.js
 ```
 
-`pnpm start` does not read `apps/api/.env`: give the API its environment (`DATABASE_URL`, `AUTH_SECRET`, …) from the host. The API bundle contains only `src/`, so its dependencies must be installed where it runs. `migrate` needs only `DATABASE_URL` and the production dependencies — run it before every `start` of a new version. The product config (`app.config.ts`) is bundled in, so changing it needs a rebuild.
+`pnpm start` does not read `apps/api/.env`: give the API its environment (`DATABASE_URL`, `AUTH_SECRET`, …) from the host — including `NODE_ENV=production` (unset means `development`) and `RESEND_API_KEY`, without which a production API refuses to start rather than print emails, reset links included, to its logs. The API bundle contains only `src/`, so its dependencies must be installed where it runs. `migrate` needs only `DATABASE_URL` and the production dependencies — run it before every `start` of a new version. The product config (`app.config.ts`) is bundled in, so changing it needs a rebuild.
 
 ## Testing
 
@@ -198,7 +198,7 @@ export default defineConfig(({ mode }) => ({
 | -------------------------------- | ----------------------------------------------------------------- |
 | `DATABASE_URL`, `AUTH_SECRET`    | Required                                                          |
 | `BASE_URL`, `CLIENT_URL`         | Public URLs of the API and the frontend for this deploy           |
-| `RESEND_API_KEY`                 | Omit to fall back to console email logging                        |
+| `RESEND_API_KEY`                 | Required in production; omit in development to log emails to the console |
 | `<PROVIDER>_CLIENT_ID` / `_SECRET` | Required for each social provider enabled in `app.config.ts`    |
 
 RBAC resources are declared in `apps/api/src/config/permissions.ts`.
