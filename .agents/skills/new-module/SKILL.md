@@ -11,7 +11,7 @@ Request: $ARGUMENTS
 
 The `CLAUDE.md` files are the source of truth for **how** each part is built. This skill sets the **order**, **what to read when**, and **what "done" means**. It never restates a rule from the docs — it points to the section by its heading. If a heading named here no longer exists, find where its content moved instead of improvising.
 
-`todos` is the reference implementation on both sides. Follow its patterns; leave out the parts the sheet doesn't call for (slug, uploads, PDF…).
+`todos` is the reference implementation on both sides. Use only the parts of it the sheet calls for; the _Section map_ below says where each part is.
 
 ## Phase 0 — Interview and module sheet (no code before approval)
 
@@ -53,18 +53,20 @@ Deduced (confirm):
 
 Read the sections the sheet calls for, at the phase that needs them. The root `CLAUDE.md` → _Module rules_ applies to every module.
 
-| If the module… | `apps/api` | `apps/web` |
-| --- | --- | --- |
-| always | `CLAUDE.md` → _Creating a new module (CRUD)_, _Pagination and sorting_, _Testing_ | `CLAUDE.md` → _Creating a new module (CRUD)_, _Pagination and sorting_, _Testing_, _Internationalization (i18n)_ |
-| has business uniques | `CLAUDE.md` → _Errors the client can act on (`DomainError`)_ | — |
-| has filters | `CLAUDE.md` → _Filtering_ | `CLAUDE.md` → _Filtering_ |
-| has normalized columns | `CLAUDE.md` → _Normalized text columns_ | — |
-| has a slug | `CLAUDE.md` → _Slugs_ | — (the admin never shows it) |
-| relates to another module | `CLAUDE.md` → _Non-paginated "all" endpoints_ | `CLAUDE.md` → _Relational select fields with inline creation_ |
-| has uploads | `src/modules/uploads/CLAUDE.md` → _Adding uploads to another module_ | `CLAUDE.md` → _Adding uploads to a new module_ |
-| is gated by a plan feature | `src/modules/subscriptions/CLAUDE.md` → _`requireSubscription` hook_ | `src/modules/subscriptions/CLAUDE.md` → _Route guards (`feature` in `PageAccess`)_ |
-| exports PDF (only if asked) | `CLAUDE.md` → _PDF export_ | `CLAUDE.md` → _PDF export_ |
-| sends email (only if asked) | `CLAUDE.md` → _Email_ | — |
+`todos` shows every optional pattern at once (slug, uploads, PDF, plan feature…). **Build up, don't strip down:** take the base CRUD from `todos`, then add only the `todos` parts of the rows the sheet marks. Never copy a whole `todos` file and delete what doesn't apply.
+
+| If the module… | `apps/api` | `apps/web` | Where `todos` shows it |
+| --- | --- | --- | --- |
+| always | `CLAUDE.md` → _Creating a new module (CRUD)_, _Pagination and sorting_, _Testing_ | `CLAUDE.md` → _Creating a new module (CRUD)_, _Pagination and sorting_, _Testing_, _Internationalization (i18n)_ | schema, service, routes and tests (api); list, create, edit, detail, form and tests (web) — including the permission gating of the buttons |
+| has business uniques | `CLAUDE.md` → _Errors the client can act on (`DomainError`)_ | — | not in `todos`: `roles` (`name_taken`) |
+| has filters | `CLAUDE.md` → _Filtering_ | `CLAUDE.md` → _Filtering_ | `FILTER_COERCE` (`todos-service.ts`); `TODO_FILTER_FIELDS`, `FilterBar` (`todos-list.tsx`) |
+| has normalized columns | `CLAUDE.md` → _Normalized text columns_ | — | `TODO_NORMALIZED_FIELDS` (`db/schema/todos.ts`), `normalizedValues()` in the service, `todoRow()` |
+| has a slug | `CLAUDE.md` → _Slugs_ | — (the admin never shows it) | `TODO_SLUG`, `GET /todos/by-slug/:slug`, `describe('Slug')` |
+| relates to another module | `CLAUDE.md` → _Non-paginated "all" endpoints_ | `CLAUDE.md` → _Relational select fields with inline creation_ | not in `todos`: `users` → `roleId` (`GET /roles/all`, `RoleSelectField`) |
+| has uploads | `src/modules/uploads/CLAUDE.md` → _Adding uploads to another module_ | `CLAUDE.md` → _Adding uploads to a new module_ | single file: `fileId`/`imageId`; multiple: `todo_attachments`; both in `src/config/upload-references.ts` |
+| is gated by a plan feature | `src/modules/subscriptions/CLAUDE.md` → _`requireSubscription` hook_ | `src/modules/subscriptions/CLAUDE.md` → _Route guards (`feature` in `PageAccess`)_ | `requireSubscription('todos')` in `todos-routes.ts`; `feature: 'todos'` in `routes/access.ts` |
+| exports PDF (only if asked) | `CLAUDE.md` → _PDF export_ | `CLAUDE.md` → _PDF export_ | `GET /todos/export`, `templates/todos-report.tsx`; `useExportPdf` in `todos-list.tsx` |
+| sends email (only if asked) | `CLAUDE.md` → _Email_ | — | not in `todos` |
 
 ## Phase 1 — Database and API
 
