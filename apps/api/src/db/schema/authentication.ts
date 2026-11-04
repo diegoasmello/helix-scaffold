@@ -3,18 +3,24 @@ import { boolean, index, pgTable, text, timestamp } from 'drizzle-orm/pg-core'
 
 import { roles } from './roles'
 
-export const user = pgTable('user', {
-  id: text('id').primaryKey(),
-  name: text('name').notNull(),
-  email: text('email').notNull().unique(),
-  emailVerified: boolean('email_verified').default(false).notNull(),
-  roleId: text('role_id').references(() => roles.id),
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-  updatedAt: timestamp('updated_at')
-    .defaultNow()
-    .$onUpdate(() => /* @__PURE__ */ new Date())
-    .notNull(),
-})
+export const user = pgTable(
+  'user',
+  {
+    id: text('id').primaryKey(),
+    name: text('name').notNull(),
+    email: text('email').notNull().unique(),
+    emailVerified: boolean('email_verified').default(false).notNull(),
+    roleId: text('role_id').references(() => roles.id),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at')
+      .defaultNow()
+      .$onUpdate(() => /* @__PURE__ */ new Date())
+      .notNull(),
+  },
+  // Every foreign key gets an index: deleting a role first looks up whether a
+  // user still holds it (`hasUsers()` in the roles service).
+  (table) => [index('user_role_id_idx').on(table.roleId)]
+)
 
 export const session = pgTable(
   'session',

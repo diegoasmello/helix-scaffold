@@ -1,5 +1,6 @@
 import { sql } from 'drizzle-orm'
 import {
+  index,
   jsonb,
   pgTable,
   text,
@@ -44,6 +45,10 @@ export const subscriptions = pgTable(
       .$onUpdateFn(() => new Date()),
   },
   (table) => [
+    // Every foreign key gets an index. The partial unique index below covers
+    // live rows only; a user's history and the cascade on user deletion read
+    // the expired and canceled ones too.
+    index('subscriptions_user_id_idx').on(table.userId),
     // At most one live (active/trialing) subscription per user.
     uniqueIndex('subscriptions_one_live_per_user')
       .on(table.userId)

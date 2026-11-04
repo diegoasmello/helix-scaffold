@@ -1,4 +1,5 @@
 import {
+  index,
   pgEnum,
   pgTable,
   text,
@@ -48,6 +49,11 @@ export const todos = pgTable(
     // prefix lookup of `uniqueSlug()`, which the default operator class cannot
     // under a non-C collation (the whole index would be read).
     uniqueIndex('todos_slug_unique').on(t.slug.op('text_pattern_ops')),
+    // Every foreign key gets an index (Postgres creates none): deleting an
+    // upload sets these columns to null, and `GET /files/*` and the orphan
+    // cleanup look records up by upload id (`src/config/upload-references.ts`).
+    index('todos_file_id_idx').on(t.fileId),
+    index('todos_image_id_idx').on(t.imageId),
   ]
 )
 

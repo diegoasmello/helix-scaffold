@@ -1,4 +1,4 @@
-import { pgTable, primaryKey, text } from 'drizzle-orm/pg-core'
+import { index, pgTable, primaryKey, text } from 'drizzle-orm/pg-core'
 
 import { todos } from './todos'
 import { uploads } from './uploads'
@@ -13,5 +13,10 @@ export const todoAttachments = pgTable(
       .notNull()
       .references(() => uploads.id, { onDelete: 'cascade' }),
   },
-  (t) => [primaryKey({ columns: [t.todoId, t.uploadId] })]
+  (t) => [
+    primaryKey({ columns: [t.todoId, t.uploadId] }),
+    // The primary key serves lookups by `todo_id` (its first column) only;
+    // lookups and cascades by `upload_id` need their own index.
+    index('todo_attachments_upload_id_idx').on(t.uploadId),
+  ]
 )

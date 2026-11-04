@@ -33,7 +33,7 @@ All admin routes, `GET /me/subscription` and `GET /me/entitlements` are **only r
 | Column | DB type | Notes |
 | --- | --- | --- |
 | `id` | `text` PK | UUIDv7, generated at insert |
-| `userId` | `text NOT NULL` | FK → `user.id` ON DELETE CASCADE |
+| `userId` | `text NOT NULL` | FK → `user.id` ON DELETE CASCADE, index `subscriptions_user_id_idx` (the partial unique index below covers live rows only) |
 | `planId` | `text NOT NULL` | One of `subscriptions.plans[].id` (validated on create/update, not by the DB) |
 | `status` | `text NOT NULL` | See status values below |
 | `trialEndsAt` | `timestamp` | Null for non-trial subscriptions |

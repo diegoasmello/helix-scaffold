@@ -72,7 +72,7 @@ SVG files are stored as-is (no variants generated).
   storageKey: text           // key of the original file (used for deletion)
   url: text                  // URL of the original file (see Serving files)
   variants: jsonb | null     // { thumbnail, small, medium, large } — each { key, url }
-  uploadedBy: text | null    // FK → user.id, set null on user delete
+  uploadedBy: text | null    // FK → user.id, set null on user delete; index uploads_uploaded_by_idx
   createdAt: timestamp
 }
 ```
@@ -117,8 +117,13 @@ Multi-file pattern:
 export const xxxAttachments = pgTable('xxx_attachments', {
   xxxId:    text('xxx_id').notNull().references(() => xxx.id, { onDelete: 'cascade' }),
   uploadId: text('upload_id').notNull().references(() => uploads.id, { onDelete: 'cascade' }),
-}, (t) => [primaryKey({ columns: [t.xxxId, t.uploadId] })])
+}, (t) => [
+  primaryKey({ columns: [t.xxxId, t.uploadId] }),
+  index('xxx_attachments_upload_id_idx').on(t.uploadId), // the PK covers xxx_id only
+])
 ```
+
+The single-file column gets its own index too (`index('xxx_file_id_idx').on(t.fileId)`) — see `apps/api/CLAUDE.md` → _2. Database schema_.
 
 ### 2. Schema changes
 

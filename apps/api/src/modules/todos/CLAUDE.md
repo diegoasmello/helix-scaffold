@@ -20,12 +20,12 @@ This module also serves as the **reference implementation for `requireSubscripti
 | `content`     | `text NOT NULL`        | Rich text (HTML string)         |
 | `status`      | `todo_status NOT NULL` | Default `'pending'` at DB level |
 | `date`        | `timestamp NOT NULL`   | User-supplied date, no timezone |
-| `fileId`      | `text` (nullable)      | FK → `uploads.id`, `ON DELETE SET NULL` — single PDF |
-| `imageId`     | `text` (nullable)      | FK → `uploads.id`, `ON DELETE SET NULL` — single image |
+| `fileId`      | `text` (nullable)      | FK → `uploads.id`, `ON DELETE SET NULL`, index `todos_file_id_idx` — single PDF |
+| `imageId`     | `text` (nullable)      | FK → `uploads.id`, `ON DELETE SET NULL`, index `todos_image_id_idx` — single image |
 | `createdAt`   | `timestamp NOT NULL`   | `defaultNow()`                  |
 | `updatedAt`   | `timestamp NOT NULL`   | `$onUpdateFn(() => new Date())` |
 
-**Junction table**: `todo_attachments` (`src/db/schema/todo-attachments.ts`) — `(todo_id, upload_id)` composite PK, both FKs `ON DELETE CASCADE`. Holds the multi-file `attachments`.
+**Junction table**: `todo_attachments` (`src/db/schema/todo-attachments.ts`) — `(todo_id, upload_id)` composite PK, both FKs `ON DELETE CASCADE`, index `todo_attachments_upload_id_idx` (the PK covers `todo_id` only). Holds the multi-file `attachments`.
 
 **Normalized text columns:** `TODO_NORMALIZED_FIELDS` (next to the table) maps `title`/`description` to their normalized copies. This module is the reference for the pattern — see `apps/api/CLAUDE.md` → _Normalized text columns_.
 

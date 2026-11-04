@@ -85,6 +85,20 @@
       "when": 1793792490466,
       "tag": "0011_roles_is_admin",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1793816198957,
+      "tag": "0012_todos_fk_indexes",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1793816363313,
+      "tag": "0013_fk_indexes",
+      "breakpoints": true
     }
   ]
 }

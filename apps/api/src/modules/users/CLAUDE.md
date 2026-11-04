@@ -13,7 +13,7 @@ Full CRUD module. Differs significantly from other modules because user creation
 | `name`          | `text NOT NULL`        |                                                     |
 | `email`         | `text NOT NULL UNIQUE` |                                                     |
 | `emailVerified` | `boolean NOT NULL`     | Default `false`                                     |
-| `roleId`        | `text` (nullable FK)   | References `roles.id` — no cascade on update/delete |
+| `roleId`        | `text` (nullable FK)   | References `roles.id` — no cascade on update/delete; index `user_role_id_idx` |
 | `createdAt`     | `timestamp NOT NULL`   | `defaultNow()`                                      |
 | `updatedAt`     | `timestamp NOT NULL`   | `$onUpdateFn()`                                     |
 

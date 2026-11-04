@@ -44,7 +44,7 @@ When `registration.mode` is `'open'`, the User role created during bootstrap has
 
 **`getDetail(id, actorRoleId)`** — `getById` plus `manageable`: whether the caller may change the role (`isRoleManageable()` from the permissions service — the same rule as `assertRoleManageable()`). `GET /roles/:id` returns it (`RoleDetail`), so the web hides what the API would refuse instead of re-deriving the ceiling from grants it does not fully see. `PATCH /roles/:id` answers the same shape with `manageable: true` (the check just passed and no grant changed), since the web seeds the detail's cache with it.
 
-**`hasUsers(id)`** — point-lookup on the `user` table with `.limit(1)`: checks whether any user has `roleId = id`. Returns `boolean`. Called by `DELETE /roles/:id` before deletion.
+**`hasUsers(id)`** — point-lookup on the `user` table (index `user_role_id_idx`) with `.limit(1)`: checks whether any user has `roleId = id`. Returns `boolean`. Called by `DELETE /roles/:id` before deletion.
 
 ## Routes (`roles-routes.ts`)
 

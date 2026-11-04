@@ -812,6 +812,14 @@ export const features = pgTable('features', {
 
 Every text column users will search or filter by "contains" gets a normalized copy (`normalizedTitle`) — see _Normalized text columns_. A record a public page shows by URL gets a `slug` — see _Slugs_.
 
+**Every foreign key gets an index.** Postgres creates one for a primary key or a unique constraint, never for the referencing side of a foreign key, so without it an `ON DELETE` on the referenced row and every lookup by the column (a filter, a join, the upload references of `GET /files/*`) scan the whole table. Name it `<table>_<column>_idx`:
+
+```ts
+(t) => [index('features_category_id_idx').on(t.categoryId)]
+```
+
+A column that already leads a composite primary key or unique index is covered — `todo_attachments` (`PRIMARY KEY (todo_id, upload_id)`) indexes `upload_id` alone and not `todo_id`. Indexes for performance only (sorting, filtering, the trigram of _Normalized text columns_) are added when the table is expected to grow, not by default.
+
 After creating the schema, generate and apply the migration:
 
 ```bash
