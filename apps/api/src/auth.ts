@@ -1,5 +1,6 @@
-import { betterAuth } from 'better-auth'
+import { APIError, betterAuth } from 'better-auth'
 import { drizzleAdapter } from 'better-auth/adapters/drizzle'
+import { createAuthMiddleware } from 'better-auth/api'
 
 import type { Config } from '@/config'
 import type { Database } from '@/db'
@@ -29,6 +30,18 @@ export function createAuth(
     database: drizzleAdapter(database, {
       provider: 'pg',
     }),
+    hooks: {
+      // Closed registration: refuse email sign-up over HTTP. Matched on the
+      // endpoint better-auth routed the request to (`ctx.path` is the
+      // endpoint's own path), never on the URL, so no spelling of it (`/./`,
+      // `%2e`, `..`, absolute-form) gets past. `auth.api.signUpEmail()` called
+      // by the server (account provisioning) carries no request and still runs.
+      before: createAuthMiddleware(async (ctx) => {
+        if (disableSignUp && ctx.path === '/sign-up/email' && ctx.request) {
+          throw new APIError('FORBIDDEN', { message: 'Registration is closed' })
+        }
+      }),
+    },
     databaseHooks: {
       user: {
         create: {
@@ -50,6 +63,9 @@ export function createAuth(
     },
     emailAndPassword: {
       enabled: true,
+      // A reset signs out every session of the account, a stolen one included
+      // — like PATCH /me/password does.
+      revokeSessionsOnPasswordReset: true,
       sendResetPassword: async ({ user, url }) => {
         await emailProvider.send(
           user.email,

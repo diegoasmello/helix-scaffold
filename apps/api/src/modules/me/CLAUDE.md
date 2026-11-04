@@ -27,7 +27,7 @@ Returns `{ getMe, updateMe, changeEmail, updatePassword, setPassword }`.
 
 **`changeEmail(data, headers)`** — delegates to `auth.api.changeEmail` with `callbackURL: env.CLIENT_URL + '/me/account'`. better-auth creates a verification token, stores it in the `verification` table, and calls `sendVerificationEmail` (which sends the email to the new address) through `runInBackgroundOrAwait`. Without a background-task handler configured it awaits the send, but **catches and only logs any error** ("Failed to run background task") — so a delivery failure still returns 200 and the user never gets the link. See `src/lib/email/CLAUDE.md` → _better-auth and the background task limitation_ for the workaround. Returns void — the email is not changed immediately; it changes only after the user clicks the verification link.
 
-**`updatePassword(data, headers, userEmail)`** — delegates to `auth.api.changePassword` with `revokeOtherSessions: false`. Throws `APIError` from better-auth if the current password is incorrect. After a successful change, sends a best-effort notification email to `userEmail` (failures are silently swallowed via `.catch(() => {})`).
+**`updatePassword(data, headers, userEmail)`** — delegates to `auth.api.changePassword` with `revokeOtherSessions: true` and `returnHeaders: true`. better-auth deletes **every** session of the account (a stolen one included, and the current one too) and opens a new session for this device; the function returns its `Set-Cookie` values (`headers.getSetCookie()`) for the route to send. Throws `APIError` from better-auth if the current password is incorrect. After a successful change, sends a best-effort notification email to `userEmail` (failures are silently swallowed via `.catch(() => {})`). A password reset (`/api/auth/reset-password`) signs out every session too — `emailAndPassword.revokeSessionsOnPasswordReset` in `src/auth.ts`.
 
 **`setPassword(data, headers, userEmail)`** — delegates to `auth.api.setPassword`. Intended for users who signed up via OAuth and have no credential account yet. Throws `APIError` if the user already has a credential account (i.e. already has a password) — the route returns 400 in that case. After success, sends a best-effort notification email, same pattern as `updatePassword`.
 
@@ -50,7 +50,7 @@ Receives `{ database, auth, emailProvider }` — no `requirePermission` paramete
 
 **`PATCH /me/email`** — calls `service.changeEmail(body, headers)`. Catches `APIError` from better-auth (e.g. email already in use) → 400 `{ message }`. Other errors → 500 `{ message: 'Failed to send verification email' }` — in practice unreachable for delivery failures, which better-auth swallows (see above). On success → 200 `{ message: 'Check your new email address to confirm the change' }`. Audit: `{ emailChangeRequested: true }` — never logs the actual email address.
 
-**`PATCH /me/password`** — catches `APIError` from better-auth → 400 `{ message: 'Current password is incorrect' }`. Returns 204 on success. Audit: `{ passwordChanged: true }` — never logs actual password values.
+**`PATCH /me/password`** — catches `APIError` from better-auth → 400 `{ message: 'Current password is incorrect' }`. Returns 204 on success, with the new session's `Set-Cookie` (`reply.header('set-cookie', …)`): the cookie the request carried no longer works, every other device is signed out. Audit: `{ passwordChanged: true }` — never logs actual password values.
 
 **`POST /me/set-password`** — calls `service.setPassword(body, headers, sessionUser.email)`. Catches `APIError` → 400 `{ message }` (better-auth rejects if the user already has a credential account). Returns 204 on success. Audit: `{ passwordSet: true }`.
 
@@ -75,7 +75,7 @@ None. Every `me` endpoint requires only a session, and the frontend `/me` routes
 
 **`PATCH /me/email` test** — sends a valid `newEmail`, asserts 200 with a message string. Cleans up the verification token from the `verification` table after the test to avoid state leakage.
 
-**Password tests** — `PATCH /me/password` restores the original password after the test. `POST /me/set-password` returns 400 for the test admin (who has a credential account) and 400 for a short password. The 204 success case requires a social-only user (no credential account) and is not covered here — it relies on E2E tests with a real OAuth flow.
+**Password tests** — `PATCH /me/password` restores the original password after the test. Every change revokes the sessions, so the file's `changePassword()` helper moves `authCookie` to the cookie the response sets; a test asserts that another session and the previous cookie get 401 while the new one gets 200. `src/auth.test.ts` asserts the same for a password reset. `POST /me/set-password` returns 400 for the test admin (who has a credential account) and 400 for a short password. The 204 success case requires a social-only user (no credential account) and is not covered here — it relies on E2E tests with a real OAuth flow.
 
 **`GET /me/providers`** — asserts 200 and that `providers` is an array. Does not assert `[]` because `src/config/test-overrides.ts` does not override `auth.socialProviders`, so the result follows whatever `app.config.ts` enables.
 

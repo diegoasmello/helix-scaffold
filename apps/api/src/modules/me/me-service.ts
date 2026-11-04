@@ -58,18 +58,24 @@ export function createMeService(
     })
   }
 
+  /**
+   * Changes the password and signs out every session of the account — a
+   * stolen one included. better-auth deletes them all and opens a new session
+   * for this device: returns its `Set-Cookie` values, for the route to send.
+   */
   async function updatePassword(
     data: UpdateMePasswordInput,
     headers: Headers,
     userEmail: string
   ) {
-    await auth.api.changePassword({
+    const { headers: responseHeaders } = await auth.api.changePassword({
       headers,
       body: {
         currentPassword: data.currentPassword,
         newPassword: data.newPassword,
-        revokeOtherSessions: false,
+        revokeOtherSessions: true,
       },
+      returnHeaders: true,
     })
 
     emailProvider
@@ -80,6 +86,8 @@ export function createMeService(
          <p>If you did not make this change, please contact your system administrator immediately.</p>`
       )
       .catch(() => {})
+
+    return responseHeaders.getSetCookie()
   }
 
   async function setPassword(

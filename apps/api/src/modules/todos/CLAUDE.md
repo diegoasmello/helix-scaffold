@@ -31,7 +31,7 @@ This module also serves as the **reference implementation for `requireSubscripti
 
 **Slug:** `TODO_SLUG` (next to the table) is the `SlugConfig` — column, constraint, fallback `todo`. This module is the reference for the pattern — see `apps/api/CLAUDE.md` → _Slugs_.
 
-All three upload references (`todo_attachments.upload_id`, `todos.file_id`, `todos.image_id`) are registered in `src/config/upload-references.ts`, so the orphan cleanup job never deletes them.
+All three upload references (`todo_attachments.upload_id`, `todos.file_id`, `todos.image_id`) are registered in `src/config/upload-references.ts`, so the orphan cleanup job never deletes them and `GET /files/*` serves their files to the users `GET /todos/:id` lets in (`todos:view` and the `todos` feature).
 
 ## Schema (`todos-schema.ts`)
 

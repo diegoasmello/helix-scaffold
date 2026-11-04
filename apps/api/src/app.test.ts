@@ -47,7 +47,8 @@ describe('API prefix', () => {
     expect(res.statusCode).toBe(200)
   })
 
-  it('serves the uploaded files under /api/files', async () => {
+  // Who gets which file: src/modules/uploads/upload-files-routes.test.ts
+  it('serves the uploaded files under /api/files, behind the session', async () => {
     const name = `prefix-${crypto.randomUUID()}.txt`
     const file = path.join(config.uploads.dir, name)
     await fs.mkdir(config.uploads.dir, { recursive: true })
@@ -55,8 +56,7 @@ describe('API prefix', () => {
 
     try {
       const res = await app.inject({ method: 'GET', url: `/api/files/${name}` })
-      expect(res.statusCode).toBe(200)
-      expect(res.body).toBe('hello')
+      expect(res.statusCode).toBe(401)
 
       const unprefixed = await app.inject({
         method: 'GET',

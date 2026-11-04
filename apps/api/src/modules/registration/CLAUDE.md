@@ -72,19 +72,19 @@ socialProviders: {
 
 ## Sign-up guard (email/password)
 
-The enforcement for email/password sign-up lives in `app.ts`, not here. When mode is `closed`, an `onRequest` hook blocks `POST /api/auth/sign-up/email`:
+The enforcement for email/password sign-up lives in `auth.ts`, not here. When mode is `closed`, a Better Auth `hooks.before` middleware answers 403 `{ message: 'Registration is closed' }` to the sign-up endpoint when it is reached over HTTP:
 
 ```ts
-instance.addHook('onRequest', async (request, reply) => {
-  if (
-    request.method === 'POST' &&
-    request.url.split('?')[0] === `${API_PREFIX}/auth/sign-up/email` &&
-    config.registration.mode !== 'open'
-  ) {
-    return reply.status(403).send({ message: 'Registration is closed' })
-  }
-})
+hooks: {
+  before: createAuthMiddleware(async (ctx) => {
+    if (disableSignUp && ctx.path === '/sign-up/email' && ctx.request) {
+      throw new APIError('FORBIDDEN', { message: 'Registration is closed' })
+    }
+  }),
+},
 ```
+
+`ctx.path` is the path of the endpoint Better Auth routed the request to, not the request URL. Never guard sign-up by matching `request.url` in Fastify: Better Auth routes on the URL after it has been resolved (`/./`, `%2e`, `..` segments, absolute-form targets), so a spelling the string match does not expect still reaches the endpoint. `emailAndPassword.disableSignUp` is not an option either: Better Auth applies it to server calls too, which would block account provisioning. Server-side sign-ups (`auth.api.signUpEmail()` from `POST /users`, bootstrap, the seed) carry no `ctx.request`, so they pass.
 
 Social sign-up is guarded differently: `disableSignUp` on each provider in `auth.ts` (see above).
 

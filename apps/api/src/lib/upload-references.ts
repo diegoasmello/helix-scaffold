@@ -1,3 +1,4 @@
+import type { Permission } from '@/config/permissions'
 import type { Database } from '@/db'
 
 /**
@@ -7,12 +8,33 @@ import type { Database } from '@/db'
  */
 export type UploadReferenceLoader = (db: Database) => Promise<string[]>
 
-const loaders: UploadReferenceLoader[] = []
+/**
+ * Who may read the records behind a reference: the guard of their `GET`
+ * route. `resource`/`action` are its `requirePermission()`; `subscription` is
+ * its `requireSubscription()` — `true` without a feature, the feature with one
+ * — and is omitted when the route has none.
+ */
+export type UploadReaderAccess = Permission & { subscription?: true | string }
 
-export function registerUploadReference(loader: UploadReferenceLoader): void {
-  loaders.push(loader)
+export interface UploadReference {
+  /** Every upload ID the column references — the orphan cleanup keeps them. */
+  load: UploadReferenceLoader
+  /** Whether the column references this upload. */
+  references: (db: Database, uploadId: string) => Promise<boolean>
+  /** `GET /files/*` serves a referenced upload's files to these users. */
+  access: UploadReaderAccess
+}
+
+const references: UploadReference[] = []
+
+export function registerUploadReference(reference: UploadReference): void {
+  references.push(reference)
 }
 
 export function getUploadReferenceLoaders(): readonly UploadReferenceLoader[] {
-  return loaders
+  return references.map((reference) => reference.load)
+}
+
+export function getUploadReferences(): readonly UploadReference[] {
+  return references
 }

@@ -71,7 +71,7 @@ The file a developer edits to shape the app. Written with `defineConfig()` (Vite
 | `spec-overrides.ts` | Profile for `pnpm spec:export` (`src/scripts/export-spec.ts`): every optional route registered, placeholder plan, social providers off. Only settings that decide which routes exist belong here — see _OpenAPI spec export_ |
 | `billing-webhook.ts` | Registry, not config: the payment processor adapter (`null` = webhook off). See `src/modules/billing-webhook/CLAUDE.md` |
 | `permissions.ts` | Registry: `RESOURCE_DEFINITIONS` (RBAC resources and actions, `as const`), the types derived from it (`PermissionResource`, `ResourceAction<R>`, `Permission`), `ALL_PERMISSIONS`, `isDeclaredPermission()`, `findUnknownGrants()` — see _Creating a new module_ → _Step 0_ |
-| `upload-references.ts` | Registry: every column that references `uploads.id`, so orphan cleanup keeps those uploads — see `src/modules/uploads/CLAUDE.md`. Imported for its side effects by `server.ts` |
+| `upload-references.ts` | Registry: every column that references `uploads.id`, so orphan cleanup keeps those uploads and `GET /files/*` serves their files to the records' readers — see `src/modules/uploads/CLAUDE.md`. Imported for its side effects by `app.ts` and `server.ts` |
 
 **Modules receive the config, they never import it.** `buildApp(database, { config })` (default: `config` from `@/config`) hands it to every route plugin through its options (`{ database, config, … }`) and to the factories that need it (`createAuth(database, emailProvider, config, logger)`, `createRequireSubscription(database, config)`, `createEntitlementsService(database, config.subscriptions)`). Pure helpers take the slice they read (`getUsableSocialProviders(config)`, `isKnownPlan(config.subscriptions.plans, id)`). Only the entry points import `config`: `server.ts`, `src/db/seed.ts`, `src/scripts/export-spec.ts` (through `buildApp`'s default) and the test helpers. That is what lets one test file run the app in several modes.
 
@@ -505,7 +505,7 @@ The file upload system is implemented as a standalone `uploads` module. Any othe
 | `src/lib/image-processor.ts` | `isProcessableImage(mimeType)` + `processImage(buffer)` — 4 WebP variants via `sharp` |
 | `src/lib/upload-references.ts` / `src/lib/orphan-uploads.ts` | Registry API and the orphan cleanup job |
 
-The provider instance is created once in `app.ts` and injected into every module that needs it via route options. Files are served publicly at `/api/files/*` via `@fastify/static` — no auth required on that path (needed for `<img>` tags).
+The provider instance is created once in `app.ts` and injected into every module that needs it via route options. Files are served at `/api/files/*` (`src/modules/uploads/upload-files-routes.ts`, inside the `authenticated` scope): only to the uploader, to `uploads:view`, or to a reader of a record that references the upload; anyone else gets 404. `<img>` tags still work, since the browser sends the session cookie with them. Only images, PDF, plain text, audio and video open in the browser; every other file downloads in a sandbox — see `src/modules/uploads/CLAUDE.md` → _Serving files_.
 
 ### Configuration
 
@@ -519,7 +519,7 @@ Use `todos` as the reference implementation; the step-by-step guide (multi-file 
 2. Response embeds `attachments: uploadSchema.array()` / `file: uploadSchema.nullable()`; create/update accept `attachmentIds` / `fileId`
 3. Service: load uploads on reads; sync junction rows on create/update; on delete, collect upload IDs → delete the record → delete the `uploads` rows → delete storage keys (best-effort)
 4. Accept `storage: StorageProvider` in route options and pass it to the service factory
-5. **Register every new column in `src/config/upload-references.ts`** — otherwise the orphan cleanup job deletes those uploads after the grace period
+5. **Register every new column in `src/config/upload-references.ts`**, with the guard of the record's `GET` route — otherwise the orphan cleanup job deletes those uploads after the grace period, and nobody but the uploader and `uploads:view` can open their files
 
 ---
 

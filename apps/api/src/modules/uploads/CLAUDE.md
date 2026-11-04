@@ -10,6 +10,19 @@ Standalone module for file uploads. Exposes `POST /uploads` (multipart), list, d
 | `GET` | `/uploads` | `uploads:view` | Paginated list (sort: `originalName`, `createdAt`) |
 | `GET` | `/uploads/:id` | `uploads:view` | Single upload |
 | `DELETE` | `/uploads/:id` | `uploads:delete` | Removes from DB **and** storage |
+| `GET` | `/files/*` | session + see _Serving files_ | The stored files (`url`, `variants.*.url`); hidden from the spec |
+
+## Serving files
+
+`GET /files/<storage key>` (`upload-files-routes.ts`) sits in the `authenticated` scope. It looks up the upload that owns the key (`service.getByFileKey()` — its `storageKey` or a variant key) and sends the file with `reply.sendFile()` (`@fastify/static`, `serve: false`) only when the user:
+
+1. uploaded it (`uploadedBy`) — the form shows a file before its record exists;
+2. holds `uploads:view`; or
+3. passes the `access` of a registered reference that points to it (`src/config/upload-references.ts`, step 5 below) — the permission and subscription of the record's `GET` route.
+
+Anyone else, a key no upload owns, and a missing file all get 404. `<img>` tags work because the browser sends the session cookie with them.
+
+The Content-Type comes from the file's extension, which the uploader chose, so an `onSend` hook sets on every file `X-Content-Type-Options: nosniff` and `Cache-Control: private, max-age=0`. A file opens in the browser only when its Content-Type is `image/*`, `audio/*`, `video/*`, `application/pdf` or `text/plain` — and not XML (`image/svg+xml`). Any other file (HTML, SVG, XML, JavaScript, Office documents…) gets `Content-Disposition: attachment` and `Content-Security-Policy: default-src 'none'; sandbox`, so it can never run script on the API's origin.
 
 ## `POST /uploads` handler flow
 
@@ -57,7 +70,7 @@ SVG files are stored as-is (no variants generated).
   mimeType: text
   fileSize: integer          // bytes
   storageKey: text           // key of the original file (used for deletion)
-  url: text                  // public URL of the original file
+  url: text                  // URL of the original file (see Serving files)
   variants: jsonb | null     // { thumbnail, small, medium, large } — each { key, url }
   uploadedBy: text | null    // FK → user.id, set null on user delete
   createdAt: timestamp
@@ -152,25 +165,44 @@ authenticated.register(xxxRoutes, { database, requirePermission, storage })
 
 Uploads are persisted immediately when the user selects a file — before the parent record exists. If the user abandons the form, those uploads become orphaned. A job in `src/server.ts` (`deleteOrphanUploads`, `src/lib/orphan-uploads.ts`) runs every `uploads.orphanCleanup.intervalHours` (default 6) and removes uploads older than `uploads.orphanCleanup.graceHours` (default 24) that no registered reference points to. Both live in `src/app.config.ts`. The job does not run at startup — only on the interval.
 
-For the job to know which uploads are in use, every column that references `uploads.id` must be registered in `src/config/upload-references.ts`:
+For the job to know which uploads are in use — and `GET /files/*` who may open their files (_Serving files_) — every column that references `uploads.id` must be registered in `src/config/upload-references.ts`, with `access` set to the guard of the record's `GET` route:
 
 ```ts
 // src/config/upload-references.ts
-import { isNotNull } from 'drizzle-orm'
+import { eq, isNotNull } from 'drizzle-orm'
 import { xxxAttachments, xxx } from '@/db/schema'
-import { registerUploadReference } from '@/lib/upload-references'
+import { registerUploadReference, type UploadReaderAccess } from '@/lib/upload-references'
+
+// GET /xxx/:id: requireSubscription('xxx') + requirePermission('xxx', 'view').
+// `subscription: true` for requireSubscription() without a feature; omit it without one.
+const XXX_READERS: UploadReaderAccess = { resource: 'xxx', action: 'view', subscription: 'xxx' }
 
 // Junction table column (NOT NULL — no filter needed)
-registerUploadReference(async (db) => {
-  const rows = await db.selectDistinct({ id: xxxAttachments.uploadId }).from(xxxAttachments)
-  return rows.map((r) => r.id)
+registerUploadReference({
+  access: XXX_READERS,
+  load: async (db) => {
+    const rows = await db.selectDistinct({ id: xxxAttachments.uploadId }).from(xxxAttachments)
+    return rows.map((r) => r.id)
+  },
+  references: async (db, uploadId) => {
+    const rows = await db.select({ id: xxxAttachments.uploadId }).from(xxxAttachments)
+      .where(eq(xxxAttachments.uploadId, uploadId)).limit(1)
+    return rows.length > 0
+  },
 })
 
 // Direct FK column (nullable — filter nulls)
-registerUploadReference(async (db) => {
-  const rows = await db.select({ id: xxx.fileId }).from(xxx).where(isNotNull(xxx.fileId))
-  return rows.map((r) => r.id).filter((id): id is string => id !== null)
+registerUploadReference({
+  access: XXX_READERS,
+  load: async (db) => {
+    const rows = await db.select({ id: xxx.fileId }).from(xxx).where(isNotNull(xxx.fileId))
+    return rows.map((r) => r.id).filter((id): id is string => id !== null)
+  },
+  references: async (db, uploadId) => {
+    const rows = await db.select({ id: xxx.id }).from(xxx).where(eq(xxx.fileId, uploadId)).limit(1)
+    return rows.length > 0
+  },
 })
 ```
 
-Add one `registerUploadReference` call per column. If a module's uploads are not registered, the job will treat them as orphaned and delete them after the grace period.
+Add one `registerUploadReference` call per column. If a module's uploads are not registered, the job will treat them as orphaned and delete them after the grace period, and until then only their uploader and `uploads:view` can open their files.

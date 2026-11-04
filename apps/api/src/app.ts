@@ -1,8 +1,7 @@
-import path from 'node:path'
+import './config/upload-references'
 
 import { fastifyCors } from '@fastify/cors'
 import fastifyMultipart from '@fastify/multipart'
-import fastifyStatic from '@fastify/static'
 import { fastifySwagger } from '@fastify/swagger'
 import ScalarApiReference from '@scalar/fastify-api-reference'
 import { fromNodeHeaders } from 'better-auth/node'
@@ -27,7 +26,9 @@ import { createRequireSubscription } from './hooks/require-subscription'
 import { API_PREFIX } from './lib/api-prefix'
 import { registerDomainErrorHandler } from './lib/domain-errors'
 import { createEmailProvider } from './lib/email'
+import { registerNotFoundHandler, serializeRequest } from './lib/request-log'
 import { createStorageProvider } from './lib/storage'
+import { getUploadReferences } from './lib/upload-references'
 import { createAuditRecorder } from './modules/audit/audit-recorder'
 import { auditRoutes } from './modules/audit/audit-routes'
 import { createAuditService } from './modules/audit/audit-service'
@@ -41,6 +42,7 @@ import { rolesRoutes } from './modules/roles/roles-routes'
 import { subscriptionStatusRoutes } from './modules/subscriptions/subscription-status-routes'
 import { subscriptionsRoutes } from './modules/subscriptions/subscriptions-routes'
 import { todosRoutes } from './modules/todos/todos-routes'
+import { uploadFilesRoutes } from './modules/uploads/upload-files-routes'
 import { uploadsRoutes } from './modules/uploads/uploads-routes'
 import { usersRoutes } from './modules/users/users-routes'
 
@@ -65,6 +67,9 @@ export function buildApp(database: Database, options: BuildAppOptions = {}) {
     logger: {
       level: config.logger.level,
       redact: ['req.headers.authorization', 'req.headers.cookie'],
+      // Request URLs carry secrets (reset-password, verification and OAuth
+      // tokens) — logged only through `redactUrl()`.
+      serializers: { req: serializeRequest },
       transport: config.logger.pretty ? { target: 'pino-pretty' } : undefined,
     },
   }).withTypeProvider<ZodTypeProvider>()
@@ -82,6 +87,7 @@ export function buildApp(database: Database, options: BuildAppOptions = {}) {
   app.setSerializerCompiler(serializerCompiler)
   // Before any route: every plugin inherits it.
   registerDomainErrorHandler(app)
+  registerNotFoundHandler(app)
 
   app.register(fastifyMultipart, {
     limits: { fileSize: config.uploads.maxSizeMb * 1024 * 1024 },
@@ -113,12 +119,6 @@ export function buildApp(database: Database, options: BuildAppOptions = {}) {
   // Every route below is served under API_PREFIX (`/api/...`).
   app.register(
     async (api) => {
-      api.register(fastifyStatic, {
-        root: path.resolve(config.uploads.dir),
-        prefix: '/files/',
-        decorateReply: false,
-      })
-
       api.register(ScalarApiReference, {
         routePrefix: '/docs',
       })
@@ -131,15 +131,8 @@ export function buildApp(database: Database, options: BuildAppOptions = {}) {
             done(null, body)
           }
         )
-        instance.addHook('onRequest', async (request, reply) => {
-          if (
-            request.method === 'POST' &&
-            request.url.split('?')[0] === `${API_PREFIX}/auth/sign-up/email` &&
-            config.registration.mode !== 'open'
-          ) {
-            return reply.status(403).send({ message: 'Registration is closed' })
-          }
-        })
+        // Closed registration (403 on email sign-up) is enforced inside
+        // better-auth, in `hooks.before` of `src/auth.ts`.
         // better-auth's default basePath, `/api/auth`, is this route.
         instance.all('/auth/*', async (request, reply) => {
           const rawBody = request.body as string | null
@@ -217,6 +210,12 @@ export function buildApp(database: Database, options: BuildAppOptions = {}) {
           database,
           requirePermission,
           storage,
+        })
+        authenticated.register(uploadFilesRoutes, {
+          database,
+          config,
+          storage,
+          references: getUploadReferences(),
         })
 
         if (config.subscriptions.enabled) {

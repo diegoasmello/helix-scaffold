@@ -1,6 +1,11 @@
+import http from 'node:http'
+import type { AddressInfo } from 'node:net'
+
+import { eq } from 'drizzle-orm'
 import { afterAll, describe, expect, it } from 'vitest'
 
-import { createTestApp } from '@/test/helpers'
+import { user } from '@/db/schema'
+import { createTestApp, testDb } from '@/test/helpers'
 
 const app = createTestApp()
 // The mode app.config.ts ships with.
@@ -48,5 +53,60 @@ describe('closed registration', () => {
     })
     expect(res.statusCode).toBe(403)
     expect(res.json()).toEqual({ message: 'Registration is closed' })
+  })
+
+  // `inject()` resolves the URL before sending it, so these paths go over a
+  // real socket, byte for byte. Better Auth still routes each of them to
+  // /sign-up/email.
+  it.each([
+    '/api/auth/./sign-up/email',
+    '/api/auth/%2e/sign-up/email',
+    '/api/auth/x/../sign-up/email',
+  ])('rejects email sign-up reached through %s', async (path) => {
+    if (!closedApp.server.listening) {
+      await closedApp.listen({ port: 0, host: '127.0.0.1' })
+    }
+    const { port } = closedApp.server.address() as AddressInfo
+    const email = `closed-${crypto.randomUUID()}@test.com`
+    const body = JSON.stringify({
+      email,
+      name: 'Closed',
+      password: 'Password123!',
+    })
+
+    const res = await new Promise<{ status?: number; body: string }>(
+      (resolve, reject) => {
+        const req = http.request(
+          {
+            host: '127.0.0.1',
+            port,
+            method: 'POST',
+            path,
+            headers: {
+              'content-type': 'application/json',
+              'content-length': Buffer.byteLength(body),
+            },
+          },
+          (response) => {
+            let data = ''
+            response.setEncoding('utf8')
+            response.on('data', (chunk) => (data += chunk))
+            response.on('end', () =>
+              resolve({ status: response.statusCode, body: data })
+            )
+          }
+        )
+        req.on('error', reject)
+        req.end(body)
+      }
+    )
+
+    expect(res.status).toBe(403)
+    expect(JSON.parse(res.body)).toEqual({ message: 'Registration is closed' })
+    const created = await testDb
+      .select()
+      .from(user)
+      .where(eq(user.email, email))
+    expect(created).toHaveLength(0)
   })
 })

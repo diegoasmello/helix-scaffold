@@ -223,16 +223,31 @@ describe('POST /me/set-password', () => {
 })
 
 describe('PATCH /me/password', () => {
-  it('changes the password successfully', async () => {
+  /** A Cookie header carrying the cookies a response set. */
+  function cookieHeader(setCookie: string | string[] | undefined) {
+    const cookies = Array.isArray(setCookie) ? setCookie : [setCookie ?? '']
+    return cookies.map((c) => c.split(';')[0]).join('; ')
+  }
+
+  /**
+   * Changes the test user's password. Every session is revoked, so
+   * `authCookie` becomes the new session the response sets.
+   */
+  async function changePassword(currentPassword: string, newPassword: string) {
     const res = await app.inject({
       method: 'PATCH',
       url: '/api/me/password',
-      payload: {
-        currentPassword: 'Password123!',
-        newPassword: 'NewPassword456!',
-      },
+      payload: { currentPassword, newPassword },
       headers: { cookie: authCookie },
     })
+    if (res.statusCode === 204) {
+      authCookie = cookieHeader(res.headers['set-cookie'])
+    }
+    return res
+  }
+
+  it('changes the password successfully', async () => {
+    const res = await changePassword('Password123!', 'NewPassword456!')
     expect(res.statusCode).toBe(204)
     // Records that it changed — never the passwords themselves
     const { id } = await getTestUser()
@@ -242,15 +257,29 @@ describe('PATCH /me/password', () => {
     expect(metadata).toContainEqual({ passwordChanged: true })
     expect(JSON.stringify(metadata)).not.toContain('Password')
 
-    await app.inject({
-      method: 'PATCH',
-      url: '/api/me/password',
-      payload: {
-        currentPassword: 'NewPassword456!',
-        newPassword: 'Password123!',
-      },
-      headers: { cookie: authCookie },
+    await changePassword('NewPassword456!', 'Password123!')
+  })
+
+  it('signs out every other session and keeps this device signed in', async () => {
+    // Another device — or an attacker holding a stolen session
+    const signIn = await app.inject({
+      method: 'POST',
+      url: '/api/auth/sign-in/email',
+      payload: { email: 'test@test.com', password: 'Password123!' },
     })
+    const otherCookie = cookieHeader(signIn.headers['set-cookie'])
+    const previousCookie = authCookie
+
+    const res = await changePassword('Password123!', 'NewPassword456!')
+    expect(res.statusCode).toBe(204)
+
+    const getMe = (cookie: string) =>
+      app.inject({ method: 'GET', url: '/api/me', headers: { cookie } })
+    expect((await getMe(otherCookie)).statusCode).toBe(401)
+    expect((await getMe(previousCookie)).statusCode).toBe(401)
+    expect((await getMe(authCookie)).statusCode).toBe(200)
+
+    await changePassword('NewPassword456!', 'Password123!')
   })
 
   it('returns 400 when current password is wrong', async () => {

@@ -166,7 +166,7 @@ export async function meRoutes(
     },
     async (request, reply) => {
       try {
-        await service.updatePassword(
+        const sessionCookies = await service.updatePassword(
           request.body,
           fromNodeHeaders(request.headers),
           request.sessionUser.email
@@ -174,7 +174,9 @@ export async function meRoutes(
         await request.audit('edit', 'me', request.sessionUser.id, {
           passwordChanged: true,
         })
-        return reply.status(204).send(null)
+        // Every session was revoked, this one too: keep the device signed in
+        // with the new session better-auth opened for it.
+        return reply.header('set-cookie', sessionCookies).status(204).send(null)
       } catch (error) {
         if (error instanceof APIError) {
           return reply

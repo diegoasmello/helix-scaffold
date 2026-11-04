@@ -1,4 +1,4 @@
-import { asc, count, desc, eq } from 'drizzle-orm'
+import { asc, count, desc, eq, or, sql } from 'drizzle-orm'
 
 import type { Database } from '@/db'
 import { uploads } from '@/db/schema'
@@ -51,6 +51,24 @@ export function createUploadsService(
     return item ?? null
   }
 
+  /** The upload that owns a storage key: its original or an image variant. */
+  async function getByFileKey(key: string) {
+    const [item] = await database
+      .select()
+      .from(uploads)
+      .where(
+        or(
+          eq(uploads.storageKey, key),
+          sql`${uploads.variants} -> 'thumbnail' ->> 'key' = ${key}`,
+          sql`${uploads.variants} -> 'small' ->> 'key' = ${key}`,
+          sql`${uploads.variants} -> 'medium' ->> 'key' = ${key}`,
+          sql`${uploads.variants} -> 'large' ->> 'key' = ${key}`
+        )
+      )
+      .limit(1)
+    return item ?? null
+  }
+
   async function create(data: CreateUploadData) {
     const [item] = await database.insert(uploads).values(data).returning()
     return item
@@ -81,5 +99,5 @@ export function createUploadsService(
     return true
   }
 
-  return { list, getById, create, remove }
+  return { list, getById, getByFileKey, create, remove }
 }
