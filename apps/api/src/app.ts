@@ -189,6 +189,7 @@ export function buildApp(database: Database, options: BuildAppOptions = {}) {
 
         authenticated.register(permissionsRoutes, {
           database,
+          config,
           requirePermission,
         })
         authenticated.register(auditRoutes, { database, requirePermission })

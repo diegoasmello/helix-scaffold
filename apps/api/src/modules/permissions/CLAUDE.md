@@ -72,7 +72,22 @@ Four endpoints across two URL namespaces:
 | `GET` | `/roles/:id/permissions` | `permissions:view` | Returns grants for any role. `permissions:edit` alone does not open it — the requirement makes the editor grant both |
 | `PUT` | `/roles/:id/permissions` | `permissions:edit` | Replaces all grants for a role |
 
-**`GET /permissions/resources`** — no `requirePermission` guard, but it lives inside the `authenticated` scope so it still requires a valid session. Spreads `RESOURCE_DEFINITIONS` with `[...def.actions]` to convert the `readonly` tuple to a mutable array before serialisation.
+**`GET /permissions/resources`** — no `requirePermission` guard, but it lives inside the `authenticated` scope so it still requires a valid session. Serves `enabledResourceDefinitions(config)` (see _Resources turned off_), spreading `[...def.actions]` to convert the `readonly` tuple to a mutable array before serialisation.
+
+### Resources turned off
+
+A resource listed in `RESOURCE_TOGGLES` (`src/config/permissions.ts`) exists only while a setting of `app.config.ts` is on — today `subscriptions`, with `subscriptions.enabled`. While it is off, the role editor works as if the resource were not in the catalog, so the web shows no checkbox for it without checking the config itself:
+
+- `GET /permissions/resources` leaves it out.
+- `GET /roles/:id/permissions` and the `PUT` response leave its grants out — the admin role's too.
+- `PUT /roles/:id/permissions` refuses a grant for it with **400** `unknown_permissions`.
+- The rows a role already holds for it are **kept** on `PUT` — the route adds them to the body before `replaceForRole()`: turning the setting back on gives the roles the grants they had. Minus the ones whose requirements the body no longer brings (`dropUnmetRequirements()`, repeated until none is left): with `users:view` unchecked, a kept `subscriptions:create` goes too — what the editor does with what it shows. A kept grant never makes the `PUT` answer `missing_required_permissions` about a pair the editor does not show.
+
+The route only calls the helpers of `src/config/permissions.ts`, next to `findUnknownGrants()`: `enabledResourceDefinitions(config)`, `findDisabledGrants(grants, config)`, `withoutDisabledResources(grants, config)`, `onlyDisabledResources(grants, config)` and `dropUnmetRequirements(grants, kept) → { kept, dropped }`.
+
+It stays in `RESOURCE_DEFINITIONS`, so the generated types, `requirePermission()`'s startup check and `GET /me/permissions` (the admin still holds every pair) do not depend on the config. The privilege ceiling still counts kept rows, on purpose: a moderator without `subscriptions:*` cannot edit, delete or assign a role that keeps some, nor manage an account holding it (`role_not_editable`, `role_not_assignable`, `user_not_editable`), although the editor shows only pairs they have. Ignoring them would let that moderator hand such a role to an account of theirs while the setting is off and gain the hidden grants when it comes back on. Only grants made before the setting was turned off are concerned.
+
+To make another module's resource conditional, add `<resource>: (config) => …` to `RESOURCE_TOGGLES`. A requirement may point at a toggled resource only from that same resource (`subscriptions:create` → `subscriptions:view`, never `users:edit` → `subscriptions:view`, which could not be granted while it is off): `findRequirementsOnToggledResources()` checks `PERMISSION_REQUIREMENTS` when the catalog loads, and a wrong one stops the API at startup. Unit tests of these helpers: `src/config/permissions.test.ts`.
 
 **`GET /me/permissions`** — reads `request.sessionUser.roleId`; returns `{ grants: {} }` immediately when `roleId` is `null` (user has no role). No permission guard — every authenticated user needs this to function.
 
@@ -82,7 +97,7 @@ Four endpoints across two URL namespaces:
 - **400** `missing_required_permissions` when a grant comes without what it requires (`PERMISSION_REQUIREMENTS`, checked by `findMissingRequirements()`; `message` lists the missing pairs) — `permissions:edit` without `permissions:view`, `users:edit` without `roles:view`. Checked after the privilege ceiling, so a refused grant answers 403 whatever else the body lacks. Grants saved before a requirement existed stay as they are until the role's permissions are saved again.
 - **403** — admin role and privilege ceiling, checked after the `unknown_permissions` 400 and before anything is written: `admin_role_locked` for the admin role (even from the admin), `role_not_editable` when the role grants something the caller's role lacks (even to remove grants from it), `permissions_not_grantable` when the body grants a pair the caller's role lacks (`message` lists them). `permission_denied` is `requirePermission()`'s.
 - **404** `{ message: 'Role not found' }` for an unknown role id (Postgres FK violation, read with `getPgErrorCode`).
-- **Audit:** `request.audit('edit', 'permissions', roleId, { grants })` after a successful replace.
+- **Audit:** `request.audit('edit', 'permissions', roleId, { grants, kept?, dropped? })` after a successful replace. `grants` is the body; `kept` and `dropped` (same shape, only when non-empty) are the grants of resources turned off that the role kept or lost (see _Resources turned off_) — the role ends up with `grants` plus `kept`.
 
 ## `requirePermission` hook (`src/hooks/require-permission.ts`)
 
@@ -113,6 +128,8 @@ Only `view` and `edit` — there is no `create` or `delete` action. Permissions 
 **`GET /roles/:id/permissions`** — uses `createRoleWithPermissions` seeder; asserts with `expect.arrayContaining` (order of actions in the array is not guaranteed).
 
 **`PUT /roles/:id/permissions`** — covers: replace with new grants, clear all grants with `{}`, 400 for an unknown resource (and existing grants untouched), 400 for an undeclared action, 400 `missing_required_permissions` (and the role unchanged) and a body that brings its requirements, 404 for an unknown role, duplicate actions deduplicated, audit entry written.
+
+**`describe('Subscriptions turned off')`** — a second app built with `createTestApp({ subscriptions: { enabled: false } })`, using the same session: the catalog has no `subscriptions`, `GET /roles/:id/permissions` hides a role's subscription grants, `PUT` refuses them (400, nothing written), a `PUT` without them keeps the rows the role had (read back through the enabled app), drops a kept `subscriptions:create` when the body leaves out `users:view` — and keeps it when the body brings it — and audits `kept` and `dropped`. The admin role is shown without `subscriptions`, and a moderator holding every pair the editor shows still gets 403 `role_not_editable` on a role keeping `subscriptions:view`.
 
 **`describe('Admin role')`** — built with `createAdminRole()` (`src/test/helpers.ts`): `GET /roles/:id/permissions` and the admin's own `GET /me/permissions` list the whole catalog with no rows; `PUT` on it answers 403 `admin_role_locked` to the test session (every permission) and to the admin, with no audit entry.
 

@@ -1,10 +1,15 @@
 import z from 'zod'
 
+import type { Config } from '@/config'
 import {
   directRequirementsOf,
+  dropUnmetRequirements,
+  enabledResourceDefinitions,
+  findDisabledGrants,
   findMissingRequirements,
   findUnknownGrants,
-  RESOURCE_DEFINITIONS,
+  onlyDisabledResources,
+  withoutDisabledResources,
 } from '@/config/permissions'
 import { DomainError, errorSchema } from '@/lib/domain-errors'
 import { getPgErrorCode, PG_FOREIGN_KEY_VIOLATION } from '@/lib/pg-errors'
@@ -21,8 +26,13 @@ export async function permissionsRoutes(
   app: FastifyTypedInstance,
   {
     database,
+    config,
     requirePermission,
-  }: { database: Database; requirePermission: RequirePermission }
+  }: {
+    database: Database
+    config: Config
+    requirePermission: RequirePermission
+  }
 ) {
   const service = createPermissionsService(database)
 
@@ -36,7 +46,7 @@ export async function permissionsRoutes(
       },
     },
     async () =>
-      RESOURCE_DEFINITIONS.map((def) => ({
+      enabledResourceDefinitions(config).map((def) => ({
         ...def,
         actions: [...def.actions],
         requires: directRequirementsOf(def.resource),
@@ -73,7 +83,7 @@ export async function permissionsRoutes(
     },
     async (request) => {
       const grants = await service.getByRoleId(request.params.id)
-      return { grants }
+      return { grants: withoutDisabledResources(grants, config) }
     }
   )
 
@@ -103,7 +113,14 @@ export async function permissionsRoutes(
       preHandler: requirePermission('permissions', 'edit'),
     },
     async (request) => {
-      const unknown = findUnknownGrants(request.body.grants)
+      // A resource turned off in the config (`RESOURCE_TOGGLES`) is as unknown
+      // as a typo: the role editor neither shows nor sends it.
+      const unknown = [
+        ...new Set([
+          ...findUnknownGrants(request.body.grants),
+          ...findDisabledGrants(request.body.grants, config),
+        ]),
+      ]
       if (unknown.length > 0) {
         throw new DomainError(
           400,
@@ -133,9 +150,21 @@ export async function permissionsRoutes(
         )
       }
 
+      // The grants of resources turned off are kept, minus those whose
+      // requirements the body no longer brings — as the editor unchecks what
+      // depends on a permission it unchecks.
+      const { kept, dropped } = dropUnmetRequirements(
+        request.body.grants,
+        onlyDisabledResources(
+          await service.getByRoleId(request.params.id),
+          config
+        )
+      )
+      const next = { ...request.body.grants, ...kept }
+
       // Checked after the ceiling: a refused grant answers 403 whatever else
       // the body lacks.
-      const missing = findMissingRequirements(request.body.grants)
+      const missing = findMissingRequirements(next)
       if (missing.length > 0) {
         throw new DomainError(
           400,
@@ -146,10 +175,7 @@ export async function permissionsRoutes(
 
       let grants: Awaited<ReturnType<typeof service.replaceForRole>>
       try {
-        grants = await service.replaceForRole(
-          request.params.id,
-          request.body.grants
-        )
+        grants = await service.replaceForRole(request.params.id, next)
       } catch (error) {
         if (getPgErrorCode(error) === PG_FOREIGN_KEY_VIOLATION) {
           throw new DomainError(404, 'role_not_found', 'Role not found')
@@ -157,10 +183,15 @@ export async function permissionsRoutes(
         throw error
       }
 
+      // The role holds `grants` plus `kept`; `dropped` were removed although
+      // the body could not name them.
+      const isEmpty = (value: object) => Object.keys(value).length === 0
       await request.audit('edit', 'permissions', request.params.id, {
         grants: request.body.grants,
+        ...(!isEmpty(kept) && { kept }),
+        ...(!isEmpty(dropped) && { dropped }),
       })
-      return { grants }
+      return { grants: withoutDisabledResources(grants, config) }
     }
   )
 }

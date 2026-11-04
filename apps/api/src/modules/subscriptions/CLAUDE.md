@@ -20,7 +20,7 @@ The scaffold does **not** provide:
 
 ## Feature flag
 
-All admin routes, `GET /me/subscription` and `GET /me/entitlements` are **only registered when `subscriptions.enabled` is `true`** in `src/app.config.ts`. When `false` (the default), the module has zero overhead — no routes, no DB queries. The `requireSubscription()` hook is always created but returns a no-op preHandler when subscriptions are disabled, so apps can freely decorate routes without worrying about mode.
+All admin routes, `GET /me/subscription` and `GET /me/entitlements` are **only registered when `subscriptions.enabled` is `true`** in `src/app.config.ts`. When `false` (the default), the module has zero overhead — no routes, no DB queries. The `requireSubscription()` hook is always created but returns a no-op preHandler when subscriptions are disabled, so apps can freely decorate routes without worrying about mode. The `subscriptions` permissions disappear from the role editor too: `GET /permissions/resources` leaves the resource out and `PUT /roles/:id/permissions` refuses it, while the grants roles already hold are kept (`src/modules/permissions/CLAUDE.md` → _Resources turned off_).
 
 `GET /subscription/status` is always registered at root scope (unauthenticated), like `GET /registration/status`. It returns `{ enabled, plans }` and is the single source of truth the frontend reads to decide whether to show subscription UI.
 

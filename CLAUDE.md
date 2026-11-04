@@ -144,7 +144,7 @@ The scaffold supports optional subscription gating for products that require use
 
 | Setting (`app.config.ts`) | Default | Behaviour |
 | --- | --- | --- |
-| `subscriptions.enabled` | `false` | `true` activates all subscription infrastructure. `false` means zero overhead — no routes, no DB queries, no UI. |
+| `subscriptions.enabled` | `false` | `true` activates all subscription infrastructure. `false` means zero overhead — no routes, no DB queries, no UI, and no `subscriptions` permissions in the role editor (the API leaves them out of its catalog and refuses them; grants roles already hold are kept). |
 | `subscriptions.plans` | `[]` | The plan catalog: `{ id, name, features }[]`. Each plan lists the **features** (free keys, usually module names) it unlocks. Required when enabled. |
 | `subscriptions.pastDueGraceDays` | `0` | Days a `past_due` subscription (failed payment) keeps access while the processor retries. `0` cuts access immediately. |
 | `subscriptions.trial` | `false` | `{ days, planId }`. When set (and registration is open and subscriptions are enabled), a trialing subscription is auto-created when a user **self-registers** (not for accounts created by an admin, bootstrap or the seed). |
