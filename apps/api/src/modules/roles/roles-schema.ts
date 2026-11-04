@@ -22,6 +22,16 @@ export const roleSchema = z
   })
   .meta({ id: 'Role', title: 'Role' })
 
+export const roleDetailSchema = roleSchema
+  .extend({
+    manageable: z
+      .boolean()
+      .describe(
+        "Whether the signed-in user may change the role — its name, its permissions, its existence. False for the admin role and for a role granting something the user's own role lacks (the privilege ceiling: `admin_role_locked`, `role_not_editable`)."
+      ),
+  })
+  .meta({ id: 'RoleDetail', title: 'RoleDetail' })
+
 export const createRoleSchema = z.object({
   name: z.string().min(1).max(100),
   description: z.string().min(1).max(300).optional(),

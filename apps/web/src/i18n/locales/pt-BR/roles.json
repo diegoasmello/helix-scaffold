@@ -53,11 +53,37 @@
     "title": "Perfil de administrador",
     "description": "Este perfil tem todas as permissões, inclusive as de módulos adicionados depois. Ele não pode ser editado, excluído nem atribuído a ninguém."
   },
+  "ceiling": {
+    "title": "Acima do seu perfil",
+    "description": "Este perfil tem permissões que o seu próprio perfil não tem, então você não pode editá-lo, alterar as permissões dele nem excluí-lo."
+  },
   "permissions": {
     "title": "Permissões",
     "editTitle": "Editar permissões",
     "editButton": "Editar permissões",
     "requires": "Requer: {{list}}",
+    "requiredBy": "Necessária para: {{list}}",
+    "notGrantable": "Seu perfil não tem esta permissão, então você não pode concedê-la.",
+    "requirementNotGrantable": "Seu perfil não pode conceder {{list}}, que esta permissão requer.",
+    "neededBy": "Marque esta: {{list}} depende dela",
+    "cascade": {
+      "granted": "Também marcadas: {{list}}",
+      "revoked": "Também desmarcadas: {{list}}"
+    },
+    "missing": {
+      "title_one": "{{count}} permissão necessária está desmarcada",
+      "title_other": "{{count}} permissões necessárias estão desmarcadas",
+      "description": "As permissões marcadas dependem das destacadas abaixo. Marque-as, ou desmarque o que depende delas, para salvar.",
+      "someNotGrantable": "Seu perfil não pode conceder algumas das permissões destacadas: desmarque o que depende delas para salvar.",
+      "grant": "Marcar as necessárias"
+    },
+    "actions": {
+      "grantAll": "Marcar tudo",
+      "clearAll": "Limpar tudo",
+      "reset": "Desfazer alterações"
+    },
+    "unsavedChanges_one": "{{count}} alteração não salva",
+    "unsavedChanges_other": "{{count}} alterações não salvas",
     "resources": {
       "todos": "Tarefas",
       "users": "Usuários",

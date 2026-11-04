@@ -165,6 +165,19 @@ export function createPermissionsService(database: Database) {
     return actorGrants
   }
 
+  /**
+   * Whether the actor may manage `roleId` — what `assertRoleManageable()`
+   * lets through, as a boolean for the clients (`GET /roles/:id` →
+   * `manageable`), so they never re-derive the rule.
+   */
+  async function isRoleManageable(
+    roleId: string,
+    actorRoleId: string | null
+  ): Promise<boolean> {
+    if (await isAdminRole(roleId)) return false
+    return !(await exceeds(roleId, await grantsOf(actorRoleId)))
+  }
+
   return {
     isAdminRole,
     getByRoleId,
@@ -173,5 +186,6 @@ export function createPermissionsService(database: Database) {
     grantsOf,
     exceeds,
     assertRoleManageable,
+    isRoleManageable,
   }
 }

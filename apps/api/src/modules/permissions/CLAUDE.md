@@ -6,12 +6,12 @@ Manages role-based permissions. Has no schema file for an entity with its own li
 
 **Table**: `role_permissions` (`src/db/schema/role-permissions.ts`)
 
-| Column     | DB type          | Notes                                          |
-| ---------- | ---------------- | ---------------------------------------------- |
-| `id`       | `text` PK        | UUIDv7                                         |
-| `roleId`   | `text NOT NULL`  | FK → `roles.id` with `onDelete: 'cascade'`     |
-| `resource` | `text NOT NULL`  | Resource string, e.g. `'todos'`, `'users'`     |
-| `action`   | `text NOT NULL`  | Action string, e.g. `'view'`, `'create'`       |
+| Column     | DB type         | Notes                                      |
+| ---------- | --------------- | ------------------------------------------ |
+| `id`       | `text` PK       | UUIDv7                                     |
+| `roleId`   | `text NOT NULL` | FK → `roles.id` with `onDelete: 'cascade'` |
+| `resource` | `text NOT NULL` | Resource string, e.g. `'todos'`, `'users'` |
+| `action`   | `text NOT NULL` | Action string, e.g. `'view'`, `'create'`   |
 
 Unique index on `(roleId, resource, action)` — no duplicate grants per role.
 
@@ -58,6 +58,7 @@ Delegated moderation: a role may manage other roles and their permissions (`role
 - **`grantsOf(roleId)`** — the role's grants as a `Set` of `resource:action` strings; `null` → empty. Only catalog pairs count (`isDeclaredPermission()`): a leftover row for a removed resource gives no access, so it must not block anyone either.
 - **`exceeds(roleId, actorGrants)`** — whether `roleId` grants a pair missing from `actorGrants`. An unknown role grants nothing, so it never exceeds (the caller's own 404 follows).
 - **`assertRoleManageable(roleId, actorRoleId)`** — throws 403 `admin_role_locked` for the admin role (see _Admin role_), then 403 `role_not_editable` when the role exceeds the actor's; returns the actor's grants. Called by `PUT /roles/:id/permissions` and by the roles service's `update` / `remove`.
+- **`isRoleManageable(roleId, actorRoleId)`** — the same decision as a boolean, never throwing: `GET /roles/:id` returns it as `manageable`. Clients read it instead of comparing grants themselves — `GET /roles/:id/permissions` leaves out the rows the ceiling still counts (resources turned off) and keeps rows it ignores (pairs no longer in the catalog).
 
 The admin is never limited by the ceiling (their grants are the whole catalog), but is bound by the admin-role locks like everyone else. A moderator may edit their own role, but only to remove: adding anything is a pair they lack.
 
@@ -65,12 +66,12 @@ The admin is never limited by the ceiling (their grants are the whole catalog), 
 
 Four endpoints across two URL namespaces:
 
-| Method | Path | Permission | Notes |
-| --- | --- | --- | --- |
-| `GET` | `/permissions/resources` | none (authenticated only) | Returns the static `RESOURCE_DEFINITIONS` catalog |
-| `GET` | `/me/permissions` | none (authenticated only) | Returns the current user's own grants |
-| `GET` | `/roles/:id/permissions` | `permissions:view` | Returns grants for any role. `permissions:edit` alone does not open it — the requirement makes the editor grant both |
-| `PUT` | `/roles/:id/permissions` | `permissions:edit` | Replaces all grants for a role |
+| Method | Path                     | Permission                | Notes                                                                                                                |
+| ------ | ------------------------ | ------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| `GET`  | `/permissions/resources` | none (authenticated only) | Returns the static `RESOURCE_DEFINITIONS` catalog                                                                    |
+| `GET`  | `/me/permissions`        | none (authenticated only) | Returns the current user's own grants                                                                                |
+| `GET`  | `/roles/:id/permissions` | `permissions:view`        | Returns grants for any role. `permissions:edit` alone does not open it — the requirement makes the editor grant both |
+| `PUT`  | `/roles/:id/permissions` | `permissions:edit`        | Replaces all grants for a role                                                                                       |
 
 **`GET /permissions/resources`** — no `requirePermission` guard, but it lives inside the `authenticated` scope so it still requires a valid session. Serves `enabledResourceDefinitions(config)` (see _Resources turned off_), spreading `[...def.actions]` to convert the `readonly` tuple to a mutable array before serialisation.
 
@@ -106,6 +107,7 @@ To make another module's resource conditional, add `<resource>: (config) => …`
 The `RequirePermission` type (`src/types.ts`) accepts only pairs `RESOURCE_DEFINITIONS` declares (`<R extends PermissionResource>(resource: R, action: ResourceAction<R>)`). The factory also checks the pair with `isDeclaredPermission()` when the route registers and throws otherwise, so an undeclared pair stops the API at startup, like `requireSubscription()` with an unknown feature.
 
 Returns `403` in two cases:
+
 1. `request.sessionUser.roleId` is `null` or falsy — the user has no role at all.
 2. The role exists but the specific `(resource, action)` row is absent — and the role is not the admin role.
 

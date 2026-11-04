@@ -44,8 +44,9 @@ export function RolesDetail() {
       title={item.name}
       description={item.description}
       actions={
-        // The admin role is locked for everyone (API: admin_role_locked)
-        !item.isAdmin && (
+        // The API's decision: false for the admin role (locked for everyone)
+        // and for a role above the user's (privilege ceiling)
+        item.manageable && (
           <>
             {hasPagePermission(ROLES_ACCESS.permissions, hasPermission) && (
               <Button
@@ -76,6 +77,13 @@ export function RolesDetail() {
           <Grid.Col span={12}>
             <Alert icon={<IconLock size={16} />} title={t('admin.title')}>
               {t('admin.description')}
+            </Alert>
+          </Grid.Col>
+        )}
+        {!item.isAdmin && !item.manageable && (
+          <Grid.Col span={12}>
+            <Alert icon={<IconLock size={16} />} title={t('ceiling.title')}>
+              {t('ceiling.description')}
             </Alert>
           </Grid.Col>
         )}

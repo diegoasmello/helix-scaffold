@@ -1,5 +1,5 @@
 import {
-  createRole,
+  createRoleDetail,
   createRolePermissionsResponse,
   getMePermissionsHandler,
   getPermissionsResourcesHandler,
@@ -44,8 +44,9 @@ vi.mock('../../../lib/authentication', () => ({
   },
 }))
 
-const mockRole = createRole({
+const mockRole = createRoleDetail({
   isAdmin: false,
+  manageable: true,
   id: '1',
   name: 'Admin',
   description: 'Full access',
@@ -79,7 +80,7 @@ beforeEach(() => {
     getRolesIdPermissionsHandler(mockGrants),
     getPermissionsResourcesHandler([]),
     getMePermissionsHandler({
-      grants: { roles: ['view'], permissions: ['view', 'edit'] },
+      grants: { roles: ['view', 'edit'], permissions: ['view', 'edit'] },
     })
   )
 })
@@ -137,6 +138,21 @@ describe('RolesDetail', () => {
     ).toBeInTheDocument()
   })
 
+  it('shows a role above the user as out of reach, with no actions', async () => {
+    // The API's decision (privilege ceiling)
+    server.use(getRolesIdHandler({ ...mockRole, manageable: false }))
+    renderRolesDetail()
+    expect(await screen.findByText('Above your role')).toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'Edit permissions' })
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'Edit' })
+    ).not.toBeInTheDocument()
+    // The grants still show, read-only
+    expect(await screen.findByText('Permissions')).toBeInTheDocument()
+  })
+
   it('hides Edit permissions button when user lacks permissions:edit', async () => {
     server.use(getMePermissionsHandler({ grants: { roles: ['view'] } }))
     renderRolesDetail()
@@ -189,7 +205,12 @@ describe('RolesDetail', () => {
   it('shows the admin role as locked, with no actions', async () => {
     server.use(
       getRolesIdHandler(
-        createRole({ isAdmin: true, id: '1', name: 'Administrator' })
+        createRoleDetail({
+          isAdmin: true,
+          manageable: false,
+          id: '1',
+          name: 'Administrator',
+        })
       ),
       getMePermissionsHandler({
         grants: { roles: ['view', 'edit'], permissions: ['view', 'edit'] },

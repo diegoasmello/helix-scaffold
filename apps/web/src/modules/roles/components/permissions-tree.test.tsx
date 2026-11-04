@@ -3,13 +3,17 @@ import type {
   PermissionResource,
   ResourceDefinition,
 } from '@helix/api-client/types'
-import { MantineProvider } from '@helix/ui'
+import { MantineEmotionProvider, MantineProvider } from '@helix/ui'
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import i18n from '../../../i18n'
+import {
+  type MissingRequirement,
+  missingRequirements,
+} from '../permission-requirements'
 import { PermissionsTree } from './permissions-tree'
 
 type Grants = Record<string, PermissionAction[]>
@@ -44,16 +48,28 @@ const withRequirements: ResourceDefinition[] = [
   },
 ]
 
-function renderTree(grants: Grants, options: { disabled?: boolean } = {}) {
+function renderTree(
+  grants: Grants,
+  options: {
+    disabled?: boolean
+    catalog?: ResourceDefinition[]
+    canGrant?: (resource: string, action: string) => boolean
+    missing?: MissingRequirement[]
+  } = {}
+) {
   const onChange = vi.fn()
   render(
     <MantineProvider>
-      <PermissionsTree
-        definitions={definitions}
-        grants={grants}
-        onChange={onChange}
-        disabled={options.disabled}
-      />
+      <MantineEmotionProvider>
+        <PermissionsTree
+          definitions={options.catalog ?? definitions}
+          grants={grants}
+          onChange={onChange}
+          disabled={options.disabled}
+          canGrant={options.canGrant}
+          missing={options.missing}
+        />
+      </MantineEmotionProvider>
     </MantineProvider>
   )
   return onChange
@@ -93,19 +109,21 @@ describe('PermissionsTree', () => {
   it('falls back to the catalog label for a resource without a translation', () => {
     render(
       <MantineProvider>
-        <PermissionsTree
-          definitions={[
-            {
-              // A resource just added to the API catalog, with no label yet
-              resource: 'reports' as PermissionResource,
-              label: 'Reports',
-              actions: ['view'],
-              requires: {},
-            },
-          ]}
-          grants={{}}
-          onChange={vi.fn()}
-        />
+        <MantineEmotionProvider>
+          <PermissionsTree
+            definitions={[
+              {
+                // A resource just added to the API catalog, with no label yet
+                resource: 'reports' as PermissionResource,
+                label: 'Reports',
+                actions: ['view'],
+                requires: {},
+              },
+            ]}
+            grants={{}}
+            onChange={vi.fn()}
+          />
+        </MantineEmotionProvider>
       </MantineProvider>
     )
     expect(resourceCheckbox('Reports')).toBeInTheDocument()
@@ -185,7 +203,9 @@ describe('PermissionsTree', () => {
   it('updates the resource checkbox as actions are toggled', async () => {
     render(
       <MantineProvider>
-        <StatefulTree initial={{ audit: [] }} />
+        <MantineEmotionProvider>
+          <StatefulTree initial={{ audit: [] }} />
+        </MantineEmotionProvider>
       </MantineProvider>
     )
     expect(resourceCheckbox('Audit log')).not.toBeChecked()
@@ -207,7 +227,9 @@ describe('PermissionsTree', () => {
     function renderStateful(initial: Grants) {
       render(
         <MantineProvider>
-          <StatefulTree initial={initial} catalog={withRequirements} />
+          <MantineEmotionProvider>
+            <StatefulTree initial={initial} catalog={withRequirements} />
+          </MantineEmotionProvider>
         </MantineProvider>
       )
     }
@@ -251,5 +273,60 @@ describe('PermissionsTree', () => {
         await screen.findByText('Requires: Permissions › View, Roles › View')
       ).toBeInTheDocument()
     })
+  })
+
+  describe('privilege ceiling', () => {
+    // The user's own role holds todos:view and todos:edit only
+    const canGrant = (resource: string, action: string) =>
+      resource === 'todos' && (action === 'view' || action === 'edit')
+
+    it('disables the unchecked actions the user may not grant', () => {
+      renderTree({ todos: ['view', 'delete'] }, { canGrant })
+      expect(actionCheckbox('Todos', 'Edit')).toBeEnabled()
+      expect(actionCheckbox('Todos', 'Create')).toBeDisabled()
+      // Checked: unchecking it never grants anything
+      expect(actionCheckbox('Todos', 'Delete')).toBeEnabled()
+      expect(resourceCheckbox('Audit log')).toBeDisabled()
+    })
+
+    it('checks only what the user may grant from the resource checkbox', async () => {
+      const onChange = renderTree({}, { canGrant })
+      await userEvent.click(resourceCheckbox('Todos'))
+      expect(onChange).toHaveBeenCalledWith({ todos: ['view', 'edit'] })
+    })
+
+    it('unchecks the resource once nothing is left to grant', async () => {
+      const onChange = renderTree({ todos: ['view', 'edit'] }, { canGrant })
+      await userEvent.click(resourceCheckbox('Todos'))
+      expect(onChange).toHaveBeenCalledWith({ todos: [] })
+    })
+  })
+
+  describe('missing requirements', () => {
+    it('highlights each one with what needs it', () => {
+      const grants = { permissions: ['view' as const] }
+      renderTree(grants, {
+        catalog: withRequirements,
+        missing: missingRequirements(grants, withRequirements),
+      })
+      expect(
+        screen.getByText('Check it: Permissions › View needs it')
+      ).toBeInTheDocument()
+    })
+
+    it('highlights nothing unless told (the read-only detail)', () => {
+      renderTree({ permissions: ['view'] }, { catalog: withRequirements })
+      expect(screen.queryByText(/needs it/)).not.toBeInTheDocument()
+    })
+  })
+
+  it('explains on hover what needs an action', async () => {
+    renderTree({}, { catalog: withRequirements })
+    await userEvent.hover(actionCheckbox('Roles', 'View'))
+    expect(
+      await screen.findByText(
+        'Needed for: Roles › Edit, Permissions › View, Permissions › Edit'
+      )
+    ).toBeInTheDocument()
   })
 })

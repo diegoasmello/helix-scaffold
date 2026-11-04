@@ -1,5 +1,6 @@
 import {
   createRolePermissionsResponse,
+  getMePermissionsHandler,
   getPermissionsResourcesHandler,
   getRolesIdPermissionsHandler,
   putRolesIdPermissionsHandler,
@@ -73,13 +74,46 @@ function actionCheckbox(resourceLabel: string, action: string) {
   return within(card).getByRole('checkbox', { name: action })
 }
 
-beforeEach(() => {
+// The real catalog's rule: creating a todo uploads its files
+const withRequirements: ResourceDefinition[] = [
+  {
+    resource: 'todos',
+    label: 'Todos',
+    actions: ['view', 'create'],
+    requires: {
+      create: [
+        { resource: 'todos', action: 'view' },
+        { resource: 'uploads', action: 'create' },
+      ],
+    },
+  },
+  {
+    resource: 'uploads',
+    label: 'Uploads',
+    actions: ['view', 'create'],
+    requires: {},
+  },
+]
+
+function serveRole(grants: Record<string, string[]>) {
   server.use(
-    getRolesIdPermissionsHandler(
-      createRolePermissionsResponse({ grants: { todos: ['view'] } })
-    ),
-    getPermissionsResourcesHandler(definitions)
+    getRolesIdPermissionsHandler(createRolePermissionsResponse({ grants }))
   )
+}
+
+function serveOwnGrants(grants: Record<string, string[]>) {
+  server.use(getMePermissionsHandler({ grants }))
+}
+
+beforeEach(() => {
+  serveRole({ todos: ['view'] })
+  server.use(getPermissionsResourcesHandler(definitions))
+  // The signed-in user may grant the whole test catalog
+  serveOwnGrants({
+    todos: ['view', 'create', 'edit', 'delete'],
+    users: ['view', 'create'],
+    uploads: ['view', 'create'],
+  })
 })
 
 afterEach(() => {
@@ -133,6 +167,7 @@ describe('RolesPermissions', () => {
   it('shows a success notification after saving', async () => {
     renderRolesPermissions()
     await screen.findByRole('checkbox', { name: 'Todos' })
+    await userEvent.click(actionCheckbox('Todos', 'Edit'))
     await userEvent.click(screen.getByRole('button', { name: 'Save' }))
     expect(
       await screen.findByText('Permissions saved successfully')
@@ -150,6 +185,7 @@ describe('RolesPermissions', () => {
     )
     renderRolesPermissions()
     await screen.findByRole('checkbox', { name: 'Todos' })
+    await userEvent.click(actionCheckbox('Todos', 'Edit'))
     await userEvent.click(screen.getByRole('button', { name: 'Save' }))
     expect(
       await screen.findByText('Failed to save permissions')
@@ -163,6 +199,193 @@ describe('RolesPermissions', () => {
     expect(mockNavigate).toHaveBeenCalledWith({
       to: '/roles/$id',
       params: { id: '1' },
+    })
+  })
+
+  describe('unsaved changes', () => {
+    it('disables Save until something changes and counts the changes', async () => {
+      renderRolesPermissions()
+      await screen.findByRole('checkbox', { name: 'Todos' })
+      expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled()
+      expect(screen.queryByText(/unsaved change/)).not.toBeInTheDocument()
+
+      await userEvent.click(actionCheckbox('Todos', 'Edit'))
+      expect(screen.getByRole('button', { name: 'Save' })).toBeEnabled()
+      expect(screen.getByText('1 unsaved change')).toBeInTheDocument()
+
+      await userEvent.click(actionCheckbox('Todos', 'View'))
+      expect(screen.getByText('2 unsaved changes')).toBeInTheDocument()
+    })
+
+    it('undoes the changes', async () => {
+      renderRolesPermissions()
+      await screen.findByRole('checkbox', { name: 'Todos' })
+      const undo = screen.getByRole('button', { name: 'Undo changes' })
+      expect(undo).toBeDisabled()
+
+      await userEvent.click(actionCheckbox('Todos', 'Edit'))
+      await userEvent.click(undo)
+      expect(actionCheckbox('Todos', 'Edit')).not.toBeChecked()
+      expect(actionCheckbox('Todos', 'View')).toBeChecked()
+      expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled()
+    })
+  })
+
+  describe('bulk actions', () => {
+    it('checks every permission the user may grant', async () => {
+      serveOwnGrants({ todos: ['view', 'create', 'edit', 'delete'] })
+      renderRolesPermissions()
+      await screen.findByRole('checkbox', { name: 'Todos' })
+      await userEvent.click(screen.getByRole('button', { name: 'Check all' }))
+
+      for (const action of ['View', 'Create', 'Edit', 'Delete']) {
+        expect(actionCheckbox('Todos', action)).toBeChecked()
+      }
+      expect(actionCheckbox('Users', 'View')).not.toBeChecked()
+      // Nothing left the user may grant
+      expect(screen.getByRole('button', { name: 'Check all' })).toBeDisabled()
+    })
+
+    it('clears every permission', async () => {
+      serveRole({ todos: ['view', 'edit'], users: ['view'] })
+      renderRolesPermissions()
+      await screen.findByRole('checkbox', { name: 'Todos' })
+      await userEvent.click(screen.getByRole('button', { name: 'Clear all' }))
+
+      for (const checkbox of screen.getAllByRole('checkbox')) {
+        expect(checkbox).not.toBeChecked()
+      }
+      expect(screen.getByRole('button', { name: 'Clear all' })).toBeDisabled()
+    })
+  })
+
+  describe('requirements', () => {
+    beforeEach(() => {
+      server.use(getPermissionsResourcesHandler(withRequirements))
+    })
+
+    it('says what a click checked besides the clicked permission', async () => {
+      serveRole({})
+      renderRolesPermissions()
+      await screen.findByRole('checkbox', { name: 'Todos' })
+      await userEvent.click(actionCheckbox('Todos', 'Create'))
+      expect(
+        await screen.findByText('Also checked: Todos › View, Uploads › Create')
+      ).toBeInTheDocument()
+    })
+
+    it('says what a click unchecked besides the clicked permission', async () => {
+      serveRole({ todos: ['view', 'create'], uploads: ['create'] })
+      renderRolesPermissions()
+      await screen.findByRole('checkbox', { name: 'Todos' })
+      await userEvent.click(actionCheckbox('Uploads', 'Create'))
+      expect(
+        await screen.findByText('Also unchecked: Todos › Create')
+      ).toBeInTheDocument()
+    })
+
+    describe('saved without a requirement', () => {
+      // Saved before todos:create needed uploads:create
+      beforeEach(() => {
+        serveRole({ todos: ['view', 'create'] })
+      })
+
+      it('highlights the missing permission and blocks saving', async () => {
+        renderRolesPermissions()
+        expect(
+          await screen.findByText('1 required permission is unchecked')
+        ).toBeInTheDocument()
+        expect(
+          screen.getByText('Check it: Todos › Create needs it')
+        ).toBeInTheDocument()
+        expect(actionCheckbox('Uploads', 'Create')).not.toBeChecked()
+        expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled()
+      })
+
+      it('checks the missing permissions in one click', async () => {
+        let capturedBody: PutRolesIdPermissionsMutationRequest | undefined
+        server.use(
+          putRolesIdPermissionsHandler(async (info) => {
+            capturedBody =
+              (await info.request.json()) as PutRolesIdPermissionsMutationRequest
+            return putRolesIdPermissionsHandlerResponse200(
+              createRolePermissionsResponse({ grants: capturedBody.grants })
+            )
+          })
+        )
+        renderRolesPermissions()
+        await userEvent.click(
+          await screen.findByRole('button', {
+            name: 'Check required permissions',
+          })
+        )
+
+        expect(actionCheckbox('Uploads', 'Create')).toBeChecked()
+        expect(
+          screen.queryByText('1 required permission is unchecked')
+        ).not.toBeInTheDocument()
+        await userEvent.click(screen.getByRole('button', { name: 'Save' }))
+        await waitFor(() =>
+          expect(capturedBody).toEqual({
+            grants: { todos: ['view', 'create'], uploads: ['create'] },
+          })
+        )
+      })
+
+      it('clears the alert when what needs the permission is unchecked', async () => {
+        renderRolesPermissions()
+        await screen.findByText('1 required permission is unchecked')
+        await userEvent.click(actionCheckbox('Todos', 'Create'))
+        expect(
+          screen.queryByText('1 required permission is unchecked')
+        ).not.toBeInTheDocument()
+        expect(screen.getByRole('button', { name: 'Save' })).toBeEnabled()
+      })
+
+      it('asks to uncheck what needs a permission the user may not grant', async () => {
+        serveOwnGrants({ todos: ['view', 'create'] })
+        renderRolesPermissions()
+        expect(
+          await screen.findByText(/can't grant some of the highlighted/)
+        ).toBeInTheDocument()
+        expect(
+          screen.queryByRole('button', { name: 'Check required permissions' })
+        ).not.toBeInTheDocument()
+        expect(actionCheckbox('Uploads', 'Create')).toBeDisabled()
+        // Unchecking is always allowed
+        expect(actionCheckbox('Todos', 'Create')).toBeEnabled()
+      })
+    })
+  })
+
+  describe('privilege ceiling', () => {
+    it('disables what the user may not grant, and what requires it', async () => {
+      server.use(getPermissionsResourcesHandler(withRequirements))
+      serveRole({})
+      serveOwnGrants({ todos: ['view', 'create'], uploads: ['view'] })
+      renderRolesPermissions()
+      await screen.findByRole('checkbox', { name: 'Todos' })
+
+      expect(actionCheckbox('Uploads', 'Create')).toBeDisabled()
+      // Checking it would check uploads:create too
+      expect(actionCheckbox('Todos', 'Create')).toBeDisabled()
+      expect(actionCheckbox('Todos', 'View')).toBeEnabled()
+      expect(actionCheckbox('Uploads', 'View')).toBeEnabled()
+
+      await userEvent.hover(actionCheckbox('Uploads', 'Create'))
+      expect(
+        await screen.findByText(
+          "Your own role doesn't have this permission, so you can't grant it."
+        )
+      ).toBeInTheDocument()
+
+      // The user holds todos:create: what blocks it is its requirement
+      await userEvent.hover(actionCheckbox('Todos', 'Create'))
+      expect(
+        await screen.findByText(
+          "Your own role can't grant Uploads › Create, which this permission requires."
+        )
+      ).toBeInTheDocument()
     })
   })
 })

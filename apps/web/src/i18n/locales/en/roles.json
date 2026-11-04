@@ -53,11 +53,37 @@
     "title": "Admin role",
     "description": "This role holds every permission, including those of modules added later. It can't be edited, deleted or assigned to anyone."
   },
+  "ceiling": {
+    "title": "Above your role",
+    "description": "This role has permissions your own role doesn't have, so you can't edit it, change its permissions or delete it."
+  },
   "permissions": {
     "title": "Permissions",
     "editTitle": "Edit permissions",
     "editButton": "Edit permissions",
     "requires": "Requires: {{list}}",
+    "requiredBy": "Needed for: {{list}}",
+    "notGrantable": "Your own role doesn't have this permission, so you can't grant it.",
+    "requirementNotGrantable": "Your own role can't grant {{list}}, which this permission requires.",
+    "neededBy": "Check it: {{list}} needs it",
+    "cascade": {
+      "granted": "Also checked: {{list}}",
+      "revoked": "Also unchecked: {{list}}"
+    },
+    "missing": {
+      "title_one": "{{count}} required permission is unchecked",
+      "title_other": "{{count}} required permissions are unchecked",
+      "description": "Checked permissions need the ones highlighted below. Check them, or uncheck what needs them, to save.",
+      "someNotGrantable": "Your own role can't grant some of the highlighted permissions: uncheck what needs them to save.",
+      "grant": "Check required permissions"
+    },
+    "actions": {
+      "grantAll": "Check all",
+      "clearAll": "Clear all",
+      "reset": "Undo changes"
+    },
+    "unsavedChanges_one": "{{count}} unsaved change",
+    "unsavedChanges_other": "{{count}} unsaved changes",
     "resources": {
       "todos": "Todos",
       "users": "Users",

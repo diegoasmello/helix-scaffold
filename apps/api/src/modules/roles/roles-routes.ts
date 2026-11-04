@@ -8,6 +8,7 @@ import type { FastifyTypedInstance, RequirePermission } from '../../types'
 import {
   createRoleSchema,
   paginatedRolesSchema,
+  roleDetailSchema,
   roleSchema,
   rolesListQuerySchema,
   updateRoleSchema,
@@ -61,14 +62,17 @@ export async function rolesRoutes(
         description: 'Get a role by id',
         params: z.object({ id: z.string() }),
         response: {
-          200: roleSchema,
+          200: roleDetailSchema,
           404: z.object({ message: z.string() }),
         },
       },
       preHandler: requirePermission('roles', 'view'),
     },
     async (request, reply) => {
-      const role = await service.getById(request.params.id)
+      const role = await service.getDetail(
+        request.params.id,
+        request.sessionUser.roleId
+      )
       if (!role) return reply.status(404).send({ message: 'Role not found' })
       return role
     }
@@ -101,7 +105,7 @@ export async function rolesRoutes(
         params: z.object({ id: z.string() }),
         body: updateRoleSchema,
         response: {
-          200: roleSchema,
+          200: roleDetailSchema,
           403: errorSchema(
             'permission_denied',
             'admin_role_locked',
@@ -121,7 +125,9 @@ export async function rolesRoutes(
       )
       if (!role) return reply.status(404).send({ message: 'Role not found' })
       await request.audit('edit', 'roles', request.params.id, request.body)
-      return role
+      // `update()` let it through and changes no grant: still manageable.
+      // Same shape as `GET /roles/:id`, whose cache the clients seed with it.
+      return { ...role, manageable: true }
     }
   )
 

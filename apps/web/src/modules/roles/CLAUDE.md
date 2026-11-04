@@ -9,7 +9,7 @@ src/modules/roles/
 ├── types.ts
 ├── validation.ts
 ├── validation.test.ts
-├── permission-requirements.ts       ← checks/unchecks permissions with their requirements (catalog `requires`)
+├── permission-requirements.ts       ← requirements (catalog `requires`), grantability and change helpers of the permission editor — pure; the catalog's requirement graph is built once per catalog (`WeakMap`)
 ├── permission-requirements.test.ts
 ├── components/
 │   ├── roles-form.tsx               ← shared form fields (create + edit)
@@ -115,7 +115,7 @@ Props: `opened`, `onClose`, `onSuccess(roleId)`. On success: `resourceCache.chan
 | `rolesEditRoute`   | `/roles/$id/edit`  | `roles:edit`   |
 | `rolesPermissionsRoute` | `/roles/$id/permissions` | `roles:view` + `permissions:view` + `permissions:edit` (it loads the role and its grants before saving) |
 
-The edit and permissions loaders go through `loadManageableRole(id)`: it awaits the role and, for the admin role, throws `redirect` to `/roles/$id` — the page could only fail on save (`admin_role_locked`).
+The edit and permissions loaders go through `loadManageableRole(id)`: it awaits the role and, when `role.manageable` is false — the admin role, or a role above the user's (API `admin_role_locked`, `role_not_editable`) — throws `redirect` to `/roles/$id`: the page could only fail on save. `manageable` is the API's decision (`GET /roles/:id` → `RoleDetail`); never re-derive it from grants — `GET /roles/:id/permissions` does not show every row the ceiling counts.
 
 `rolesListRoute` validateSearch: `page` (default 1), `pageSize` (default 10), `sortBy` (enum `name | createdAt`, optional), `sortOrder` (default `'desc'`).
 
@@ -137,7 +137,7 @@ Inline in each component — no `hooks.ts`.
 
 **Admin role** (API: `apps/api/src/modules/permissions/CLAUDE.md` → _Admin role_): `role.isAdmin` marks the admin role — every permission, locked for everyone. `RolesList` shows a "Full access" badge (`admin.badge`) next to its name and only View in its row; `RolesDetail` shows no actions and an `Alert` (`admin.title`, `admin.description`) instead, its grants (the whole catalog, from the API) still read-only below; its edit and permissions pages redirect to the detail. `errors.admin_role_locked` covers a refusal anyway.
 
-**Privilege ceiling** (API: `apps/api/src/modules/permissions/CLAUDE.md` → _Privilege ceiling_): a delegated moderator cannot change, delete or grant beyond their own role. `RolesEdit`, `RolesList` (delete) and the permission editor notify through `apiErrorMessage`, so `errors.role_not_editable` (a role above theirs) and `errors.permissions_not_grantable` (a permission they lack) explain the refusal. The editor still shows every checkbox: the API is the one that decides.
+**Privilege ceiling** (API: `apps/api/src/modules/permissions/CLAUDE.md` → _Privilege ceiling_): a delegated moderator cannot change, delete or grant beyond their own role. `RolesEdit`, `RolesList` (delete) and the permission editor notify through `apiErrorMessage`, so `errors.role_not_editable` (a role above theirs) and `errors.permissions_not_grantable` (a permission they lack) explain the refusal. The permission editor also applies the ceiling up front (see _Permission editor_) — the API still decides.
 
 **Create**: `resourceCache.changed('roles')`.  
 **Update**: `resourceCache.saved('roles', updated)`.  
@@ -173,20 +173,24 @@ The list handler is called with a `createPaginatedRoles({...})` object — not a
 
 ## Permission editor
 
-`RolesDetail` (`roles:view`) shows the role and, only with `permissions:view`, its grants read-only (`RoleGrants`, a child component holding the grants and catalog queries, inside `<HasPermission resource="permissions" action="view">`; the loader prefetches them under the same check). Without it the page shows the role alone and never calls `GET /roles/:id/permissions`, which would answer 403. The button to `/roles/$id/permissions` shows with `hasPagePermission(ROLES_ACCESS.permissions, hasPermission)`.
+`RolesDetail` (`roles:view`) shows the role and, only with `permissions:view`, its grants read-only (`RoleGrants`, a child component holding the grants and catalog queries, inside `<HasPermission resource="permissions" action="view">`; the loader prefetches them under the same check). Without it the page shows the role alone and never calls `GET /roles/:id/permissions`, which would answer 403. The header's actions (Edit permissions — with `hasPagePermission(ROLES_ACCESS.permissions, hasPermission)` — and Edit) show only when `item.manageable`. A role above the user's shows an `Alert` instead (`ceiling.title`, `ceiling.description`), like the admin role's.
 
 `rolesPermissionsRoute` (`/roles/$id/permissions`, guarded by `ROLES_ACCESS.permissions` — `roles:view`, `permissions:view` and `permissions:edit`) renders `RolesPermissions`: a `PageEdit` around `<PermissionsEditor roleId onCancel>`. Its loader awaits the role (for the breadcrumb) and prefetches the catalog and the grants.
 
 **`PermissionsEditor`** (`components/permissions-editor.tsx`):
 
-- Reads `useGetRolesIdPermissionsSuspense(roleId)` (saved grants) and `useGetPermissionsResourcesSuspense()` (the `RESOURCE_DEFINITIONS` catalog).
-- Holds edits in local state (`useState(saved.grants)`); nothing is sent until Save.
+- Reads `useGetRolesIdPermissionsSuspense(roleId)` (saved grants), `useGetPermissionsResourcesSuspense()` (the `RESOURCE_DEFINITIONS` catalog) and `useGetMePermissionsSuspense({ query: { staleTime: ME_PERMISSIONS_STALE_TIME } })` (the user's own grants — the cache and freshness `useAuth()` uses, loaded by the route guard; suspending, so no checkbox renders disabled while they load), whose `createPermissionChecker()` it passes to the tree as `canGrant`. It computes `missingRequirements()` once and passes it to the tree as `missing`.
+- Holds edits in local state (`useState(saved.grants)`); nothing is sent until Save. Save is disabled while nothing changed or a requirement is missing; next to it, "N unsaved changes" (`permissions.unsavedChanges`, `countChanges`).
+- Above the tree: Check all (every permission the user may grant), Clear all and Undo changes (back to the saved grants).
+- **Missing requirements** (grants saved before a requirement existed — `missingRequirements`, transitive): a red `Alert` counts them (`permissions.missing.title`) with **Check required permissions**, which checks those the user may grant. When some cannot be granted, the alert asks to uncheck what needs them instead (`permissions.missing.someNotGrantable`).
 - Save → `putRolesIdPermissions(roleId, { grants })` (full replacement). `onSuccess` writes the result with `setQueryData(getRolesIdPermissionsSuspenseQueryKey(roleId), …)`, calls `resourceCache.changed('roles')` (the signed-in user may hold that role, so `/me/permissions` refetches and the sidebar and guards follow) and notifies; `onError` notifies. Both live on `useMutation` itself. No navigation — the user stays on the page.
 - The API rejects grants outside the catalog with 400 and audits every save, so the editor only ever sends what the catalog offers.
 
-**`PermissionsTree`** (`components/permissions-tree.tsx`): pure controlled component — `definitions`, `grants`, `onChange`, `disabled?`. One block per resource with a parent checkbox (checked when all actions are granted, indeterminate when some are) and one checkbox per action the resource declares. Actions come from the catalog, so a new action in `RESOURCE_DEFINITIONS` shows up with no frontend change. Resource labels are translated via `roles:permissions.resources.<resource>`, falling back to the catalog's English `label` for a resource without a key — add one in both locales when you add a resource to `RESOURCE_DEFINITIONS`. Action labels reuse `common:actions.<action>`.
+**`PermissionsTree`** (`components/permissions-tree.tsx`): controlled component — `definitions`, `grants`, `onChange`, `disabled?`, `canGrant?` (default: everything), `missing?` (default: none — the read-only detail highlights nothing). One block per resource with a parent checkbox (checked when all actions are granted, indeterminate when some are) and one checkbox per action the resource declares. Actions come from the catalog, so a new action in `RESOURCE_DEFINITIONS` shows up with no frontend change. Resource labels are translated via `roles:permissions.resources.<resource>`, falling back to the catalog's English `label` for a resource without a key — add one in both locales when you add a resource to `RESOURCE_DEFINITIONS`. Action labels reuse `common:actions.<action>`.
 
-**Requirements** — the catalog's `requires` (API: `PERMISSION_REQUIREMENTS`) says what each permission needs. The tree applies it through `permission-requirements.ts` (pure functions, unit-tested): checking an action (or a whole resource) also checks what it requires, transitively (`grantWithRequirements` — `permissions:edit` → `permissions:view` → `roles:view`); unchecking one also unchecks every held permission that depends on it (`revokeWithDependents`). An action with requirements shows them in a tooltip (`permissions.requires`: "Requires: Permissions › View, Roles › View"). Nothing is hard-coded in the web: a new requirement in the API shows up after `pnpm spec:sync`. Grants saved before a requirement existed load as they are; saving them unchanged answers 400 `missing_required_permissions`, notified through `errors.missing_required_permissions`.
+**Requirements** — the catalog's `requires` (API: `PERMISSION_REQUIREMENTS`) says what each permission needs. The tree applies it through `permission-requirements.ts` (pure functions, unit-tested): checking an action (or a whole resource) also checks what it requires, transitively (`grantWithRequirements` — `permissions:edit` → `permissions:view` → `roles:view`); unchecking one also unchecks every held permission that depends on it (`revokeWithDependents`). The tooltip of an action lists what it requires (`permissions.requires`: "Requires: Permissions › View, Roles › View") and what needs it (`permissions.requiredBy`, `dependentsOf`). After a click, an `info` notification says what moved along with the clicked actions (`permissions.cascade.granted` / `revoked`, `cascadeOf` — one at a time, id `permissions-cascade`). Nothing is hard-coded in the web: a new requirement in the API shows up after `pnpm spec:sync`. Grants saved before a requirement existed load as they are: each requirement in `missing` gets the checkbox's error ("Check it: Todos › Create needs it", `permissions.neededBy`) and its resource a red border. The API still answers 400 `missing_required_permissions` (`errors.missing_required_permissions`) to such a save.
+
+**Ceiling in the tree** — an unchecked action is disabled when `isGrantable` is false: the user's role lacks it **or one of its requirements** (checking it would check them too). Its tooltip says why: the role lacks the action itself (`permissions.notGrantable`) or a requirement of it (`permissions.requirementNotGrantable`, naming it). A checked action always stays enabled — unchecking never grants. The resource checkbox checks only the actions the user may grant, and unchecks the resource once there is nothing left to check; with nothing checked and nothing grantable it is disabled.
 
 ## Sidebar
 

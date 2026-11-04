@@ -674,6 +674,13 @@ describe('Subscriptions turned off', () => {
       headers: { cookie },
     })
     expect(shown.json().grants).toEqual({ todos: ['view'] })
+    // The role itself tells the editor not to offer the change
+    const role = await disabledApp.inject({
+      method: 'GET',
+      url: `/api/roles/${target.id}`,
+      headers: { cookie },
+    })
+    expect(role.json().manageable).toBe(false)
 
     const res = await disabledApp.inject({
       method: 'PUT',

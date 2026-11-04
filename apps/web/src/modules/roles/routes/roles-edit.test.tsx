@@ -1,5 +1,5 @@
 import {
-  createRole,
+  createRoleDetail,
   getRolesIdHandler,
   patchRolesIdHandler,
   patchRolesIdHandlerResponse200,
@@ -62,7 +62,8 @@ vi.mock('../components/roles-form', () => ({
   ),
 }))
 
-const mockRole = createRole({
+const mockRole = createRoleDetail({
+  manageable: true,
   isAdmin: false,
   id: '1',
   name: 'Admin',

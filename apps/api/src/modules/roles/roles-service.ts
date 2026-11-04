@@ -38,7 +38,8 @@ const SORT_COLUMNS = {
 } as const
 
 export function createRolesService(database: Database) {
-  const { assertRoleManageable } = createPermissionsService(database)
+  const { assertRoleManageable, isRoleManageable } =
+    createPermissionsService(database)
 
   async function list(query: RolesListQuery) {
     const { limit, offset } = getPaginationParams(query.page, query.pageSize)
@@ -63,6 +64,16 @@ export function createRolesService(database: Database) {
   async function getById(id: string) {
     const [role] = await database.select().from(roles).where(eq(roles.id, id))
     return role ?? null
+  }
+
+  /**
+   * The role with `manageable`: whether the actor may change it — see
+   * `isRoleManageable()`. `null` when the id does not exist.
+   */
+  async function getDetail(id: string, actorRoleId: string | null) {
+    const role = await getById(id)
+    if (!role) return null
+    return { ...role, manageable: await isRoleManageable(id, actorRoleId) }
   }
 
   async function hasUsers(id: string) {
@@ -153,5 +164,14 @@ export function createRolesService(database: Database) {
     return deleted.length > 0
   }
 
-  return { list, listAll, getById, hasUsers, create, update, remove }
+  return {
+    list,
+    listAll,
+    getById,
+    getDetail,
+    hasUsers,
+    create,
+    update,
+    remove,
+  }
 }

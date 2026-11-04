@@ -10,6 +10,12 @@ import { authClient } from '../../lib/authentication'
 import { createPermissionChecker } from './page-access'
 import type { AuthState, User } from './types'
 
+/**
+ * How long `GET /me/permissions` stays fresh — shared by every reader of that
+ * cache (here and the permission editor), so none refetches it on mount.
+ */
+export const ME_PERMISSIONS_STALE_TIME = 30_000
+
 export function useAuth(): AuthState {
   const { data: session, isPending: sessionPending } = authClient.useSession()
 
@@ -37,7 +43,7 @@ export function useAuth(): AuthState {
     queryKey: getMePermissionsQueryKey(),
     queryFn: () => getMePermissions(),
     enabled: !!user,
-    staleTime: 30_000,
+    staleTime: ME_PERMISSIONS_STALE_TIME,
   })
 
   const grants = permissionsData?.grants ?? {}

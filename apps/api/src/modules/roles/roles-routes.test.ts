@@ -173,6 +173,7 @@ describe('GET /roles/:id', () => {
     expect(body.id).toBe(inserted.id)
     expect(body.name).toBe('editor')
     expect(body.description).toBe('Can edit content')
+    expect(body.manageable).toBe(true)
   })
 })
 
@@ -259,6 +260,8 @@ describe('PATCH /roles/:id', () => {
     const body = res.json()
     expect(body.name).toBe('new-name')
     expect(body.description).toBe('Old description')
+    // Same shape as GET /roles/:id
+    expect(body.manageable).toBe(true)
     expect(await findAuditLogs('edit', 'roles', inserted.id)).toHaveLength(1)
   })
   it('returns 409 name_taken when renaming to an existing name', async () => {
@@ -417,6 +420,32 @@ describe('Privilege ceiling', () => {
     ).toHaveLength(1)
   })
 
+  it('tells on GET /roles/:id whether the moderator may manage the role', async () => {
+    const { cookie, above, below } = await setup()
+    const get = (id: string) =>
+      app.inject({
+        method: 'GET',
+        url: `/api/roles/${id}`,
+        headers: { cookie },
+      })
+    expect((await get(above.id)).json().manageable).toBe(false)
+    expect((await get(below.id)).json().manageable).toBe(true)
+  })
+
+  it('ignores a leftover grant the catalog no longer declares', async () => {
+    // A resource a fork removed: its row gives no access, so it blocks no one
+    const role = await createRoleWithPermissions([
+      { resource: 'todos', action: 'view' },
+      { resource: 'reports', action: 'view' },
+    ])
+    const res = await app.inject({
+      method: 'GET',
+      url: `/api/roles/${role.id}`,
+      headers: { cookie: authCookie },
+    })
+    expect(res.json().manageable).toBe(true)
+  })
+
   it('lets the moderator delete a role below theirs', async () => {
     const { cookie, below } = await setup()
     const res = await app.inject({
@@ -521,6 +550,7 @@ describe('Admin role', () => {
       headers: { cookie: authCookie },
     })
     expect(res.json().isAdmin).toBe(true)
+    expect(res.json().manageable).toBe(false)
   })
 
   it('refuses PATCH /roles/:id on the admin role and keeps it', async () => {

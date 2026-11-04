@@ -22,14 +22,16 @@ import { RolesPending } from './roles-pending'
 import { RolesPermissions } from './roles-permissions'
 
 /**
- * Loads the role for a page that changes it — the admin role is locked for
- * everyone (API: `admin_role_locked`), so its pages send back to the detail.
+ * Loads the role for a page that changes it. A role the user may not change
+ * (`manageable` — the admin role, or one above the user's: API
+ * `admin_role_locked`, `role_not_editable`) sends back to the detail, which
+ * says why; its pages could only fail on save.
  */
 async function loadManageableRole(id: string) {
   const role = await queryClient.ensureQueryData(
     getRolesIdSuspenseQueryOptions(id)
   )
-  if (role.isAdmin) {
+  if (!role.manageable) {
     throw redirect({ to: '/roles/$id', params: { id } })
   }
   return role
