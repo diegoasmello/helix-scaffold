@@ -681,7 +681,7 @@ response: { 201: roleSchema, 409: errorSchema('name_taken') },
 | Module | Status | Codes |
 | --- | --- | --- |
 | roles | 409 | `name_taken` (service, unique `name`), `default_role`, `role_in_use` (service `remove()`) |
-| users / accounts | 404, 409 | `role_not_found`, `user_not_found`, `email_taken` (`RoleNotFoundError`, `EmailTakenError` in account provisioning; PATCH maps `user_email_unique`) |
+| users / accounts | 403, 404, 409 | `role_not_assignable`, `user_not_editable` (users service — privilege ceiling), `role_not_found`, `user_not_found`, `email_taken` (`RoleNotFoundError`, `EmailTakenError` in account provisioning; PATCH maps `user_email_unique`) |
 | subscriptions | 400, 409 | `user_not_found` (FK), `live_subscription_exists`, `external_id_taken` (`toDomainError()` in `subscriptions-routes.ts`) |
 | permissions | 400, 404 | `unknown_permissions`, `role_not_found` |
 | requireSubscription / requirePermission | 403 | `subscription_required`, `feature_not_in_plan`, `permission_denied` (sent by the hooks) |

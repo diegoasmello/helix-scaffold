@@ -92,6 +92,7 @@ export async function usersRoutes(
         body: createUserSchema,
         response: {
           201: userWithRoleSchema,
+          403: errorSchema('permission_denied', 'role_not_assignable'),
           404: errorSchema('role_not_found'),
           409: errorSchema('email_taken'),
         },
@@ -99,7 +100,10 @@ export async function usersRoutes(
       preHandler: requirePermission('users', 'create'),
     },
     async (request, reply) => {
-      const item = await service.create(request.body)
+      const item = await service.create(
+        request.body,
+        request.sessionUser.roleId
+      )
       if (!item) throw new Error('Unexpected: user not found after creation')
       const { password: _, ...meta } = request.body
       await request.audit('create', 'users', item.id, meta)
@@ -117,6 +121,11 @@ export async function usersRoutes(
         body: updateUserSchema,
         response: {
           200: userWithRoleSchema,
+          403: errorSchema(
+            'permission_denied',
+            'role_not_assignable',
+            'user_not_editable'
+          ),
           404: errorSchema('user_not_found', 'role_not_found'),
           409: errorSchema('email_taken'),
         },
@@ -124,7 +133,11 @@ export async function usersRoutes(
       preHandler: requirePermission('users', 'edit'),
     },
     async (request) => {
-      const item = await service.update(request.params.id, request.body)
+      const item = await service.update(
+        request.params.id,
+        request.body,
+        request.sessionUser.roleId
+      )
       if (!item) {
         throw new DomainError(404, 'user_not_found', 'User not found')
       }

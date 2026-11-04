@@ -2,8 +2,10 @@ import { asc, count, desc, eq } from 'drizzle-orm'
 
 import type { Auth } from '@/auth'
 import type { Config } from '@/config'
+import { isDeclaredPermission } from '@/config/permissions'
 import type { Database } from '@/db'
 import { roles, user } from '@/db/schema'
+import { DomainError } from '@/lib/domain-errors'
 import { getPaginationParams } from '@/lib/pagination'
 import {
   getPgErrorCode,
@@ -15,6 +17,7 @@ import {
   EmailTakenError,
   RoleNotFoundError,
 } from '@/modules/accounts/account-provisioning'
+import { createPermissionsService } from '@/modules/permissions/permissions-service'
 
 import type {
   CreateUserInput,
@@ -27,6 +30,14 @@ const SORT_COLUMNS = {
   email: user.email,
   createdAt: user.createdAt,
 } as const
+
+function roleNotAssignable() {
+  return new DomainError(
+    403,
+    'role_not_assignable',
+    'This role grants permissions your own role lacks'
+  )
+}
 
 function toUserWithRole(row: {
   id: string
@@ -72,6 +83,32 @@ export function createUsersService(
   config: Pick<Config, 'registration'>
 ) {
   const provisioning = createAccountProvisioning(database, auth, config)
+  const permissions = createPermissionsService(database)
+
+  /**
+   * The role's grants as `resource:action` strings. Only catalog pairs count:
+   * a leftover row for a removed resource gives no access (`requirePermission`
+   * accepts declared pairs only), so it must not block anyone either.
+   */
+  async function grantsOf(roleId: string | null): Promise<Set<string>> {
+    if (!roleId) return new Set()
+    const grants = await permissions.getByRoleId(roleId)
+    return new Set(
+      Object.entries(grants).flatMap(([resource, actions]) =>
+        actions
+          .filter((action) => isDeclaredPermission(resource, action))
+          .map((action) => `${resource}:${action}`)
+      )
+    )
+  }
+
+  /** Whether `roleId` grants something the actor's own role does not. */
+  async function exceeds(roleId: string | null, actorGrants: Set<string>) {
+    for (const grant of await grantsOf(roleId)) {
+      if (!actorGrants.has(grant)) return true
+    }
+    return false
+  }
 
   async function list(query: UsersListQuery) {
     const { limit, offset } = getPaginationParams(query.page, query.pageSize)
@@ -112,15 +149,62 @@ export function createUsersService(
     return !!role
   }
 
-  /** Throws `RoleNotFoundError` for an unknown `roleId` — see account provisioning. */
-  async function create(data: CreateUserInput) {
+  /**
+   * Throws `RoleNotFoundError` for an unknown `roleId` — see account
+   * provisioning — and a 403 `role_not_assignable` when the role grants
+   * something the actor's role does not (checked first: nothing is written).
+   */
+  async function create(data: CreateUserInput, actorRoleId: string | null) {
+    if (
+      data.roleId &&
+      (await exceeds(data.roleId, await grantsOf(actorRoleId)))
+    ) {
+      throw roleNotAssignable()
+    }
     return getById(await provisioning.provisionAccount(data))
   }
 
-  async function update(id: string, data: UpdateUserInput) {
+  /**
+   * Privilege ceiling — only when the request really changes the role or the
+   * email (the edit form re-sends both unchanged, so a name-only edit passes):
+   * the target's current role must not exceed the actor's (403
+   * `user_not_editable` — no rewriting a higher account's email, no demoting
+   * it), and neither may the new role (403 `role_not_assignable`).
+   */
+  async function update(
+    id: string,
+    data: UpdateUserInput,
+    actorRoleId: string | null
+  ) {
     if (data.roleId) {
       const roleExists = await validateRoleExists(data.roleId)
       if (!roleExists) throw new RoleNotFoundError()
+    }
+
+    const [target] = await database
+      .select({ email: user.email, roleId: user.roleId })
+      .from(user)
+      .where(eq(user.id, id))
+    if (!target) return null
+
+    const roleChanged =
+      data.roleId !== undefined && data.roleId !== target.roleId
+    const emailChanged =
+      data.email !== undefined &&
+      data.email.toLowerCase() !== target.email.toLowerCase()
+
+    if (roleChanged || emailChanged) {
+      const actorGrants = await grantsOf(actorRoleId)
+      if (await exceeds(target.roleId, actorGrants)) {
+        throw new DomainError(
+          403,
+          'user_not_editable',
+          'This user has permissions your own role lacks'
+        )
+      }
+      if (roleChanged && (await exceeds(data.roleId ?? null, actorGrants))) {
+        throw roleNotAssignable()
+      }
     }
 
     const [updated] = await database

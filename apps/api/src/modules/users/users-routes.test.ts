@@ -3,6 +3,7 @@ import { uuidv7 } from 'uuidv7'
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 
 import { user } from '@/db/schema/authentication'
+import { rolePermissions } from '@/db/schema/role-permissions'
 import { roles } from '@/db/schema/roles'
 import {
   cleanupAuth,
@@ -12,6 +13,7 @@ import {
   createTestApp,
   createTestSession,
   findAuditLogs,
+  getTestUser,
   testDb,
 } from '@/test/helpers'
 
@@ -682,5 +684,217 @@ describe('Permission enforcement', () => {
       headers: { cookie },
     })
     expect(res.statusCode).toBe(403)
+  })
+})
+
+describe('Privilege ceiling', () => {
+  type Grant = { resource: string; action: string }
+
+  const MANAGER: Grant[] = [
+    { resource: 'users', action: 'view' },
+    { resource: 'users', action: 'create' },
+    { resource: 'users', action: 'edit' },
+  ]
+
+  async function roleWith(name: string, grants: Grant[]) {
+    const [role] = await testDb.insert(roles).values({ name }).returning()
+    if (grants.length > 0) {
+      await testDb
+        .insert(rolePermissions)
+        .values(grants.map((grant) => ({ roleId: role.id, ...grant })))
+    }
+    return role
+  }
+
+  /** A signed-in user manager: `users:view/create/edit`, nothing else. */
+  async function managerSession() {
+    const role = await roleWith('Manager', MANAGER)
+    const email = `manager-${uuidv7()}@test.com`
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/auth/sign-up/email',
+      payload: { email, name: 'Manager', password: 'Password123!' },
+    })
+    const [manager] = await testDb
+      .update(user)
+      .set({ roleId: role.id })
+      .where(eq(user.email, email))
+      .returning()
+    const setCookie = res.headers['set-cookie']
+    const cookies = Array.isArray(setCookie) ? setCookie : [setCookie ?? '']
+    return {
+      cookie: cookies.map((c) => c.split(';')[0]).join('; '),
+      manager,
+      managerRoleId: role.id,
+    }
+  }
+
+  async function userWith(roleId: string | null) {
+    const [inserted] = await testDb
+      .insert(user)
+      .values({
+        id: uuidv7(),
+        name: 'Target',
+        email: `target-${uuidv7()}@test.com`,
+        emailVerified: false,
+        roleId,
+      })
+      .returning()
+    return inserted
+  }
+
+  it('refuses POST /users with a role beyond the caller and creates nothing', async () => {
+    const { cookie } = await managerSession()
+    const admin = await getTestUser()
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/users',
+      payload: {
+        name: 'Escalated',
+        email: 'escalated@test.com',
+        password: 'Password123!',
+        roleId: admin.roleId,
+      },
+      headers: { cookie },
+    })
+    expect(res.statusCode).toBe(403)
+    expect(res.json().code).toBe('role_not_assignable')
+    const rows = await testDb
+      .select()
+      .from(user)
+      .where(eq(user.email, 'escalated@test.com'))
+    expect(rows).toHaveLength(0)
+  })
+
+  it('allows POST /users with a role within the caller', async () => {
+    const { cookie } = await managerSession()
+    const narrower = await roleWith('Viewer', [
+      { resource: 'users', action: 'view' },
+    ])
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/users',
+      payload: {
+        name: 'Viewer',
+        email: 'viewer@test.com',
+        password: 'Password123!',
+        roleId: narrower.id,
+      },
+      headers: { cookie },
+    })
+    expect(res.statusCode).toBe(201)
+    expect(res.json().role.id).toBe(narrower.id)
+  })
+
+  it('still answers 404 on POST /users for an unknown role', async () => {
+    const { cookie } = await managerSession()
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/users',
+      payload: {
+        name: 'Nobody',
+        email: 'nobody@test.com',
+        password: 'Password123!',
+        roleId: 'missing-role',
+      },
+      headers: { cookie },
+    })
+    expect(res.statusCode).toBe(404)
+    expect(res.json().code).toBe('role_not_found')
+  })
+
+  it('refuses giving yourself a broader role', async () => {
+    const { cookie, manager, managerRoleId } = await managerSession()
+    const admin = await getTestUser()
+    const res = await app.inject({
+      method: 'PATCH',
+      url: `/api/users/${manager.id}`,
+      payload: { roleId: admin.roleId },
+      headers: { cookie },
+    })
+    expect(res.statusCode).toBe(403)
+    expect(res.json().code).toBe('role_not_assignable')
+    const [row] = await testDb
+      .select()
+      .from(user)
+      .where(eq(user.id, manager.id))
+    expect(row.roleId).toBe(managerRoleId)
+    expect(await findAuditLogs('edit', 'users', manager.id)).toHaveLength(0)
+  })
+
+  it("refuses rewriting a higher account's email", async () => {
+    const { cookie } = await managerSession()
+    const admin = await getTestUser()
+    const res = await app.inject({
+      method: 'PATCH',
+      url: `/api/users/${admin.id}`,
+      payload: { email: 'attacker@evil.test' },
+      headers: { cookie },
+    })
+    expect(res.statusCode).toBe(403)
+    expect(res.json().code).toBe('user_not_editable')
+    const [row] = await testDb.select().from(user).where(eq(user.id, admin.id))
+    expect(row.email).toBe(admin.email)
+  })
+
+  it('refuses removing the role of a higher account', async () => {
+    const { cookie } = await managerSession()
+    const peer = await userWith(
+      (await roleWith('Todos', [{ resource: 'todos', action: 'view' }])).id
+    )
+    const res = await app.inject({
+      method: 'PATCH',
+      url: `/api/users/${peer.id}`,
+      payload: { roleId: null },
+      headers: { cookie },
+    })
+    expect(res.statusCode).toBe(403)
+    expect(res.json().code).toBe('user_not_editable')
+  })
+
+  it('refuses changing the email of a user whose role grants more', async () => {
+    const { cookie } = await managerSession()
+    const peer = await userWith(
+      (await roleWith('Todos', [{ resource: 'todos', action: 'view' }])).id
+    )
+    const res = await app.inject({
+      method: 'PATCH',
+      url: `/api/users/${peer.id}`,
+      payload: { email: 'new-address@test.com' },
+      headers: { cookie },
+    })
+    expect(res.statusCode).toBe(403)
+    expect(res.json().code).toBe('user_not_editable')
+  })
+
+  it('allows a name edit that re-sends the unchanged email and role, as the edit form does', async () => {
+    const { cookie } = await managerSession()
+    const peer = await userWith(
+      (await roleWith('Todos', [{ resource: 'todos', action: 'view' }])).id
+    )
+    const res = await app.inject({
+      method: 'PATCH',
+      url: `/api/users/${peer.id}`,
+      payload: { name: 'Renamed', email: peer.email, roleId: peer.roleId },
+      headers: { cookie },
+    })
+    expect(res.statusCode).toBe(200)
+    expect(res.json().name).toBe('Renamed')
+  })
+
+  it('allows assigning a role within the caller to a user without one', async () => {
+    const { cookie } = await managerSession()
+    const narrower = await roleWith('Viewer', [
+      { resource: 'users', action: 'view' },
+    ])
+    const target = await userWith(null)
+    const res = await app.inject({
+      method: 'PATCH',
+      url: `/api/users/${target.id}`,
+      payload: { roleId: narrower.id },
+      headers: { cookie },
+    })
+    expect(res.statusCode).toBe(200)
+    expect(res.json().role.id).toBe(narrower.id)
   })
 })

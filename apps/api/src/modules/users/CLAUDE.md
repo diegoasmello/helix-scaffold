@@ -37,16 +37,22 @@ Factory signature: `createUsersService(database: Database, auth: Auth, config)` 
 
 **`list`, `listAll` and `getById`** do a `leftJoin(roles, eq(user.roleId, roles.id))` and pass the row through the private `toUserWithRole` helper. This helper aliases the join columns (`roleRefId`, `roleName`) to avoid collisions, then rebuilds `role: { id, name } | null`.
 
+**Privilege ceiling** — `create(data, actorRoleId)` and `update(id, data, actorRoleId)` receive the caller's role (`request.sessionUser.roleId`). A role *exceeds* the caller when it grants a catalog `resource:action` pair (`isDeclaredPermission()` — leftover rows for removed resources are ignored) that the caller's role does not. So a user manager can never create or promote an account above their own role, nor take over a higher one. A caller holding every permission (the bootstrap Admin) is never limited.
+
 **`create`** flow:
 
+0. If `roleId` exceeds the caller → 403 `role_not_assignable`, before anything is written. An unknown `roleId` grants nothing, so it passes here and still ends in 404 `role_not_found`.
 1. `provisionAccount(data)` (account provisioning, `src/modules/accounts/`) — validates the role (throws `RoleNotFoundError` — 404 `role_not_found` — before anything is written; a used email throws `EmailTakenError`, 409 `email_taken`), signs the user up through better-auth (never a direct insert) and assigns the role. A failed assignment deletes the user again, so no user is left without the role that was asked for.
 2. Returns the full `UserWithRole` via `getById`.
 
 **`update`** flow:
 
 1. If `roleId` is provided (and not `null`), validates the role exists. Throws `RoleNotFoundError` (404 `role_not_found`) if not.
-2. Updates the `user` row directly. Returns `null` when the user id does not exist (callers handle 404).
-3. Returns the full `UserWithRole` via `getById`.
+2. Loads the target's current `email` and `roleId`. Returns `null` when the user id does not exist (callers handle 404).
+3. Privilege ceiling, **only when the request really changes the role** (`roleId` sent and different from the stored one, `null` included) **or the email** (different, case-insensitively). The web edit form always re-sends both unchanged, so a name-only edit is never refused:
+   - the target's current role exceeds the caller → 403 `user_not_editable` (no rewriting a higher account's email, no demoting it);
+   - the role changes to one that exceeds the caller → 403 `role_not_assignable` (no promoting yourself or anyone else).
+4. Updates the `user` row directly, then returns the full `UserWithRole` via `getById`.
 
 **`remove`** — hard deletes the `user` row and returns whether one existed. Sessions and accounts cascade via FK.
 
@@ -74,6 +80,7 @@ Errors are `DomainError`s (see `apps/api/CLAUDE.md` → _Errors the client can a
 - `POST` / `PATCH`: `409 { message: 'Email already in use', code: 'email_taken' }` — `EmailTakenError`. On `POST`, account provisioning maps better-auth's `USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL`; on `PATCH`, the service maps the `user_email_unique` violation (it used to be a 500).
 - `POST` / `PATCH`: `404 { message: 'Role not found', code: 'role_not_found' }` — `RoleNotFoundError`.
 - `PATCH`: `404 { message: 'User not found', code: 'user_not_found' }` for an unknown id.
+- `POST` / `PATCH`: `403` with `code: 'role_not_assignable'` (the role exceeds the caller's) and, on `PATCH`, `code: 'user_not_editable'` (the target's role exceeds the caller's) — see _Privilege ceiling_. `requirePermission()`'s `permission_denied` shares the status.
 
 **Audit on POST**: password is stripped before logging — `const { password: _, ...meta } = request.body`.
 
@@ -100,3 +107,5 @@ Resource registered in `src/config/permissions.ts`:
 **`PATCH /users/:id`** tests cover: unknown id (404), name update (fields preserved), assign role, remove role (`roleId: null`), non-existent `roleId` (404).
 
 Permission enforcement email pattern: `restricted-users-${Date.now()}@test.com`.
+
+**`describe('Privilege ceiling')`** — a user manager (`users:view/create/edit`) against the test admin and a `todos:view` peer: POST with a broader role (403, no user written), with a narrower one (201), unknown role (still 404); PATCH self to a broader role (403, role unchanged, no audit), an admin's email (403), demoting or re-emailing the peer (403), a name edit re-sending the unchanged email and role like the form (200), assigning a narrower role (200). Roles are inserted with explicit names — `createRoleWithPermissions()` names them by `Date.now()`, which collides when one test creates several.

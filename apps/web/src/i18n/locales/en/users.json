@@ -58,6 +58,8 @@
   "errors": {
     "email_taken": "This email is already used by another user.",
     "role_not_found": "The selected role no longer exists.",
+    "role_not_assignable": "You can't assign a role with permissions your own role doesn't have.",
+    "user_not_editable": "You can't change the email or role of a user with permissions your own role doesn't have.",
     "user_not_found": "This user no longer exists."
   }
 }
