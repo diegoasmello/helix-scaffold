@@ -8,6 +8,7 @@ Provides the authentication layer consumed by the entire application: session st
 src/modules/auth/
 ├── types.ts                        ← User and AuthState types
 ├── use-auth.ts                     ← primary auth hook
+├── use-registration-open.ts        ← useRegistrationOpen() + registrationStatusQueryOptions() (GET /registration/status, cached for the session)
 ├── page-access.ts                  ← PageAccess, checkPageAccess, guardPage (route guards), createPermissionChecker
 ├── page-access.test.ts
 ├── components/

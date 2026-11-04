@@ -77,6 +77,8 @@ Note: `description` is required by the form validator even though the API schema
 
 Turning `isDefault` on for one role unsets it on the previous default — the API does it in a transaction (only one default role can exist).
 
+**`isDefault` exists only in open registration.** Only self-registered users receive the default role, so `RolesForm` renders the switch, and `RolesDetail` the "Default for new users" value, only when `useRegistrationOpen()` (`src/modules/auth/use-registration-open.ts`, over `GET /registration/status`) is `true` — hidden while it loads. In closed mode the form keeps the role's current value (`false` on create) and sends it unchanged. The create, edit and detail loaders prefetch `registrationStatusQueryOptions()` so the switch never pops in; `RoleCreateDrawer` (inside the users pages) reads the same cache and fetches it on first open otherwise.
+
 The fields sit in one `FormColumn` (no sections), so the same `RolesForm` serves the create and edit pages and `RoleCreateDrawer`. No `isEditing` prop — the form is identical for create and edit.
 
 ## `RoleSelectField` (`components/role-select-field.tsx`)

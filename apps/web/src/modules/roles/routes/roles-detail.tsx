@@ -24,6 +24,7 @@ import { formatDate } from '@/utils/date'
 import { HasPermission } from '../../auth/components/has-permission'
 import { hasPagePermission } from '../../auth/page-access'
 import { useAuth } from '../../auth/use-auth'
+import { useRegistrationOpen } from '../../auth/use-registration-open'
 import { PermissionsTree } from '../components/permissions-tree'
 import { rolesDetailRoute } from '.'
 import { ROLES_ACCESS } from './access'
@@ -34,6 +35,7 @@ export function RolesDetail() {
   const { t } = useTranslation('roles')
   const { t: tc } = useTranslation('common')
   const { hasPermission } = useAuth()
+  const registrationOpen = useRegistrationOpen()
 
   const { data: item } = useGetRolesIdSuspense(id)
 
@@ -77,13 +79,16 @@ export function RolesDetail() {
             </Alert>
           </Grid.Col>
         )}
-        <Grid.Col span={{ base: 12, sm: 6 }}>
-          <LabeledValue label={t('labels.isDefault')}>
-            <Text size="md">
-              {item.isDefault ? t('labels.yes') : t('labels.no')}
-            </Text>
-          </LabeledValue>
-        </Grid.Col>
+        {/* Only self-registered users receive the default role */}
+        {registrationOpen && (
+          <Grid.Col span={{ base: 12, sm: 6 }}>
+            <LabeledValue label={t('labels.isDefault')}>
+              <Text size="md">
+                {item.isDefault ? t('labels.yes') : t('labels.no')}
+              </Text>
+            </LabeledValue>
+          </Grid.Col>
+        )}
         <Grid.Col span={{ base: 12, sm: 6 }}>
           <LabeledValue label={t('labels.createdAt')}>
             <Text size="md">

@@ -3,6 +3,8 @@ import {
   createRolePermissionsResponse,
   getMePermissionsHandler,
   getPermissionsResourcesHandler,
+  getRegistrationStatusHandler,
+  getRegistrationStatusHandlerResponse200,
   getRolesIdHandler,
   getRolesIdPermissionsHandler,
 } from '@helix/api-client/mocks'
@@ -87,6 +89,24 @@ afterEach(() => {
 })
 
 describe('RolesDetail', () => {
+  it('shows whether the role is the default when registration is open', async () => {
+    server.use(
+      getRegistrationStatusHandler(() =>
+        getRegistrationStatusHandlerResponse200({ open: true, providers: [] })
+      )
+    )
+    renderRolesDetail()
+    expect(await screen.findByText('Default for new users')).toBeInTheDocument()
+  })
+
+  it('hides the default flag when registration is closed', async () => {
+    // The default handler answers { open: false } (and the flag stays hidden
+    // while the status loads)
+    renderRolesDetail()
+    await screen.findByText('Permissions')
+    expect(screen.queryByText('Default for new users')).not.toBeInTheDocument()
+  })
+
   it('renders the role name', async () => {
     renderRolesDetail()
     expect(await screen.findByText('Admin')).toBeInTheDocument()

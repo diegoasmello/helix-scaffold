@@ -8,6 +8,7 @@ import { createRoute, redirect } from '@tanstack/react-router'
 import { z } from 'zod'
 
 import { guardPage } from '@/modules/auth/page-access'
+import { registrationStatusQueryOptions } from '@/modules/auth/use-registration-open'
 import { authenticatedRoute } from '@/routes'
 
 import { queryClient } from '../../../lib/query-client'
@@ -71,6 +72,8 @@ export const rolesCreateRoute = createRoute({
     ],
   },
   beforeLoad: guardPage(ROLES_ACCESS.create),
+  // The default-role switch shows only in open registration (`RolesForm`)
+  loader: () => queryClient.ensureQueryData(registrationStatusQueryOptions()),
 })
 
 export const rolesDetailRoute = createRoute({
@@ -89,6 +92,7 @@ export const rolesDetailRoute = createRoute({
   loader: ({ params, context }) => {
     // The grants need `permissions:view` — without it the page shows the role
     // alone (see `RolesDetail`), so they are not even requested.
+    queryClient.ensureQueryData(registrationStatusQueryOptions())
     if (context.hasPermission('permissions', 'view')) {
       queryClient.ensureQueryData(getPermissionsResourcesSuspenseQueryOptions())
       queryClient.ensureQueryData(
@@ -114,7 +118,10 @@ export const rolesEditRoute = createRoute({
     ],
   },
   beforeLoad: guardPage(ROLES_ACCESS.edit),
-  loader: ({ params }) => loadManageableRole(params.id),
+  loader: ({ params }) => {
+    queryClient.ensureQueryData(registrationStatusQueryOptions())
+    return loadManageableRole(params.id)
+  },
 })
 
 export const rolesPermissionsRoute = createRoute({

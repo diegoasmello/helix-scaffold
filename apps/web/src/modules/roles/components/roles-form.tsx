@@ -2,6 +2,8 @@ import type { UseFormReturnType } from '@helix/ui'
 import { FormColumn, Switch, Textarea, TextInput } from '@helix/ui'
 import { useTranslation } from 'react-i18next'
 
+import { useRegistrationOpen } from '@/modules/auth/use-registration-open'
+
 import type { RoleFormValues } from '../types'
 
 export interface RolesFormProps {
@@ -12,6 +14,7 @@ export interface RolesFormProps {
 export function RolesForm(props: Readonly<RolesFormProps>) {
   const { form } = props
   const { t } = useTranslation('roles')
+  const registrationOpen = useRegistrationOpen()
 
   return (
     <FormColumn>
@@ -29,11 +32,14 @@ export function RolesForm(props: Readonly<RolesFormProps>) {
         required
         {...form.getInputProps('description')}
       />
-      <Switch
-        label={t('form.isDefault.label')}
-        description={t('form.isDefault.description')}
-        {...form.getInputProps('isDefault', { type: 'checkbox' })}
-      />
+      {/* Only self-registered users receive the default role */}
+      {registrationOpen && (
+        <Switch
+          label={t('form.isDefault.label')}
+          description={t('form.isDefault.description')}
+          {...form.getInputProps('isDefault', { type: 'checkbox' })}
+        />
+      )}
     </FormColumn>
   )
 }
