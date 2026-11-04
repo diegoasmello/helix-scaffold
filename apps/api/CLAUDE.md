@@ -521,7 +521,7 @@ Use `todos` as the reference implementation; the step-by-step guide (multi-file 
 
 1. Multi-file: junction table `xxx_attachments(xxx_id FK cascade, upload_id FK cascade)`. Single file: nullable `xxx.file_id` FK → `uploads.id` `on delete set null`
 2. Response embeds `attachments: uploadSchema.array()` / `file: uploadSchema.nullable()`; create/update accept `attachmentIds` / `fileId`
-3. Service: `assertUsableUploads()` on create/update (a record references only uploads its author uploaded — 400 `invalid_upload`); load uploads on reads; sync junction rows on create/update; on delete, collect upload IDs → delete the record → delete the `uploads` rows → delete storage keys (best-effort)
+3. Service: `assertUsableUploads()` on create/update (a record references only uploads its author uploaded — 400 `invalid_upload` — and a typed field only files of its type, `{ id, accept: IMAGE_TYPES }` — 400 `invalid_upload_type`); load uploads on reads; sync junction rows on create/update; on delete, collect upload IDs → delete the record → delete the `uploads` rows → delete storage keys (best-effort)
 4. Accept `storage: StorageProvider` in route options and pass it to the service factory
 5. **Register every new column in `src/config/upload-references.ts`**, with the guard of the record's `GET` route — otherwise the orphan cleanup job deletes those uploads after the grace period, and nobody but the uploader and `uploads:view` can open their files
 6. Images inside a rich text field (`onUploadImage`): a junction table `xxx_<field>_images` the service fills from the HTML with `uploadIdsInHtml()` (`src/lib/rich-text-uploads.ts`), checked and registered like the others — see `src/modules/uploads/CLAUDE.md` → _Images inside rich text_
@@ -689,7 +689,7 @@ response: { 201: roleSchema, 409: errorSchema('name_taken') },
 | users / accounts | 403, 404, 409 | `admin_role_not_assignable`, `admin_user_locked`, `role_not_assignable`, `user_not_editable` (users service — admin role and privilege ceiling), `role_not_found`, `user_not_found`, `email_taken` (`RoleNotFoundError`, `EmailTakenError` in account provisioning; PATCH maps `user_email_unique`) |
 | subscriptions | 400, 409 | `user_not_found` (FK), `live_subscription_exists`, `external_id_taken` (`toDomainError()` in `subscriptions-routes.ts`) |
 | permissions | 400, 403, 404 | `unknown_permissions`, `missing_required_permissions`, `admin_role_locked`, `role_not_editable`, `permissions_not_grantable` (admin role and privilege ceiling), `role_not_found` |
-| todos | 400 | `invalid_upload` (`assertUsableUploads()`, `src/lib/upload-ownership.ts`) |
+| todos | 400 | `invalid_upload`, `invalid_upload_type` (`assertUsableUploads()`, `src/lib/upload-ownership.ts`) |
 | me | 400, 429 | `current_password_required`, `invalid_password`, `email_change_rejected`, `password_change_rejected`, `too_many_attempts` (`me-service` — re-authentication and `createAttemptLimiter()`, `src/lib/attempt-limiter.ts`) |
 | requireSubscription / requirePermission | 403 | `subscription_required`, `feature_not_in_plan`, `permission_denied` (sent by the hooks) |
 

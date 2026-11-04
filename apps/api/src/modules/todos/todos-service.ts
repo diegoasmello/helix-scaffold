@@ -15,7 +15,11 @@ import { getPaginationParams } from '@/lib/pagination'
 import { uploadIdsInHtml } from '@/lib/rich-text-uploads'
 import { withUniqueSlug } from '@/lib/slug'
 import type { StorageProvider } from '@/lib/storage'
-import { assertUsableUploads } from '@/lib/upload-ownership'
+import {
+  assertUsableUploads,
+  IMAGE_TYPES,
+  PDF_TYPES,
+} from '@/lib/upload-ownership'
 
 import type {
   CreateTodoInput,
@@ -232,16 +236,18 @@ export function createTodosService(
 
   /**
    * `actorId` must have uploaded every referenced file (400 `invalid_upload`
-   * otherwise — see `assertUsableUploads`).
+   * otherwise), and each typed field must hold its type — the `image` and the
+   * images of `content` an image, the `file` a PDF (400 `invalid_upload_type`).
+   * See `assertUsableUploads`.
    */
   async function create(data: CreateTodoInput, actorId: string) {
     const { attachmentIds = [], ...todoData } = data
     const contentImageIds = await uploadIdsInHtml(database, todoData.content)
     await assertUsableUploads(database, actorId, [
       ...attachmentIds,
-      ...contentImageIds,
-      todoData.fileId,
-      todoData.imageId,
+      ...contentImageIds.map((id) => ({ id, accept: IMAGE_TYPES })),
+      { id: todoData.fileId, accept: PDF_TYPES },
+      { id: todoData.imageId, accept: IMAGE_TYPES },
     ])
     // The slug comes from the title once, here; `update` never touches it.
     const [todo] = await withUniqueSlug(
@@ -280,6 +286,7 @@ export function createTodosService(
   /**
    * A newly referenced file must be one `actorId` uploaded (400
    * `invalid_upload`); the todo's current files may be re-sent by anyone.
+   * Typed fields keep their type either way (400 `invalid_upload_type`).
    */
   async function update(id: string, data: UpdateTodoInput, actorId: string) {
     const { attachmentIds, ...todoData } = data
@@ -314,9 +321,9 @@ export function createTodosService(
         actorId,
         [
           ...(attachmentIds ?? []),
-          ...(contentImageIds ?? []),
-          todoData.fileId,
-          todoData.imageId,
+          ...(contentImageIds ?? []).map((id) => ({ id, accept: IMAGE_TYPES })),
+          { id: todoData.fileId, accept: PDF_TYPES },
+          { id: todoData.imageId, accept: IMAGE_TYPES },
         ],
         [
           current.fileId,

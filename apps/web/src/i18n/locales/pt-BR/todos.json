@@ -106,6 +106,7 @@
     "withoutSearch": "Nenhuma tarefa atende aos filtros aplicados. Tente remover um filtro ou mostrar as que atendem a qualquer condição."
   },
   "errors": {
-    "invalid_upload": "Um dos arquivos não foi enviado por você ou não existe mais. Remova-o e envie de novo."
+    "invalid_upload": "Um dos arquivos não foi enviado por você ou não existe mais. Remova-o e envie de novo.",
+    "invalid_upload_type": "Um dos arquivos não é do tipo que o campo aceita: a imagem e as imagens do conteúdo precisam ser imagens, e o PDF, um PDF. Remova-o e envie outro."
   }
 }

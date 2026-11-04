@@ -106,6 +106,7 @@
     "withoutSearch": "No todo matches the filters applied. Try removing a filter or showing the ones that match any condition."
   },
   "errors": {
-    "invalid_upload": "One of the files was not uploaded by you or no longer exists. Remove it and upload it again."
+    "invalid_upload": "One of the files was not uploaded by you or no longer exists. Remove it and upload it again.",
+    "invalid_upload_type": "One of the files is not of the type its field accepts: the image and the images in the content must be images, and the PDF a PDF. Remove it and upload another."
   }
 }

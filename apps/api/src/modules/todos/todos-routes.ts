@@ -153,7 +153,10 @@ export async function todosRoutes(
         tags: ['todos'],
         description: 'Create a todo',
         body: createTodoSchema,
-        response: { 201: todoSchema, 400: errorSchema('invalid_upload') },
+        response: {
+          201: todoSchema,
+          400: errorSchema('invalid_upload', 'invalid_upload_type'),
+        },
       },
       preHandler: [
         requireSubscription('todos'),
@@ -177,7 +180,7 @@ export async function todosRoutes(
         body: updateTodoSchema,
         response: {
           200: todoSchema,
-          400: errorSchema('invalid_upload'),
+          400: errorSchema('invalid_upload', 'invalid_upload_type'),
           404: z.object({ message: z.string() }),
         },
       },

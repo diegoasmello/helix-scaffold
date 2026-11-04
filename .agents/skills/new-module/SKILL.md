@@ -43,7 +43,7 @@ System fields:        <field — who writes it and when, from which transition (
 Business uniqueness:  <field(s) unique by product rule, or none>
 Slug:                 <no | yes, from <field>>
 Relations:            <field → module (select needs its /all), or none>
-Uploads:              <none | single file <field> | multiple; required?> · images inside rich text <field>: <yes | no>
+Uploads:              <none | single file <field> | multiple; required?; accepted types (any | images | PDF | …)> · images inside rich text <field>: <yes | no>
 Delete:               hard delete · the record's uploads <deleted with it | kept>
 Plan feature:         <none | <feature key>, declared in plan(s) <…>>
 

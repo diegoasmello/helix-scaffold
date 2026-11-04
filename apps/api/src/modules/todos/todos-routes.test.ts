@@ -1115,7 +1115,7 @@ describe('Upload ownership', () => {
     const [attachment, file, image] = await Promise.all([
       foreignUpload(),
       foreignUpload(),
-      foreignUpload(),
+      insertUpload('theirs.jpg', 'image/jpeg', null),
     ])
     const [todo] = await testDb
       .insert(todos)
@@ -1158,6 +1158,106 @@ describe('Upload ownership', () => {
       headers: { cookie: authCookie },
     })
     expect(res.statusCode).toBe(404)
+  })
+})
+
+describe('Upload types', () => {
+  async function createTodo(overrides: Record<string, unknown> = {}) {
+    const [attachment, file, image] = await Promise.all([
+      insertUpload(),
+      insertUpload('doc.pdf'),
+      insertUpload('img.jpg', 'image/jpeg'),
+    ])
+    return app.inject({
+      method: 'POST',
+      url: '/api/todos',
+      payload: {
+        title: 'Todo',
+        description: 'Desc',
+        content: 'Content',
+        date: '2025-01-01',
+        attachmentIds: [attachment.id],
+        fileId: file.id,
+        imageId: image.id,
+        ...overrides,
+      },
+      headers: { cookie: authCookie },
+    })
+  }
+
+  const img = (upload: { storageKey: string }) =>
+    `<img src="http://localhost:3333/api/files/${upload.storageKey}">`
+
+  it.each([
+    ['imageId', 'doc.pdf', 'application/pdf'],
+    ['fileId', 'img.png', 'image/png'],
+  ])(
+    'refuses a %s of the wrong type (%s) on create, and creates nothing',
+    async (field, name, mimeType) => {
+      const wrong = await insertUpload(name, mimeType)
+      const res = await createTodo({ [field]: wrong.id })
+      expect(res.statusCode).toBe(400)
+      expect(res.json().code).toBe('invalid_upload_type')
+      expect(await testDb.select().from(todos)).toHaveLength(0)
+    }
+  )
+
+  it('refuses a file that is not an image inside the content', async () => {
+    const pdf = await insertUpload('doc.pdf')
+    const res = await createTodo({ content: img(pdf) })
+    expect(res.statusCode).toBe(400)
+    expect(res.json().code).toBe('invalid_upload_type')
+  })
+
+  it('accepts any image type in the image', async () => {
+    const svg = await insertUpload('logo.svg', 'image/svg+xml')
+    const res = await createTodo({ imageId: svg.id })
+    expect(res.statusCode).toBe(201)
+  })
+
+  it('accepts any file type in the attachments', async () => {
+    const audio = await insertUpload('song.mp3', 'audio/mpeg')
+    const res = await createTodo({ attachmentIds: [audio.id] })
+    expect(res.statusCode).toBe(201)
+  })
+
+  it('refuses an image of the wrong type on update, and keeps the old one', async () => {
+    const created = (await createTodo()).json()
+    const pdf = await insertUpload('other.pdf')
+    const res = await app.inject({
+      method: 'PATCH',
+      url: `/api/todos/${created.id}`,
+      payload: { imageId: pdf.id },
+      headers: { cookie: authCookie },
+    })
+    expect(res.statusCode).toBe(400)
+    expect(res.json().code).toBe('invalid_upload_type')
+    const [row] = await testDb
+      .select({ imageId: todos.imageId })
+      .from(todos)
+      .where(eq(todos.id, created.id))
+    expect(row.imageId).toBe(created.image.id)
+  })
+
+  it('checks the type of a file the todo already has when it moves to another field', async () => {
+    // The todo's PDF re-sent as its image: kept, so its owner is not checked
+    // again — but the image field still takes only images.
+    const created = (await createTodo()).json()
+    const res = await app.inject({
+      method: 'PATCH',
+      url: `/api/todos/${created.id}`,
+      payload: { imageId: created.file.id },
+      headers: { cookie: authCookie },
+    })
+    expect(res.statusCode).toBe(400)
+    expect(res.json().code).toBe('invalid_upload_type')
+  })
+
+  it("answers invalid_upload, not the type, for someone else's file", async () => {
+    const theirs = await insertUpload('theirs.pdf', 'application/pdf', null)
+    const res = await createTodo({ imageId: theirs.id })
+    expect(res.statusCode).toBe(400)
+    expect(res.json().code).toBe('invalid_upload')
   })
 })
 
