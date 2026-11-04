@@ -20,6 +20,12 @@ import type { RoleFormValues, UpdateRoleInput } from '../types'
 import { RolesEdit } from './roles-edit'
 
 const mockNavigate = vi.fn()
+const mockNotify = vi.hoisted(() => vi.fn())
+
+vi.mock('@helix/ui', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@helix/ui')>()),
+  notify: mockNotify,
+}))
 
 vi.mock('.', () => ({
   rolesEditRoute: {
@@ -151,5 +157,32 @@ describe('RolesEdit', () => {
     await waitFor(() => {
       expect(mockNavigate).not.toHaveBeenCalled()
     })
+  })
+  it('explains why the API refused to edit a role above the user', async () => {
+    server.use(
+      patchRolesIdHandler(
+        () =>
+          new Response(
+            JSON.stringify({
+              message: 'This role has permissions your own role lacks',
+              code: 'role_not_editable',
+            }),
+            { status: 403 }
+          )
+      )
+    )
+
+    renderRolesEdit()
+    await screen.findByDisplayValue('Admin')
+    await userEvent.click(screen.getByRole('button', { name: 'Save' }))
+
+    await waitFor(() =>
+      expect(mockNotify).toHaveBeenCalledWith({
+        status: 'danger',
+        message:
+          "This role has permissions your own role doesn't have, so you can't change or delete it.",
+      })
+    )
+    expect(mockNavigate).not.toHaveBeenCalled()
   })
 })

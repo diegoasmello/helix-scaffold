@@ -104,5 +104,8 @@
     "title": "No todos found",
     "withSearch": "No todo matches the search “{{search}}” and the filters applied. Try removing a filter or changing the search.",
     "withoutSearch": "No todo matches the filters applied. Try removing a filter or showing the ones that match any condition."
+  },
+  "errors": {
+    "invalid_upload": "One of the files was not uploaded by you or no longer exists. Remove it and upload it again."
   }
 }

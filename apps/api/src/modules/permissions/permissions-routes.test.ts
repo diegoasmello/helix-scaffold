@@ -10,6 +10,7 @@ import {
   cleanupRoles,
   cleanupUsers,
   createRoleWithPermissions,
+  createSessionWithRole,
   createTestApp,
   createTestSession,
   testDb,
@@ -331,6 +332,96 @@ describe('PUT /roles/:id/permissions', () => {
       headers: { cookie: restrictedCookie },
     })
     expect(res.statusCode).toBe(403)
+  })
+})
+
+describe('Privilege ceiling', () => {
+  // A delegated moderator: manages roles and their permissions, can see and
+  // edit todos, nothing else (no todos:delete, no users:*).
+  const MODERATOR = [
+    { resource: 'roles', action: 'view' },
+    { resource: 'roles', action: 'edit' },
+    { resource: 'permissions', action: 'view' },
+    { resource: 'permissions', action: 'edit' },
+    { resource: 'todos', action: 'view' },
+    { resource: 'todos', action: 'edit' },
+  ]
+
+  async function moderator() {
+    const role = await createRoleWithPermissions(MODERATOR)
+    return { cookie: await createSessionWithRole(app, role.id), role }
+  }
+
+  function put(cookie: string, roleId: string, grants: object) {
+    return app.inject({
+      method: 'PUT',
+      url: `/api/roles/${roleId}/permissions`,
+      payload: { grants },
+      headers: { cookie },
+    })
+  }
+
+  it('lets a moderator grant a lower role what the moderator holds', async () => {
+    const { cookie } = await moderator()
+    const member = await createRoleWithPermissions([])
+    const res = await put(cookie, member.id, { todos: ['view', 'edit'] })
+    expect(res.statusCode).toBe(200)
+    expect(res.json().grants.todos.sort()).toEqual(['edit', 'view'])
+  })
+
+  it('refuses a permission the moderator lacks, and changes nothing', async () => {
+    const { cookie } = await moderator()
+    const member = await createRoleWithPermissions([
+      { resource: 'todos', action: 'view' },
+    ])
+    const res = await put(cookie, member.id, {
+      todos: ['view', 'delete'],
+      users: ['create'],
+    })
+    expect(res.statusCode).toBe(403)
+    expect(res.json().code).toBe('permissions_not_grantable')
+    expect(res.json().message).toContain('todos:delete')
+    expect(res.json().message).toContain('users:create')
+
+    const after = await app.inject({
+      method: 'GET',
+      url: `/api/roles/${member.id}/permissions`,
+      headers: { cookie: authCookie },
+    })
+    expect(after.json().grants).toEqual({ todos: ['view'] })
+  })
+
+  it("refuses to touch a role above the moderator's, even to remove", async () => {
+    const { cookie } = await moderator()
+    const admin = await createRoleWithPermissions([
+      ...MODERATOR,
+      { resource: 'users', action: 'create' },
+    ])
+    const res = await put(cookie, admin.id, {})
+    expect(res.statusCode).toBe(403)
+    expect(res.json().code).toBe('role_not_editable')
+  })
+
+  it('stops a moderator from raising their own role', async () => {
+    const { cookie, role } = await moderator()
+    const res = await put(cookie, role.id, {
+      roles: ['view', 'edit'],
+      permissions: ['view', 'edit'],
+      todos: ['view', 'edit', 'delete'],
+    })
+    expect(res.statusCode).toBe(403)
+    expect(res.json().code).toBe('permissions_not_grantable')
+  })
+
+  it('writes no audit entry for a refused change', async () => {
+    const { cookie } = await moderator()
+    const member = await createRoleWithPermissions([])
+    await put(cookie, member.id, { users: ['create'] })
+    const entries = await testDb
+      .select()
+      .from(auditLogs)
+      .where(eq(auditLogs.resourceId, member.id))
+    expect(entries).toHaveLength(0)
   })
 })
 

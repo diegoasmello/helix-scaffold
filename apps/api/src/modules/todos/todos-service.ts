@@ -13,6 +13,7 @@ import { normalizedValues } from '@/lib/normalize-text'
 import { getPaginationParams } from '@/lib/pagination'
 import { withUniqueSlug } from '@/lib/slug'
 import type { StorageProvider } from '@/lib/storage'
+import { assertUsableUploads } from '@/lib/upload-ownership'
 
 import type {
   CreateTodoInput,
@@ -198,8 +199,17 @@ export function createTodosService(
     }
   }
 
-  async function create(data: CreateTodoInput) {
+  /**
+   * `actorId` must have uploaded every referenced file (400 `invalid_upload`
+   * otherwise — see `assertUsableUploads`).
+   */
+  async function create(data: CreateTodoInput, actorId: string) {
     const { attachmentIds = [], ...todoData } = data
+    await assertUsableUploads(database, actorId, [
+      ...attachmentIds,
+      todoData.fileId,
+      todoData.imageId,
+    ])
     // The slug comes from the title once, here; `update` never touches it.
     const [todo] = await withUniqueSlug(
       database,
@@ -233,8 +243,34 @@ export function createTodosService(
     }
   }
 
-  async function update(id: string, data: UpdateTodoInput) {
+  /**
+   * A newly referenced file must be one `actorId` uploaded (400
+   * `invalid_upload`); the todo's current files may be re-sent by anyone.
+   */
+  async function update(id: string, data: UpdateTodoInput, actorId: string) {
     const { attachmentIds, ...todoData } = data
+
+    if (attachmentIds || todoData.fileId || todoData.imageId) {
+      const [current] = await database
+        .select({ fileId: todos.fileId, imageId: todos.imageId })
+        .from(todos)
+        .where(eq(todos.id, id))
+      if (!current) return null
+      const currentAttachments = await database
+        .select({ id: todoAttachments.uploadId })
+        .from(todoAttachments)
+        .where(eq(todoAttachments.todoId, id))
+      await assertUsableUploads(
+        database,
+        actorId,
+        [...(attachmentIds ?? []), todoData.fileId, todoData.imageId],
+        [
+          current.fileId,
+          current.imageId,
+          ...currentAttachments.map((a) => a.id),
+        ]
+      )
+    }
 
     let todo: typeof todos.$inferSelect | undefined
 

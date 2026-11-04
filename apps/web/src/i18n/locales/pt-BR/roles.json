@@ -77,6 +77,8 @@
   "errors": {
     "default_role": "O perfil padrão de cadastro não pode ser excluído. Defina outro perfil como padrão antes.",
     "role_in_use": "Este perfil ainda tem usuários. Mova-os para outro perfil antes.",
-    "role_not_found": "Este perfil não existe mais."
+    "role_not_found": "Este perfil não existe mais.",
+    "role_not_editable": "Este perfil tem permissões que o seu próprio perfil não tem, então você não pode alterá-lo nem excluí-lo.",
+    "permissions_not_grantable": "Você não pode conceder permissões que o seu próprio perfil não tem."
   }
 }

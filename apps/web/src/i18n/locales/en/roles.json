@@ -77,6 +77,8 @@
   "errors": {
     "default_role": "The default registration role cannot be deleted. Make another role the default first.",
     "role_in_use": "This role still has users. Move them to another role first.",
-    "role_not_found": "This role no longer exists."
+    "role_not_found": "This role no longer exists.",
+    "role_not_editable": "This role has permissions your own role doesn't have, so you can't change or delete it.",
+    "permissions_not_grantable": "You can't grant permissions your own role doesn't have."
   }
 }

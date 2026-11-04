@@ -50,6 +50,7 @@ Factory `createTodosService(database, storage)` returns `{ list, getById, getByS
 
 - `list` applies filters (`FILTER_COLUMNS`, `FILTER_COERCE` for `date`, `NORMALIZED_FILTER_COLUMNS` for the text operators on `title`/`description`) and the `search` param (`SEARCH_COLUMNS`: `normalizedTitle`, `normalizedDescription` — combined with `and()`), ordering (`SORT_COLUMNS`, then `id`) and pagination, then loads attachments (one query for the page, via `todo_attachments`) and the single `file`/`image` uploads (one `inArray` query).
 - `getById` / `getBySlug` share `findOne(where)`, which assembles the embedded uploads.
+- `create(data, actorId)` / `update(id, data, actorId)` first check the referenced uploads with `assertUsableUploads()` (`src/lib/upload-ownership.ts`): each `attachmentIds` / `fileId` / `imageId` must have been uploaded by `actorId` (`request.sessionUser.id`), or already belong to this todo on update (another editor re-sends them) — else **400** `invalid_upload`, before anything is written. `update` answers `null` for an unknown id before looking at uploads.
 - `create` inserts the row with `normalizedValues(data, TODO_NORMALIZED_FIELDS)` (no `status` — the DB default applies) and a slug from `withUniqueSlug(database, TODO_SLUG, title, insert)`, then inserts one `todo_attachments` row per `attachmentId`.
 - `update` updates only the sent columns, and the normalized copy of each text field sent (same `normalizedValues` call) — never the slug, even when `title` changes; when `attachmentIds` is sent it fully resyncs the junction rows (delete all, insert new). Returns `null` for an unknown id.
 - `remove` is a hard delete: collects the todo's attachment, file and image uploads → deletes the todo (cascades the junction rows) → deletes those `uploads` rows → deletes their storage keys, original + variants (best-effort, `Promise.allSettled`).
@@ -69,8 +70,8 @@ preHandler: [requireSubscription('todos'), requirePermission('todos', 'view')]
 | `GET` | `/todos` | `[requireSubscription('todos'), requirePermission('todos', 'view')]` | — |
 | `GET` | `/todos/:id` | `[requireSubscription('todos'), requirePermission('todos', 'view')]` | — |
 | `GET` | `/todos/by-slug/:slug` | `[requireSubscription('todos'), requirePermission('todos', 'view')]` | — |
-| `POST` | `/todos` | `[requireSubscription('todos'), requirePermission('todos', 'create')]` | `request.audit('create', 'todos', id, body)` |
-| `PATCH` | `/todos/:id` | `[requireSubscription('todos'), requirePermission('todos', 'edit')]` | `request.audit('edit', 'todos', id, body)` |
+| `POST` | `/todos` | `[requireSubscription('todos'), requirePermission('todos', 'create')]` | `request.audit('create', 'todos', id, body)` — 400 `invalid_upload` |
+| `PATCH` | `/todos/:id` | `[requireSubscription('todos'), requirePermission('todos', 'edit')]` | `request.audit('edit', 'todos', id, body)` — 400 `invalid_upload` |
 | `DELETE` | `/todos/:id` | `[requireSubscription('todos'), requirePermission('todos', 'delete')]` | `request.audit('delete', 'todos', id)` |
 
 `GET /todos/by-slug/:slug` is the lookup of a public page (200 or 404); its explicit `operationId: 'getTodoBySlug'` keeps kubb from generating a broken mock (see `apps/api/CLAUDE.md` → _Slugs_). `GET /todos/export` does not clash with `GET /todos/:id`: Fastify's router (find-my-way) always prefers a static segment over a parametric one, whatever the registration order.
@@ -115,13 +116,14 @@ Route integration tests against the real test database (`helix_test`).
 
 - `beforeEach` runs `cleanupTodos()` and `cleanupUploads()`.
 - The top-level 401 test hits `GET /todos` without a cookie.
-- `POST /todos` sends `date` as an ISO string (`'2025-03-20'`) — `z.coerce.date()` parses it — plus real upload ids from the local `insertUpload()` helper (a `testDb.insert(uploads)` row — reuse it when a test needs uploads).
+- `POST /todos` sends `date` as an ISO string (`'2025-03-20'`) — `z.coerce.date()` parses it — plus real upload ids from the local `insertUpload()` helper (a `testDb.insert(uploads)` row owned by the test user — `uploadedBy: null` stands for someone else's; reuse it when a test needs uploads).
 - `PATCH` asserts that fields not sent in the body (`description`) remain unchanged.
 - `DELETE` asserts 204 both for existing and non-existing ids.
 - Rows are inserted with `todoRow({...})` (`src/test/helpers.ts`), which fills the normalized columns and a unique `slug` (title + random suffix, unless given).
 - `describe('Slug')` is the reference for the slug tests: generation, suffix, fallback, suffixed slug cut to 100 characters, concurrent creates, body `slug` ignored, stable on title change, unique index, `GET /todos/by-slug/:slug`.
 - `describe('Normalized text columns')` is the reference for the pattern's tests: accent/case/whitespace-insensitive search and text filters, `eq` exact, sort, columns absent from the response, `POST`/`PATCH` writing them.
 - `describe('Filtering')` is the reference for filter tests (see `apps/api/CLAUDE.md` → _Filtering_).
+- `describe('Upload ownership')` — someone else's upload in `attachmentIds`/`fileId`/`imageId` on create (400, nothing written), an unknown id, adding one on update (400, attachments unchanged), another editor re-sending the todo's own files (200), 404 before the upload check.
 - `describe('Attachments')` covers create/read/update of `attachmentIds` and that deleting a todo removes its attachment rows.
 
 **Subscription in tests:** `createTestSession()` creates an active `pro` subscription for the test admin (subscriptions are always enabled in tests via `src/config/test-overrides.ts`), so individual tests never set one up.

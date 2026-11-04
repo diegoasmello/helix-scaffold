@@ -2,7 +2,6 @@ import { asc, count, desc, eq } from 'drizzle-orm'
 
 import type { Auth } from '@/auth'
 import type { Config } from '@/config'
-import { isDeclaredPermission } from '@/config/permissions'
 import type { Database } from '@/db'
 import { roles, user } from '@/db/schema'
 import { DomainError } from '@/lib/domain-errors'
@@ -83,32 +82,8 @@ export function createUsersService(
   config: Pick<Config, 'registration'>
 ) {
   const provisioning = createAccountProvisioning(database, auth, config)
-  const permissions = createPermissionsService(database)
 
-  /**
-   * The role's grants as `resource:action` strings. Only catalog pairs count:
-   * a leftover row for a removed resource gives no access (`requirePermission`
-   * accepts declared pairs only), so it must not block anyone either.
-   */
-  async function grantsOf(roleId: string | null): Promise<Set<string>> {
-    if (!roleId) return new Set()
-    const grants = await permissions.getByRoleId(roleId)
-    return new Set(
-      Object.entries(grants).flatMap(([resource, actions]) =>
-        actions
-          .filter((action) => isDeclaredPermission(resource, action))
-          .map((action) => `${resource}:${action}`)
-      )
-    )
-  }
-
-  /** Whether `roleId` grants something the actor's own role does not. */
-  async function exceeds(roleId: string | null, actorGrants: Set<string>) {
-    for (const grant of await grantsOf(roleId)) {
-      if (!actorGrants.has(grant)) return true
-    }
-    return false
-  }
+  const { grantsOf, exceeds } = createPermissionsService(database)
 
   async function list(query: UsersListQuery) {
     const { limit, offset } = getPaginationParams(query.page, query.pageSize)

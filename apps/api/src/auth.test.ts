@@ -1,9 +1,9 @@
-import { like } from 'drizzle-orm'
+import { eq, like } from 'drizzle-orm'
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 
 import { createAuth } from '@/auth'
 import { config } from '@/config'
-import { verification } from '@/db/schema'
+import { user, verification } from '@/db/schema'
 import type { EmailProvider } from '@/lib/email'
 import {
   cleanupAuth,
@@ -98,5 +98,43 @@ describe('password reset', () => {
         'Failed to send password reset email'
       )
     )
+  })
+})
+
+describe('email templates', () => {
+  it('escapes the change-email link, so a crafted callbackURL cannot inject HTML', async () => {
+    const sent: string[] = []
+    const capturingProvider: EmailProvider = {
+      send: async (_to, _subject, html) => {
+        sent.push(html)
+      },
+    }
+    const auth = createAuth(testDb, capturingProvider, config)
+
+    const email = `templates-${Date.now()}@test.com`
+    const signUp = await app.inject({
+      method: 'POST',
+      url: '/api/auth/sign-up/email',
+      payload: { email, name: 'Templates', password: 'Password123!' },
+    })
+    expect(signUp.statusCode).toBe(200)
+    await testDb
+      .update(user)
+      .set({ emailVerified: true })
+      .where(eq(user.email, email))
+
+    await auth.api.changeEmail({
+      body: {
+        newEmail: `new-${email}`,
+        callbackURL: '/me"><h1>Your account is locked</h1><a href="x',
+      },
+      headers: new Headers({
+        cookie: cookieHeader(signUp.headers['set-cookie']),
+      }),
+    })
+
+    await vi.waitFor(() => expect(sent).toHaveLength(1))
+    expect(sent[0]).not.toContain('<h1>')
+    expect(sent[0]).toContain('&quot;&gt;&lt;h1&gt;')
   })
 })

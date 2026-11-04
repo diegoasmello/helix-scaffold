@@ -13,6 +13,7 @@ import {
   createRoleWithPermissions,
   createTestApp,
   createTestSession,
+  getTestUser,
   testDb,
 } from '@/test/helpers'
 
@@ -363,9 +364,12 @@ describe('GET /audit-logs/export', () => {
 
 describe('Audit logging via onResponse hook', () => {
   it('creates an audit log entry when a todo is created', async () => {
+    // A todo may only reference uploads its author uploaded.
+    const { id: uploadedBy } = await getTestUser()
     const [attachment] = await testDb
       .insert(uploads)
       .values({
+        uploadedBy,
         originalName: 'att.pdf',
         mimeType: 'application/pdf',
         fileSize: 100,
@@ -377,6 +381,7 @@ describe('Audit logging via onResponse hook', () => {
     const [file] = await testDb
       .insert(uploads)
       .values({
+        uploadedBy,
         originalName: 'doc.pdf',
         mimeType: 'application/pdf',
         fileSize: 100,
@@ -388,6 +393,7 @@ describe('Audit logging via onResponse hook', () => {
     const [image] = await testDb
       .insert(uploads)
       .values({
+        uploadedBy,
         originalName: 'img.jpg',
         mimeType: 'image/jpeg',
         fileSize: 100,

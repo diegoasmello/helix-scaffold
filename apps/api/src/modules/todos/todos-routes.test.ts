@@ -15,6 +15,7 @@ import {
   createTestApp,
   createTestSession,
   findAuditLogs,
+  getTestUser,
   grantActiveSubscription,
   testDb,
   todoRow,
@@ -22,16 +23,24 @@ import {
 
 const app = createTestApp()
 let authCookie = ''
+/** The signed-in test user: a todo may only reference uploads it uploaded. */
+let testUserId = ''
 
 beforeAll(async () => {
   await cleanupAuth()
   authCookie = await createTestSession(app)
+  testUserId = (await getTestUser()).id
 })
 
-async function insertUpload(name = 'file.pdf', mimeType = 'application/pdf') {
+async function insertUpload(
+  name = 'file.pdf',
+  mimeType = 'application/pdf',
+  uploadedBy: string | null = testUserId
+) {
   const [upload] = await testDb
     .insert(uploads)
     .values({
+      uploadedBy,
       originalName: name,
       mimeType,
       fileSize: 100,
@@ -768,6 +777,7 @@ describe('Attachments', () => {
     const [upload2] = await testDb
       .insert(uploads)
       .values({
+        uploadedBy: testUserId,
         originalName: 'other.pdf',
         mimeType: 'application/pdf',
         fileSize: 200,
@@ -842,6 +852,123 @@ describe('Attachments', () => {
       .from(uploads)
       .where(eq(uploads.id, upload.id))
     expect(remainingUpload).toBeUndefined()
+  })
+})
+
+describe('Upload ownership', () => {
+  // `uploadedBy: null` stands for someone else's upload (its uploader is not
+  // the signed-in test user).
+  const foreignUpload = () =>
+    insertUpload('theirs.pdf', 'application/pdf', null)
+
+  async function createTodo(overrides: Record<string, unknown> = {}) {
+    const [attachment, file, image] = await Promise.all([
+      insertUpload(),
+      insertUpload('doc.pdf'),
+      insertUpload('img.jpg', 'image/jpeg'),
+    ])
+    return app.inject({
+      method: 'POST',
+      url: '/api/todos',
+      payload: {
+        title: 'Todo',
+        description: 'Desc',
+        content: 'Content',
+        date: '2025-01-01',
+        attachmentIds: [attachment.id],
+        fileId: file.id,
+        imageId: image.id,
+        ...overrides,
+      },
+      headers: { cookie: authCookie },
+    })
+  }
+
+  it.each(['attachmentIds', 'fileId', 'imageId'])(
+    "refuses someone else's upload in %s on create, and creates nothing",
+    async (field) => {
+      const theirs = await foreignUpload()
+      const res = await createTodo({
+        [field]: field === 'attachmentIds' ? [theirs.id] : theirs.id,
+      })
+      expect(res.statusCode).toBe(400)
+      expect(res.json().code).toBe('invalid_upload')
+      expect(await testDb.select().from(todos)).toHaveLength(0)
+    }
+  )
+
+  it('answers an unknown upload id the same way', async () => {
+    const res = await createTodo({ fileId: crypto.randomUUID() })
+    expect(res.statusCode).toBe(400)
+    expect(res.json().code).toBe('invalid_upload')
+  })
+
+  it("refuses to add someone else's upload on update, and leaves the attachments as they were", async () => {
+    const created = (await createTodo()).json()
+    const theirs = await foreignUpload()
+    const res = await app.inject({
+      method: 'PATCH',
+      url: `/api/todos/${created.id}`,
+      payload: { attachmentIds: [created.attachments[0].id, theirs.id] },
+      headers: { cookie: authCookie },
+    })
+    expect(res.statusCode).toBe(400)
+    expect(res.json().code).toBe('invalid_upload')
+    const rows = await testDb
+      .select()
+      .from(todoAttachments)
+      .where(eq(todoAttachments.todoId, created.id))
+    expect(rows.map((r) => r.uploadId)).toEqual([created.attachments[0].id])
+  })
+
+  it('lets another editor re-send the files the todo already has', async () => {
+    // A todo someone else filled: none of its uploads are the test user's.
+    const [attachment, file, image] = await Promise.all([
+      foreignUpload(),
+      foreignUpload(),
+      foreignUpload(),
+    ])
+    const [todo] = await testDb
+      .insert(todos)
+      .values(
+        todoRow({
+          title: 'Theirs',
+          description: 'Desc',
+          content: 'Content',
+          date: new Date('2025-01-01'),
+          fileId: file.id,
+          imageId: image.id,
+        })
+      )
+      .returning()
+    await testDb
+      .insert(todoAttachments)
+      .values({ todoId: todo.id, uploadId: attachment.id })
+
+    const res = await app.inject({
+      method: 'PATCH',
+      url: `/api/todos/${todo.id}`,
+      payload: {
+        title: 'Edited',
+        attachmentIds: [attachment.id],
+        fileId: file.id,
+        imageId: image.id,
+      },
+      headers: { cookie: authCookie },
+    })
+    expect(res.statusCode).toBe(200)
+    expect(res.json().title).toBe('Edited')
+  })
+
+  it('answers 404 for an unknown todo before looking at its uploads', async () => {
+    const theirs = await foreignUpload()
+    const res = await app.inject({
+      method: 'PATCH',
+      url: `/api/todos/${crypto.randomUUID()}`,
+      payload: { fileId: theirs.id },
+      headers: { cookie: authCookie },
+    })
+    expect(res.statusCode).toBe(404)
   })
 })
 

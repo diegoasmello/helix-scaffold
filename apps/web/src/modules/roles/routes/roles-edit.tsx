@@ -3,7 +3,7 @@ import { Button, Form, notify, PageEdit, useForm } from '@helix/ui'
 import { useMutation } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 
-import { apiErrorCode } from '@/lib/api-errors'
+import { apiErrorCode, apiErrorMessage } from '@/lib/api-errors'
 import { useResourceCache } from '@/lib/resource-cache'
 
 import { RolesForm } from '../components/roles-form'
@@ -56,7 +56,14 @@ export function RolesEdit() {
             form.setFieldError('name', t('form.name.taken'))
             return
           }
-          notify({ status: 'danger', message: t('notifications.updateFailed') })
+          notify({
+            status: 'danger',
+            message: apiErrorMessage(
+              error,
+              'roles',
+              'notifications.updateFailed'
+            ),
+          })
         },
       }
     )

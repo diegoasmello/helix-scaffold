@@ -1,5 +1,6 @@
 import z from 'zod'
 
+import { errorSchema } from '@/lib/domain-errors'
 import { buildPaginatedResponse } from '@/lib/pagination'
 import type { StorageProvider } from '@/lib/storage'
 
@@ -152,7 +153,7 @@ export async function todosRoutes(
         tags: ['todos'],
         description: 'Create a todo',
         body: createTodoSchema,
-        response: { 201: todoSchema },
+        response: { 201: todoSchema, 400: errorSchema('invalid_upload') },
       },
       preHandler: [
         requireSubscription('todos'),
@@ -160,7 +161,7 @@ export async function todosRoutes(
       ],
     },
     async (request, reply) => {
-      const todo = await service.create(request.body)
+      const todo = await service.create(request.body, request.sessionUser.id)
       await request.audit('create', 'todos', todo.id, request.body)
       return reply.status(201).send(todo)
     }
@@ -176,6 +177,7 @@ export async function todosRoutes(
         body: updateTodoSchema,
         response: {
           200: todoSchema,
+          400: errorSchema('invalid_upload'),
           404: z.object({ message: z.string() }),
         },
       },
@@ -185,7 +187,11 @@ export async function todosRoutes(
       ],
     },
     async (request, reply) => {
-      const todo = await service.update(request.params.id, request.body)
+      const todo = await service.update(
+        request.params.id,
+        request.body,
+        request.sessionUser.id
+      )
       if (!todo) return reply.status(404).send({ message: 'Todo not found' })
       await request.audit('edit', 'todos', request.params.id, request.body)
       return todo

@@ -12,9 +12,13 @@ interface EmailProvider {
 
 `send` throws on delivery failure. Callers decide whether to propagate the error (email is critical — e.g. email change verification) or swallow it (email is best-effort — e.g. password change notification).
 
+## Templates
+
+Every value placed in an email's HTML goes through `escapeHtml()` (exported from `index.ts`) — including the links better-auth builds: the change-email link carries the caller's raw `callbackURL`, so an unescaped `"` would let anyone inject HTML into a message sent from the app's own address. Covered in `src/auth.test.ts` (`describe('email templates')`).
+
 ## Implementations
 
-Both are private factory functions in `index.ts`; only `EmailProvider` (the interface) and `createEmailProvider` are exported.
+Both are private factory functions in `index.ts`; only `EmailProvider` (the interface), `createEmailProvider` and `escapeHtml` are exported.
 
 | Implementation | When used |
 |---|---|

@@ -29,13 +29,23 @@ No entity schema for a "permission" object. The schemas are:
 
 ## Service (`permissions-service.ts`)
 
-`createPermissionsService(database)` returns `{ getByRoleId, replaceForRole, hasPermission }`.
+`createPermissionsService(database)` returns `{ getByRoleId, replaceForRole, hasPermission, grantsOf, exceeds, assertRoleManageable }`.
 
 **`getByRoleId(roleId)`** — selects all rows for the role and collapses them into a `Grants` object: `{ [resource]: action[] }`. Returns `{}` when the role has no permissions.
 
 **`replaceForRole(roleId, grants)`** — runs inside a **single transaction**: deletes all existing rows for `roleId`, then bulk-inserts the new set (duplicate actions within a resource are dropped, so they never hit the unique index). Returns the result of `getByRoleId` after the transaction. If `grants` is empty, the delete runs but no insert follows — the role ends up with no permissions.
 
 **`hasPermission(roleId, resource, action)`** — point-lookup with `.limit(1)`. Returns `boolean`. Used by `createRequirePermission` (`src/hooks/require-permission.ts`) on every authenticated request.
+
+### Privilege ceiling
+
+Delegated moderation: a role may manage other roles and their permissions (`roles:*`, `permissions:edit`) without being able to climb to admin. **Nobody grants, or manages a role holding, more than their own role has.** The permissions that stay admin-only are simply the ones the admin does not give the moderator's role. The users module applies the same rule to accounts (`src/modules/users/CLAUDE.md` → _Privilege ceiling_).
+
+- **`grantsOf(roleId)`** — the role's grants as a `Set` of `resource:action` strings; `null` → empty. Only catalog pairs count (`isDeclaredPermission()`): a leftover row for a removed resource gives no access, so it must not block anyone either.
+- **`exceeds(roleId, actorGrants)`** — whether `roleId` grants a pair missing from `actorGrants`. An unknown role grants nothing, so it never exceeds (the caller's own 404 follows).
+- **`assertRoleManageable(roleId, actorRoleId)`** — throws 403 `role_not_editable` when the role exceeds the actor's; returns the actor's grants. Called by `PUT /roles/:id/permissions` and by the roles service's `update` / `remove`.
+
+A caller holding every permission (the bootstrap Admin) is never limited. A moderator may edit their own role, but only to remove: adding anything is a pair they lack.
 
 ## Routes (`permissions-routes.ts`)
 
@@ -55,6 +65,7 @@ Four endpoints across two URL namespaces:
 **`PUT /roles/:id/permissions`** — uses `PUT` (full replacement), not `PATCH`. The body is `{ grants: Grants }`, identical in shape to the response.
 
 - **400** `{ message: 'Unknown permissions: <resource:action>, …' }` when any grant is not declared in `RESOURCE_DEFINITIONS` — checked by `findUnknownGrants()` (`src/config/permissions.ts`) before anything is written, so the request is all-or-nothing.
+- **403** — privilege ceiling, checked after the 400 and before anything is written: `role_not_editable` when the role grants something the caller's role lacks (even to remove grants from it), `permissions_not_grantable` when the body grants a pair the caller's role lacks (`message` lists them). `permission_denied` is `requirePermission()`'s.
 - **404** `{ message: 'Role not found' }` for an unknown role id (Postgres FK violation, read with `getPgErrorCode`).
 - **Audit:** `request.audit('edit', 'permissions', roleId, { grants })` after a successful replace.
 
@@ -87,6 +98,8 @@ Only `view` and `edit` — there is no `create` or `delete` action. Permissions 
 **`GET /roles/:id/permissions`** — uses `createRoleWithPermissions` seeder; asserts with `expect.arrayContaining` (order of actions in the array is not guaranteed).
 
 **`PUT /roles/:id/permissions`** — covers: replace with new grants, clear all grants with `{}`, 400 for an unknown resource (and existing grants untouched), 400 for an undeclared action, 404 for an unknown role, duplicate actions deduplicated, audit entry written.
+
+**`describe('Privilege ceiling')`** — a moderator (`roles:view/edit`, `permissions:view/edit`, `todos:view/edit`) built with `createRoleWithPermissions` + `createSessionWithRole` (`src/test/helpers.ts`): grants what it holds to a lower role (200), a pair it lacks (403 `permissions_not_grantable`, the role unchanged), any change to a broader role (403 `role_not_editable`), raising its own role (403), no audit entry for a refusal.
 
 **Permission enforcement** is tested inline within the relevant `describe` blocks rather than in a separate `Permission enforcement` block — `GET /roles/:id/permissions` tests 403, `PUT /roles/:id/permissions` tests 403. The pattern differs slightly from other modules: some tests insert users directly via `testDb.insert(user)` instead of using the sign-up endpoint.
 

@@ -5,7 +5,7 @@ import { createAuthMiddleware } from 'better-auth/api'
 import type { Config } from '@/config'
 import type { Database } from '@/db'
 import { env } from '@/env'
-import type { EmailProvider } from '@/lib/email'
+import { type EmailProvider, escapeHtml } from '@/lib/email'
 import {
   applySelfRegistrationDefaults,
   type ProvisioningLogger,
@@ -79,7 +79,7 @@ export function createAuth(
             'Reset your password',
             `<p>You requested a password reset.</p>
            <p>Click the link below to reset your password:</p>
-           <p><a href="${url.replace(/"/g, '&quot;')}">Reset password</a></p>
+           <p><a href="${escapeHtml(url)}">Reset password</a></p>
            <p>This link expires in 1 hour. If you did not request this change, you can safely ignore this email.</p>`
           )
           .catch((error: unknown) => {
@@ -98,7 +98,7 @@ export function createAuth(
           'Confirm your new email address',
           `<p>You requested an email address change.</p>
            <p>Click the link below to confirm your new email address:</p>
-           <p><a href="${url}">Confirm new email address</a></p>
+           <p><a href="${escapeHtml(url)}">Confirm new email address</a></p>
            <p>This link expires in 1 hour. If you did not request this change, you can safely ignore this email.</p>`
         )
       },

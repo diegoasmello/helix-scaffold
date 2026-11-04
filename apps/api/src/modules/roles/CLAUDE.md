@@ -39,6 +39,8 @@ When `registration.mode` is `'open'`, the User role created during bootstrap has
 
 **`listAll()`** — returns all roles sorted by `name asc` with no pagination. Used by `GET /roles/all`. Always sorted alphabetically regardless of query params.
 
+**`update(id, data, actorRoleId)` / `remove(id, actorRoleId)`** — receive the caller's role (`request.sessionUser.roleId`) and start with `assertRoleManageable()` from the permissions service: a role granting something the caller's role lacks answers **403** `role_not_editable` — no renaming it, deleting it or making it the default for self-registration (which would hand its permissions to every new sign-up). See `src/modules/permissions/CLAUDE.md` → _Privilege ceiling_. An unknown id passes the check (it grants nothing) and still ends in 404 / 204.
+
 **`hasUsers(id)`** — point-lookup on the `user` table with `.limit(1)`: checks whether any user has `roleId = id`. Returns `boolean`. Called by `DELETE /roles/:id` before deletion.
 
 ## Routes (`roles-routes.ts`)
@@ -51,8 +53,8 @@ Receives `{ database, requirePermission }` — no `auth` parameter.
 | `GET`    | `/roles/all` | `roles:view`    | Plain array, sorted by name, no pagination params            |
 | `GET`    | `/roles/:id` | `roles:view`    |                                                              |
 | `POST`   | `/roles`     | `roles:create`  | **409** `name_taken` on a duplicate name. Audit: `request.audit('create', 'roles', id, body)` |
-| `PATCH`  | `/roles/:id` | `roles:edit`    | **409** `name_taken` on a duplicate name. Audit: `request.audit('edit', 'roles', id, body)` |
-| `DELETE` | `/roles/:id` | `roles:delete`  | Returns **409** when role has assigned users; audit on success |
+| `PATCH`  | `/roles/:id` | `roles:edit`    | **403** `role_not_editable` for a role above the caller's. **409** `name_taken` on a duplicate name. Audit: `request.audit('edit', 'roles', id, body)` |
+| `DELETE` | `/roles/:id` | `roles:delete`  | **403** `role_not_editable` for a role above the caller's. Returns **409** when role has assigned users; audit on success |
 
 **`DELETE` guard** — in `service.remove()`, which throws a `DomainError` before deleting:
 1. `role?.isDefault` → `409 { message: 'Cannot delete the default registration role', code: 'default_role' }` — prevents silently breaking open registration.
@@ -77,5 +79,7 @@ No audit call on 409. Returns 204 even when the role id does not exist, but audi
 **`GET /roles/all`** — asserts exact alphabetical order (`alpha`, `beta`, `zeta`) after inserting three roles in a different order.
 
 **`DELETE` 409 test** — seeds a role, inserts a user with `roleId` pointing to it, then asserts 409. Requires `testDb.insert(user).values({ id: uuidv7(), ..., roleId: inserted.id })`.
+
+**`describe('Privilege ceiling')`** — a moderator (`roles:view/edit/delete`, `todos:view`) against a broader and a narrower role: PATCH `isDefault` on the broader one (403, flag unchanged), DELETE it (403, row kept); both succeed on the narrower one.
 
 Permission enforcement email pattern: `restricted-roles-${Date.now()}@test.com`.

@@ -9,6 +9,7 @@ import {
   cleanupRoles,
   cleanupUsers,
   createRoleWithPermissions,
+  createSessionWithRole,
   createTestApp,
   createTestSession,
   findAuditLogs,
@@ -348,6 +349,81 @@ describe('DELETE /roles/:id', () => {
       code: 'default_role',
     })
     expect(await findAuditLogs('delete', 'roles', inserted.id)).toHaveLength(0)
+  })
+})
+
+describe('Privilege ceiling', () => {
+  const MODERATOR = [
+    { resource: 'roles', action: 'view' },
+    { resource: 'roles', action: 'edit' },
+    { resource: 'roles', action: 'delete' },
+    { resource: 'todos', action: 'view' },
+  ]
+
+  async function setup() {
+    const moderatorRole = await createRoleWithPermissions(MODERATOR)
+    const cookie = await createSessionWithRole(app, moderatorRole.id)
+    const above = await createRoleWithPermissions([
+      ...MODERATOR,
+      { resource: 'users', action: 'create' },
+    ])
+    const below = await createRoleWithPermissions([
+      { resource: 'todos', action: 'view' },
+    ])
+    return { cookie, above, below }
+  }
+
+  it("refuses to make a role above the moderator's the registration default", async () => {
+    const { cookie, above } = await setup()
+    const res = await app.inject({
+      method: 'PATCH',
+      url: `/api/roles/${above.id}`,
+      payload: { isDefault: true },
+      headers: { cookie },
+    })
+    expect(res.statusCode).toBe(403)
+    expect(res.json().code).toBe('role_not_editable')
+    const [row] = await testDb
+      .select()
+      .from(roles)
+      .where(eq(roles.id, above.id))
+    expect(row.isDefault).toBe(false)
+  })
+
+  it('lets the moderator edit a role below theirs', async () => {
+    const { cookie, below } = await setup()
+    const res = await app.inject({
+      method: 'PATCH',
+      url: `/api/roles/${below.id}`,
+      payload: { name: 'Members', isDefault: true },
+      headers: { cookie },
+    })
+    expect(res.statusCode).toBe(200)
+    expect(res.json()).toMatchObject({ name: 'Members', isDefault: true })
+  })
+
+  it("refuses to delete a role above the moderator's", async () => {
+    const { cookie, above } = await setup()
+    const res = await app.inject({
+      method: 'DELETE',
+      url: `/api/roles/${above.id}`,
+      headers: { cookie },
+    })
+    expect(res.statusCode).toBe(403)
+    expect(res.json().code).toBe('role_not_editable')
+    expect(
+      await testDb.select().from(roles).where(eq(roles.id, above.id))
+    ).toHaveLength(1)
+  })
+
+  it('lets the moderator delete a role below theirs', async () => {
+    const { cookie, below } = await setup()
+    const res = await app.inject({
+      method: 'DELETE',
+      url: `/api/roles/${below.id}`,
+      headers: { cookie },
+    })
+    expect(res.statusCode).toBe(204)
   })
 })
 

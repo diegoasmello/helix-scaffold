@@ -134,6 +134,7 @@ createXxxSchema = z.object({ ..., attachmentIds: z.array(z.string()).optional().
 
 Pass `storage: StorageProvider` into the service factory alongside `database`.
 
+- **ownership** (create and update) — before writing, call `assertUsableUploads(database, actorId, ids, alreadyReferenced)` (`src/lib/upload-ownership.ts`) with every upload id the body references (`attachmentIds`, `fileId`, …) and the route's `request.sessionUser.id`. It answers **400** `invalid_upload` for an id the caller did not upload (an unknown id too). Without it, anyone with `xxx:create` who learns another user's upload id could attach it — its file then opens for every reader of the record (_Serving files_), and deleting the record deletes it. On update, pass the record's current upload ids as `alreadyReferenced`: another editor re-sends them unchanged. Declare `400: errorSchema('invalid_upload')` on both routes and add `errors.invalid_upload` to the module's web locales. `todos-service.ts` is the reference.
 - **reads** (`getById`, `list`) — LEFT JOIN `xxx_attachments` + `uploads` and aggregate into `attachments: Upload[]`
 - **create** — after inserting the record, insert rows into `xxx_attachments` for each `attachmentId`
 - **update** — DELETE existing `xxx_attachments` rows, INSERT new ones (simple full sync)

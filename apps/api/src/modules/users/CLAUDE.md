@@ -37,7 +37,7 @@ Factory signature: `createUsersService(database: Database, auth: Auth, config)` 
 
 **`list`, `listAll` and `getById`** do a `leftJoin(roles, eq(user.roleId, roles.id))` and pass the row through the private `toUserWithRole` helper. This helper aliases the join columns (`roleRefId`, `roleName`) to avoid collisions, then rebuilds `role: { id, name } | null`.
 
-**Privilege ceiling** — `create(data, actorRoleId)` and `update(id, data, actorRoleId)` receive the caller's role (`request.sessionUser.roleId`). A role *exceeds* the caller when it grants a catalog `resource:action` pair (`isDeclaredPermission()` — leftover rows for removed resources are ignored) that the caller's role does not. So a user manager can never create or promote an account above their own role, nor take over a higher one. A caller holding every permission (the bootstrap Admin) is never limited.
+**Privilege ceiling** — `create(data, actorRoleId)` and `update(id, data, actorRoleId)` receive the caller's role (`request.sessionUser.roleId`). A role *exceeds* the caller when it grants a catalog `resource:action` pair (`isDeclaredPermission()` — leftover rows for removed resources are ignored) that the caller's role does not — `grantsOf` / `exceeds` from the permissions service, which applies the same rule to roles (`src/modules/permissions/CLAUDE.md` → _Privilege ceiling_). So a user manager can never create or promote an account above their own role, nor take over a higher one. A caller holding every permission (the bootstrap Admin) is never limited.
 
 **`create`** flow:
 

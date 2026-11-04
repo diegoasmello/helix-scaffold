@@ -79,6 +79,11 @@ export async function permissionsRoutes(
         response: {
           200: rolePermissionsResponseSchema,
           400: errorSchema('unknown_permissions'),
+          403: errorSchema(
+            'permission_denied',
+            'role_not_editable',
+            'permissions_not_grantable'
+          ),
           404: errorSchema('role_not_found'),
         },
       },
@@ -91,6 +96,27 @@ export async function permissionsRoutes(
           400,
           'unknown_permissions',
           `Unknown permissions: ${unknown.join(', ')}`
+        )
+      }
+
+      // Privilege ceiling: a role above the actor's stays as it is, and nobody
+      // grants a permission their own role lacks.
+      const actorGrants = await service.assertRoleManageable(
+        request.params.id,
+        request.sessionUser.roleId
+      )
+      const ungrantable = [
+        ...new Set(
+          Object.entries(request.body.grants).flatMap(([resource, actions]) =>
+            actions.map((action) => `${resource}:${action}`)
+          )
+        ),
+      ].filter((grant) => !actorGrants.has(grant))
+      if (ungrantable.length > 0) {
+        throw new DomainError(
+          403,
+          'permissions_not_grantable',
+          `Your own role lacks: ${ungrantable.join(', ')}`
         )
       }
 

@@ -517,7 +517,7 @@ Use `todos` as the reference implementation; the step-by-step guide (multi-file 
 
 1. Multi-file: junction table `xxx_attachments(xxx_id FK cascade, upload_id FK cascade)`. Single file: nullable `xxx.file_id` FK → `uploads.id` `on delete set null`
 2. Response embeds `attachments: uploadSchema.array()` / `file: uploadSchema.nullable()`; create/update accept `attachmentIds` / `fileId`
-3. Service: load uploads on reads; sync junction rows on create/update; on delete, collect upload IDs → delete the record → delete the `uploads` rows → delete storage keys (best-effort)
+3. Service: `assertUsableUploads()` on create/update (a record references only uploads its author uploaded — 400 `invalid_upload`); load uploads on reads; sync junction rows on create/update; on delete, collect upload IDs → delete the record → delete the `uploads` rows → delete storage keys (best-effort)
 4. Accept `storage: StorageProvider` in route options and pass it to the service factory
 5. **Register every new column in `src/config/upload-references.ts`**, with the guard of the record's `GET` route — otherwise the orphan cleanup job deletes those uploads after the grace period, and nobody but the uploader and `uploads:view` can open their files
 
@@ -680,10 +680,11 @@ response: { 201: roleSchema, 409: errorSchema('name_taken') },
 
 | Module | Status | Codes |
 | --- | --- | --- |
-| roles | 409 | `name_taken` (service, unique `name`), `default_role`, `role_in_use` (service `remove()`) |
+| roles | 403, 409 | `role_not_editable` (service `update()`/`remove()` — privilege ceiling), `name_taken` (service, unique `name`), `default_role`, `role_in_use` (service `remove()`) |
 | users / accounts | 403, 404, 409 | `role_not_assignable`, `user_not_editable` (users service — privilege ceiling), `role_not_found`, `user_not_found`, `email_taken` (`RoleNotFoundError`, `EmailTakenError` in account provisioning; PATCH maps `user_email_unique`) |
 | subscriptions | 400, 409 | `user_not_found` (FK), `live_subscription_exists`, `external_id_taken` (`toDomainError()` in `subscriptions-routes.ts`) |
-| permissions | 400, 404 | `unknown_permissions`, `role_not_found` |
+| permissions | 400, 403, 404 | `unknown_permissions`, `role_not_editable`, `permissions_not_grantable` (privilege ceiling), `role_not_found` |
+| todos | 400 | `invalid_upload` (`assertUsableUploads()`, `src/lib/upload-ownership.ts`) |
 | requireSubscription / requirePermission | 403 | `subscription_required`, `feature_not_in_plan`, `permission_denied` (sent by the hooks) |
 
 Plain "not found" 404s of `GET /xxx/:id` stay `reply.status(404).send({ message })` — nothing for the client to do but show "not found". Tested in `src/lib/domain-errors.test.ts` (status + body, inside plugins; validation 400 and 500 untouched).

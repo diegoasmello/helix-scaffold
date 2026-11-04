@@ -2,6 +2,22 @@ export interface EmailProvider {
   send(to: string, subject: string, html: string): Promise<void>
 }
 
+/**
+ * Escapes a value for an email's HTML, text or a quoted attribute. Every
+ * value placed in a template goes through it: better-auth builds the links in
+ * its emails from the request (the change-email `callbackURL` is the caller's
+ * raw text), so an unescaped `"` would let anyone inject HTML into a message
+ * sent from the app's own address.
+ */
+export function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+}
+
 function createResendEmailProvider(
   apiKey: string,
   from: string

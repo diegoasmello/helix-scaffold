@@ -20,6 +20,12 @@ import type { CreateTodoInput, TodoFormValues } from '../types'
 import { TodoCreate } from './todos-create'
 
 const mockNavigate = vi.fn()
+const mockNotify = vi.hoisted(() => vi.fn())
+
+vi.mock('@helix/ui', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@helix/ui')>()),
+  notify: mockNotify,
+}))
 
 vi.mock('.', () => ({
   todoCreateRoute: { useNavigate: () => mockNavigate },
@@ -254,5 +260,44 @@ describe('TodoCreate', () => {
     await waitFor(() => {
       expect(mockNavigate).not.toHaveBeenCalled()
     })
+  })
+  it('explains why the API refused a file', async () => {
+    server.use(
+      postTodosHandler(
+        () =>
+          new Response(
+            JSON.stringify({
+              message: 'Unknown upload, or one you did not upload',
+              code: 'invalid_upload',
+            }),
+            { status: 400 }
+          )
+      )
+    )
+
+    renderTodoCreate()
+    await screen.findByRole('heading', { name: 'Create todo' })
+    await userEvent.click(screen.getByTestId('set-attachment'))
+    await userEvent.click(screen.getByTestId('set-file'))
+    await userEvent.click(screen.getByTestId('set-image'))
+    await userEvent.type(screen.getByPlaceholderText('Todo title'), 'Todo')
+    await userEvent.type(
+      screen.getByPlaceholderText('Todo description'),
+      'Description'
+    )
+    await userEvent.type(screen.getByPlaceholderText('Todo content'), 'Content')
+    await userEvent.type(
+      screen.getByPlaceholderText('Pick a date'),
+      '2020-01-01'
+    )
+    await userEvent.click(screen.getByRole('button', { name: 'Save' }))
+
+    await waitFor(() =>
+      expect(mockNotify).toHaveBeenCalledWith({
+        status: 'danger',
+        message:
+          'One of the files was not uploaded by you or no longer exists. Remove it and upload it again.',
+      })
+    )
   })
 })

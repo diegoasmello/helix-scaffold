@@ -129,6 +129,8 @@ Inline in each component — no `hooks.ts`.
 
 **Refused deletion**: `RolesList` notifies `apiErrorMessage(error, 'roles', 'notifications.deleteFailed')` — `errors.default_role` / `errors.role_in_use` explain why. `errors.role_not_found` covers a role deleted meanwhile (permission editor).
 
+**Privilege ceiling** (API: `apps/api/src/modules/permissions/CLAUDE.md` → _Privilege ceiling_): a delegated moderator cannot change, delete or grant beyond their own role. `RolesEdit`, `RolesList` (delete) and the permission editor notify through `apiErrorMessage`, so `errors.role_not_editable` (a role above theirs) and `errors.permissions_not_grantable` (a permission they lack) explain the refusal. The editor still shows every checkbox: the API is the one that decides.
+
 **Create**: `resourceCache.changed('roles')`.  
 **Update**: `resourceCache.saved('roles', updated)`.  
 **Delete** (in `RolesList`): `onError` on `useMutation` itself (not on `mutate`) — notifies on failure. Confirm message includes the role's name: `Are you sure you want to delete "${name}"?`. `resourceCache.removed('roles', id)`.

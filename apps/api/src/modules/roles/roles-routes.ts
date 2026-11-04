@@ -102,6 +102,7 @@ export async function rolesRoutes(
         body: updateRoleSchema,
         response: {
           200: roleSchema,
+          403: errorSchema('permission_denied', 'role_not_editable'),
           404: z.object({ message: z.string() }),
           409: errorSchema('name_taken'),
         },
@@ -109,7 +110,11 @@ export async function rolesRoutes(
       preHandler: requirePermission('roles', 'edit'),
     },
     async (request, reply) => {
-      const role = await service.update(request.params.id, request.body)
+      const role = await service.update(
+        request.params.id,
+        request.body,
+        request.sessionUser.roleId
+      )
       if (!role) return reply.status(404).send({ message: 'Role not found' })
       await request.audit('edit', 'roles', request.params.id, request.body)
       return role
@@ -125,6 +130,7 @@ export async function rolesRoutes(
         params: z.object({ id: z.string() }),
         response: {
           204: z.null().describe('Role deleted'),
+          403: errorSchema('permission_denied', 'role_not_editable'),
           409: errorSchema('default_role', 'role_in_use'),
         },
       },
@@ -132,7 +138,7 @@ export async function rolesRoutes(
     },
     async (request, reply) => {
       // 204 either way (idempotent), but only a real deletion is audited
-      if (await service.remove(request.params.id)) {
+      if (await service.remove(request.params.id, request.sessionUser.roleId)) {
         await request.audit('delete', 'roles', request.params.id)
       }
       return reply.status(204).send(null)

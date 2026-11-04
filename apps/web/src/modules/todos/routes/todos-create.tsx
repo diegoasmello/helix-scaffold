@@ -3,6 +3,7 @@ import { Button, Form, notify, PageCreate, useForm } from '@helix/ui'
 import { useMutation } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 
+import { apiErrorMessage } from '@/lib/api-errors'
 import { useResourceCache } from '@/lib/resource-cache'
 
 import { TodoForm } from '../components/todos-form'
@@ -56,10 +57,14 @@ export function TodoCreate() {
           })
           navigate({ to: '/todos' })
         },
-        onError: () => {
+        onError: (error) => {
           notify({
             status: 'danger',
-            message: t('notifications.createFailed'),
+            message: apiErrorMessage(
+              error,
+              'todos',
+              'notifications.createFailed'
+            ),
           })
         },
       }

@@ -9,6 +9,7 @@ import {
   getPgErrorConstraint,
   PG_UNIQUE_VIOLATION,
 } from '@/lib/pg-errors'
+import { createPermissionsService } from '@/modules/permissions/permissions-service'
 
 import type {
   CreateRoleInput,
@@ -37,6 +38,8 @@ const SORT_COLUMNS = {
 } as const
 
 export function createRolesService(database: Database) {
+  const { assertRoleManageable } = createPermissionsService(database)
+
   async function list(query: RolesListQuery) {
     const { limit, offset } = getPaginationParams(query.page, query.pageSize)
     const sortCol = SORT_COLUMNS[query.sortBy ?? 'createdAt']
@@ -87,8 +90,18 @@ export function createRolesService(database: Database) {
       .catch(nameTaken)
   }
 
-  /** Throws `name_taken` (409) for a duplicate name. */
-  async function update(id: string, data: UpdateRoleInput) {
+  /**
+   * Throws `name_taken` (409) for a duplicate name, and `role_not_editable`
+   * (403) for a role granting something the actor's own role lacks — so a
+   * moderator can neither rename the admin's role nor make it the default
+   * for self-registration.
+   */
+  async function update(
+    id: string,
+    data: UpdateRoleInput,
+    actorRoleId: string | null
+  ) {
+    await assertRoleManageable(id, actorRoleId)
     return database
       .transaction(async (tx) => {
         if (data.isDefault) {
@@ -110,9 +123,14 @@ export function createRolesService(database: Database) {
   /**
    * Deletes the row; `false` when the id did not exist (nothing to audit).
    * Refuses (409) the default registration role (`default_role`) and a role
-   * that still has users (`role_in_use`).
+   * that still has users (`role_in_use`), and (403 `role_not_editable`) a
+   * role granting something the actor's own role lacks.
    */
-  async function remove(id: string): Promise<boolean> {
+  async function remove(
+    id: string,
+    actorRoleId: string | null
+  ): Promise<boolean> {
+    await assertRoleManageable(id, actorRoleId)
     const role = await getById(id)
     if (role?.isDefault) {
       throw new DomainError(

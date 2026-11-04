@@ -201,7 +201,7 @@ export async function createRoleWithPermissions(
 ) {
   const [role] = await testDb
     .insert(roles)
-    .values({ name: `role-${Date.now()}` })
+    .values({ name: `role-${crypto.randomUUID()}` })
     .returning()
 
   if (grants.length > 0) {
@@ -215,4 +215,25 @@ export async function createRoleWithPermissions(
   }
 
   return role
+}
+
+/**
+ * Signs up a fresh user, gives them `roleId` and returns their Cookie header.
+ * Pair it with `createRoleWithPermissions` to act as a user holding exactly
+ * those grants (a delegated moderator, say).
+ */
+export async function createSessionWithRole(
+  app: ReturnType<typeof buildApp>,
+  roleId: string
+): Promise<string> {
+  const email = `session-${crypto.randomUUID()}@test.com`
+  const res = await app.inject({
+    method: 'POST',
+    url: '/api/auth/sign-up/email',
+    payload: { email, name: 'Session user', password: 'Password123!' },
+  })
+  await testDb.update(user).set({ roleId }).where(eq(user.email, email))
+  const setCookie = res.headers['set-cookie']
+  const cookies = Array.isArray(setCookie) ? setCookie : [setCookie ?? '']
+  return cookies.map((c) => c.split(';')[0]).join('; ')
 }
