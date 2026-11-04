@@ -30,19 +30,26 @@ export function createPermissionsService(database: Database) {
   /**
    * The role's grants. The admin role holds the whole catalog, whatever
    * `role_permissions` says — a module added later is the admin's at once.
+   * One query: the role's flag and its rows together (no row → unknown role).
    */
   async function getByRoleId(roleId: string): Promise<Grants> {
-    if (await isAdminRole(roleId)) return allGrants()
-
     const rows = await database
-      .select()
-      .from(rolePermissions)
-      .where(eq(rolePermissions.roleId, roleId))
+      .select({
+        isAdmin: roles.isAdmin,
+        resource: rolePermissions.resource,
+        action: rolePermissions.action,
+      })
+      .from(roles)
+      .leftJoin(rolePermissions, eq(rolePermissions.roleId, roles.id))
+      .where(eq(roles.id, roleId))
+
+    if (rows[0]?.isAdmin) return allGrants()
 
     const grants: Grants = {}
-    for (const row of rows) {
-      if (!grants[row.resource]) grants[row.resource] = []
-      grants[row.resource].push(row.action)
+    for (const { resource, action } of rows) {
+      // A role without permissions comes back as one row of nulls
+      if (resource === null || action === null) continue
+      grants[resource] = [...(grants[resource] ?? []), action]
     }
     return grants
   }

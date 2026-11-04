@@ -33,7 +33,7 @@ No entity schema for a "permission" object. The schemas are:
 
 **`isAdminRole(roleId)`** — whether the role is the admin role (`roles.isAdmin`); `null` or an unknown id → `false`. See _Admin role_.
 
-**`getByRoleId(roleId)`** — selects all rows for the role and collapses them into a `Grants` object: `{ [resource]: action[] }`. Returns `{}` when the role has no permissions. For the admin role it returns the whole catalog (`ALL_PERMISSIONS`) without reading rows — so `GET /me/permissions`, `GET /roles/:id/permissions` and `grantsOf()` all see it holding everything.
+**`getByRoleId(roleId)`** — one query (`roles` left-joined to its `role_permissions` rows) collapsed into a `Grants` object: `{ [resource]: action[] }`. Returns `{}` when the role has no permissions or does not exist. For the admin role it returns the whole catalog (`ALL_PERMISSIONS`), whatever rows it has — so `GET /me/permissions`, `GET /roles/:id/permissions` and `grantsOf()` all see it holding everything.
 
 **`replaceForRole(roleId, grants)`** — runs inside a **single transaction**: deletes all existing rows for `roleId`, then bulk-inserts the new set (duplicate actions within a resource are dropped, so they never hit the unique index). Returns the result of `getByRoleId` after the transaction. If `grants` is empty, the delete runs but no insert follows — the role ends up with no permissions.
 
