@@ -95,7 +95,7 @@ pnpm --filter api test:watch
 | Workspace  | Tool                        | Notes                   |
 | ---------- | --------------------------- | ----------------------- |
 | `apps/web` | Vitest + RTL + MSW          | Unit + integration      |
-| `apps/web` | Playwright                  | E2E via `pnpm test:e2e` — journeys across web and API against a stack it starts itself (`e2e/rbac.spec.ts`) |
+| `apps/web` | Playwright                  | E2E via `pnpm test:e2e` — journeys across web and API (RBAC, subscriptions, auth, audit, profile; `todos` as the module template) against a stack it starts itself |
 | `apps/api` | Vitest + real test database | Route integration tests |
 
 See each workspace's `CLAUDE.md` for the full testing guide.

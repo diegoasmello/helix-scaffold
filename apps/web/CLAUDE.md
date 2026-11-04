@@ -1570,7 +1570,7 @@ pnpm test:e2e:ui       # Playwright with interactive UI
 | ----------- | ------------------ | ------------------------------------------------------------------------------ |
 | Unit        | Vitest             | `validation.ts` — pure validator functions; service logic when non-trivial     |
 | Integration | Vitest + RTL + MSW | Route components — rendering, form flows, modal interactions, API error states |
-| E2E         | Playwright         | Journeys across the web and the real API (`e2e/rbac.spec.ts`)                  |
+| E2E         | Playwright         | Journeys across the web and the real API — see _3. E2E tests_ → _Specs_        |
 
 ### MSW setup
 
@@ -2072,7 +2072,20 @@ The default for `GET /me/permissions` already returns `{ grants: {} }` — test 
 
 ### 3. E2E tests (`e2e/<journey>.spec.ts`)
 
-E2E specs check that the layers agree — what the UI offers, what the guards let in and what the API accepts — on journeys no single layer can test: a role granted in the editor and the pages its user then sees, the session across the login, a file uploaded and shown. They do not repeat a module's CRUD: the MSW integration tests already cover each screen, and the API route tests each rule. Keep them few. `e2e/rbac.spec.ts` is the reference.
+E2E specs check that the layers agree — what the UI offers, what the guards let in and what the API accepts — on journeys no single layer can test: a role granted in the editor and the pages its user then sees, the session across the login, a file uploaded and shown. They do not repeat each screen's cases: the MSW integration tests already cover them, and the API route tests each rule. Keep them few.
+
+#### Specs
+
+| Spec | Covers |
+| --- | --- |
+| `rbac.spec.ts` | A role granted in the permission editor → its user's landing page, sidebar, hidden actions and `/403`; a role granting nothing → `/me`; the editor's requirement cascade kept by the API; the privilege ceiling (a moderator's editor disables what their role lacks, the API answers 403 `permissions_not_grantable`, a role above theirs is read-only) |
+| `subscriptions.spec.ts` | No subscription → `/upgrade` ("Subscription required") and the API's 403 `subscription_required`; a plan without the feature → "Upgrade your plan" until the admin changes the plan on `/subscriptions/$id/edit`; an operator (`subscriptions:view`) passes without one |
+| `auth.spec.ts` | Signed out (`storageState` emptied): a protected page → `/login`; a wrong password; sign-up (open in the test config) → the default role → `/me/account`; sign-out; a sign-out in another tab signs this one out too (better-auth tells the tabs, `AuthGuard` leaves) |
+| `audit.spec.ts` | An edit made in the UI shows in `/audit` with its author, and its detail with what was sent; the bootstrap's entry, under the system actor |
+| `me.spec.ts` | Renaming the account (the header follows); changing the password — only the new one signs in |
+| `todos.spec.ts` | **The template of a module's spec** — create with the three uploads and the rich text editor, view, edit, delete (cancel, then confirm). It goes away with `todos`: copy its shape for the module that replaces it |
+
+Not covered: social sign-in (needs a real OAuth provider), the reset-password email (its link only reaches the API's stdout) and the trial on sign-up (the test config has `trial: false`; turning it on would make E2E run in another mode than the API suite).
 
 #### The stack
 
@@ -2092,12 +2105,15 @@ Specs import `test` and `expect` from `./fixtures`, never from `@playwright/test
 
 | Export | Use |
 | --- | --- |
-| `adminApi` (fixture) | The API as the admin, to set the stage before the journey: `createRole(grants?, body?)` (`POST /roles` + `PUT /roles/:id/permissions`), `createUser(body?)` (`POST /users`, returns the password too). Typed with the generated contract (`@helix/api-client/types`), so an API change breaks it at type-check. Add a helper here when a journey needs another resource |
+| `adminApi` (fixture) | The API as the admin, to set the stage before the journey: `createRole(grants?, body?)` (`POST /roles` + `PUT /roles/:id/permissions`), `createUser(body?)` (`POST /users`, returns the password too), `createSubscription(userId, planId = 'pro', body?)` (active, 30 days — `starter` unlocks no feature, `pro`/`enterprise` unlock `todos`), `createUpload(file)` (multipart `POST /uploads`), `createTodo(body?)` (with its three uploads). Typed with the generated contract (`@helix/api-client/types`), so an API change breaks it at type-check. Add a helper here when a journey needs another resource |
 | `signInAs(browser, credentials)` | A page in a new context, signed in through the login screen as another user. Close its context at the end of the test |
-| `signIn(page, credentials)` | The login itself (used by the setup) |
+| `signIn(page, credentials)` / `signOut(page)` | The login itself (used by the setup), and the account menu's Logout |
+| `sampleFiles` | `png` (a real 1×1 image — the API processes images), `pdf`, `txt`, built in memory: `locator.setInputFiles(sampleFiles.png)` |
 | `uniqueName(prefix)`, `uniqueEmail(prefix)` | Names that never collide — tests run in parallel against one database |
 
-**Data through the API, the journey through the UI.** What the test is about happens on screen; what it only needs to exist (a role to edit, a user to sign in as) comes from `adminApi`. Never write to the database directly, and never rely on data another test created.
+**Data through the API, the journey through the UI.** What the test is about happens on screen; what it only needs to exist (a role to edit, a user to sign in as) comes from `adminApi`. Never write to the database directly, and never rely on data another test created — nor on its absence: a list may be empty or full depending on what other tests created (`subscriptions.spec.ts` accepts the todos list or its empty state).
+
+**Never change the admin's account** (password, name, email): its session is shared by every test. Profile and password journeys use a user of their own — changing a password signs out the account's other sessions. Close every context `signInAs` opens.
 
 ```ts
 import { expect, signInAs, test } from './fixtures'
@@ -2120,7 +2136,9 @@ The texts are English (`locale: 'en-US'`). Query by role and accessible name —
 - **Pass `exact: true` for short names.** Names match by substring by default: `{ name: 'Create' }` also finds the sortable "Created at" column header (a `role="button"`).
 - **`getByLabel` misses required fields**: their label reads "Password *". Use `getByRole('textbox', { name: 'Password', exact: true })`.
 - A list's URL carries its search params (`/users?page=1&pageSize=10&sortOrder=desc`): match `/\/users(\?|$)/`.
-- When a group of controls has no accessible name to scope by, give it one in the component (`role="group"` + `aria-label` — the permission editor's resources: `getByRole('group', { name: 'Users' }).getByRole('checkbox', { name: 'View' })`). It helps screen readers too.
+- When a group of controls has no accessible name to scope by, give it one in the component (`role="group"` + `aria-label`/`aria-labelledby`) — it helps screen readers too. The permission editor's resources: `getByRole('group', { name: 'Users' }).getByRole('checkbox', { name: 'View' })`. The upload fields (`FileInput`, `FilesInput`): `getByRole('group', { name: 'Image' }).locator('input[type=file]').setInputFiles(sampleFiles.png)`, then wait for the card (`button` "Remove e2e-image.png"). The rich text editor is `getByRole('textbox', { name: 'Content' })`.
+- A section of a form page is a `region` named by its title (`FormSection`): scope a Save button to it when the page has several (`getByRole('region', { name: 'Name' })` on `/me/account`).
+- Assert something that exists, not only something absent: after a delete, the API's 404 (`page.request.get(...)`, which carries the page's session) says more than a heading gone from a page that may have failed.
 - On a failure, the report's page snapshot is the `page` fixture's (the admin's), not a page opened with `signInAs`.
 
 **Unauthenticated specs** (e.g. a future `e2e/auth.spec.ts`) override the storageState:

@@ -1,4 +1,5 @@
 import { expect, signInAs, test, uniqueEmail, uniqueName } from './fixtures'
+import { API_URL } from './stack'
 
 // RBAC across the web and the API: what the admin grants in the permission
 // editor is what the user then sees, reaches and is refused. Each layer is
@@ -124,5 +125,61 @@ test.describe('RBAC', () => {
     await expect(
       users.getByRole('checkbox', { name: 'Create' })
     ).not.toBeChecked()
+  })
+
+  // Privilege ceiling: nobody grants, or manages a role holding, more than
+  // their own role has — the editor disables it and the API refuses it.
+  test('a moderator grants only what their own role holds', async ({
+    adminApi,
+    browser,
+  }) => {
+    const moderatorRole = await adminApi.createRole({
+      roles: ['view', 'edit'],
+      permissions: ['view', 'edit'],
+    })
+    const moderator = await adminApi.createUser({ roleId: moderatorRole.id })
+    const below = await adminApi.createRole()
+    const above = await adminApi.createRole({ users: ['view'] })
+
+    const modPage = await signInAs(browser, moderator)
+
+    // In the editor: what the moderator's role lacks cannot be checked...
+    await modPage.goto(`/roles/${below.id}/permissions`)
+    await expect(
+      modPage
+        .getByRole('group', { name: 'Users' })
+        .getByRole('checkbox', { name: 'View' })
+    ).toBeDisabled()
+
+    // ...what it holds can, and saves
+    await modPage
+      .getByRole('group', { name: 'Roles' })
+      .getByRole('checkbox', { name: 'View' })
+      .check()
+    await modPage.getByRole('button', { name: 'Save', exact: true }).click()
+    await expect(
+      modPage.getByText('Permissions saved successfully')
+    ).toBeVisible()
+
+    // The API refuses the grant the editor disabled, with the same session
+    const refused = await modPage.request.put(
+      `${API_URL}/roles/${below.id}/permissions`,
+      { data: { grants: { users: ['view'] } } }
+    )
+    expect(refused.status()).toBe(403)
+    expect(await refused.json()).toMatchObject({
+      code: 'permissions_not_grantable',
+    })
+
+    // A role above the moderator's is read-only, and says why
+    await modPage.goto(`/roles/${above.id}`)
+    await expect(modPage.getByText('Above your role')).toBeVisible()
+    await expect(
+      modPage.getByRole('button', { name: 'Edit permissions', exact: true })
+    ).toHaveCount(0)
+    await modPage.goto(`/roles/${above.id}/permissions`)
+    await expect(modPage).toHaveURL(new RegExp(`/roles/${above.id}$`))
+
+    await modPage.context().close()
   })
 })

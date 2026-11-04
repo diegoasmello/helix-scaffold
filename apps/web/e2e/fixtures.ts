@@ -1,6 +1,11 @@
 import type {
   PostRoles201,
   PostRolesMutationRequest,
+  PostSubscriptions201,
+  PostSubscriptionsMutationRequest,
+  PostTodos201,
+  PostTodosMutationRequest,
+  PostUploads201,
   PostUsers201,
   PostUsersMutationRequest,
   PutRolesIdPermissionsMutationRequest,
@@ -35,6 +40,13 @@ export async function signIn(page: Page, credentials: Credentials) {
     .fill(credentials.password)
   await page.getByRole('button', { name: 'Sign in' }).click()
   await expect(page).not.toHaveURL(/\/login/)
+}
+
+/** Signs out through the account menu and waits for the login screen. */
+export async function signOut(page: Page) {
+  await page.getByRole('button', { name: 'Account menu' }).click()
+  await page.getByRole('menuitem', { name: 'Logout' }).click()
+  await expect(page).toHaveURL(/\/login/)
 }
 
 /**
@@ -99,8 +111,97 @@ function createAdminApi(request: APIRequestContext) {
     return { ...created, password: input.password }
   }
 
-  return { createRole, createUser }
+  /**
+   * An active subscription to `planId` for 30 days. The plans are the API
+   * suite's (`apps/api/src/config/test-overrides.ts`): `starter` unlocks no
+   * feature, `pro` and `enterprise` unlock `todos`.
+   */
+  async function createSubscription(
+    userId: string,
+    planId: 'starter' | 'pro' | 'enterprise' = 'pro',
+    body: Partial<PostSubscriptionsMutationRequest> = {}
+  ) {
+    const now = Date.now()
+    return send<PostSubscriptions201>('post', '/subscriptions', {
+      userId,
+      planId,
+      status: 'active',
+      currentPeriodStart: new Date(now).toISOString(),
+      currentPeriodEnd: new Date(now + 30 * 24 * 60 * 60 * 1000).toISOString(),
+      ...body,
+    } satisfies PostSubscriptionsMutationRequest)
+  }
+
+  /** Uploads a file as the admin (`POST /uploads`, multipart). */
+  async function createUpload(file: SampleFile) {
+    const res = await request.post(`${API_URL}/uploads`, {
+      multipart: { file },
+    })
+    expect(res.ok(), `POST /uploads: ${await res.text()}`).toBe(true)
+    return (await res.json()) as PostUploads201
+  }
+
+  /** A todo with the image, PDF and attachment its form requires. */
+  async function createTodo(body: Partial<PostTodosMutationRequest> = {}) {
+    const [image, file, attachment] = await Promise.all([
+      createUpload(sampleFiles.png),
+      createUpload(sampleFiles.pdf),
+      createUpload(sampleFiles.txt),
+    ])
+    return send<PostTodos201>('post', '/todos', {
+      title: uniqueName('Todo'),
+      description: 'Created by the E2E suite.',
+      content: '<p>Created by the E2E suite.</p>',
+      date: new Date().toISOString(),
+      imageId: image.id,
+      fileId: file.id,
+      attachmentIds: [attachment.id],
+      ...body,
+    } satisfies PostTodosMutationRequest)
+  }
+
+  return {
+    createRole,
+    createUser,
+    createSubscription,
+    createUpload,
+    createTodo,
+  }
 }
+
+/**
+ * Files for upload fields (`locator.setInputFiles(sampleFiles.png)`), built
+ * in memory so the suite has no binary fixtures. The PNG is a real 1×1 image:
+ * the API turns images into WebP variants and rejects what it cannot read.
+ */
+interface SampleFile {
+  name: string
+  mimeType: string
+  buffer: Buffer
+}
+
+export const sampleFiles = {
+  png: {
+    name: 'e2e-image.png',
+    mimeType: 'image/png',
+    buffer: Buffer.from(
+      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==',
+      'base64'
+    ),
+  },
+  pdf: {
+    name: 'e2e-document.pdf',
+    mimeType: 'application/pdf',
+    buffer: Buffer.from(
+      '%PDF-1.4\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj\n2 0 obj<</Type/Pages/Kids[3 0 R]/Count 1>>endobj\n3 0 obj<</Type/Page/Parent 2 0 R/MediaBox[0 0 10 10]>>endobj\ntrailer<</Root 1 0 R>>\n%%EOF\n'
+    ),
+  },
+  txt: {
+    name: 'e2e-notes.txt',
+    mimeType: 'text/plain',
+    buffer: Buffer.from('Notes attached by the E2E suite.\n'),
+  },
+} satisfies Record<string, SampleFile>
 
 interface Fixtures {
   adminApi: ReturnType<typeof createAdminApi>

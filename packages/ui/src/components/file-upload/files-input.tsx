@@ -4,7 +4,7 @@ import type { FileWithPath } from '@mantine/dropzone'
 import { Dropzone } from '@mantine/dropzone'
 import { createStyles } from '@mantine/emotion'
 import { IconUpload } from '@tabler/icons-react'
-import { useState } from 'react'
+import { useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { notify } from '../notifications/notify'
@@ -47,6 +47,7 @@ export function FilesInput<T extends UploadedFile>(
   const { classes, cx } = useUploadFieldStyles()
   const { classes: own } = useStyles()
   const { t } = useTranslation('ui')
+  const id = useId()
   const [uploadingCount, setUploadingCount] = useState(0)
 
   const remaining = maxFiles - value.length
@@ -88,6 +89,9 @@ export function FilesInput<T extends UploadedFile>(
 
   return (
     <Input.Wrapper
+      id={id}
+      role="group"
+      aria-labelledby={label ? `${id}-label` : undefined}
       label={label}
       description={description}
       required={required}

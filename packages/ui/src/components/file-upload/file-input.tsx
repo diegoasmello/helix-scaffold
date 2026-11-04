@@ -2,7 +2,7 @@ import { Button, FileButton, Input, Loader, Text } from '@mantine/core'
 import type { FileWithPath } from '@mantine/dropzone'
 import { Dropzone } from '@mantine/dropzone'
 import { IconUpload } from '@tabler/icons-react'
-import { useState } from 'react'
+import { useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { notify } from '../notifications/notify'
@@ -42,6 +42,7 @@ export function FileInput<T extends UploadedFile>(
   const { classes, cx } = useUploadFieldStyles()
   const { t } = useTranslation('ui')
   const [isUploading, setIsUploading] = useState(false)
+  const id = useId()
 
   const upload = async (file: File | null | undefined) => {
     if (!file) return
@@ -58,6 +59,9 @@ export function FileInput<T extends UploadedFile>(
 
   return (
     <Input.Wrapper
+      id={id}
+      role="group"
+      aria-labelledby={label ? `${id}-label` : undefined}
       label={label}
       description={description}
       required={required}
