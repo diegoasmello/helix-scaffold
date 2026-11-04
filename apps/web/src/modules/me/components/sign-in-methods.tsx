@@ -23,7 +23,7 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { authClient } from '../../../lib/authentication'
-import type { LinkedAccount } from '../types'
+import { linkedAccountsQuery } from '../linked-accounts'
 
 const PROVIDER_ICONS: Record<string, React.ElementType> = {
   google: IconBrandGoogle,
@@ -31,8 +31,6 @@ const PROVIDER_ICONS: Record<string, React.ElementType> = {
   apple: IconBrandApple,
   credential: IconLock,
 }
-
-const ME_ACCOUNTS_QUERY_KEY = ['me', 'accounts'] as const
 
 function formatDate(date: Date) {
   return date.toLocaleDateString(undefined, {
@@ -57,14 +55,7 @@ export function SignInMethods() {
     data: accounts = [],
     isPending: accountsLoading,
     isError: accountsError,
-  } = useQuery({
-    queryKey: ME_ACCOUNTS_QUERY_KEY,
-    queryFn: async () => {
-      const { data, error } = await authClient.listAccounts()
-      if (error) throw error
-      return (data ?? []) as LinkedAccount[]
-    },
-  })
+  } = useQuery(linkedAccountsQuery)
 
   const {
     data: { providers: availableProviders = [] } = {},

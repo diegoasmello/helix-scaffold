@@ -65,6 +65,24 @@ export interface AppConfig {
     port?: number
     /** @default '0.0.0.0' */
     host?: string
+    /**
+     * Which proxies in front of the API to trust for the client's IP
+     * (Fastify's `trustProxy`). It decides `request.ip`, which better-auth
+     * rate-limits sign-ins by and records on sessions, and the audit log's
+     * `ip`.
+     *
+     * - `false` — nothing in front: the IP is the connection's, and an
+     *   `X-Forwarded-For` header (anyone can send one) is ignored.
+     * - `true` — trust every hop (only when the proxy strips the header the
+     *   client sent).
+     * - a number — trust that many hops (`1`: one reverse proxy).
+     * - IPs / CIDRs (`'10.0.0.0/8'` or an array) — trust only those proxies.
+     *
+     * Behind a proxy, leaving `false` puts every client under the proxy's IP,
+     * so all sign-ins share one rate limit.
+     * @default false
+     */
+    trustProxy?: boolean | number | string | string[]
   }
 
   registration?: {
@@ -219,6 +237,14 @@ export const appConfigSchema = z.strictObject({
     .strictObject({
       port: z.number().int().positive().default(3333),
       host: z.string().min(1).default('0.0.0.0'),
+      trustProxy: z
+        .union([
+          z.boolean(),
+          z.number().int().min(1),
+          z.string().min(1),
+          z.array(z.string().min(1)).min(1),
+        ])
+        .default(false),
     })
     .prefault({}),
   registration: z

@@ -1,5 +1,15 @@
-import { afterAll, beforeAll, describe, expect, it } from 'vitest'
+import { eq, like } from 'drizzle-orm'
+import {
+  afterAll,
+  afterEach,
+  beforeAll,
+  describe,
+  expect,
+  it,
+  vi,
+} from 'vitest'
 
+import { account, user, verification } from '@/db/schema/authentication'
 import {
   cleanupAuth,
   createTestApp,
@@ -145,7 +155,10 @@ describe('PATCH /me/email', () => {
     const res = await app.inject({
       method: 'PATCH',
       url: '/api/me/email',
-      payload: { newEmail: 'newemail@test.com' },
+      payload: {
+        newEmail: 'newemail@test.com',
+        currentPassword: 'Password123!',
+      },
       headers: { cookie: authCookie },
     })
     expect(res.statusCode).toBe(200)
@@ -183,15 +196,151 @@ describe('PATCH /me/email', () => {
     const res = await app.inject({
       method: 'PATCH',
       url: '/api/me/email',
-      payload: { newEmail: existingEmail },
+      payload: { newEmail: existingEmail, currentPassword: 'Password123!' },
       headers: { cookie: authCookie },
     })
     expect(res.statusCode).toBe(400)
-    expect(res.json().message).toBe('This email is already in use')
+    expect(res.json()).toEqual({
+      message: 'This email is already in use',
+      code: 'email_taken',
+    })
 
     await testDb
       .delete(user)
       .where((await import('drizzle-orm')).eq(user.email, existingEmail))
+  })
+})
+
+describe('Re-authentication', () => {
+  /** A fresh signed-up user (password `Password123!`), so lockouts stay theirs. */
+  async function signUp() {
+    const email = `reauth-${crypto.randomUUID()}@test.com`
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/auth/sign-up/email',
+      payload: { email, name: 'Reauth', password: 'Password123!' },
+    })
+    const setCookie = res.headers['set-cookie']
+    const cookies = Array.isArray(setCookie) ? setCookie : [setCookie ?? '']
+    const [row] = await testDb.select().from(user).where(eq(user.email, email))
+    return {
+      email,
+      userId: row.id,
+      cookie: cookies.map((c) => c.split(';')[0]).join('; '),
+    }
+  }
+
+  function changeEmail(cookie: string, payload: object) {
+    return app.inject({
+      method: 'PATCH',
+      url: '/api/me/email',
+      payload,
+      headers: { cookie },
+    })
+  }
+
+  function changePassword(cookie: string, currentPassword: string) {
+    return app.inject({
+      method: 'PATCH',
+      url: '/api/me/password',
+      payload: { currentPassword, newPassword: 'NewPassword456!' },
+      headers: { cookie },
+    })
+  }
+
+  async function verificationTokens() {
+    return testDb.select().from(verification)
+  }
+
+  afterEach(async () => {
+    vi.restoreAllMocks()
+    await testDb.delete(verification)
+    await testDb.delete(user).where(like(user.email, 'reauth-%'))
+  })
+
+  it('refuses an email change without the current password, and starts nothing', async () => {
+    const { cookie } = await signUp()
+    const res = await changeEmail(cookie, { newEmail: 'moved@test.com' })
+    expect(res.statusCode).toBe(400)
+    expect(res.json().code).toBe('current_password_required')
+    expect(await verificationTokens()).toHaveLength(0)
+  })
+
+  it('refuses an email change with a wrong password', async () => {
+    const { cookie } = await signUp()
+    const res = await changeEmail(cookie, {
+      newEmail: 'moved@test.com',
+      currentPassword: 'WrongPassword!',
+    })
+    expect(res.statusCode).toBe(400)
+    expect(res.json().code).toBe('invalid_password')
+    expect(await verificationTokens()).toHaveLength(0)
+  })
+
+  it('tells the current address about the request', async () => {
+    const log = vi.spyOn(console, 'log').mockImplementation(() => {})
+    const { cookie, email } = await signUp()
+    const res = await changeEmail(cookie, {
+      newEmail: 'moved@test.com',
+      currentPassword: 'Password123!',
+    })
+    expect(res.statusCode).toBe(200)
+    await vi.waitFor(() =>
+      expect(log).toHaveBeenCalledWith(
+        expect.stringMatching(
+          new RegExp(
+            `To: ${email} \\| Subject: Your email address is being changed[\\s\\S]*moved@test\\.com`
+          )
+        )
+      )
+    )
+  })
+
+  it('asks no password of an account without one (social sign-in only)', async () => {
+    const { cookie, userId } = await signUp()
+    await testDb.delete(account).where(eq(account.userId, userId))
+    const res = await changeEmail(cookie, { newEmail: 'moved@test.com' })
+    expect(res.statusCode).toBe(200)
+  })
+
+  it('locks out after 5 wrong passwords, across email and password changes', async () => {
+    const { cookie } = await signUp()
+    for (let i = 0; i < 3; i++) {
+      expect((await changePassword(cookie, 'WrongPassword!')).json().code).toBe(
+        'invalid_password'
+      )
+    }
+    for (let i = 0; i < 2; i++) {
+      const res = await changeEmail(cookie, {
+        newEmail: 'moved@test.com',
+        currentPassword: 'WrongPassword!',
+      })
+      expect(res.json().code).toBe('invalid_password')
+    }
+
+    // Even the right password is refused now
+    const locked = await changePassword(cookie, 'Password123!')
+    expect(locked.statusCode).toBe(429)
+    expect(locked.json().code).toBe('too_many_attempts')
+    const lockedEmail = await changeEmail(cookie, {
+      newEmail: 'moved@test.com',
+      currentPassword: 'Password123!',
+    })
+    expect(lockedEmail.statusCode).toBe(429)
+  })
+
+  it('clears the count after a right password', async () => {
+    const { cookie } = await signUp()
+    for (let i = 0; i < 4; i++) await changePassword(cookie, 'WrongPassword!')
+    const ok = await changeEmail(cookie, {
+      newEmail: 'moved@test.com',
+      currentPassword: 'Password123!',
+    })
+    expect(ok.statusCode).toBe(200)
+    for (let i = 0; i < 4; i++) await changePassword(cookie, 'WrongPassword!')
+    expect((await changePassword(cookie, 'WrongPassword!')).statusCode).toBe(
+      400
+    )
   })
 })
 
@@ -293,7 +442,10 @@ describe('PATCH /me/password', () => {
       headers: { cookie: authCookie },
     })
     expect(res.statusCode).toBe(400)
-    expect(res.json().message).toBe('Current password is incorrect')
+    expect(res.json()).toEqual({
+      message: 'Current password is incorrect',
+      code: 'invalid_password',
+    })
   })
 
   it('returns 400 for invalid body (short password)', async () => {

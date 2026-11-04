@@ -33,7 +33,7 @@
     },
     "email": {
       "sectionTitle": "Endereço de E-mail",
-      "sectionDescription": "Um link de verificação será enviado para o novo endereço.",
+      "sectionDescription": "Um link de verificação será enviado para o novo endereço, e um aviso para o atual.",
       "currentLabel": "E-mail atual",
       "newLabel": "Novo e-mail",
       "alertTitle": "Verifique sua caixa de entrada",
@@ -46,7 +46,9 @@
         "updated": "Nome atualizado com sucesso",
         "updateFailed": "Falha ao atualizar perfil",
         "emailFailed": "Falha ao enviar e-mail de verificação"
-      }
+      },
+      "currentPasswordLabel": "Senha atual",
+      "currentPasswordDescription": "Confirme que é você antes de mudar sua conta para outro endereço."
     }
   },
   "security": {
@@ -91,5 +93,11 @@
       "loadFailed": "Não foi possível carregar suas contas conectadas. Atualize a página.",
       "couldNotLink": "Não foi possível vincular esta conta. Tente novamente."
     }
+  },
+  "errors": {
+    "current_password_required": "Digite sua senha atual para alterar o e-mail.",
+    "invalid_password": "Senha atual incorreta",
+    "email_taken": "Este e-mail já está em uso.",
+    "too_many_attempts": "Muitas senhas erradas. Aguarde 15 minutos e tente de novo."
   }
 }

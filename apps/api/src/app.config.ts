@@ -20,6 +20,9 @@ export default defineConfig(({ mode }) => ({
   server: {
     port: 3333,
     host: '0.0.0.0',
+    // Behind a reverse proxy (nginx, a load balancer, Cloudflare), set how
+    // many hops to trust (`1`) or the proxy's IPs — see `trustProxy`'s docs.
+    trustProxy: false,
   },
 
   registration: {

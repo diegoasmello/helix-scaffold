@@ -47,6 +47,7 @@ The file a developer edits to shape the app. Written with `defineConfig()` (Vite
 | --- | --- | --- |
 | `app.name` | `'Helix API'` | Title of the API docs (`/api/docs`) |
 | `server.port` / `server.host` | `3333` / `'0.0.0.0'` | |
+| `server.trustProxy` | `false` | Fastify's `trustProxy`: which proxies to believe for the client IP (`request.ip`). The `/auth/*` route overwrites `X-Forwarded-For` with `request.ip` before handing the request to better-auth (`advanced.ipAddress.ipAddressHeaders` in `src/auth.ts`), so its sign-in rate limit and session IPs — and the audit log's `ip` — can't be spoofed by a client header. Behind a reverse proxy set the hop count (`1`) or the proxy's IPs, or every client shares the proxy's IP (and one rate limit). Tested in `src/auth.test.ts` → _client IP_ |
 | `registration.mode` | `'closed'` | `'open'` enables public self-registration. See `src/modules/registration/CLAUDE.md`. |
 | `auth.socialProviders.{google,facebook,apple}.enabled` | `false` | Requires the provider's `CLIENT_ID`/`CLIENT_SECRET` in `.env`; startup fails otherwise. `apple.appBundleId` is optional (native iOS). |
 | `subscriptions.enabled` | `false` | Activates the subscription infrastructure (routes, hooks, trial auto-start). See `src/modules/subscriptions/CLAUDE.md`. |
@@ -685,6 +686,7 @@ response: { 201: roleSchema, 409: errorSchema('name_taken') },
 | subscriptions | 400, 409 | `user_not_found` (FK), `live_subscription_exists`, `external_id_taken` (`toDomainError()` in `subscriptions-routes.ts`) |
 | permissions | 400, 403, 404 | `unknown_permissions`, `role_not_editable`, `permissions_not_grantable` (privilege ceiling), `role_not_found` |
 | todos | 400 | `invalid_upload` (`assertUsableUploads()`, `src/lib/upload-ownership.ts`) |
+| me | 400, 429 | `current_password_required`, `invalid_password`, `email_taken`, `email_change_rejected`, `password_change_rejected`, `too_many_attempts` (`me-service` — re-authentication and `createAttemptLimiter()`, `src/lib/attempt-limiter.ts`) |
 | requireSubscription / requirePermission | 403 | `subscription_required`, `feature_not_in_plan`, `permission_denied` (sent by the hooks) |
 
 Plain "not found" 404s of `GET /xxx/:id` stay `reply.status(404).send({ message })` — nothing for the client to do but show "not found". Tested in `src/lib/domain-errors.test.ts` (status + body, inside plugins; validation 400 and 500 untouched).

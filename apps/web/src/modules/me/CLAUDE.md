@@ -9,7 +9,9 @@ src/modules/me/
 ├── types.ts
 ├── validation.ts
 ├── validation.test.ts
+├── linked-accounts.ts             ← linkedAccountsQuery (shared accounts query)
 ├── components/
+│   ├── email-change-form.tsx      ← new email (+ current password when the account has one)
 │   ├── password-section.tsx       ← change password, or set a first one (social-only users)
 │   ├── sign-in-methods.tsx        ← linked accounts + link another provider
 │   └── sign-in-methods.test.tsx
@@ -59,7 +61,7 @@ Form-specific interfaces (not from the API):
 ```ts
 interface MeFormValues { name: string }
 
-interface EmailChangeFormValues { newEmail: string }
+interface EmailChangeFormValues { newEmail: string; currentPassword: string }
 
 interface PasswordFormValues {
   currentPassword: string
@@ -91,7 +93,7 @@ interface LinkedAccount {
 
 **`meFormValidate`**: `name` is required.
 
-**`createEmailChangeFormValidate(currentEmail)`**: a factory, not a static export. It rejects empty, non-email, or same-as-current values.
+**`createEmailChangeFormValidate(currentEmail, requirePassword = false)`**: a factory, not a static export. It rejects empty, non-email, or same-as-current values, and an empty `currentPassword` when `requirePassword`.
 
 **`passwordFormValidate`**: `currentPassword` is required, `newPassword` needs at least 8 characters, `confirmPassword` must match.
 
@@ -102,7 +104,7 @@ interface LinkedAccount {
 Two independent forms:
 
 - **Name**: `patchMe({ name })`. `onSuccess` writes the result to the cache with `setQueryData(getMeSuspenseQueryKey(), ...)` and notifies.
-- **Email change**: `patchMeEmail({ newEmail })` sends a verification link. The email changes only after the user clicks it. On success the form resets and the screen shows a pending notice for the new address. `emailChangePending` is component-local state, so it resets on unmount.
+- **Email change**: `<EmailChangeForm>` (`components/email-change-form.tsx`), mounted once `linkedAccountsQuery` resolves (a `Loader` before): with a password (`credential` account) it also asks for the current password — the API requires it (`apps/api/src/modules/me/CLAUDE.md` → _Re-authentication_) — and sends `{ newEmail, currentPassword }`; a social-only account sends `{ newEmail }`. It is a separate component because `useForm` keeps the validation it was created with, and that depends on the accounts. `patchMeEmail` sends a verification link to the new address and a notice to the current one; the email changes only after the link is clicked. On success the screen shows a pending notice for the new address (`emailChangePending` is component-local state, so it resets on unmount). Errors go through `apiErrorMessage(error, 'me', 'account.email.notifications.emailFailed')`: `errors.invalid_password`, `errors.current_password_required`, `errors.email_taken`, `errors.too_many_attempts`.
 
 ## `MeSecurity` (`routes/me-security.tsx`)
 
@@ -110,30 +112,15 @@ Renders `<PasswordSection />`, a divider, then `<SignInMethods />`. No logic of 
 
 ### Shared accounts query
 
-Both components read the user's linked accounts with the same query. They use the same key, so React Query makes one request:
-
-```ts
-const ME_ACCOUNTS_QUERY_KEY = ['me', 'accounts'] as const
-
-useQuery({
-  queryKey: ME_ACCOUNTS_QUERY_KEY,
-  queryFn: async () => {
-    const { data, error } = await authClient.listAccounts()
-    if (error) throw error          // Better Auth returns { error } instead of throwing
-    return (data ?? []) as LinkedAccount[]
-  },
-})
-```
-
-The query calls `authClient.listAccounts()` directly, not the generated api-client. The key constant is declared in both files. Keep the two in sync.
+`PasswordSection`, `SignInMethods` and `MeAccount` read the user's linked accounts with one query, `useQuery(linkedAccountsQuery)` (`linked-accounts.ts`, key `['me', 'accounts']`), so React Query makes one request. It calls `authClient.listAccounts()` directly, not the generated api-client, and throws on `{ error }` (Better Auth returns it instead of throwing).
 
 ### `PasswordSection` (`components/password-section.tsx`)
 
 Derives `hasPassword = accounts.some(a => a.providerId === 'credential')` and renders one of three states:
 
 - **Loading** (`accountsLoading`): a `<Loader>`.
-- **`hasPassword`**: the change-password form (current, new, confirm). Mutation `patchMePassword`. On success it resets the form and notifies. On error it notifies "incorrect current password".
-- **No password** (social-only user): the set-password form (new + confirm). Mutation `postMeSetPassword`. On success it resets the form, notifies, and invalidates `['me', 'accounts']`, so `hasPassword` flips to `true` and the change form appears without a reload.
+- **`hasPassword`**: the change-password form (current, new, confirm). Mutation `patchMePassword`. On success it resets the form and notifies. On error it notifies `apiErrorMessage(error, 'me', 'security.notifications.incorrectCurrent')` — `errors.too_many_attempts` after repeated wrong passwords.
+- **No password** (social-only user): the set-password form (new + confirm). Mutation `postMeSetPassword`. On success it resets the form, notifies, and invalidates `linkedAccountsQuery.queryKey`, so `hasPassword` flips to `true` and the change form appears without a reload.
 
 The section description also switches between the two cases.
 
@@ -205,7 +192,7 @@ Dates use `formatDate` from `@/utils/date`, never the `date-fns` function of the
 
 | File | Covers | Wrapper |
 |---|---|---|
-| `routes/me-page.test.tsx` | `MePage` (nav links, Subscription link only when enabled), `MeAccount` (name, email) and `MeSecurity`'s password section (change + set) | `MantineProvider` + `<Notifications />` + `QueryClientProvider`. `MeSecurity` also needs `MantineEmotionProvider` because `SignInMethods` uses `createStyles`. The file stubs `Outlet` and `NavigationItem` (both need a router) for `MePage` |
+| `routes/me-page.test.tsx` | `MePage` (nav links, Subscription link only when enabled), `MeAccount` (name; email change with/without the current password, wrong password) and `MeSecurity`'s password section (change + set, lockout message). `afterEach` runs `notifications.clean()` | `MantineProvider` + `<Notifications />` + `QueryClientProvider`. `MeSecurity` also needs `MantineEmotionProvider` because `SignInMethods` uses `createStyles`. The file stubs `Outlet` and `NavigationItem` (both need a router) for `MePage` |
 | `routes/me-preferences.test.tsx` | Language switch, dark mode, sidebar toggle, error outside the context | `MantineProvider` + `SidebarPreferenceContext.Provider` with a `vi.fn()` toggle. `afterEach` restores `i18n` to `en` and clears the color scheme, which are global |
 | `components/sign-in-methods.test.tsx` | Connected accounts, link-another section, `linkSocial` errors | `MantineProvider` + `MantineEmotionProvider` + `<Notifications />` + `QueryClientProvider` |
 | `routes/me-subscription.test.tsx` | Loading, empty state, plan fallback, badge, dates, past_due warning, plan catalog (current plan, no-subscription case) | `MantineProvider` + `MantineEmotionProvider` (for `LabeledValue`) + `QueryClientProvider` |

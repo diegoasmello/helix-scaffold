@@ -113,7 +113,7 @@ better-auth calls `emailVerification.sendVerificationEmail` inside `runBackgroun
 
 **Password reset is not awaited on purpose.** `emailAndPassword.sendResetPassword` in `src/auth.ts` starts `emailProvider.send(...)` and returns, logging a failure (`'Failed to send password reset email'`). better-auth calls it only for a registered email and waits for it before answering, so an awaited send — a Resend round trip — would make `POST /api/auth/request-password-reset` measurably slower for registered addresses, an unauthenticated way to tell which emails have an account. The client already got 200 when the send failed, so nothing changes for it. Keep any future change to that callback non-blocking. Covered in `src/auth.test.ts` (a provider whose send never settles).
 
-**Current state**: the email change flow (`PATCH /me/email`) accepts this limitation. `me-service.changeEmail` calls `auth.api.changeEmail` and relies on the background task. If delivery fails, the user never receives the link but the API returns 200.
+**Current state**: the email change flow (`PATCH /me/email`, which also asks for the current password and notifies the current address — see `src/modules/me/CLAUDE.md`) accepts this limitation. `me-service.changeEmail` calls `auth.api.changeEmail` and relies on the background task. If delivery fails, the user never receives the link but the API returns 200.
 
 **If you need delivery errors to propagate to the HTTP response**, the workaround is:
 1. Configure `sendVerificationEmail` in `auth.ts` as a no-op (`async () => {}`)

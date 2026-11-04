@@ -150,6 +150,21 @@ export function createAuth(
           }
         : {}),
     },
+    advanced: {
+      // Written by the `/auth/*` route in `src/app.ts` from Fastify's
+      // `request.ip` (`server.trustProxy`) — never the client's own header.
+      ipAddress: { ipAddressHeaders: ['x-forwarded-for'] },
+    },
+    account: {
+      accountLinking: {
+        // Never join a social sign-in to an existing account by email alone:
+        // email sign-ups are not verified, so whoever registered the address
+        // first (an attacker) would keep a password into the account its real
+        // owner then opens with Google. Linking stays explicit — signed in, on
+        // /me/security (`linkSocial`).
+        disableImplicitLinking: true,
+      },
+    },
     secret: env.AUTH_SECRET,
     baseURL: env.BASE_URL,
     trustedOrigins: [env.CLIENT_URL],

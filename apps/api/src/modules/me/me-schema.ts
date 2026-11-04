@@ -6,6 +6,8 @@ export const updateMeSchema = z.object({
 
 export const updateMeEmailSchema = z.object({
   newEmail: z.email(),
+  /** Required when the account has a password (credential account). */
+  currentPassword: z.string().min(1).optional(),
 })
 
 export const updateMePasswordSchema = z.object({

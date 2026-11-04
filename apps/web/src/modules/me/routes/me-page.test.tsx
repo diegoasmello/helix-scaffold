@@ -3,6 +3,8 @@ import {
   getMeHandler,
   getSubscriptionStatusHandler,
   getSubscriptionStatusHandlerResponse200,
+  patchMeEmailHandler,
+  patchMeEmailHandlerResponse200,
   patchMeHandler,
   patchMeHandlerResponse200,
   patchMePasswordHandler,
@@ -15,6 +17,7 @@ import {
   MantineEmotionProvider,
   MantineProvider,
   Notifications,
+  notifications,
   type PageTabsProps,
 } from '@helix/ui'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
@@ -161,7 +164,11 @@ beforeEach(() => {
   mockListAccounts.mockResolvedValue({ data: [credentialAccount], error: null })
 })
 
-afterEach(() => vi.clearAllMocks())
+afterEach(() => {
+  vi.clearAllMocks()
+  // The store is global: notifications from one test would fill the next
+  notifications.clean()
+})
 
 describe('MePage layout', () => {
   it('renders the page title and the outlet', async () => {
@@ -263,6 +270,72 @@ describe('Profile update', () => {
   })
 })
 
+describe('Email change', () => {
+  async function submitEmailChange(fill: { password?: string } = {}) {
+    const user = userEvent.setup()
+    renderMeAccount()
+    await user.type(
+      await screen.findByLabelText(/New email/),
+      'moved@example.com'
+    )
+    if (fill.password) {
+      await user.type(screen.getByLabelText(/Current password/), fill.password)
+    }
+    await user.click(screen.getByRole('button', { name: 'Request change' }))
+  }
+
+  it('asks an account with a password for it, and sends it', async () => {
+    let body: unknown
+    server.use(
+      patchMeEmailHandler(async ({ request }) => {
+        body = await request.json()
+        return patchMeEmailHandlerResponse200({ message: 'ok' })
+      })
+    )
+    await submitEmailChange({ password: 'Password123!' })
+
+    await screen.findByText('Check your inbox')
+    expect(body).toEqual({
+      newEmail: 'moved@example.com',
+      currentPassword: 'Password123!',
+    })
+  })
+
+  it('asks no password of a social-only account', async () => {
+    mockListAccounts.mockResolvedValue({ data: [googleAccount], error: null })
+    let body: unknown
+    server.use(
+      patchMeEmailHandler(async ({ request }) => {
+        body = await request.json()
+        return patchMeEmailHandlerResponse200({ message: 'ok' })
+      })
+    )
+    await submitEmailChange()
+
+    await screen.findByText('Check your inbox')
+    expect(screen.queryByLabelText(/Current password/)).not.toBeInTheDocument()
+    expect(body).toEqual({ newEmail: 'moved@example.com' })
+  })
+
+  it('explains a wrong password', async () => {
+    server.use(
+      patchMeEmailHandler(
+        () =>
+          new Response(
+            JSON.stringify({
+              message: 'Current password is incorrect',
+              code: 'invalid_password',
+            }),
+            { status: 400 }
+          )
+      )
+    )
+    await submitEmailChange({ password: 'WrongPass!' })
+
+    await screen.findByText('Current password is incorrect')
+  })
+})
+
 describe('Password change — user with existing password', () => {
   it('submits password change and shows success', async () => {
     const user = userEvent.setup()
@@ -291,6 +364,7 @@ describe('Password change — user with existing password', () => {
       patchMePasswordHandler(() =>
         patchMePasswordHandlerResponse400({
           message: 'Current password is incorrect',
+          code: 'invalid_password',
         })
       )
     )
@@ -306,6 +380,35 @@ describe('Password change — user with existing password', () => {
     await user.click(screen.getByRole('button', { name: 'Change password' }))
 
     await screen.findByText('Current password is incorrect')
+  })
+
+  it('explains a lockout after too many wrong passwords', async () => {
+    const user = userEvent.setup()
+    server.use(
+      patchMePasswordHandler(
+        () =>
+          new Response(
+            JSON.stringify({
+              message: 'Too many failed attempts.',
+              code: 'too_many_attempts',
+            }),
+            { status: 429 }
+          )
+      )
+    )
+
+    renderMeSecurity()
+    await screen.findByRole('button', { name: 'Change password' })
+    const [currentPwdInput, newPwdInput, confirmPwdInput] =
+      document.querySelectorAll('input[type="password"]')
+    await user.type(currentPwdInput, 'Password123!')
+    await user.type(newPwdInput, 'NewPass456!')
+    await user.type(confirmPwdInput, 'NewPass456!')
+    await user.click(screen.getByRole('button', { name: 'Change password' }))
+
+    await screen.findByText(
+      'Too many wrong passwords. Wait 15 minutes and try again.'
+    )
   })
 
   it('shows validation error when passwords do not match', async () => {

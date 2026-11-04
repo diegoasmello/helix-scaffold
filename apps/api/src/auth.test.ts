@@ -3,7 +3,7 @@ import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 
 import { createAuth } from '@/auth'
 import { config } from '@/config'
-import { user, verification } from '@/db/schema'
+import { session, user, verification } from '@/db/schema'
 import type { EmailProvider } from '@/lib/email'
 import {
   cleanupAuth,
@@ -136,5 +136,57 @@ describe('email templates', () => {
     await vi.waitFor(() => expect(sent).toHaveLength(1))
     expect(sent[0]).not.toContain('<h1>')
     expect(sent[0]).toContain('&quot;&gt;&lt;h1&gt;')
+  })
+})
+
+describe('client IP', () => {
+  /** The IP better-auth recorded on the session a sign-in opened. */
+  async function sessionIp(testApp: typeof app, forwardedFor: string) {
+    const email = `ip-${crypto.randomUUID()}@test.com`
+    await app.inject({
+      method: 'POST',
+      url: '/api/auth/sign-up/email',
+      payload: { email, name: 'IP', password: 'Password123!' },
+    })
+    const res = await testApp.inject({
+      method: 'POST',
+      url: '/api/auth/sign-in/email',
+      payload: { email, password: 'Password123!' },
+      headers: { 'x-forwarded-for': forwardedFor },
+    })
+    expect(res.statusCode).toBe(200)
+    const token = decodeURIComponent(
+      cookieHeader(res.headers['set-cookie']).split('=')[1]
+    ).split('.')[0]
+    const [row] = await testDb
+      .select({ ipAddress: session.ipAddress })
+      .from(session)
+      .where(eq(session.token, token))
+    return row.ipAddress
+  }
+
+  it("ignores the client's X-Forwarded-For by default, so it cannot dodge the sign-in rate limit", async () => {
+    // `inject` connects from 127.0.0.1
+    expect(await sessionIp(app, '203.0.113.9')).toBe('127.0.0.1')
+  })
+
+  it('takes the forwarded IP when server.trustProxy trusts the proxy', async () => {
+    const proxied = createTestApp({ server: { trustProxy: true } })
+    try {
+      expect(await sessionIp(proxied, '203.0.113.9')).toBe('203.0.113.9')
+    } finally {
+      await proxied.close()
+    }
+  })
+})
+
+describe('account linking', () => {
+  it('never links a social sign-in to an existing account by email alone', () => {
+    // An unverified email sign-up must not gain the account a social sign-in
+    // with the same address opens; linking happens only through `linkSocial`.
+    const auth = createAuth(testDb, { send: async () => {} }, config)
+    expect(auth.options.account?.accountLinking).toMatchObject({
+      disableImplicitLinking: true,
+    })
   })
 })

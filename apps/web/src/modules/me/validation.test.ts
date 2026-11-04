@@ -31,7 +31,24 @@ describe('meFormValidate', () => {
   })
 })
 
-const emailChangeBase: EmailChangeFormValues = { newEmail: '' }
+const emailChangeBase: EmailChangeFormValues = {
+  newEmail: '',
+  currentPassword: '',
+}
+
+describe('emailChangeFormValidate — currentPassword', () => {
+  it('is required when the account has a password', () => {
+    const validate = createEmailChangeFormValidate('', true)
+    expect(validate.currentPassword('', emailChangeBase)).toBe('Required')
+    expect(validate.currentPassword('secret', emailChangeBase)).toBeNull()
+  })
+
+  it('is not asked of an account without one', () => {
+    expect(
+      emailChangeFormValidate.currentPassword('', emailChangeBase)
+    ).toBeNull()
+  })
+})
 
 describe('emailChangeFormValidate', () => {
   describe('newEmail', () => {

@@ -7,25 +7,26 @@ import {
 import {
   Alert,
   Button,
+  Center,
   FormSection,
   Group,
+  Loader,
   notify,
   Stack,
   TextInput,
   useForm,
 } from '@helix/ui'
 import { IconInfoCircle } from '@helix/ui'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import type {
-  EmailChangeFormValues,
-  MeFormValues,
-  UpdateMeEmailInput,
-  UpdateMeInput,
-} from '../types'
-import { createEmailChangeFormValidate, meFormValidate } from '../validation'
+import { apiErrorMessage } from '@/lib/api-errors'
+
+import { EmailChangeForm } from '../components/email-change-form'
+import { linkedAccountsQuery } from '../linked-accounts'
+import type { MeFormValues, UpdateMeEmailInput, UpdateMeInput } from '../types'
+import { meFormValidate } from '../validation'
 
 export function MeAccount() {
   const { data: profile } = useGetMeSuspense()
@@ -34,6 +35,9 @@ export function MeAccount() {
   const { t: tc } = useTranslation('common')
   const [emailChangePending, setEmailChangePending] = useState(false)
   const [pendingEmail, setPendingEmail] = useState('')
+  const { data: accounts = [], isPending: accountsLoading } =
+    useQuery(linkedAccountsQuery)
+  const hasPassword = accounts.some((a) => a.providerId === 'credential')
 
   const { mutate: updateProfile, isPending: isUpdating } = useMutation({
     mutationFn: (data: UpdateMeInput) => patchMe(data),
@@ -58,12 +62,15 @@ export function MeAccount() {
       onSuccess: (_, variables) => {
         setPendingEmail(variables.newEmail)
         setEmailChangePending(true)
-        emailForm.reset()
       },
-      onError: () => {
+      onError: (error) => {
         notify({
           status: 'danger',
-          message: t('account.email.notifications.emailFailed'),
+          message: apiErrorMessage(
+            error,
+            'me',
+            'account.email.notifications.emailFailed'
+          ),
         })
       },
     })
@@ -71,11 +78,6 @@ export function MeAccount() {
   const nameForm = useForm<MeFormValues>({
     initialValues: { name: profile.name },
     validate: meFormValidate,
-  })
-
-  const emailForm = useForm<EmailChangeFormValues>({
-    initialValues: { newEmail: '' },
-    validate: createEmailChangeFormValidate(profile.email),
   })
 
   return (
@@ -128,26 +130,17 @@ export function MeAccount() {
               </Button>
             </Group>
           </Stack>
+        ) : accountsLoading ? (
+          <Center>
+            <Loader size="sm" />
+          </Center>
         ) : (
-          <form
-            onSubmit={emailForm.onSubmit((values) =>
-              requestEmailChange(values)
-            )}
-          >
-            <Stack gap="md">
-              <TextInput
-                label={t('account.email.newLabel')}
-                type="email"
-                required
-                {...emailForm.getInputProps('newEmail')}
-              />
-              <Group justify="flex-end">
-                <Button type="submit" loading={isRequestingEmail}>
-                  {tc('actions.requestChange')}
-                </Button>
-              </Group>
-            </Stack>
-          </form>
+          <EmailChangeForm
+            currentEmail={profile.email}
+            hasPassword={hasPassword}
+            loading={isRequestingEmail}
+            onSubmit={(data) => requestEmailChange(data)}
+          />
         )}
       </FormSection>
     </>

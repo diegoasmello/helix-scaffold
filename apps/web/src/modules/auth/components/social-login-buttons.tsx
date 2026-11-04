@@ -42,6 +42,9 @@ export function SocialLoginButtons(props: Readonly<SocialLoginButtonsProps>) {
       await authClient.signIn.social({
         provider,
         callbackURL: window.location.origin + '/',
+        // A refused sign-in (e.g. `account_not_linked`) lands on /login, which
+        // explains it — not on the API's bare error page.
+        errorCallbackURL: window.location.origin + '/login',
       })
     } catch {
       setError(t('social.errors.providerError'))

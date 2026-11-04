@@ -27,6 +27,8 @@ export const loginRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/login',
   component: Login,
+  // better-auth sends a failed social sign-in back here (`errorCallbackURL`)
+  validateSearch: z.object({ error: z.string().optional() }),
   loader: async () => {
     const [{ bootstrapped }, { open, providers }] = await Promise.all([
       getBootstrapStatus(),

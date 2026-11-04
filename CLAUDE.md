@@ -106,7 +106,7 @@ Backend settings are split in two places:
 
 | Where | What goes there |
 | --- | --- |
-| `apps/api/src/app.config.ts` | **Product decisions**, committed: registration mode, subscriptions and trial, social providers on/off, email sender, uploads, server port, logger. Written with `defineConfig()` (Vite-style: a plain object or `({ mode }) => ({ ... })`). |
+| `apps/api/src/app.config.ts` | **Product decisions**, committed: registration mode, subscriptions and trial, social providers on/off, email sender, uploads, server port and trusted proxies, logger. Written with `defineConfig()` (Vite-style: a plain object or `({ mode }) => ({ ... })`). |
 | `apps/api/.env` | **Secrets and per-deploy values**, never committed: `DATABASE_URL`, `AUTH_SECRET`, `BASE_URL`, `CLIENT_URL`, `RESEND_API_KEY`, OAuth client IDs/secrets. |
 
 Settings are resolved once (validated, defaulted, frozen) and passed down from `buildApp(database, { config })`: route plugins get `config` in their options, factories (`createAuth`, `createRequireSubscription`, …) as a parameter. Only the entry points (`server.ts`, the seed, test helpers) import `config` from `@/config`. Secrets come from `import { env } from '@/env'`. Never put a secret in `app.config.ts`, and never add a new product setting to `.env`. To add a setting: extend the `AppConfig` interface (with JSDoc) and `appConfigSchema` in `src/config/define-config.ts`, then set it in `app.config.ts`.
@@ -131,6 +131,8 @@ The profile (`/me`, `/api/me/*`) needs only a session, never a permission — th
 **Single source of truth:** the mode lives only in the backend config. The frontend reads `GET /registration/status → { open: boolean, providers: string[] }` at route-load time — no `VITE_*` duplication.
 
 **Social providers** are turned on per-provider in `app.config.ts` (`auth.socialProviders.<name>.enabled: true`), with their credentials in `apps/api/.env` (see `.env.example` → _Social providers_). The API refuses to start if an enabled provider has no credentials. The `providers` array in the status response lists the enabled providers only in open mode — it is always `[]` in closed mode. The frontend renders social login buttons only for the providers in this list. **Closed mode is email/password only:** `GET /me/providers` is also `[]` there, so `/me/security` offers no account linking either (a linked provider could never be used to sign in).
+
+**Linking is always explicit:** a social sign-in never joins an existing account by email (`account.accountLinking.disableImplicitLinking` in `apps/api/src/auth.ts`). Email sign-ups are not verified, so implicit linking would let whoever registered an address first keep a password into the account its owner then opens with Google. A user whose email already has a password account gets sent back to `/login?error=account_not_linked`, signs in with the password and connects the provider on `/me/security`.
 
 **Changing the default role for open registration:** set `isDefault = true` on the desired role via the Roles admin panel. Only one role can be the default at a time (DB-enforced partial unique index). The previous default is automatically unset by the service in a transaction.
 

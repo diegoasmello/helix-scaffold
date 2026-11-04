@@ -66,6 +66,8 @@ socialProviders: {
 
 **Closed mode is email/password only:** no social button on the login page, and no account linking on `/me/security` either — `GET /me/providers` returns `[]` in closed mode, so the "link another account" section is hidden. Accounts linked earlier (e.g. while the app was in open mode) are still listed.
 
+**No implicit linking:** `account.accountLinking.disableImplicitLinking: true` in `src/auth.ts`. A social sign-in whose email already belongs to an account fails with `account_not_linked` (better-auth redirects to the client's `errorCallbackURL`, `/login`) instead of joining it: email sign-ups are never verified, so an attacker who registered the victim's address first would otherwise keep a working password into the account the victim opens with Google (pre-account takeover). Linking happens only signed in, through `linkSocial` on `/me/security`, which this option does not affect. Asserted in `src/auth.test.ts` (`describe('account linking')`).
+
 **Important:** `socialProviders` in `betterAuth()` expects **raw options objects**, not the result of calling the provider helper functions (`google()`, `facebook()`, etc.). Those helpers are for standalone use.
 
 **`getConfiguredSocialProviders(config)`** in `src/lib/social-providers.ts` derives the enabled list from `config.auth.socialProviders`, the same source `auth.ts` uses; `getUsableSocialProviders()` filters it by mode. See `apps/api/CLAUDE.md` → _Shared social provider utility_ for the steps to add a new provider.

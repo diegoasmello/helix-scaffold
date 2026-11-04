@@ -5,20 +5,27 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { Login } from './login'
 
-const { mockNavigate, mockSignIn, mockSignInSocial, mockUseLoaderData } =
-  vi.hoisted(() => ({
-    mockNavigate: vi.fn(),
-    mockSignIn: vi.fn(),
-    mockSignInSocial: vi.fn(),
-    mockUseLoaderData: vi
-      .fn()
-      .mockReturnValue({ registrationOpen: false, providers: [] }),
-  }))
+const {
+  mockNavigate,
+  mockSignIn,
+  mockSignInSocial,
+  mockUseLoaderData,
+  mockUseSearch,
+} = vi.hoisted(() => ({
+  mockNavigate: vi.fn(),
+  mockSignIn: vi.fn(),
+  mockSignInSocial: vi.fn(),
+  mockUseLoaderData: vi
+    .fn()
+    .mockReturnValue({ registrationOpen: false, providers: [] }),
+  mockUseSearch: vi.fn().mockReturnValue({}),
+}))
 
 vi.mock('.', () => ({
   loginRoute: {
     useNavigate: () => mockNavigate,
     useLoaderData: mockUseLoaderData,
+    useSearch: mockUseSearch,
   },
 }))
 
@@ -41,6 +48,30 @@ function renderLogin() {
 afterEach(() => {
   vi.clearAllMocks()
   mockUseLoaderData.mockReturnValue({ registrationOpen: false, providers: [] })
+  mockUseSearch.mockReturnValue({})
+})
+
+describe('refused social sign-in', () => {
+  it('explains an email that already has an account', () => {
+    mockUseSearch.mockReturnValue({ error: 'account_not_linked' })
+    renderLogin()
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'This email already has an account. Sign in with your email and password, then connect this provider in Account settings → Security.'
+    )
+  })
+
+  it('shows a generic message for any other error', () => {
+    mockUseSearch.mockReturnValue({ error: 'unable_to_create_user' })
+    renderLogin()
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'Could not sign in with this provider. Please try again.'
+    )
+  })
+
+  it('shows nothing without an error', () => {
+    renderLogin()
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+  })
 })
 
 it('renders the sign-in form', () => {
@@ -122,6 +153,7 @@ describe('social login buttons', () => {
     expect(mockSignInSocial).toHaveBeenCalledWith({
       provider: 'google',
       callbackURL: window.location.origin + '/',
+      errorCallbackURL: window.location.origin + '/login',
     })
   })
 

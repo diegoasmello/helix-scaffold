@@ -15,29 +15,22 @@ import {
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 
-import { authClient } from '../../../lib/authentication'
+import { apiErrorMessage } from '@/lib/api-errors'
+
+import { linkedAccountsQuery } from '../linked-accounts'
 import type {
-  LinkedAccount,
   PasswordFormValues,
   SetPasswordFormValues,
   UpdateMePasswordInput,
 } from '../types'
 import { passwordFormValidate, setPasswordFormValidate } from '../validation'
 
-const ME_ACCOUNTS_QUERY_KEY = ['me', 'accounts'] as const
-
 export function PasswordSection() {
   const { t } = useTranslation('me')
   const queryClient = useQueryClient()
 
-  const { data: accounts = [], isPending: accountsLoading } = useQuery({
-    queryKey: ME_ACCOUNTS_QUERY_KEY,
-    queryFn: async () => {
-      const { data, error } = await authClient.listAccounts()
-      if (error) throw error
-      return (data ?? []) as LinkedAccount[]
-    },
-  })
+  const { data: accounts = [], isPending: accountsLoading } =
+    useQuery(linkedAccountsQuery)
 
   const hasPassword = accounts.some((a) => a.providerId === 'credential')
 
@@ -50,10 +43,15 @@ export function PasswordSection() {
         message: t('security.notifications.changed'),
       })
     },
-    onError: () => {
+    onError: (error) => {
       notify({
         status: 'danger',
-        message: t('security.notifications.incorrectCurrent'),
+        // `errors.too_many_attempts` after repeated wrong passwords
+        message: apiErrorMessage(
+          error,
+          'me',
+          'security.notifications.incorrectCurrent'
+        ),
       })
     },
   })
@@ -82,7 +80,7 @@ export function PasswordSection() {
         status: 'success',
         message: t('security.notifications.set'),
       })
-      queryClient.invalidateQueries({ queryKey: ME_ACCOUNTS_QUERY_KEY })
+      queryClient.invalidateQueries({ queryKey: linkedAccountsQuery.queryKey })
     },
     onError: () => {
       notify({

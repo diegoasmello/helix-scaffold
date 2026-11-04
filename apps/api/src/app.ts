@@ -64,6 +64,7 @@ export function buildApp(database: Database, options: BuildAppOptions = {}) {
   } = options
 
   const app = fastify({
+    trustProxy: config.server.trustProxy,
     logger: {
       level: config.logger.level,
       redact: ['req.headers.authorization', 'req.headers.cookie'],
@@ -136,11 +137,16 @@ export function buildApp(database: Database, options: BuildAppOptions = {}) {
         // better-auth's default basePath, `/api/auth`, is this route.
         instance.all('/auth/*', async (request, reply) => {
           const rawBody = request.body as string | null
+          // better-auth reads the client IP (sign-in rate limit, sessions)
+          // from X-Forwarded-For. The client can send one, so it gets the IP
+          // Fastify resolved under `server.trustProxy` instead.
+          const headers = fromNodeHeaders(request.headers)
+          headers.set('x-forwarded-for', request.ip)
           const webRequest = new Request(
             new URL(request.url, env.BASE_URL).toString(),
             {
               method: request.method,
-              headers: fromNodeHeaders(request.headers),
+              headers,
               body:
                 request.method !== 'GET' && request.method !== 'HEAD'
                   ? (rawBody ?? undefined)

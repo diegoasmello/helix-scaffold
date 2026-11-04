@@ -28,6 +28,7 @@ interface LoginFormValues {
 export function Login() {
   const navigate = loginRoute.useNavigate()
   const { registrationOpen, providers } = loginRoute.useLoaderData()
+  const { error: socialError } = loginRoute.useSearch()
   const [serverError, setServerError] = useState<string | null>(null)
   const { t } = useTranslation('auth')
 
@@ -84,6 +85,13 @@ export function Login() {
             {serverError && (
               <Text c="red" size="sm">
                 {serverError}
+              </Text>
+            )}
+            {socialError && !serverError && (
+              <Text c="red" size="sm" role="alert">
+                {socialError === 'account_not_linked'
+                  ? t('social.errors.accountNotLinked')
+                  : t('social.errors.providerError')}
               </Text>
             )}
             <Button type="submit" fullWidth loading={form.submitting}>

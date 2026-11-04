@@ -135,7 +135,7 @@ pnpm --filter api migrate        # apply pending migrations (node dist/migrate.j
 pnpm --filter api start          # node dist/server.js
 ```
 
-`pnpm start` does not read `apps/api/.env`: give the API its environment (`DATABASE_URL`, `AUTH_SECRET`, …) from the host — including `NODE_ENV=production` (unset means `development`) and `RESEND_API_KEY`, without which a production API refuses to start rather than print emails, reset links included, to its logs. The API bundle contains only `src/`, so its dependencies must be installed where it runs. `migrate` needs only `DATABASE_URL` and the production dependencies — run it before every `start` of a new version. The product config (`app.config.ts`) is bundled in, so changing it needs a rebuild.
+`pnpm start` does not read `apps/api/.env`: give the API its environment (`DATABASE_URL`, `AUTH_SECRET`, …) from the host — including `NODE_ENV=production` (unset means `development`) and `RESEND_API_KEY`, without which a production API refuses to start rather than print emails, reset links included, to its logs. Behind a reverse proxy, set `server.trustProxy` in `app.config.ts` (`1` for one proxy, or its IPs): otherwise every client shares the proxy's IP, and with it one sign-in rate limit. The API bundle contains only `src/`, so its dependencies must be installed where it runs. `migrate` needs only `DATABASE_URL` and the production dependencies — run it before every `start` of a new version. The product config (`app.config.ts`) is bundled in, so changing it needs a rebuild.
 
 ## Testing
 
@@ -193,6 +193,7 @@ export default defineConfig(({ mode }) => ({
 | `email.from`                     | `noreply@…` | Sender address for outgoing email                                 |
 | `uploads.*`                      | —           | Storage backend, directory, max size, orphan cleanup schedule     |
 | `server.port` / `logger.*`       | `3333`      | HTTP port, log level, pretty logs                                 |
+| `server.trustProxy`              | `false`     | Proxies trusted for the client IP — set it behind a reverse proxy |
 
 | `.env`                           | Description                                                       |
 | -------------------------------- | ----------------------------------------------------------------- |

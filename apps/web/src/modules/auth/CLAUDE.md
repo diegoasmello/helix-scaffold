@@ -44,7 +44,7 @@ Relevant methods used across the module:
 | `authClient.getSession()` | `authenticatedRoute.beforeLoad` in `routes.ts` — one-shot async check |
 | `authClient.signIn.email({ email, password })` | `Login` screen |
 | `authClient.signUp.email({ name, email, password })` | `SignUp` screen |
-| `authClient.signIn.social({ provider, callbackURL })` | `SocialLoginButtons` component |
+| `authClient.signIn.social({ provider, callbackURL, errorCallbackURL })` | `SocialLoginButtons` component |
 | `authClient.requestPasswordReset({ email, redirectTo })` | `ForgotPassword` screen |
 | `authClient.resetPassword({ newPassword, token })` | `ResetPassword` screen |
 
@@ -125,7 +125,7 @@ All five routes have `rootRoute` as parent (not `authenticatedRoute`) — they a
 | Constant | Path | Loader data |
 | --- | --- | --- |
 | `bootstrapRoute` | `/bootstrap` | none — redirects to `/login` if already bootstrapped |
-| `loginRoute` | `/login` | `{ registrationOpen: boolean, providers: string[] }` |
+| `loginRoute` | `/login` | `{ registrationOpen: boolean, providers: string[] }`; `validateSearch` `{ error? }` — a refused social sign-in |
 | `signUpRoute` | `/sign-up` | `{ providers: string[] }` |
 | `forgotPasswordRoute` | `/forgot-password` | none — redirects to `/bootstrap` if not bootstrapped |
 | `resetPasswordRoute` | `/reset-password` | none — reads `{ token?, error? }` from `validateSearch` |
@@ -200,6 +200,7 @@ Renders OAuth provider buttons driven by a `providers: string[]` prop. Only rend
 - Returns `null` when `providers` has no known entries — renders nothing, no DOM output.
 - One loading state per button; other buttons are `disabled` while one is in flight.
 - `callbackURL: window.location.origin + '/'` — absolute URL so Better Auth redirects to the frontend, not the API server, after the OAuth flow completes. **Never use a relative path like `'/'` here.**
+- `errorCallbackURL: window.location.origin + '/login'` — a refused sign-in lands on `/login?error=<code>` instead of the API's bare error page. `Login` reads it with `loginRoute.useSearch()` and shows `social.errors.accountNotLinked` for `account_not_linked` (the email already has an account and linking is never implicit — the user signs in with the password and connects the provider on `/me/security`), `social.errors.providerError` for anything else. Tested in `login.test.tsx` → _refused social sign-in_ (the route mock carries `useSearch`).
 - Errors from `signIn.social` (network failures, provider errors) are caught and shown as a red error message below the buttons. The loading spinner is always cleared via `finally`.
 
 **Adding a new provider:**

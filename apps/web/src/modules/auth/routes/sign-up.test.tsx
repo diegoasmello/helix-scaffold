@@ -126,6 +126,7 @@ describe('social login buttons', () => {
     expect(mockSignInSocial).toHaveBeenCalledWith({
       provider: 'google',
       callbackURL: window.location.origin + '/',
+      errorCallbackURL: window.location.origin + '/login',
     })
   })
 

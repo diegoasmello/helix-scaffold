@@ -12,8 +12,13 @@ export const meFormValidate = createValidator<MeFormValues>()({
   name: [required],
 })
 
-export function createEmailChangeFormValidate(currentEmail: string) {
+/** `requirePassword`: the account has a password, which the API asks for. */
+export function createEmailChangeFormValidate(
+  currentEmail: string,
+  requirePassword = false
+) {
   return createValidator<EmailChangeFormValues>()({
+    currentPassword: requirePassword ? [required] : [],
     newEmail: [
       required,
       email,

@@ -22,6 +22,8 @@ export interface MeFormValues {
 
 export interface EmailChangeFormValues {
   newEmail: string
+  /** Sent only when the account has a password. */
+  currentPassword: string
 }
 
 export interface PasswordFormValues {

@@ -5,6 +5,7 @@ import z from 'zod'
 import type { Auth } from '../../auth'
 import type { Config } from '../../config'
 import type { Database } from '../../db'
+import { DomainError, errorSchema } from '../../lib/domain-errors'
 import type { EmailProvider } from '../../lib/email'
 import { getUsableSocialProviders } from '../../lib/social-providers'
 import type { FastifyTypedInstance } from '../../types'
@@ -85,11 +86,17 @@ export async function meRoutes(
         operationId: 'patchMeEmail',
         tags: ['me'],
         description:
-          'Request an email address change (sends verification email)',
+          'Request an email address change (sends verification email). Accounts with a password must send `currentPassword`; the current address is told about the request',
         body: updateMeEmailSchema,
         response: {
           200: z.object({ message: z.string() }),
-          400: z.object({ message: z.string() }),
+          400: errorSchema(
+            'current_password_required',
+            'invalid_password',
+            'email_taken',
+            'email_change_rejected'
+          ),
+          429: errorSchema('too_many_attempts'),
           500: z.object({ message: z.string() }),
         },
       },
@@ -99,11 +106,15 @@ export async function meRoutes(
         await service.changeEmail(
           request.sessionUser.id,
           request.body,
-          fromNodeHeaders(request.headers)
+          fromNodeHeaders(request.headers),
+          request.sessionUser.email
         )
       } catch (error) {
+        if (error instanceof DomainError) throw error
         if (error instanceof APIError) {
-          return reply.status(400).send({ message: error.message })
+          return reply
+            .status(400)
+            .send({ message: error.message, code: 'email_change_rejected' })
         }
         return reply
           .status(500)
@@ -160,13 +171,15 @@ export async function meRoutes(
         body: updateMePasswordSchema,
         response: {
           204: z.null().describe('Password changed'),
-          400: z.object({ message: z.string() }),
+          400: errorSchema('invalid_password', 'password_change_rejected'),
+          429: errorSchema('too_many_attempts'),
         },
       },
     },
     async (request, reply) => {
       try {
         const sessionCookies = await service.updatePassword(
+          request.sessionUser.id,
           request.body,
           fromNodeHeaders(request.headers),
           request.sessionUser.email
@@ -181,7 +194,7 @@ export async function meRoutes(
         if (error instanceof APIError) {
           return reply
             .status(400)
-            .send({ message: 'Current password is incorrect' })
+            .send({ message: error.message, code: 'password_change_rejected' })
         }
         throw error
       }
