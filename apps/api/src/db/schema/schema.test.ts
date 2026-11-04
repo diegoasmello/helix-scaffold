@@ -8,7 +8,7 @@ import { cleanupUploads } from '@/test/helpers'
 
 import * as schema from '.'
 
-const tables = Object.values(schema as Record<string, unknown>).filter(
+const tables = Object.values<unknown>(schema).filter(
   (value): value is PgTable => is(value, PgTable)
 )
 
