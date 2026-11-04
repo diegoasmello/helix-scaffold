@@ -33,7 +33,7 @@ Flow:
 2. Signs the admin up with `auth.api.signUpEmail()`. It runs on the server (no request), so the self-registration hook skips it — no default role, no trial.
 3. In **one transaction**:
    1. `pg_advisory_xact_lock(hashtext('helix:bootstrap'))`, then looks for another user who already has a role — a concurrent bootstrap that won: roll back and answer `409`. (Counting users is not enough: both racing users can exist by then, and both would back out.)
-   2. Upserts the `'Admin'` role by name (`description: 'Full system access'`, `isDefault: false`), replaces its permissions with one `rolePermission` row for **every entry in `ALL_PERMISSIONS`** (`src/config/permissions.ts`).
+   2. Upserts the `'Admin'` role by name (`description: 'Full system access'`, `isDefault: false`, **`isAdmin: true`** — the admin role, see `src/modules/permissions/CLAUDE.md` → _Admin role_) and deletes any `role_permissions` rows it has: it holds every permission through `isAdmin`, not through rows.
    3. Sets the new user's `roleId` to the Admin role.
    4. `ensureDefaultRole()` — in open mode, ensures a default role exists (see below).
 4. Returns `201 { message: 'System bootstrapped successfully' }`.
@@ -44,7 +44,7 @@ Returns `409 { message: 'System already bootstrapped' }` if any user exists at s
 
 **All or nothing.** better-auth writes the user through its own connection, so it cannot join the transaction; the user is created first and **deleted again** (sessions and accounts cascade) if the transaction fails. A failed bootstrap therefore leaves nothing behind and can be retried. If `signUpEmail` itself fails, nothing was written yet.
 
-**Leftover roles are reused.** With no users, roles left in the table (users deleted by hand) are leftovers, not data to protect: a leftover `Admin` is reused (it stops being the default and gets the full catalog), a leftover default role is kept as the default with its permissions, and a leftover non-default `User` is made the default. Bootstrap never fails on the unique `roles.name`.
+**Leftover roles are reused.** With no users, roles left in the table (users deleted by hand) are leftovers, not data to protect: a leftover `Admin` is reused (it stops being the default, becomes the admin role and loses its leftover rows), a leftover default role is kept as the default with its permissions, and a leftover non-default `User` is made the default. Bootstrap never fails on the unique `roles.name`.
 
 There is deliberately no other public way to create an admin — a dev-only `POST /bootstrap/e2e-user` used to exist and was removed; `bootstrap-routes.test.ts` asserts it stays gone. E2E tests sign in with an existing user instead (`apps/web/e2e/auth.setup.ts`).
 
@@ -54,22 +54,22 @@ When `registration.mode` is `'open'`, `POST /bootstrap` creates a second role af
 
 ```
 1. signUpEmail(admin)                 ← server-side call: the self-registration hook skips it
-2. transaction: Admin role + ALL_PERMISSIONS, admin.roleId, then — only if no role is the default yet — User role (isDefault = true, no permissions)
+2. transaction: Admin role (isAdmin, no rows), admin.roleId, then — only if no role is the default yet — User role (isDefault = true, no permissions)
 ```
 
 The User role starts with **no permissions**: what regular users may do is a product decision, granted on `/roles/$id/permissions`. Until then a self-registered user can reach only `/me` (the profile needs just a session) — the frontend's `/` sends them there. The bootstrap test asserts the role has zero permissions.
 
 **Test environment:** `src/config/test-overrides.ts` sets `registration.mode: 'open'` so test helpers can create users via `POST /api/auth/sign-up/email`. The bootstrap test accounts for both roles being created in this mode.
 
-## `ALL_PERMISSIONS` and `src/config/permissions.ts`
+## The admin role's permissions
 
-`ALL_PERMISSIONS` is a flat array of `{ resource, action }` objects derived from `RESOURCE_DEFINITIONS`. `POST /bootstrap` inserts one `rolePermissions` row per entry for the Admin role. When a new module is added to `RESOURCE_DEFINITIONS`, it is automatically included in the admin role on next bootstrap without any change to this file.
+The bootstrap writes no permission rows for the Admin role: `isAdmin` makes `hasPermission()` and `getByRoleId()` answer from the catalog (`ALL_PERMISSIONS`, derived from `RESOURCE_DEFINITIONS`). A module added to `RESOURCE_DEFINITIONS` is the admin's at once, on a running system, with no re-bootstrap.
 
 ## Tests (`bootstrap-routes.test.ts`)
 
 No `createTestSession` — routes are public. `beforeEach` calls `cleanupAuth()` then manually deletes `rolePermissions` and `roles` (in that order, since `rolePermissions` has a FK to `roles`).
 
-**`POST /bootstrap`** coverage: creates user + role + all permissions (asserts `perms.length === ALL_PERMISSIONS.length`) and an empty default role; returns 409 on second call; a failing transaction (`buildApp` over `Object.create(testDb)` with a rejecting `transaction`) answers 500 and leaves no user; leftover `Admin`/`User` roles are reused and a leftover default role is kept; two concurrent bootstraps end with one 201, one 409 and a single admin; returns 400 for invalid body. A top-level test asserts `POST /bootstrap/e2e-user` returns 404.
+**`POST /bootstrap`** coverage: creates user + the admin role (`isAdmin`, no rows, `hasPermission()` true for every `ALL_PERMISSIONS` pair) and an empty default role; returns 409 on second call; a failing transaction (`buildApp` over `Object.create(testDb)` with a rejecting `transaction`) answers 500 and leaves no user; leftover `Admin`/`User` roles are reused (the Admin becomes the admin role and loses its rows) and a leftover default role is kept; two concurrent bootstraps end with one 201, one 409 and a single admin; returns 400 for invalid body. A top-level test asserts `POST /bootstrap/e2e-user` returns 404.
 
 **`GET /bootstrap/status`** coverage: `false` when no users; `true` after a successful bootstrap.
 

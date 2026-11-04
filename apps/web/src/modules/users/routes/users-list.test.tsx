@@ -3,6 +3,7 @@ import {
   createUserWithRole,
   deleteUsersIdHandler,
   deleteUsersIdHandlerResponse204,
+  deleteUsersIdHandlerResponse403,
   getMePermissionsHandler,
   getUsersHandler,
   getUsersHandlerResponse200,
@@ -23,6 +24,13 @@ import { formatDate } from '@/utils/date'
 
 import { server } from '../../../mocks/server'
 import { UsersList } from './users-list'
+
+const mockNotify = vi.hoisted(() => vi.fn())
+
+vi.mock('@helix/ui', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@helix/ui')>()),
+  notify: mockNotify,
+}))
 
 vi.mock('.', () => ({
   usersListRoute: {
@@ -55,7 +63,7 @@ const mockUsers = [
     email: 'alice@example.com',
     emailVerified: true,
     roleId: 'role-1',
-    role: { id: 'role-1', name: 'Admin' },
+    role: { id: 'role-1', name: 'Admin', isAdmin: false },
     createdAt: '2026-03-12T10:00:00.000Z',
   }),
   createUserWithRole({
@@ -224,6 +232,65 @@ describe('UsersList', () => {
     )
     await waitFor(() =>
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    )
+  })
+
+  it('offers only View on the admin account', async () => {
+    server.use(
+      getUsersHandler(
+        createPaginatedUsers({
+          data: [
+            createUserWithRole({
+              id: '9',
+              name: 'Root Admin',
+              roleId: 'role-admin',
+              role: { id: 'role-admin', name: 'Administrator', isAdmin: true },
+            }),
+          ],
+          total: 1,
+          page: 1,
+          pageSize: 10,
+          totalPages: 1,
+        })
+      )
+    )
+    renderUsersList()
+    await screen.findByText('Root Admin')
+    expect(
+      await screen.findByRole('button', { name: 'View' })
+    ).toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'Edit' })
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'Delete' })
+    ).not.toBeInTheDocument()
+  })
+
+  it('explains why the API refused the deletion', async () => {
+    server.use(
+      deleteUsersIdHandler(() =>
+        deleteUsersIdHandlerResponse403({
+          message: 'This user has permissions your own role lacks',
+          code: 'user_not_editable',
+        })
+      )
+    )
+    renderUsersList()
+    const deleteButtons = await screen.findAllByRole('button', {
+      name: 'Delete',
+    })
+    await userEvent.click(deleteButtons[0])
+    const dialog = await screen.findByRole('dialog')
+    await userEvent.click(
+      within(dialog).getByRole('button', { name: 'Delete' })
+    )
+    await waitFor(() =>
+      expect(mockNotify).toHaveBeenCalledWith({
+        status: 'danger',
+        message:
+          "You can't change the email or role of a user with permissions your own role doesn't have, nor delete them.",
+      })
     )
   })
 })

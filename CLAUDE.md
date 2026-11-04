@@ -222,6 +222,8 @@ When a new module exposes user-facing resources, register it in the permission s
 
 Both workspace `CLAUDE.md` files describe the exact steps.
 
+**Admin role and privilege ceiling:** nobody grants, or manages a role or account holding, more than their own role has. Above that ceiling sits the **admin role** (`roles.isAdmin`, one at most, created only by the bootstrap and the seed): it holds every permission implicitly — no `role_permissions` rows, so a new module needs no grant for it — and it is locked for everyone, the admin included: no edit, no delete, no permission change, never assigned to anyone, and its account is neither edited nor deleted through `/users` (its owner uses `/me`). A role granted every permission is still below it. There is no way to transfer the admin role yet. See `apps/api/src/modules/permissions/CLAUDE.md` → _Admin role_.
+
 ### Audit logging checklist
 
 Every mutation route (POST, PATCH, DELETE) must emit an audit log entry after the service call succeeds — and only when something changed: a DELETE of an unknown id still answers 204 but writes no entry (`remove()` returns whether a row was deleted). The audit log is best-effort: a failure must never affect the HTTP response.

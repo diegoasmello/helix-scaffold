@@ -1,14 +1,17 @@
 import { deleteRolesId, useGetRolesSuspense } from '@helix/api-client/hooks'
 import {
+  Badge,
   Button,
   confirm,
   DataTable,
   type DataTableColumn,
   getDataTablePaginationProps,
   getDataTableSortingProps,
+  Group,
   notify,
   PageList,
   RowActions,
+  Text,
 } from '@helix/ui'
 import { IconPlus } from '@helix/ui'
 import { useMutation } from '@tanstack/react-query'
@@ -73,7 +76,19 @@ export function RolesList() {
   }
 
   const columns: DataTableColumn<RoleItem>[] = [
-    { accessor: 'name', title: t('columns.name'), sortable: true },
+    {
+      accessor: 'name',
+      title: t('columns.name'),
+      sortable: true,
+      render: (item) => (
+        <Group gap="sm" wrap="nowrap">
+          <Text size="sm" truncate="end">
+            {item.name}
+          </Text>
+          {item.isAdmin && <Badge variant="light">{t('admin.badge')}</Badge>}
+        </Group>
+      ),
+    },
     { accessor: 'description', title: t('columns.description') },
     {
       accessor: 'actions',
@@ -90,16 +105,16 @@ export function RolesList() {
             },
             {
               label: tc('actions.edit'),
-              hidden: !hasPermission('roles', 'edit'),
+              // The admin role is locked for everyone (API: admin_role_locked)
+              hidden: item.isAdmin || !hasPermission('roles', 'edit'),
               onClick: () =>
                 navigate({ to: '/roles/$id/edit', params: { id: item.id } }),
             },
             {
               label: t('permissions.editButton'),
-              hidden: !hasPagePermission(
-                ROLES_ACCESS.permissions,
-                hasPermission
-              ),
+              hidden:
+                item.isAdmin ||
+                !hasPagePermission(ROLES_ACCESS.permissions, hasPermission),
               onClick: () =>
                 navigate({
                   to: '/roles/$id/permissions',
@@ -109,7 +124,7 @@ export function RolesList() {
             {
               label: tc('actions.delete'),
               danger: true,
-              hidden: !hasPermission('roles', 'delete'),
+              hidden: item.isAdmin || !hasPermission('roles', 'delete'),
               onClick: () => handleDelete(item.id, item.name),
             },
           ]}

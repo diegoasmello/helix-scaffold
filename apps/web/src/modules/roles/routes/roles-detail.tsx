@@ -5,8 +5,10 @@ import {
 } from '@helix/api-client/hooks'
 import type { PermissionAction } from '@helix/api-client/types'
 import {
+  Alert,
   Button,
   Grid,
+  IconLock,
   IconPencil,
   LabeledValue,
   PageView,
@@ -40,31 +42,41 @@ export function RolesDetail() {
       title={item.name}
       description={item.description}
       actions={
-        <>
-          {hasPagePermission(ROLES_ACCESS.permissions, hasPermission) && (
-            <Button
-              variant="default"
-              onClick={() =>
-                navigate({ to: '/roles/$id/permissions', params: { id } })
-              }
-            >
-              {t('permissions.editButton')}
-            </Button>
-          )}
-          <HasPermission resource="roles" action="edit">
-            <Button
-              leftSection={<IconPencil size={17} />}
-              onClick={() =>
-                navigate({ to: '/roles/$id/edit', params: { id } })
-              }
-            >
-              {tc('actions.edit')}
-            </Button>
-          </HasPermission>
-        </>
+        // The admin role is locked for everyone (API: admin_role_locked)
+        !item.isAdmin && (
+          <>
+            {hasPagePermission(ROLES_ACCESS.permissions, hasPermission) && (
+              <Button
+                variant="default"
+                onClick={() =>
+                  navigate({ to: '/roles/$id/permissions', params: { id } })
+                }
+              >
+                {t('permissions.editButton')}
+              </Button>
+            )}
+            <HasPermission resource="roles" action="edit">
+              <Button
+                leftSection={<IconPencil size={17} />}
+                onClick={() =>
+                  navigate({ to: '/roles/$id/edit', params: { id } })
+                }
+              >
+                {tc('actions.edit')}
+              </Button>
+            </HasPermission>
+          </>
+        )
       }
     >
       <Grid gap="lg">
+        {item.isAdmin && (
+          <Grid.Col span={12}>
+            <Alert icon={<IconLock size={16} />} title={t('admin.title')}>
+              {t('admin.description')}
+            </Alert>
+          </Grid.Col>
+        )}
         <Grid.Col span={{ base: 12, sm: 6 }}>
           <LabeledValue label={t('labels.isDefault')}>
             <Text size="md">

@@ -53,11 +53,17 @@ vi.mock('../../../lib/authentication', () => ({
 
 const mockRoles = [
   createRole({
+    isAdmin: false,
     id: '1',
     name: 'Admin',
     description: 'Full access to all features.',
   }),
-  createRole({ id: '2', name: 'Viewer', description: 'Read-only access.' }),
+  createRole({
+    isAdmin: false,
+    id: '2',
+    name: 'Viewer',
+    description: 'Read-only access.',
+  }),
 ]
 
 function renderRolesList() {
@@ -253,6 +259,40 @@ describe('RolesList', () => {
     )
     expect(
       screen.queryByRole('button', { name: 'Edit permissions' })
+    ).not.toBeInTheDocument()
+  })
+
+  it('marks the admin role and offers it only View', async () => {
+    const adminRole = createRole({
+      isAdmin: true,
+      id: '3',
+      name: 'Administrator',
+      description: 'Everything.',
+    })
+    server.use(
+      getRolesHandler(
+        createPaginatedRoles({
+          data: [adminRole],
+          total: 1,
+          page: 1,
+          pageSize: 10,
+          totalPages: 1,
+        })
+      )
+    )
+    renderRolesList()
+    expect(await screen.findByText('Administrator')).toBeInTheDocument()
+    expect(screen.getByText('Full access')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'View' })).toBeInTheDocument()
+    expect(screen.queryByLabelText('Actions')).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'Edit' })
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'Edit permissions' })
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'Delete' })
     ).not.toBeInTheDocument()
   })
 })

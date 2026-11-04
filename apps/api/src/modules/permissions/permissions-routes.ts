@@ -93,6 +93,7 @@ export async function permissionsRoutes(
           ),
           403: errorSchema(
             'permission_denied',
+            'admin_role_locked',
             'role_not_editable',
             'permissions_not_grantable'
           ),
@@ -111,8 +112,8 @@ export async function permissionsRoutes(
         )
       }
 
-      // Privilege ceiling: a role above the actor's stays as it is, and nobody
-      // grants a permission their own role lacks.
+      // Privilege ceiling: the admin role and a role above the actor's stay
+      // as they are, and nobody grants a permission their own role lacks.
       const actorGrants = await service.assertRoleManageable(
         request.params.id,
         request.sessionUser.roleId

@@ -70,7 +70,9 @@ beforeEach(() => {
   server.use(
     postRolesHandler(async (info) => {
       const body = (await info.request.json()) as CreateRoleInput
-      return postRolesHandlerResponse201(createRole({ ...body, id: 'role-99' }))
+      return postRolesHandlerResponse201(
+        createRole({ isAdmin: false, ...body, id: 'role-99' })
+      )
     })
   )
 })
@@ -112,7 +114,7 @@ describe('RoleCreateDrawer', () => {
       postRolesHandler(async (info) => {
         capturedBody = (await info.request.json()) as CreateRoleInput
         return postRolesHandlerResponse201(
-          createRole({ ...capturedBody, id: 'role-99' })
+          createRole({ isAdmin: false, ...capturedBody, id: 'role-99' })
         )
       })
     )

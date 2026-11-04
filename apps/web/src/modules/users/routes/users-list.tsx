@@ -19,6 +19,7 @@ import { useMutation } from '@tanstack/react-query'
 import { parseISO } from 'date-fns'
 import { useTranslation } from 'react-i18next'
 
+import { apiErrorMessage } from '@/lib/api-errors'
 import { useResourceCache } from '@/lib/resource-cache'
 import { formatDate } from '@/utils/date'
 
@@ -56,8 +57,12 @@ export function UsersList() {
       void resourceCache.removed('users', id)
       notify({ status: 'success', message: t('notifications.deleted') })
     },
-    onError: () => {
-      notify({ status: 'danger', message: t('notifications.deleteFailed') })
+    onError: (error) => {
+      // e.g. the admin account, or a user whose role grants more than yours
+      notify({
+        status: 'danger',
+        message: apiErrorMessage(error, 'users', 'notifications.deleteFailed'),
+      })
     },
   })
 
@@ -115,14 +120,15 @@ export function UsersList() {
             },
             {
               label: tc('actions.edit'),
-              hidden: !hasPermission('users', 'edit'),
+              // The admin account is locked here (API: admin_user_locked)
+              hidden: !!item.role?.isAdmin || !hasPermission('users', 'edit'),
               onClick: () =>
                 navigate({ to: '/users/$id/edit', params: { id: item.id } }),
             },
             {
               label: tc('actions.delete'),
               danger: true,
-              hidden: !hasPermission('users', 'delete'),
+              hidden: !!item.role?.isAdmin || !hasPermission('users', 'delete'),
               onClick: () => handleDelete(item.id, item.name),
             },
           ]}

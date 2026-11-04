@@ -21,6 +21,7 @@ Domain terms used across `apps/api` and `apps/web`. Use these names in code, doc
 | --- | --- |
 | **Account provisioning** | Creating a user together with everything its kind gets (role, trial), all or nothing. Lives in `apps/api/src/modules/accounts/` — the only place a user is created. |
 | **Account kinds** | *First admin* (`POST /bootstrap`), *admin-created* (`POST /users`), *seeded* (`db:seed`) and *self-registered* (sign-up or social login in open mode). Only self-registered accounts get the default role and a trial. |
+| **Admin role** | The role marked `isAdmin` (at most one, DB-enforced), created by the bootstrap (and the seed) for the first admin. It holds every permission implicitly — no `role_permissions` rows, so a module added later is the admin's at once — and is locked: nobody edits, deletes or assigns it, and nobody edits or deletes its account through `/users`, the admin included. Not the same as a role that merely holds every permission. |
 | **Default role** | The role marked `isDefault` (at most one, DB-enforced) that self-registered users receive in open registration. `ensureDefaultRole()` makes one exist; without it a self-registered user gets no role (logged). |
 
 ## Audit
@@ -35,6 +36,7 @@ Domain terms used across `apps/api` and `apps/web`. Use these names in code, doc
 | Term | Meaning |
 | --- | --- |
 | **Permission** | A `resource:action` grant held by a role (RBAC, `apps/api/src/config/permissions.ts`). Independent of the subscription axis. A missing one answers 403 with `code: 'permission_denied'`. |
+| **Privilege ceiling** | Nobody grants, or manages a role or account holding, more than their own role has (`apps/api/src/modules/permissions/CLAUDE.md` → _Privilege ceiling_). The admin role sits above it: even a role holding every permission cannot reach it. |
 
 ## Data
 

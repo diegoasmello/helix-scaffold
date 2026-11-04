@@ -37,7 +37,7 @@ src/modules/users/
 | `CreateUserInput` | `PostUsersMutationRequest`         |
 | `UpdateUserInput` | `PatchUsersIdMutationRequest`      |
 
-`UserItem` is `UserWithRole` — always has an embedded `role: { id, name } | null`. There is no plain `User` type used in this module.
+`UserItem` is `UserWithRole` — always has an embedded `role: { id, name, isAdmin } | null`. There is no plain `User` type used in this module.
 
 `UserFormValues` is a form-specific interface:
 
@@ -124,7 +124,7 @@ Unlike the todos module, `UsersList` gates its actions by permission:
 - Row Edit → `hidden: !hasPermission('users', 'edit')` in `RowActions`
 - Row Delete → `hidden: !hasPermission('users', 'delete')`, `danger: true`
 
-View is always visible.
+View is always visible. **The admin account** (`item.role?.isAdmin`) is locked in `/users` (API: `admin_user_locked`): its row hides Edit and Delete, `UsersDetail` hides Edit, and `/users/$id/edit` redirects to the detail in its loader. A failed delete notifies `apiErrorMessage(error, 'users', 'notifications.deleteFailed')`, so `errors.user_not_editable` / `errors.admin_user_locked` explain it. `RoleSelectField` never offers the admin role (`errors.admin_role_not_assignable` covers a refusal).
 
 ## Sidebar
 

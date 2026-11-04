@@ -4,7 +4,7 @@ Self-service profile management. Operates on the current authenticated user only
 
 ## Data model
 
-No dedicated table. Reads and writes the `user` table from better-auth (`src/db/schema/authentication.ts`). This is the same table used by the users module, and `GET`/`PATCH /me` answer with the same `userWithRoleSchema` (`role: { id, name } | null`) — `getMe` reuses `getUserWithRole(database, id)` from `users-service.ts`.
+No dedicated table. Reads and writes the `user` table from better-auth (`src/db/schema/authentication.ts`). This is the same table used by the users module, and `GET`/`PATCH /me` answer with the same `userWithRoleSchema` (`role: { id, name, isAdmin } | null`) — `getMe` reuses `getUserWithRole(database, id)` from `users-service.ts`.
 
 Social provider information lives in the `account` table (also better-auth managed). Each row has `providerId` (`"credential"` for email/password, `"google"` / `"facebook"` / `"apple"` for OAuth) and `password` (only non-null for credential accounts). The me module reads it directly only for the password hash `confirmPassword()` checks; everything else goes through `auth.api.*`.
 

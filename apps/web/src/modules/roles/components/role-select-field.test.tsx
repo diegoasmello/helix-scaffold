@@ -23,8 +23,8 @@ import { RoleSelectField } from './role-select-field'
 const onChange = vi.fn()
 
 const mockRoles = [
-  createRole({ id: 'role-1', name: 'Admin' }),
-  createRole({ id: 'role-2', name: 'Viewer' }),
+  createRole({ isAdmin: false, id: 'role-1', name: 'Admin' }),
+  createRole({ isAdmin: false, id: 'role-2', name: 'Viewer' }),
 ]
 
 function renderField(props: { allowCreate?: boolean; value?: string } = {}) {
@@ -64,6 +64,21 @@ describe('RoleSelectField', () => {
     expect(
       screen.getByRole('option', { name: 'Viewer', hidden: true })
     ).toBeInTheDocument()
+  })
+
+  it('never offers the admin role', async () => {
+    server.use(
+      getRolesAllHandler([
+        ...mockRoles,
+        createRole({ isAdmin: true, id: 'role-admin', name: 'Administrator' }),
+      ])
+    )
+    renderField()
+    await userEvent.click(await screen.findByPlaceholderText('Pick one'))
+    await screen.findByRole('option', { name: 'Viewer', hidden: true })
+    expect(
+      screen.queryByRole('option', { name: 'Administrator', hidden: true })
+    ).not.toBeInTheDocument()
   })
 
   it('shows the selected role name', async () => {
@@ -108,6 +123,7 @@ describe('RoleSelectField', () => {
 
     it('selects the newly created role and refreshes the options', async () => {
       const created = createRole({
+        isAdmin: false,
         id: 'role-99',
         name: 'Editor',
         description: 'Can edit content',

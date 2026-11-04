@@ -91,10 +91,9 @@ export function createRolesService(database: Database) {
   }
 
   /**
-   * Throws `name_taken` (409) for a duplicate name, and `role_not_editable`
-   * (403) for a role granting something the actor's own role lacks — so a
-   * moderator can neither rename the admin's role nor make it the default
-   * for self-registration.
+   * Throws `name_taken` (409) for a duplicate name, `admin_role_locked` (403)
+   * for the admin role and `role_not_editable` (403) for a role granting
+   * something the actor's own role lacks — see `assertRoleManageable()`.
    */
   async function update(
     id: string,
@@ -123,8 +122,9 @@ export function createRolesService(database: Database) {
   /**
    * Deletes the row; `false` when the id did not exist (nothing to audit).
    * Refuses (409) the default registration role (`default_role`) and a role
-   * that still has users (`role_in_use`), and (403 `role_not_editable`) a
-   * role granting something the actor's own role lacks.
+   * that still has users (`role_in_use`), and (403) the admin role
+   * (`admin_role_locked`) and a role granting something the actor's own role
+   * lacks (`role_not_editable`).
    */
   async function remove(
     id: string,

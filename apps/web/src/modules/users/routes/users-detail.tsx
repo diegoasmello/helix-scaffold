@@ -28,14 +28,19 @@ export function UsersDetail() {
       title={item.name}
       description={item.email}
       actions={
-        <HasPermission resource="users" action="edit">
-          <Button
-            leftSection={<IconPencil size={17} />}
-            onClick={() => navigate({ to: '/users/$id/edit', params: { id } })}
-          >
-            {tc('actions.edit')}
-          </Button>
-        </HasPermission>
+        // The admin account is locked here (API: admin_user_locked)
+        !item.role?.isAdmin && (
+          <HasPermission resource="users" action="edit">
+            <Button
+              leftSection={<IconPencil size={17} />}
+              onClick={() =>
+                navigate({ to: '/users/$id/edit', params: { id } })
+              }
+            >
+              {tc('actions.edit')}
+            </Button>
+          </HasPermission>
+        )
       }
     >
       <Grid gap="lg">

@@ -1,14 +1,39 @@
-import { and, eq } from 'drizzle-orm'
+import { and, eq, isNotNull, or } from 'drizzle-orm'
 
-import { isDeclaredPermission } from '@/config/permissions'
+import { ALL_PERMISSIONS, isDeclaredPermission } from '@/config/permissions'
 import type { Database } from '@/db'
-import { rolePermissions } from '@/db/schema'
+import { rolePermissions, roles } from '@/db/schema'
 import { DomainError } from '@/lib/domain-errors'
 
 import type { Grants } from './permissions-schema'
 
+/** The whole catalog as `Grants` — what the admin role holds. */
+function allGrants(): Grants {
+  const grants: Grants = {}
+  for (const { resource, action } of ALL_PERMISSIONS) {
+    grants[resource] = [...(grants[resource] ?? []), action]
+  }
+  return grants
+}
+
 export function createPermissionsService(database: Database) {
+  /** Whether `roleId` is the admin role (`roles.isAdmin`). */
+  async function isAdminRole(roleId: string | null): Promise<boolean> {
+    if (!roleId) return false
+    const [row] = await database
+      .select({ isAdmin: roles.isAdmin })
+      .from(roles)
+      .where(eq(roles.id, roleId))
+    return row?.isAdmin ?? false
+  }
+
+  /**
+   * The role's grants. The admin role holds the whole catalog, whatever
+   * `role_permissions` says — a module added later is the admin's at once.
+   */
   async function getByRoleId(roleId: string): Promise<Grants> {
+    if (await isAdminRole(roleId)) return allGrants()
+
     const rows = await database
       .select()
       .from(rolePermissions)
@@ -47,14 +72,27 @@ export function createPermissionsService(database: Database) {
     resource: string,
     action: string
   ): Promise<boolean> {
+    // One query: the admin role passes on any catalog pair, the others need
+    // the row.
+    const adminPasses = isDeclaredPermission(resource, action)
     const [row] = await database
-      .select({ id: rolePermissions.id })
-      .from(rolePermissions)
-      .where(
+      .select({ id: roles.id })
+      .from(roles)
+      .leftJoin(
+        rolePermissions,
         and(
-          eq(rolePermissions.roleId, roleId),
+          eq(rolePermissions.roleId, roles.id),
           eq(rolePermissions.resource, resource),
           eq(rolePermissions.action, action)
+        )
+      )
+      .where(
+        and(
+          eq(roles.id, roleId),
+          or(
+            adminPasses ? eq(roles.isAdmin, true) : undefined,
+            isNotNull(rolePermissions.id)
+          )
         )
       )
       .limit(1)
@@ -91,15 +129,24 @@ export function createPermissionsService(database: Database) {
   }
 
   /**
-   * Refuses (403 `role_not_editable`) to let the actor manage a role that
-   * grants something their own role lacks — its permissions, name, default
-   * flag or existence: delegated moderators manage the roles below them, never
-   * the admin's. Returns the actor's grants for further checks.
+   * Refuses to let the actor manage a role — its permissions, name, default
+   * flag or existence: the admin role is locked for everyone, the admin
+   * included (403 `admin_role_locked`), and a role granting something the
+   * actor's own role lacks is out of reach (403 `role_not_editable`):
+   * delegated moderators manage the roles below them. Returns the actor's
+   * grants for further checks.
    */
   async function assertRoleManageable(
     roleId: string,
     actorRoleId: string | null
   ): Promise<Set<string>> {
+    if (await isAdminRole(roleId)) {
+      throw new DomainError(
+        403,
+        'admin_role_locked',
+        'The admin role cannot be changed'
+      )
+    }
     const actorGrants = await grantsOf(actorRoleId)
     if (await exceeds(roleId, actorGrants)) {
       throw new DomainError(
@@ -112,6 +159,7 @@ export function createPermissionsService(database: Database) {
   }
 
   return {
+    isAdminRole,
     getByRoleId,
     replaceForRole,
     hasPermission,

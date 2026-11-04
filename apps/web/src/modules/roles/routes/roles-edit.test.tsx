@@ -63,6 +63,7 @@ vi.mock('../components/roles-form', () => ({
 }))
 
 const mockRole = createRole({
+  isAdmin: false,
   id: '1',
   name: 'Admin',
   description: 'Full access',

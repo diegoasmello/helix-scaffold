@@ -5,7 +5,7 @@ import { sql } from 'drizzle-orm'
 
 import { createAuth } from '@/auth'
 import { config } from '@/config'
-import { ALL_PERMISSIONS, type Permission } from '@/config/permissions'
+import type { Permission } from '@/config/permissions'
 import { db } from '@/db'
 import {
   rolePermissions,
@@ -99,7 +99,8 @@ async function main() {
   console.log('Creating roles...')
   const [adminRole] = await db
     .insert(roles)
-    .values({ name: 'Admin', description: 'Full system access' })
+    // Every permission through `isAdmin`, with no `role_permissions` rows.
+    .values({ name: 'Admin', description: 'Full system access', isAdmin: true })
     .returning()
   const [moderatorRole] = await db
     .insert(roles)
@@ -111,13 +112,6 @@ async function main() {
     .returning()
 
   console.log('Assigning permissions...')
-  await db.insert(rolePermissions).values(
-    ALL_PERMISSIONS.map(({ resource, action }) => ({
-      roleId: adminRole.id,
-      resource,
-      action,
-    }))
-  )
   await db.insert(rolePermissions).values(
     MODERATOR_PERMISSIONS.map(({ resource, action }) => ({
       roleId: moderatorRole.id,

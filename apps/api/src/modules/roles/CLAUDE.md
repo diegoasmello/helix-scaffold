@@ -12,6 +12,7 @@ Full CRUD module. Used as a dependency by the users module (assigns `roleId` to 
 | `name`        | `text NOT NULL`      | **Unique constraint** — no duplicate names                   |
 | `description` | `text` (nullable)    | No `.notNull()` — absence and `null` are valid               |
 | `isDefault`   | `boolean NOT NULL`   | Default `false`. At most one row can have `true` (partial unique index). |
+| `isAdmin`     | `boolean NOT NULL`   | Default `false`. The admin role — at most one (`roles_is_admin_unique`). Set only by the bootstrap and the seed. See `src/modules/permissions/CLAUDE.md` → _Admin role_. |
 | `createdAt`   | `timestamp NOT NULL` | `defaultNow()`                                               |
 | `updatedAt`   | `timestamp NOT NULL` | `$onUpdateFn(() => new Date())`                              |
 
@@ -28,8 +29,8 @@ When `registration.mode` is `'open'`, the User role created during bootstrap has
 
 ## Schema (`roles-schema.ts`)
 
-- `roleSchema` — `.meta({ id: 'Role', title: 'Role' })`. `description` is `z.string().nullable()`. `isDefault` is `z.boolean()`.
-- `createRoleSchema` — `{ name, description (optional), isDefault (optional, defaults to false) }`.
+- `roleSchema` — `.meta({ id: 'Role', title: 'Role' })`. `description` is `z.string().nullable()`. `isDefault` and `isAdmin` are `z.boolean()` — the web hides the admin role's actions with it.
+- `createRoleSchema` — `{ name, description (optional), isDefault (optional, defaults to false) }`. No `isAdmin`, here or in `updateRoleSchema`: an `isAdmin` in the body is dropped.
 - `updateRoleSchema` — same fields, all optional.
 - Sort columns: `['name', 'createdAt']`. Default sort: `createdAt`.
 
@@ -39,7 +40,7 @@ When `registration.mode` is `'open'`, the User role created during bootstrap has
 
 **`listAll()`** — returns all roles sorted by `name asc` with no pagination. Used by `GET /roles/all`. Always sorted alphabetically regardless of query params.
 
-**`update(id, data, actorRoleId)` / `remove(id, actorRoleId)`** — receive the caller's role (`request.sessionUser.roleId`) and start with `assertRoleManageable()` from the permissions service: a role granting something the caller's role lacks answers **403** `role_not_editable` — no renaming it, deleting it or making it the default for self-registration (which would hand its permissions to every new sign-up). See `src/modules/permissions/CLAUDE.md` → _Privilege ceiling_. An unknown id passes the check (it grants nothing) and still ends in 404 / 204.
+**`update(id, data, actorRoleId)` / `remove(id, actorRoleId)`** — receive the caller's role (`request.sessionUser.roleId`) and start with `assertRoleManageable()` from the permissions service: the admin role answers **403** `admin_role_locked` (for everyone, the admin included), and a role granting something the caller's role lacks answers **403** `role_not_editable` — no renaming it, deleting it or making it the default for self-registration (which would hand its permissions to every new sign-up). See `src/modules/permissions/CLAUDE.md` → _Privilege ceiling_. An unknown id passes the check (it grants nothing) and still ends in 404 / 204.
 
 **`hasUsers(id)`** — point-lookup on the `user` table with `.limit(1)`: checks whether any user has `roleId = id`. Returns `boolean`. Called by `DELETE /roles/:id` before deletion.
 
@@ -53,8 +54,8 @@ Receives `{ database, requirePermission }` — no `auth` parameter.
 | `GET`    | `/roles/all` | `roles:view`    | Plain array, sorted by name, no pagination params            |
 | `GET`    | `/roles/:id` | `roles:view`    |                                                              |
 | `POST`   | `/roles`     | `roles:create`  | **409** `name_taken` on a duplicate name. Audit: `request.audit('create', 'roles', id, body)` |
-| `PATCH`  | `/roles/:id` | `roles:edit`    | **403** `role_not_editable` for a role above the caller's. **409** `name_taken` on a duplicate name. Audit: `request.audit('edit', 'roles', id, body)` |
-| `DELETE` | `/roles/:id` | `roles:delete`  | **403** `role_not_editable` for a role above the caller's. Returns **409** when role has assigned users; audit on success |
+| `PATCH`  | `/roles/:id` | `roles:edit`    | **403** `admin_role_locked` for the admin role, `role_not_editable` for a role above the caller's. **409** `name_taken` on a duplicate name. Audit: `request.audit('edit', 'roles', id, body)` |
+| `DELETE` | `/roles/:id` | `roles:delete`  | **403** `admin_role_locked` for the admin role, `role_not_editable` for a role above the caller's. Returns **409** when role has assigned users; audit on success |
 
 **`DELETE` guard** — in `service.remove()`, which throws a `DomainError` before deleting:
 1. `role?.isDefault` → `409 { message: 'Cannot delete the default registration role', code: 'default_role' }` — prevents silently breaking open registration.
@@ -81,5 +82,7 @@ No audit call on 409. Returns 204 even when the role id does not exist, but audi
 **`DELETE` 409 test** — seeds a role, inserts a user with `roleId` pointing to it, then asserts 409. Requires `testDb.insert(user).values({ id: uuidv7(), ..., roleId: inserted.id })`.
 
 **`describe('Privilege ceiling')`** — a moderator (`roles:view/edit/delete`, `todos:view`) against a broader and a narrower role: PATCH `isDefault` on the broader one (403, flag unchanged), DELETE it (403, row kept); both succeed on the narrower one.
+
+**`describe('Admin role')`** — with `createAdminRole()`: `isAdmin` in `GET /roles/:id`; PATCH (rename + `isDefault`) answers 403 `admin_role_locked` with the role unchanged and no audit; DELETE answers it to the test session and to the admin; an `isAdmin: true` in a POST body is ignored; the admin, with no permission rows, passes `requirePermission()`.
 
 Permission enforcement email pattern: `restricted-roles-${Date.now()}@test.com`.

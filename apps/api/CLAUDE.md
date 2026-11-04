@@ -26,7 +26,7 @@ Run from `apps/api` (or from the root with the `pnpm db:*` / `pnpm spec:*` alias
 | `pnpm db:generate` | Generate a migration from the Drizzle schema (`src/db/schema/`) into `src/db/migrations/` |
 | `pnpm db:migrate` / `pnpm db:migrate:test` | Apply migrations to the dev DB (`.env`) / test DB (`.env.test`) |
 | `pnpm db:studio` | Drizzle Studio |
-| `pnpm db:seed` | Dev data (`src/db/seed.ts`). **Refuses to run if any user exists.** Wipes `uploads.dir`, creates Admin/Moderator/User roles (in open registration `User` becomes the default role, through `ensureDefaultRole()`), an admin login (`admin@example.com` / `pass1234`), 20 extra users (same password) and sample todos with uploads |
+| `pnpm db:seed` | Dev data (`src/db/seed.ts`). **Refuses to run if any user exists.** Wipes `uploads.dir`, creates Admin (the admin role — `isAdmin`, no permission rows)/Moderator/User roles (in open registration `User` becomes the default role, through `ensureDefaultRole()`), an admin login (`admin@example.com` / `pass1234`), 20 extra users (same password) and sample todos with uploads |
 | `pnpm db:reset` | Truncates every table in the schema (`drizzle-seed` `reset`). Does not touch `uploads.dir` |
 | `pnpm spec:export <file>` | Writes the OpenAPI spec — see _OpenAPI spec export_. After a contract change, run `pnpm spec:sync` from the repo root instead: it exports to `packages/api-client/openapi.json` and regenerates the client |
 | `pnpm test` / `pnpm test:watch` | Vitest against the test DB |
@@ -681,10 +681,10 @@ response: { 201: roleSchema, 409: errorSchema('name_taken') },
 
 | Module | Status | Codes |
 | --- | --- | --- |
-| roles | 403, 409 | `role_not_editable` (service `update()`/`remove()` — privilege ceiling), `name_taken` (service, unique `name`), `default_role`, `role_in_use` (service `remove()`) |
-| users / accounts | 403, 404, 409 | `role_not_assignable`, `user_not_editable` (users service — privilege ceiling), `role_not_found`, `user_not_found`, `email_taken` (`RoleNotFoundError`, `EmailTakenError` in account provisioning; PATCH maps `user_email_unique`) |
+| roles | 403, 409 | `admin_role_locked`, `role_not_editable` (service `update()`/`remove()` — admin role and privilege ceiling), `name_taken` (service, unique `name`), `default_role`, `role_in_use` (service `remove()`) |
+| users / accounts | 403, 404, 409 | `admin_role_not_assignable`, `admin_user_locked`, `role_not_assignable`, `user_not_editable` (users service — admin role and privilege ceiling), `role_not_found`, `user_not_found`, `email_taken` (`RoleNotFoundError`, `EmailTakenError` in account provisioning; PATCH maps `user_email_unique`) |
 | subscriptions | 400, 409 | `user_not_found` (FK), `live_subscription_exists`, `external_id_taken` (`toDomainError()` in `subscriptions-routes.ts`) |
-| permissions | 400, 403, 404 | `unknown_permissions`, `role_not_editable`, `permissions_not_grantable` (privilege ceiling), `role_not_found` |
+| permissions | 400, 403, 404 | `unknown_permissions`, `missing_required_permissions`, `admin_role_locked`, `role_not_editable`, `permissions_not_grantable` (admin role and privilege ceiling), `role_not_found` |
 | todos | 400 | `invalid_upload` (`assertUsableUploads()`, `src/lib/upload-ownership.ts`) |
 | me | 400, 429 | `current_password_required`, `invalid_password`, `email_change_rejected`, `password_change_rejected`, `too_many_attempts` (`me-service` — re-authentication and `createAttemptLimiter()`, `src/lib/attempt-limiter.ts`) |
 | requireSubscription / requirePermission | 403 | `subscription_required`, `feature_not_in_plan`, `permission_denied` (sent by the hooks) |
@@ -1112,9 +1112,11 @@ The helpers in `src/test/helpers.ts` provide:
 
 - `testDb` — Drizzle instance on the test database
 - `createTestApp(overrides?)` — `buildApp(testDb)` with the test config, or with `overrides` merged on top (another mode — see _Test config_ → _Other modes_). For a custom billing adapter, call `buildApp(testDb, { billingWebhookAdapter })` directly
-- `createTestSession(app)` — signs up `test@test.com` with the `__test_admin__` role (every permission in `ALL_PERMISSIONS`) and an active `pro` subscription; returns the cookie string
+- `createTestSession(app)` — signs up `test@test.com` with the `__test_admin__` role (every permission in `ALL_PERMISSIONS`) and an active `pro` subscription; returns the cookie string. That role only holds every permission — it is **not** the admin role (`isAdmin`), so it is the "moderator granted everything" the admin role must stay out of reach of
 - `getTestUser()` — the user created by `createTestSession()` (look it up by email, never by row order)
 - `createRoleWithPermissions(grants)` — a fresh role with exactly the given permissions, for permission enforcement tests
+- `createAdminRole()` — the admin role (`isAdmin`), as the bootstrap creates it; at most one exists, and `cleanupRoles()` removes it
+- `createSessionWithRole(app, roleId)` — signs up a fresh user with that role and returns its cookie (pair it with the two above)
 - `findAuditLogs(action, resource, resourceId)` — the audit entries written for one record
 - `grantActiveSubscription(email, planId = 'pro')` — an active subscription for that user. Restricted users on a **subscription-gated** route need it (see _Permission enforcement tests_)
 - `todoRow(values)` — a `todos` row for `testDb.insert(todos)` with its normalized columns filled and a unique `slug` (title + random suffix, unless given). A module with normalized columns or a slug adds its own (`featureRow()`)

@@ -3,7 +3,7 @@ import {
   getUsersIdSuspenseQueryOptions,
   getUsersSuspenseQueryOptions,
 } from '@helix/api-client/hooks'
-import { createRoute } from '@tanstack/react-router'
+import { createRoute, redirect } from '@tanstack/react-router'
 import { z } from 'zod'
 
 import { guardPage } from '@/modules/auth/page-access'
@@ -90,11 +90,16 @@ export const usersEditRoute = createRoute({
     ],
   },
   beforeLoad: guardPage(USERS_ACCESS.edit),
-  loader: ({ params }) => {
+  loader: async ({ params }) => {
     queryClient.ensureQueryData(getRolesAllSuspenseQueryOptions())
-    return queryClient.ensureQueryData(
+    const item = await queryClient.ensureQueryData(
       getUsersIdSuspenseQueryOptions(params.id)
     )
+    // The admin account is locked here (API: admin_user_locked)
+    if (item.role?.isAdmin) {
+      throw redirect({ to: '/users/$id', params: { id: params.id } })
+    }
+    return item
   },
 })
 

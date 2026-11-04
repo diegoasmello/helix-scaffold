@@ -2,6 +2,7 @@ import { eq } from 'drizzle-orm'
 import { uuidv7 } from 'uuidv7'
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 
+import { ALL_PERMISSIONS } from '@/config/permissions'
 import { auditLogs } from '@/db/schema'
 import { user } from '@/db/schema/authentication'
 import {
@@ -9,6 +10,7 @@ import {
   cleanupAuth,
   cleanupRoles,
   cleanupUsers,
+  createAdminRole,
   createRoleWithPermissions,
   createSessionWithRole,
   createTestApp,
@@ -496,6 +498,57 @@ describe('Privilege ceiling', () => {
       .select()
       .from(auditLogs)
       .where(eq(auditLogs.resourceId, member.id))
+    expect(entries).toHaveLength(0)
+  })
+})
+
+describe('Admin role', () => {
+  function pairs(grants: Record<string, string[]>) {
+    return Object.entries(grants).flatMap(([resource, actions]) =>
+      actions.map((action) => `${resource}:${action}`)
+    )
+  }
+  const catalog = ALL_PERMISSIONS.map((p) => `${p.resource}:${p.action}`)
+
+  it('holds the whole catalog with no permission rows', async () => {
+    const adminRole = await createAdminRole()
+    const res = await app.inject({
+      method: 'GET',
+      url: `/api/roles/${adminRole.id}/permissions`,
+      headers: { cookie: authCookie },
+    })
+    expect(res.statusCode).toBe(200)
+    expect(pairs(res.json().grants).sort()).toEqual([...catalog].sort())
+  })
+
+  it('gives the admin every permission on GET /me/permissions', async () => {
+    const adminRole = await createAdminRole()
+    const cookie = await createSessionWithRole(app, adminRole.id)
+    const res = await app.inject({
+      method: 'GET',
+      url: '/api/me/permissions',
+      headers: { cookie },
+    })
+    expect(pairs(res.json().grants).sort()).toEqual([...catalog].sort())
+  })
+
+  it('refuses PUT on the admin role to everyone, the admin included', async () => {
+    const adminRole = await createAdminRole()
+    const cookie = await createSessionWithRole(app, adminRole.id)
+    for (const headers of [{ cookie: authCookie }, { cookie }]) {
+      const res = await app.inject({
+        method: 'PUT',
+        url: `/api/roles/${adminRole.id}/permissions`,
+        payload: { grants: {} },
+        headers,
+      })
+      expect(res.statusCode).toBe(403)
+      expect(res.json().code).toBe('admin_role_locked')
+    }
+    const entries = await testDb
+      .select()
+      .from(auditLogs)
+      .where(eq(auditLogs.resourceId, adminRole.id))
     expect(entries).toHaveLength(0)
   })
 })

@@ -218,6 +218,19 @@ export async function createRoleWithPermissions(
 }
 
 /**
+ * The admin role (`isAdmin`: every permission, locked), as the bootstrap
+ * creates it — at most one exists. The test admin role is not it: it only
+ * holds every permission, like a moderator granted everything.
+ */
+export async function createAdminRole() {
+  const [role] = await testDb
+    .insert(roles)
+    .values({ name: `admin-${crypto.randomUUID()}`, isAdmin: true })
+    .returning()
+  return role
+}
+
+/**
  * Signs up a fresh user, gives them `roleId` and returns their Cookie header.
  * Pair it with `createRoleWithPermissions` to act as a user holding exactly
  * those grants (a delegated moderator, say).

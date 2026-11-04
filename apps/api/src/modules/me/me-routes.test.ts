@@ -112,7 +112,11 @@ describe('GET /me', () => {
       headers: { cookie: authCookie },
     })
     const body = res.json()
-    expect(body.role).toEqual({ id: body.roleId, name: TEST_ROLE_NAME })
+    expect(body.role).toEqual({
+      id: body.roleId,
+      name: TEST_ROLE_NAME,
+      isAdmin: false,
+    })
   })
 })
 

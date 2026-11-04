@@ -4,7 +4,7 @@ import {
   getRolesIdSuspenseQueryOptions,
   getRolesSuspenseQueryOptions,
 } from '@helix/api-client/hooks'
-import { createRoute } from '@tanstack/react-router'
+import { createRoute, redirect } from '@tanstack/react-router'
 import { z } from 'zod'
 
 import { guardPage } from '@/modules/auth/page-access'
@@ -19,6 +19,20 @@ import { RolesEdit } from './roles-edit'
 import { RolesList } from './roles-list'
 import { RolesPending } from './roles-pending'
 import { RolesPermissions } from './roles-permissions'
+
+/**
+ * Loads the role for a page that changes it — the admin role is locked for
+ * everyone (API: `admin_role_locked`), so its pages send back to the detail.
+ */
+async function loadManageableRole(id: string) {
+  const role = await queryClient.ensureQueryData(
+    getRolesIdSuspenseQueryOptions(id)
+  )
+  if (role.isAdmin) {
+    throw redirect({ to: '/roles/$id', params: { id } })
+  }
+  return role
+}
 
 export const rolesListRoute = createRoute({
   getParentRoute: () => authenticatedRoute,
@@ -100,8 +114,7 @@ export const rolesEditRoute = createRoute({
     ],
   },
   beforeLoad: guardPage(ROLES_ACCESS.edit),
-  loader: ({ params }) =>
-    queryClient.ensureQueryData(getRolesIdSuspenseQueryOptions(params.id)),
+  loader: ({ params }) => loadManageableRole(params.id),
 })
 
 export const rolesPermissionsRoute = createRoute({
@@ -120,14 +133,13 @@ export const rolesPermissionsRoute = createRoute({
     ],
   },
   beforeLoad: guardPage(ROLES_ACCESS.permissions),
-  loader: ({ params }) => {
+  loader: async ({ params }) => {
+    const role = await loadManageableRole(params.id)
     queryClient.ensureQueryData(getPermissionsResourcesSuspenseQueryOptions())
     queryClient.ensureQueryData(
       getRolesIdPermissionsSuspenseQueryOptions(params.id)
     )
-    return queryClient.ensureQueryData(
-      getRolesIdSuspenseQueryOptions(params.id)
-    )
+    return role
   },
 })
 

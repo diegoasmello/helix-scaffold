@@ -18,7 +18,9 @@ const userSchema = z.object({
 
 export const userWithRoleSchema = userSchema
   .extend({
-    role: z.object({ id: z.string(), name: z.string() }).nullable(),
+    role: z
+      .object({ id: z.string(), name: z.string(), isAdmin: z.boolean() })
+      .nullable(),
   })
   .meta({ id: 'UserWithRole', title: 'UserWithRole' })
 

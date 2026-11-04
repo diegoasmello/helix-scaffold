@@ -12,6 +12,11 @@ export const roleSchema = z
     name: z.string(),
     description: z.string().nullable(),
     isDefault: z.boolean(),
+    isAdmin: z
+      .boolean()
+      .describe(
+        'The admin role: every permission, and locked — nobody edits, deletes or assigns it'
+      ),
     createdAt: z.date(),
     updatedAt: z.date(),
   })

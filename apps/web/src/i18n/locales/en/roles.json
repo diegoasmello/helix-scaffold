@@ -48,6 +48,11 @@
     "title": "Delete role",
     "message": "Are you sure you want to delete \"{{name}}\"? This action cannot be undone."
   },
+  "admin": {
+    "badge": "Full access",
+    "title": "Admin role",
+    "description": "This role holds every permission, including those of modules added later. It can't be edited, deleted or assigned to anyone."
+  },
   "permissions": {
     "title": "Permissions",
     "editTitle": "Edit permissions",
@@ -81,6 +86,7 @@
     "role_not_found": "This role no longer exists.",
     "role_not_editable": "This role has permissions your own role doesn't have, so you can't change or delete it.",
     "permissions_not_grantable": "You can't grant permissions your own role doesn't have.",
-    "missing_required_permissions": "Some permissions need others that aren't checked. Check them too."
+    "missing_required_permissions": "Some permissions need others that aren't checked. Check them too.",
+    "admin_role_locked": "The admin role can't be edited or deleted."
   }
 }

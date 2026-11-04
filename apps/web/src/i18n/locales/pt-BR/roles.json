@@ -48,6 +48,11 @@
     "title": "Excluir perfil",
     "message": "Tem certeza que deseja excluir \"{{name}}\"? Esta ação não pode ser desfeita."
   },
+  "admin": {
+    "badge": "Acesso total",
+    "title": "Perfil de administrador",
+    "description": "Este perfil tem todas as permissões, inclusive as de módulos adicionados depois. Ele não pode ser editado, excluído nem atribuído a ninguém."
+  },
   "permissions": {
     "title": "Permissões",
     "editTitle": "Editar permissões",
@@ -81,6 +86,7 @@
     "role_not_found": "Este perfil não existe mais.",
     "role_not_editable": "Este perfil tem permissões que o seu próprio perfil não tem, então você não pode alterá-lo nem excluí-lo.",
     "permissions_not_grantable": "Você não pode conceder permissões que o seu próprio perfil não tem.",
-    "missing_required_permissions": "Algumas permissões dependem de outras que não estão marcadas. Marque-as também."
+    "missing_required_permissions": "Algumas permissões dependem de outras que não estão marcadas. Marque-as também.",
+    "admin_role_locked": "O perfil de administrador não pode ser editado nem excluído."
   }
 }

@@ -83,7 +83,7 @@ The fields sit in one `FormColumn` (no sections), so the same `RolesForm` serves
 
 Cross-module component exported for use by other modules. Wraps a `<Select>` backed by `useGetRolesAllSuspense()` (consumes `GET /roles/all`). Props are `Omit<SelectProps, 'data'> & { allowCreate?: boolean }`.
 
-Always `searchable` and `clearable`. Selecting nothing returns `null`. Callers must ensure `getRolesAllSuspenseQueryOptions()` is prefetched in the route loader or the component will suspend on its own.
+Always `searchable` and `clearable`. Selecting nothing returns `null`. **Never offers the admin role** (`role.isAdmin` — the API refuses it with `admin_role_not_assignable`). Callers must ensure `getRolesAllSuspenseQueryOptions()` is prefetched in the route loader or the component will suspend on its own.
 
 **Basic usage** — bind it like any input:
 
@@ -113,6 +113,8 @@ Props: `opened`, `onClose`, `onSuccess(roleId)`. On success: `resourceCache.chan
 | `rolesEditRoute`   | `/roles/$id/edit`  | `roles:edit`   |
 | `rolesPermissionsRoute` | `/roles/$id/permissions` | `roles:view` + `permissions:view` + `permissions:edit` (it loads the role and its grants before saving) |
 
+The edit and permissions loaders go through `loadManageableRole(id)`: it awaits the role and, for the admin role, throws `redirect` to `/roles/$id` — the page could only fail on save (`admin_role_locked`).
+
 `rolesListRoute` validateSearch: `page` (default 1), `pageSize` (default 10), `sortBy` (enum `name | createdAt`, optional), `sortOrder` (default `'desc'`).
 
 No `/roles/all` route — `GET /roles/all` is only consumed internally by `RoleSelectField`.
@@ -131,6 +133,8 @@ Inline in each component — no `hooks.ts`.
 
 **Refused deletion**: `RolesList` notifies `apiErrorMessage(error, 'roles', 'notifications.deleteFailed')` — `errors.default_role` / `errors.role_in_use` explain why. `errors.role_not_found` covers a role deleted meanwhile (permission editor).
 
+**Admin role** (API: `apps/api/src/modules/permissions/CLAUDE.md` → _Admin role_): `role.isAdmin` marks the admin role — every permission, locked for everyone. `RolesList` shows a "Full access" badge (`admin.badge`) next to its name and only View in its row; `RolesDetail` shows no actions and an `Alert` (`admin.title`, `admin.description`) instead, its grants (the whole catalog, from the API) still read-only below; its edit and permissions pages redirect to the detail. `errors.admin_role_locked` covers a refusal anyway.
+
 **Privilege ceiling** (API: `apps/api/src/modules/permissions/CLAUDE.md` → _Privilege ceiling_): a delegated moderator cannot change, delete or grant beyond their own role. `RolesEdit`, `RolesList` (delete) and the permission editor notify through `apiErrorMessage`, so `errors.role_not_editable` (a role above theirs) and `errors.permissions_not_grantable` (a permission they lack) explain the refusal. The editor still shows every checkbox: the API is the one that decides.
 
 **Create**: `resourceCache.changed('roles')`.  
@@ -146,7 +150,7 @@ Inline in each component — no `hooks.ts`.
 - Create button → `<HasPermission resource="roles" action="create">`
 - Row actions (`RowActions`): View (always), Edit (`hidden: !hasPermission('roles', 'edit')`), Edit permissions (`hidden: !hasPagePermission(ROLES_ACCESS.permissions, hasPermission)` — the editor page's whole access), Delete (`hidden: !hasPermission('roles', 'delete')`, `danger: true`)
 
-With all four allowed, the row shows the "⋯" menu; with 3 or fewer, text buttons — the tests cover both.
+With all four allowed, the row shows the "⋯" menu; with 3 or fewer, text buttons — the tests cover both. The admin role's row hides Edit, Edit permissions and Delete whatever the user may do (`item.isAdmin || ...`), so it shows View alone.
 
 ## List test (`routes/roles-list.test.tsx`)
 

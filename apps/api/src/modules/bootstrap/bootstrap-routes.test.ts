@@ -6,6 +6,7 @@ import { ALL_PERMISSIONS } from '@/config/permissions'
 import { user } from '@/db/schema/authentication'
 import { rolePermissions } from '@/db/schema/role-permissions'
 import { roles } from '@/db/schema/roles'
+import { createPermissionsService } from '@/modules/permissions/permissions-service'
 import {
   cleanupAuth,
   createTestApp,
@@ -60,7 +61,7 @@ describe('GET /bootstrap/status', () => {
 })
 
 describe('POST /bootstrap', () => {
-  it('creates admin user and role with all permissions', async () => {
+  it('creates admin user and the admin role', async () => {
     const res = await app.inject({
       method: 'POST',
       url: '/api/bootstrap',
@@ -92,17 +93,25 @@ describe('POST /bootstrap', () => {
     const adminRole = allRoles.find((r) => r.name === 'Admin')
     expect(adminRole).toBeDefined()
     expect(adminRole?.isDefault).toBe(false)
+    expect(adminRole?.isAdmin).toBe(true)
 
     // In open registration mode, bootstrap also creates a default User role
     const userRole = allRoles.find((r) => r.name === 'User')
     expect(userRole).toBeDefined()
     expect(userRole?.isDefault).toBe(true)
 
+    // Every permission through isAdmin, with no rows
     const adminPerms = await testDb
       .select()
       .from(rolePermissions)
       .where(eq(rolePermissions.roleId, adminRole!.id))
-    expect(adminPerms).toHaveLength(ALL_PERMISSIONS.length)
+    expect(adminPerms).toHaveLength(0)
+    const permissions = createPermissionsService(testDb)
+    for (const { resource, action } of ALL_PERMISSIONS) {
+      expect(
+        await permissions.hasPermission(adminRole!.id, resource, action)
+      ).toBe(true)
+    }
 
     // The default role starts empty — the product decides what users may do
     const userPerms = await testDb
@@ -219,12 +228,14 @@ describe('POST /bootstrap', () => {
       .from(roles)
       .where(eq(roles.id, leftoverAdmin.id))
     expect(adminRole.isDefault).toBe(false)
+    expect(adminRole.isAdmin).toBe(true)
+    // Its leftover rows are gone: the admin role needs none
     expect(
       await testDb
         .select()
         .from(rolePermissions)
         .where(eq(rolePermissions.roleId, leftoverAdmin.id))
-    ).toHaveLength(ALL_PERMISSIONS.length)
+    ).toHaveLength(0)
 
     const [userRole] = await testDb
       .select()

@@ -92,7 +92,11 @@ export async function usersRoutes(
         body: createUserSchema,
         response: {
           201: userWithRoleSchema,
-          403: errorSchema('permission_denied', 'role_not_assignable'),
+          403: errorSchema(
+            'permission_denied',
+            'admin_role_not_assignable',
+            'role_not_assignable'
+          ),
           404: errorSchema('role_not_found'),
           409: errorSchema('email_taken'),
         },
@@ -123,7 +127,9 @@ export async function usersRoutes(
           200: userWithRoleSchema,
           403: errorSchema(
             'permission_denied',
+            'admin_role_not_assignable',
             'role_not_assignable',
+            'admin_user_locked',
             'user_not_editable'
           ),
           404: errorSchema('user_not_found', 'role_not_found'),
@@ -153,13 +159,20 @@ export async function usersRoutes(
         tags: ['users'],
         description: 'Delete a user',
         params: z.object({ id: z.string() }),
-        response: { 204: z.null().describe('User deleted') },
+        response: {
+          204: z.null().describe('User deleted'),
+          403: errorSchema(
+            'permission_denied',
+            'admin_user_locked',
+            'user_not_editable'
+          ),
+        },
       },
       preHandler: requirePermission('users', 'delete'),
     },
     async (request, reply) => {
       // 204 either way (idempotent), but only a real deletion is audited
-      if (await service.remove(request.params.id)) {
+      if (await service.remove(request.params.id, request.sessionUser.roleId)) {
         await request.audit('delete', 'users', request.params.id)
       }
       return reply.status(204).send(null)

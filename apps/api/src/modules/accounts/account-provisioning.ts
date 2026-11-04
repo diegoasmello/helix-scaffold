@@ -3,7 +3,6 @@ import { and, eq, isNotNull, ne, sql } from 'drizzle-orm'
 
 import type { Auth } from '@/auth'
 import type { Config } from '@/config'
-import { ALL_PERMISSIONS } from '@/config/permissions'
 import type { Database } from '@/db'
 import { rolePermissions, roles, subscriptions, user } from '@/db/schema'
 import { DomainError } from '@/lib/domain-errors'
@@ -15,7 +14,7 @@ import { getPgErrorCode, PG_FOREIGN_KEY_VIOLATION } from '@/lib/pg-errors'
  *
  * | Kind | Entry point | Role | Trial |
  * | --- | --- | --- | --- |
- * | first admin | `provisionFirstAdmin()` (POST /bootstrap) | Admin, every permission | no |
+ * | first admin | `provisionFirstAdmin()` (POST /bootstrap) | the admin role (`isAdmin`) | no |
  * | admin-created | `provisionAccount()` (POST /users) | the one given, or none | no |
  * | seeded | `provisionAccount()` (src/db/seed.ts) | the one given | no |
  * | self-registered | `applySelfRegistrationDefaults()` (better-auth hook) | the default role | when configured |
@@ -187,8 +186,8 @@ export function createAccountProvisioning(
   }
 
   /**
-   * The first admin: the account, the "Admin" role with every permission
-   * and, in open mode, the default role. All or nothing — a failure (or a
+   * The first admin: the account, the admin role (`isAdmin` — every
+   * permission, locked) and, in open mode, the default role. All or nothing — a failure (or a
    * concurrent bootstrap that won) deletes the user again.
    */
   async function provisionFirstAdmin(
@@ -219,27 +218,29 @@ export function createAccountProvisioning(
           tx.rollback()
         }
 
-        // With no users, a leftover "Admin" role (users deleted by hand) is
-        // reused: it stops being the default role and gets the full catalog.
+        // The admin role holds every permission through `isAdmin` — no
+        // `role_permissions` rows. With no users, a leftover "Admin" role
+        // (users deleted by hand) is reused and stops being the default role.
         const [adminRole] = await tx
           .insert(roles)
-          .values({ name: 'Admin', description: 'Full system access' })
+          .values({
+            name: 'Admin',
+            description: 'Full system access',
+            isAdmin: true,
+          })
           .onConflictDoUpdate({
             target: roles.name,
-            set: { description: 'Full system access', isDefault: false },
+            set: {
+              description: 'Full system access',
+              isDefault: false,
+              isAdmin: true,
+            },
           })
           .returning()
-
+        // A reused role's old rows would only mislead: nothing reads them.
         await tx
           .delete(rolePermissions)
           .where(eq(rolePermissions.roleId, adminRole.id))
-        await tx.insert(rolePermissions).values(
-          ALL_PERMISSIONS.map(({ resource, action }) => ({
-            roleId: adminRole.id,
-            resource,
-            action,
-          }))
-        )
 
         await tx
           .update(user)

@@ -140,7 +140,7 @@ beforeEach(() => {
         name: 'Test User',
         email: 'test@example.com',
         roleId: 'test-role',
-        role: { id: 'test-role', name: 'Administrator' },
+        role: { id: 'test-role', name: 'Administrator', isAdmin: false },
       })
     )
   )

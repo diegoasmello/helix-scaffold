@@ -21,7 +21,7 @@ const mockUser = createUserWithRole({
   email: 'alice@example.com',
   emailVerified: true,
   roleId: 'role-1',
-  role: { id: 'role-1', name: 'Admin' },
+  role: { id: 'role-1', name: 'Admin', isAdmin: false },
 })
 
 function renderUsersDetail() {

@@ -102,7 +102,11 @@ export async function rolesRoutes(
         body: updateRoleSchema,
         response: {
           200: roleSchema,
-          403: errorSchema('permission_denied', 'role_not_editable'),
+          403: errorSchema(
+            'permission_denied',
+            'admin_role_locked',
+            'role_not_editable'
+          ),
           404: z.object({ message: z.string() }),
           409: errorSchema('name_taken'),
         },
@@ -130,7 +134,11 @@ export async function rolesRoutes(
         params: z.object({ id: z.string() }),
         response: {
           204: z.null().describe('Role deleted'),
-          403: errorSchema('permission_denied', 'role_not_editable'),
+          403: errorSchema(
+            'permission_denied',
+            'admin_role_locked',
+            'role_not_editable'
+          ),
           409: errorSchema('default_role', 'role_in_use'),
         },
       },

@@ -28,7 +28,10 @@ export function RoleSelectField(props: Readonly<RoleSelectFieldProps>) {
 
   const select = (
     <Select
-      data={roles.map((role) => ({ value: String(role.id), label: role.name }))}
+      // Nobody assigns the admin role (API: admin_role_not_assignable)
+      data={roles
+        .filter((role) => !role.isAdmin)
+        .map((role) => ({ value: String(role.id), label: role.name }))}
       label={t('form.roleSelect.label')}
       placeholder={t('form.roleSelect.placeholder')}
       searchable

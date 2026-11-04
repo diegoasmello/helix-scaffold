@@ -4,7 +4,7 @@ Every way a user comes into existence lives here (`account-provisioning.ts`), to
 
 | Kind | Function | Caller | Role | Trial |
 | --- | --- | --- | --- | --- |
-| first admin | `provisionFirstAdmin()` | `POST /bootstrap` | `Admin`, every permission (+ the default role in open mode) | no |
+| first admin | `provisionFirstAdmin()` | `POST /bootstrap` | `Admin`, the admin role (`isAdmin` — every permission, locked) (+ the default role in open mode) | no |
 | admin-created | `provisionAccount()` | `POST /users` (`users-service.create`) | the `roleId` sent, or none | no |
 | seeded | `provisionAccount()` + `ensureDefaultRole()` | `src/db/seed.ts` | the one the seed picks | no |
 | self-registered | `applySelfRegistrationDefaults()` | better-auth `user.create.after` hook (`src/auth.ts`) | the default role | when `subscriptions.trial` is set |
@@ -28,7 +28,7 @@ ensureDefaultRole(databaseOrTx, config)                               // open mo
 applySelfRegistrationDefaults(database, userId, config, logger)       // open mode only
 ```
 
-- **`provisionFirstAdmin`** — `409`-style `already_bootstrapped` when any user exists, or when a concurrent bootstrap won. In one transaction: `pg_advisory_xact_lock(hashtext('helix:bootstrap'))`; backs out if another user already has a role (the winner — both users may exist by then, since better-auth created them outside the lock); upserts the `Admin` role by name (a leftover one is reused, stops being the default and gets the full catalog); replaces its permissions with `ALL_PERMISSIONS`; assigns it; `ensureDefaultRole()`.
+- **`provisionFirstAdmin`** — `409`-style `already_bootstrapped` when any user exists, or when a concurrent bootstrap won. In one transaction: `pg_advisory_xact_lock(hashtext('helix:bootstrap'))`; backs out if another user already has a role (the winner — both users may exist by then, since better-auth created them outside the lock); upserts the `Admin` role by name with `isAdmin: true` (a leftover one is reused and stops being the default); deletes its `role_permissions` rows (the admin role holds every permission through `isAdmin`); assigns it; `ensureDefaultRole()`.
 - **`provisionAccount`** — checks the role first (`RoleNotFoundError` — a `DomainError`, 404 `role_not_found` — before anything is written); a used email is `EmailTakenError` (409 `email_taken`, mapped from better-auth's `USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL`); after sign-up a failed assignment deletes the user (a role deleted in between is reported as `RoleNotFoundError` too).
 - **`ensureDefaultRole`** — in open mode, a role already marked `isDefault` is kept; otherwise `User` becomes the default: created with no permissions, or promoted with its permissions if a role by that name exists. Used by bootstrap and the seed. No-op in closed mode.
 - **`applySelfRegistrationDefaults`** — open mode only: assigns the default role (logs a **warning** when none is marked default — the sign-up still succeeds, but the user can only open `/me`), then, when `subscriptions.enabled` and `subscriptions.trial` are set, inserts a trialing subscription. The trial is best-effort: a failed insert is logged (`'Trial subscription creation failed'`, with `userId`) and does not fail the sign-up.

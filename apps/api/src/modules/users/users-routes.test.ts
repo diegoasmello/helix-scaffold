@@ -9,7 +9,9 @@ import {
   cleanupAuth,
   cleanupRoles,
   cleanupUsers,
+  createAdminRole,
   createRoleWithPermissions,
+  createSessionWithRole,
   createTestApp,
   createTestSession,
   findAuditLogs,
@@ -100,7 +102,7 @@ describe('GET /users', () => {
     const alice = res
       .json()
       .data.find((u: { email: string }) => u.email === 'alice@test.com')
-    expect(alice.role).toEqual({ id: role.id, name: 'editor' })
+    expect(alice.role).toEqual({ id: role.id, name: 'editor', isAdmin: false })
   })
 
   it('applies page and pageSize correctly', async () => {
@@ -218,7 +220,7 @@ describe('GET /users/:id', () => {
     expect(res.statusCode).toBe(200)
     const body = res.json()
     expect(body.roleId).toBe(role.id)
-    expect(body.role).toEqual({ id: role.id, name: 'admin' })
+    expect(body.role).toEqual({ id: role.id, name: 'admin', isAdmin: false })
   })
 })
 
@@ -268,7 +270,11 @@ describe('POST /users', () => {
 
     expect(res.statusCode).toBe(201)
     expect(res.json().roleId).toBe(role.id)
-    expect(res.json().role).toEqual({ id: role.id, name: 'admin' })
+    expect(res.json().role).toEqual({
+      id: role.id,
+      name: 'admin',
+      isAdmin: false,
+    })
   })
 
   it('returns 404 when roleId does not exist', async () => {
@@ -429,7 +435,11 @@ describe('PATCH /users/:id', () => {
     })
     expect(res.statusCode).toBe(200)
     expect(res.json().roleId).toBe(role.id)
-    expect(res.json().role).toEqual({ id: role.id, name: 'editor' })
+    expect(res.json().role).toEqual({
+      id: role.id,
+      name: 'editor',
+      isAdmin: false,
+    })
   })
 
   it('removes the role from a user when roleId is null', async () => {
@@ -547,7 +557,7 @@ describe('GET /users/all', () => {
     const alice = res
       .json()
       .find((u: { email: string }) => u.email === 'alice@test.com')
-    expect(alice.role).toEqual({ id: role.id, name: 'editor' })
+    expect(alice.role).toEqual({ id: role.id, name: 'editor', isAdmin: false })
   })
 })
 
@@ -896,5 +906,176 @@ describe('Privilege ceiling', () => {
     })
     expect(res.statusCode).toBe(200)
     expect(res.json().role.id).toBe(narrower.id)
+  })
+})
+
+describe('Admin account', () => {
+  // The test session holds every permission, like a moderator granted
+  // everything: that alone must not reach the admin.
+  async function adminUser() {
+    const adminRole = await createAdminRole()
+    const [admin] = await testDb
+      .insert(user)
+      .values({
+        id: uuidv7(),
+        name: 'Admin',
+        email: `admin-${uuidv7()}@test.com`,
+        emailVerified: false,
+        roleId: adminRole.id,
+      })
+      .returning()
+    return { admin, adminRole }
+  }
+
+  it('embeds isAdmin in the role', async () => {
+    const { admin } = await adminUser()
+    const res = await app.inject({
+      method: 'GET',
+      url: `/api/users/${admin.id}`,
+      headers: { cookie: authCookie },
+    })
+    expect(res.json().role.isAdmin).toBe(true)
+  })
+
+  it('refuses POST /users with the admin role and creates nothing', async () => {
+    const { adminRole } = await adminUser()
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/users',
+      payload: {
+        name: 'Second admin',
+        email: 'second-admin@test.com',
+        password: 'Password123!',
+        roleId: adminRole.id,
+      },
+      headers: { cookie: authCookie },
+    })
+    expect(res.statusCode).toBe(403)
+    expect(res.json().code).toBe('admin_role_not_assignable')
+    const created = await testDb
+      .select()
+      .from(user)
+      .where(eq(user.email, 'second-admin@test.com'))
+    expect(created).toHaveLength(0)
+  })
+
+  it('refuses the admin role to the admin too', async () => {
+    const { adminRole } = await adminUser()
+    const cookie = await createSessionWithRole(app, adminRole.id)
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/users',
+      payload: {
+        name: 'Second admin',
+        email: 'second-admin@test.com',
+        password: 'Password123!',
+        roleId: adminRole.id,
+      },
+      headers: { cookie },
+    })
+    expect(res.statusCode).toBe(403)
+    expect(res.json().code).toBe('admin_role_not_assignable')
+  })
+
+  it('refuses PATCH /users/:id promoting a user to the admin role', async () => {
+    const { adminRole } = await adminUser()
+    const target = await getTestUser()
+    const res = await app.inject({
+      method: 'PATCH',
+      url: `/api/users/${target.id}`,
+      payload: { roleId: adminRole.id },
+      headers: { cookie: authCookie },
+    })
+    expect(res.statusCode).toBe(403)
+    expect(res.json().code).toBe('admin_role_not_assignable')
+    const [unchanged] = await testDb
+      .select()
+      .from(user)
+      .where(eq(user.id, target.id))
+    expect(unchanged.roleId).toBe(target.roleId)
+  })
+
+  it('refuses any PATCH of an admin account, a name edit included', async () => {
+    const { admin } = await adminUser()
+    const res = await app.inject({
+      method: 'PATCH',
+      url: `/api/users/${admin.id}`,
+      payload: { name: 'Renamed', email: admin.email, roleId: admin.roleId },
+      headers: { cookie: authCookie },
+    })
+    expect(res.statusCode).toBe(403)
+    expect(res.json().code).toBe('admin_user_locked')
+    expect(await findAuditLogs('edit', 'users', admin.id)).toHaveLength(0)
+  })
+
+  it('refuses DELETE of an admin account and keeps it', async () => {
+    const { admin } = await adminUser()
+    const res = await app.inject({
+      method: 'DELETE',
+      url: `/api/users/${admin.id}`,
+      headers: { cookie: authCookie },
+    })
+    expect(res.statusCode).toBe(403)
+    expect(res.json().code).toBe('admin_user_locked')
+    const kept = await testDb.select().from(user).where(eq(user.id, admin.id))
+    expect(kept).toHaveLength(1)
+    expect(await findAuditLogs('delete', 'users', admin.id)).toHaveLength(0)
+  })
+
+  it('refuses the admin deleting their own account here', async () => {
+    const { admin, adminRole } = await adminUser()
+    const cookie = await createSessionWithRole(app, adminRole.id)
+    const res = await app.inject({
+      method: 'DELETE',
+      url: `/api/users/${admin.id}`,
+      headers: { cookie },
+    })
+    expect(res.statusCode).toBe(403)
+    expect(res.json().code).toBe('admin_user_locked')
+  })
+})
+
+describe('Privilege ceiling on DELETE /users/:id', () => {
+  async function deleterSession() {
+    const role = await createRoleWithPermissions([
+      { resource: 'users', action: 'view' },
+      { resource: 'users', action: 'delete' },
+    ])
+    return { cookie: await createSessionWithRole(app, role.id), role }
+  }
+
+  it('refuses deleting a user whose role grants more and keeps them', async () => {
+    const { cookie } = await deleterSession()
+    const target = await getTestUser()
+    const res = await app.inject({
+      method: 'DELETE',
+      url: `/api/users/${target.id}`,
+      headers: { cookie },
+    })
+    expect(res.statusCode).toBe(403)
+    expect(res.json().code).toBe('user_not_editable')
+    const kept = await testDb.select().from(user).where(eq(user.id, target.id))
+    expect(kept).toHaveLength(1)
+  })
+
+  it('allows deleting a user within the caller', async () => {
+    const { cookie, role } = await deleterSession()
+    const [target] = await testDb
+      .insert(user)
+      .values({
+        id: uuidv7(),
+        name: 'Peer',
+        email: `peer-${uuidv7()}@test.com`,
+        emailVerified: false,
+        roleId: role.id,
+      })
+      .returning()
+    const res = await app.inject({
+      method: 'DELETE',
+      url: `/api/users/${target.id}`,
+      headers: { cookie },
+    })
+    expect(res.statusCode).toBe(204)
+    expect(await findAuditLogs('delete', 'users', target.id)).toHaveLength(1)
   })
 })

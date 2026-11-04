@@ -8,6 +8,7 @@ import {
   cleanupAuth,
   cleanupRoles,
   cleanupUsers,
+  createAdminRole,
   createRoleWithPermissions,
   createSessionWithRole,
   createTestApp,
@@ -506,5 +507,79 @@ describe('Permission enforcement', () => {
       headers: { cookie },
     })
     expect(res.statusCode).toBe(403)
+  })
+})
+
+describe('Admin role', () => {
+  // The test session holds every permission, like a moderator granted
+  // everything: that alone must not reach the admin role.
+  it('lists the admin role with isAdmin', async () => {
+    const adminRole = await createAdminRole()
+    const res = await app.inject({
+      method: 'GET',
+      url: `/api/roles/${adminRole.id}`,
+      headers: { cookie: authCookie },
+    })
+    expect(res.json().isAdmin).toBe(true)
+  })
+
+  it('refuses PATCH /roles/:id on the admin role and keeps it', async () => {
+    const adminRole = await createAdminRole()
+    const res = await app.inject({
+      method: 'PATCH',
+      url: `/api/roles/${adminRole.id}`,
+      payload: { name: 'Renamed', isDefault: true },
+      headers: { cookie: authCookie },
+    })
+    expect(res.statusCode).toBe(403)
+    expect(res.json().code).toBe('admin_role_locked')
+    const [kept] = await testDb
+      .select()
+      .from(roles)
+      .where(eq(roles.id, adminRole.id))
+    expect(kept.name).toBe(adminRole.name)
+    expect(kept.isDefault).toBe(false)
+    expect(await findAuditLogs('edit', 'roles', adminRole.id)).toHaveLength(0)
+  })
+
+  it('refuses DELETE /roles/:id on the admin role, to the admin too', async () => {
+    const adminRole = await createAdminRole()
+    const cookie = await createSessionWithRole(app, adminRole.id)
+    for (const headers of [{ cookie: authCookie }, { cookie }]) {
+      const res = await app.inject({
+        method: 'DELETE',
+        url: `/api/roles/${adminRole.id}`,
+        headers,
+      })
+      expect(res.statusCode).toBe(403)
+      expect(res.json().code).toBe('admin_role_locked')
+    }
+    const kept = await testDb
+      .select()
+      .from(roles)
+      .where(eq(roles.id, adminRole.id))
+    expect(kept).toHaveLength(1)
+  })
+
+  it('ignores isAdmin in the request body', async () => {
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/roles',
+      payload: { name: 'Sneaky', isAdmin: true },
+      headers: { cookie: authCookie },
+    })
+    expect(res.statusCode).toBe(201)
+    expect(res.json().isAdmin).toBe(false)
+  })
+
+  it('lets the admin, with no permission rows, use every route', async () => {
+    const adminRole = await createAdminRole()
+    const cookie = await createSessionWithRole(app, adminRole.id)
+    const res = await app.inject({
+      method: 'GET',
+      url: '/api/roles',
+      headers: { cookie },
+    })
+    expect(res.statusCode).toBe(200)
   })
 })

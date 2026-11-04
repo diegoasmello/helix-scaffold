@@ -43,6 +43,7 @@ vi.mock('../../../lib/authentication', () => ({
 }))
 
 const mockRole = createRole({
+  isAdmin: false,
   id: '1',
   name: 'Admin',
   description: 'Full access',
@@ -163,5 +164,24 @@ describe('RolesDetail', () => {
       to: '/roles/$id/permissions',
       params: { id: '1' },
     })
+  })
+
+  it('shows the admin role as locked, with no actions', async () => {
+    server.use(
+      getRolesIdHandler(
+        createRole({ isAdmin: true, id: '1', name: 'Administrator' })
+      ),
+      getMePermissionsHandler({
+        grants: { roles: ['view', 'edit'], permissions: ['view', 'edit'] },
+      })
+    )
+    renderRolesDetail()
+    expect(await screen.findByText('Admin role')).toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'Edit permissions' })
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'Edit' })
+    ).not.toBeInTheDocument()
   })
 })
