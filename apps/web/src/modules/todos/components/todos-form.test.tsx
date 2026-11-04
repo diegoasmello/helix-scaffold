@@ -37,8 +37,8 @@ describe('TodoForm', () => {
     expect(screen.getByText('Image')).toBeInTheDocument()
     expect(screen.getByText('Title')).toBeInTheDocument()
     expect(screen.getByText('Description')).toBeInTheDocument()
-    // RichTextEditor (Content) crashes its Grid.Col in jsdom because TipTapEditor
-    // throws when the ProseMirror editor is null — covered by E2E instead.
+    // RichTextEditor is the <textarea> of __mocks__/@helix/ui.tsx in tests.
+    expect(screen.getByLabelText('Content')).toBeInTheDocument()
     expect(screen.getByText('Date')).toBeInTheDocument()
     expect(screen.getByText('Completed')).toBeInTheDocument()
     expect(screen.getByText('Attachments')).toBeInTheDocument()

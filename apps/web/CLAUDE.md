@@ -1251,7 +1251,7 @@ Use the page wrapper components from `@helix/ui`:
 
 - **Cancel / Back**: `size="md" variant="default"` — neutral action, never draws attention
 - **Save / Submit**: `size="md"` with default variant — primary action, uses the app's primary color
-- Always wrap footer buttons in `<Group justify="flex-end">` so they align to the right
+- Pass them to `footerActions` as a fragment, Cancel first — never wrap them in a `Group`: the page footer aligns them, and fills the width with them on phones
 
 **List screen (`PageList` + `DataTable`)** — the DataTable drives pagination and sorting. Columns that map to a sortable API field get `sortable: true`. All state lives in the URL via the route's `useSearch()`.
 
@@ -1288,10 +1288,10 @@ const columns: DataTableColumn<XxxItem>[] = [
 
 **Status columns** render a `StatusBadge` from `@helix/ui` — `<StatusBadge tone="success">{t('status.completed')}</StatusBadge>` — never a colored `Badge`. Tones: `success` (done/active), `warning` (pending/at risk), `danger` (failed/expired), `info` (trial, informative), `neutral` (inactive). Keep the mapping in the module (`SUBSCRIPTION_STATUS_TONES` is the example). `DataTable` translates its own pagination and empty texts (`ui:dataTable.*`).
 
-**Empty state** — every list screen must handle the case where there are no records and no active filters. In this case, render `EmptyState` from `@helix/ui` in place of the entire `PageList` (not just the `DataTable`). Include a direct call-to-action button so the user can create the first record without navigating back to find the Create button:
+**Empty state** — every list screen must handle the case where there are no records and the list is not `narrowed` (no filter and no search — see _Filtering_ → _Search box and "no results"_; a search with no match shows the table's "no results" instead). In this case, render `EmptyState` from `@helix/ui` in place of the entire `PageList` (not just the `DataTable`). Include a direct call-to-action button so the user can create the first record without navigating back to find the Create button:
 
 ```tsx
-if (xxxResponse.data.length === 0 && !filters) {
+if (xxxResponse.data.length === 0 && !narrowed) {
   return (
     <EmptyState
       title="No xxxs yet"
@@ -1784,8 +1784,9 @@ it('hides edit and delete buttons when user lacks permissions', async () => {
   server.use(getMePermissionsHandler({ grants: { xxx: ['view'] } }))
   renderXxxList()
   await screen.findByText('Item one')
-  expect(screen.queryByLabelText('Edit')).not.toBeInTheDocument()
-  expect(screen.queryByLabelText('Delete')).not.toBeInTheDocument()
+  // Row actions have no aria-label: query them by role and visible name
+  expect(screen.queryByRole('button', { name: 'Edit' })).not.toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: 'Delete' })).not.toBeInTheDocument()
 })
 ```
 
@@ -2028,7 +2029,7 @@ Rules:
 - Use `getByPlaceholderText` to find native inputs (`TextInput`, `Textarea`, `DateInput`) and assert `toBeRequired()`. `getByLabelText` does not reliably resolve Mantine's `for`/`id` label association in jsdom.
 - `toBeRequired()` only works on native HTML inputs/textareas — not on custom components (`FileInput`, `FilesInput`, `Switch`). Check those fields by asserting their label text is present instead.
 - If the form has a field with conditional `required` (e.g. `date` required only when `status !== 'pending'`), parameterise `FormWrapper` with the relevant prop and add two tests — one per branch.
-- `RichTextEditor` crashes its `Grid.Col` in jsdom because TipTap/ProseMirror initialises the editor synchronously and the instance is `null` before mount. Skip its label assertion and add a comment pointing to E2E coverage.
+- `RichTextEditor` never reaches jsdom: `vitest.config.ts` aliases `@helix/ui` to `__mocks__/@helix/ui.tsx`, which re-exports the real package with the editor replaced by a `<textarea aria-label={label}>`. Assert it like any field (`getByLabelText('Content')`) and type into it; the real editor (TipTap) is covered by E2E.
 
 **When to add a new endpoint to `src/mocks/handlers.ts`**: every new API endpoint needs a default handler. Follow the pattern below — use generated response helpers for all status codes, never construct raw `Response` objects:
 
