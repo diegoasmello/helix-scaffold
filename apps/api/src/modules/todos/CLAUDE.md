@@ -1,6 +1,6 @@
 # todos module — backend
 
-Full CRUD module. Reference implementation for `apps/api` — the workspace `CLAUDE.md` uses this module as the canonical example for pagination, sorting, filtering, PDF export and file attachments (multi-file junction table **and** single-file FK columns).
+Full CRUD module. Reference implementation for `apps/api` — the workspace `CLAUDE.md` uses this module as the canonical example for pagination, sorting, filtering, PDF export and file attachments (multi-file junction table, single-file FK columns **and** images inside rich text).
 
 This module also serves as the **reference implementation for `requireSubscription`**. All todos routes require both an RBAC permission and an active subscription. When building a product on this scaffold, follow this module's route registration pattern for any feature that should be gated behind a subscription.
 
@@ -27,11 +27,13 @@ This module also serves as the **reference implementation for `requireSubscripti
 
 **Junction table**: `todo_attachments` (`src/db/schema/todo-attachments.ts`) — `(todo_id, upload_id)` composite PK, both FKs `ON DELETE CASCADE`, index `todo_attachments_upload_id_idx` (the PK covers `todo_id` only). Holds the multi-file `attachments`.
 
+**Junction table**: `todo_content_images` (`src/db/schema/todo-content-images.ts`) — same shape, index `todo_content_images_upload_id_idx`. Holds the uploads `content` shows as images; the service fills it from the HTML, and the API contract never mentions it (see `src/modules/uploads/CLAUDE.md` → _Images inside rich text_).
+
 **Normalized text columns:** `TODO_NORMALIZED_FIELDS` (next to the table) maps `title`/`description` to their normalized copies. This module is the reference for the pattern — see `apps/api/CLAUDE.md` → _Normalized text columns_.
 
 **Slug:** `TODO_SLUG` (next to the table) is the `SlugConfig` — column, constraint, fallback `todo`. This module is the reference for the pattern — see `apps/api/CLAUDE.md` → _Slugs_.
 
-All three upload references (`todo_attachments.upload_id`, `todos.file_id`, `todos.image_id`) are registered in `src/config/upload-references.ts`, so the orphan cleanup job never deletes them and `GET /files/*` serves their files to the users `GET /todos/:id` lets in (`todos:view` and the `todos` feature).
+All four upload references (`todo_attachments.upload_id`, `todos.file_id`, `todos.image_id`, `todo_content_images.upload_id`) are registered in `src/config/upload-references.ts`, so the orphan cleanup job never deletes them and `GET /files/*` serves their files to the users `GET /todos/:id` lets in (`todos:view` and the `todos` feature).
 
 ## Schema (`todos-schema.ts`)
 
@@ -50,10 +52,10 @@ Factory `createTodosService(database, storage)` returns `{ list, getById, getByS
 
 - `list` applies filters (`FILTER_COLUMNS`, `FILTER_COERCE` for `date`, `NORMALIZED_FILTER_COLUMNS` for the text operators on `title`/`description`) and the `search` param (`SEARCH_COLUMNS`: `normalizedTitle`, `normalizedDescription` — combined with `and()`), ordering (`SORT_COLUMNS`, then `id`) and pagination, then loads attachments (one query for the page, via `todo_attachments`) and the single `file`/`image` uploads (one `inArray` query).
 - `getById` / `getBySlug` share `findOne(where)`, which assembles the embedded uploads.
-- `create(data, actorId)` / `update(id, data, actorId)` first check the referenced uploads with `assertUsableUploads()` (`src/lib/upload-ownership.ts`): each `attachmentIds` / `fileId` / `imageId` must have been uploaded by `actorId` (`request.sessionUser.id`), or already belong to this todo on update (another editor re-sends them) — else **400** `invalid_upload`, before anything is written. `update` answers `null` for an unknown id before looking at uploads.
-- `create` inserts the row with `normalizedValues(data, TODO_NORMALIZED_FIELDS)` (no `status` — the DB default applies) and a slug from `withUniqueSlug(database, TODO_SLUG, title, insert)`, then inserts one `todo_attachments` row per `attachmentId`.
-- `update` updates only the sent columns, and the normalized copy of each text field sent (same `normalizedValues` call) — never the slug, even when `title` changes; when `attachmentIds` is sent it fully resyncs the junction rows (delete all, insert new). Returns `null` for an unknown id.
-- `remove` is a hard delete: collects the todo's attachment, file and image uploads → deletes the todo (cascades the junction rows) → deletes those `uploads` rows → deletes their storage keys, original + variants (best-effort, `Promise.allSettled`).
+- `create(data, actorId)` / `update(id, data, actorId)` first check the referenced uploads with `assertUsableUploads()` (`src/lib/upload-ownership.ts`): each `attachmentIds` / `fileId` / `imageId`, and each image of `content` (`uploadIdsInHtml()`, `src/lib/rich-text-uploads.ts`), must have been uploaded by `actorId` (`request.sessionUser.id`), or already belong to this todo on update (another editor re-sends them) — else **400** `invalid_upload`, before anything is written. `update` answers `null` for an unknown id before looking at uploads.
+- `create` inserts the row with `normalizedValues(data, TODO_NORMALIZED_FIELDS)` (no `status` — the DB default applies) and a slug from `withUniqueSlug(database, TODO_SLUG, title, insert)`, then inserts one `todo_attachments` row per `attachmentId` and one `todo_content_images` row per image of `content`.
+- `update` updates only the sent columns, and the normalized copy of each text field sent (same `normalizedValues` call) — never the slug, even when `title` changes; when `attachmentIds` is sent it fully resyncs the junction rows (delete all, insert new), and when `content` is sent, its `todo_content_images` rows the same way. Returns `null` for an unknown id.
+- `remove` is a hard delete: collects the todo's attachment, file, image and content image uploads (each once) → deletes the todo (cascades the junction rows) → deletes those `uploads` rows → deletes their storage keys, original + variants (best-effort, `Promise.allSettled`).
 - `generateReport` queries up to 5000 rows (hard limit) with the same sort/filter params as `list`, then delegates to `renderTodosReport` via dynamic import.
 
 ## Routes (`todos-routes.ts`)
@@ -124,6 +126,7 @@ Route integration tests against the real test database (`helix_test`).
 - `describe('Normalized text columns')` is the reference for the pattern's tests: accent/case/whitespace-insensitive search and text filters, `eq` exact, sort, columns absent from the response, `POST`/`PATCH` writing them.
 - `describe('Filtering')` is the reference for filter tests (see `apps/api/CLAUDE.md` → _Filtering_).
 - `describe('Upload ownership')` — someone else's upload in `attachmentIds`/`fileId`/`imageId` on create (400, nothing written), an unknown id, adding one on update (400, attachments unchanged), another editor re-sending the todo's own files (200), 404 before the upload check.
+- `describe('Images in the content')` — the reference for _Images inside rich text_: recorded on create, external images and unknown keys ignored, kept by the orphan cleanup (`deleteOrphanUploads()` with the registered loaders and `graceHours: 0`), someone else's image on create/update (400), another editor re-sending the text (200), a `PATCH` without `content` keeps them, an image taken out gets cleaned up, deleted with the todo.
 - `describe('Attachments')` covers create/read/update of `attachmentIds` and that deleting a todo removes its attachment rows.
 
 **Subscription in tests:** `createTestSession()` creates an active `pro` subscription for the test admin (subscriptions are always enabled in tests via `src/config/test-overrides.ts`), so individual tests never set one up.

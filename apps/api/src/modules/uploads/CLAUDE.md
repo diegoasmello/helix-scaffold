@@ -103,10 +103,11 @@ Only called when `isProcessableImage(mimeType)` — JPEG, PNG, GIF, WebP and AVI
 
 ## Adding uploads to another module
 
-The `todos` module is the reference implementation for both shapes:
+The `todos` module is the reference implementation for the three shapes:
 
 - **Multi-file** (`attachments: Upload[]`) — a junction table, steps 1–5 below.
 - **Single file** (`file: Upload | null`) — a nullable `text` column `xxx.file_id` referencing `uploads.id` with `onDelete: 'set null'`; the response embeds `file: uploadSchema.nullable()`, create/update accept `fileId`; the service loads the upload by id on reads and deletes it on `remove`. Register the column in step 5.
+- **Images inside rich text** (`content` with `onUploadImage`) — a junction table the service fills from the HTML; the client sends nothing else. See _Images inside rich text_ below.
 
 Multi-file pattern:
 
@@ -212,3 +213,35 @@ registerUploadReference({
 ```
 
 Add one `registerUploadReference` call per column. If a module's uploads are not registered, the job will treat them as orphaned and delete them after the grace period, and until then only their uploader and `uploads:view` can open their files.
+
+## Images inside rich text
+
+A `RichTextEditor` given `onUploadImage` (`apps/web` passes `uploadFile`) sends each image to `POST /uploads` and writes its `url` into the HTML: `<img src="…/api/files/<folder>/original.png">`. No column holds that upload, so without the steps below the orphan cleanup deletes it after the grace period, `GET /files/*` serves it only to its uploader (every other reader sees a broken image), and deleting the record leaves it behind.
+
+The record keeps those uploads in a junction table that **the service fills from the HTML** on every write of the field. The API contract does not change: the client sends the HTML only, never a list of image ids. `todos.content` → `todo_content_images` is the reference.
+
+**1. Junction table** — one per rich text field, `<table>_<field>_images`, the same shape as step 1 above:
+
+```ts
+// src/db/schema/xxx-content-images.ts
+export const xxxContentImages = pgTable('xxx_content_images', {
+  xxxId:    text('xxx_id').notNull().references(() => xxx.id, { onDelete: 'cascade' }),
+  uploadId: text('upload_id').notNull().references(() => uploads.id, { onDelete: 'cascade' }),
+}, (t) => [
+  primaryKey({ columns: [t.xxxId, t.uploadId] }),
+  index('xxx_content_images_upload_id_idx').on(t.uploadId),
+])
+```
+
+**2. Service** — `uploadIdsInHtml(database, html)` (`src/lib/rich-text-uploads.ts`) returns the uploads whose files the HTML shows from `GET /files/*` (the original or a variant). It reads the `src` of every `<img>` and keeps the path only, so a `BASE_URL` changed since the text was written still matches; images from anywhere else, and keys no upload owns (an image deleted since), are left out — they reference nothing.
+
+- **create** — `uploadIdsInHtml(database, data.content)`, then pass the ids to `assertUsableUploads()` together with the record's other upload ids, then insert the junction rows after the record.
+- **update** — only when the field is sent: the same call; the record's current content images go into `alreadyReferenced` with its other current uploads (another editor re-sends the text unchanged), then a full resync (delete all, insert new). An image taken out of the text is no longer referenced, so the orphan cleanup deletes it.
+- **delete** — collect the content images with the other uploads (an upload can be both the `image` and inside the text: delete it once), then the same order as step 3.
+- **reads** — nothing: the HTML already carries the URLs.
+
+Someone else's upload in the text is refused like any other reference (400 `invalid_upload`) — readers of the record could otherwise open a file they were never given. That includes text pasted from a record someone else wrote: its images must be uploaded again.
+
+**3. Register the junction table in step 5**, like any junction table: its `access` is the guard of the record's `GET` route, so the record's readers see the images.
+
+**Tests** (`todos-routes.test.ts` → `describe('Images in the content')` is the reference): the images recorded on create; external images and unknown keys ignored; kept by the orphan cleanup; someone else's image on create and on update (400); another editor re-sending the text (200); a `PATCH` without the field keeps them; an image taken out of the text gets deleted by the orphan cleanup; deleted with the record. `GET /files/*` for the record's readers: add the table to the references of `upload-files-routes.test.ts` → _Who may read a file_.

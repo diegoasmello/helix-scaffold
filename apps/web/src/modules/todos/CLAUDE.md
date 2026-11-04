@@ -62,7 +62,7 @@ interface TodoFormValues {
 | ------------- | ---------------- | -------------------------------------------------------------------- |
 | `title`       | `TextInput`      | `form.getInputProps('title')`                                        |
 | `description` | `Textarea`       | `resize="vertical"`                                                  |
-| `content`     | `RichTextEditor` | `getInputProps`; produces an HTML string — **not** a plain Textarea  |
+| `content`     | `RichTextEditor` | `getInputProps` + `onUploadImage={uploadFile}`; produces an HTML string — **not** a plain Textarea. Its images are uploads the API finds in the HTML (`todo_content_images`) — the form sends nothing else for them |
 | `date`        | `DateInput`      | `getInputProps`; the value is a date string (`DateStringValue`), not a `Date` |
 | `status`      | `Switch`         | `checked={form.values.status === 'completed'}`, `form.setFieldValue` |
 | `attachments` | `FilesInput`     | `onUpload={uploadFile}`, `maxFiles={10}` |

@@ -3,8 +3,12 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 
 import { user } from '@/db/schema/authentication'
 import { todoAttachments } from '@/db/schema/todo-attachments'
+import { todoContentImages } from '@/db/schema/todo-content-images'
 import { todos } from '@/db/schema/todos'
 import { uploads } from '@/db/schema/uploads'
+import { deleteOrphanUploads } from '@/lib/orphan-uploads'
+import type { StorageProvider } from '@/lib/storage'
+import { getUploadReferenceLoaders } from '@/lib/upload-references'
 import {
   cleanupAuth,
   cleanupRoles,
@@ -852,6 +856,191 @@ describe('Attachments', () => {
       .from(uploads)
       .where(eq(uploads.id, upload.id))
     expect(remainingUpload).toBeUndefined()
+  })
+})
+
+describe('Images in the content', () => {
+  /** The `<img>` the editor inserts for an upload (`onUploadImage`). */
+  const img = (upload: { storageKey: string }) =>
+    `<img src="http://localhost:3333/api/files/${upload.storageKey}">`
+
+  async function contentImageIds(todoId: string) {
+    const rows = await testDb
+      .select({ id: todoContentImages.uploadId })
+      .from(todoContentImages)
+      .where(eq(todoContentImages.todoId, todoId))
+    return rows.map((r) => r.id).sort()
+  }
+
+  async function uploadExists(id: string) {
+    const rows = await testDb.select().from(uploads).where(eq(uploads.id, id))
+    return rows.length > 0
+  }
+
+  async function createTodo(
+    content: string,
+    overrides: Record<string, unknown> = {}
+  ) {
+    const [attachment, file, image] = await Promise.all([
+      insertUpload(),
+      insertUpload('doc.pdf'),
+      insertUpload('img.jpg', 'image/jpeg'),
+    ])
+    return app.inject({
+      method: 'POST',
+      url: '/api/todos',
+      payload: {
+        title: 'Todo',
+        description: 'Desc',
+        content,
+        date: '2025-01-01',
+        attachmentIds: [attachment.id],
+        fileId: file.id,
+        imageId: image.id,
+        ...overrides,
+      },
+      headers: { cookie: authCookie },
+    })
+  }
+
+  function patchTodo(id: string, payload: Record<string, unknown>) {
+    return app.inject({
+      method: 'PATCH',
+      url: `/api/todos/${id}`,
+      payload,
+      headers: { cookie: authCookie },
+    })
+  }
+
+  /** Runs the orphan cleanup on every upload, whatever its age. */
+  async function runOrphanCleanup() {
+    const storage: StorageProvider = {
+      save: async () => {},
+      delete: async () => {},
+      getUrl: (key) => key,
+    }
+    await deleteOrphanUploads(testDb, storage, getUploadReferenceLoaders(), {
+      graceHours: 0,
+    })
+  }
+
+  it('records the uploads the content shows', async () => {
+    const [a, b] = await Promise.all([
+      insertUpload('a.png', 'image/png'),
+      insertUpload('b.png', 'image/png'),
+    ])
+    const res = await createTodo(`<p>Text</p>${img(a)}<p>More</p>${img(b)}`)
+    expect(res.statusCode).toBe(201)
+    expect(await contentImageIds(res.json().id)).toEqual([a.id, b.id].sort())
+  })
+
+  it('ignores images from elsewhere and keys no upload owns', async () => {
+    const res = await createTodo(
+      '<img src="https://cdn.example.com/x.png">' +
+        img({ storageKey: `${crypto.randomUUID()}/original.png` })
+    )
+    expect(res.statusCode).toBe(201)
+    expect(await contentImageIds(res.json().id)).toEqual([])
+  })
+
+  it('keeps them from the orphan cleanup', async () => {
+    const image = await insertUpload('a.png', 'image/png')
+    await createTodo(img(image))
+    await runOrphanCleanup()
+    expect(await uploadExists(image.id)).toBe(true)
+  })
+
+  it("refuses someone else's upload on create, and creates nothing", async () => {
+    const theirs = await insertUpload('theirs.png', 'image/png', null)
+    const res = await createTodo(img(theirs))
+    expect(res.statusCode).toBe(400)
+    expect(res.json().code).toBe('invalid_upload')
+    expect(await testDb.select().from(todos)).toHaveLength(0)
+  })
+
+  it("refuses someone else's upload added on update", async () => {
+    const mine = await insertUpload('mine.png', 'image/png')
+    const created = (await createTodo(img(mine))).json()
+    const theirs = await insertUpload('theirs.png', 'image/png', null)
+    const res = await patchTodo(created.id, {
+      content: img(mine) + img(theirs),
+    })
+    expect(res.statusCode).toBe(400)
+    expect(res.json().code).toBe('invalid_upload')
+    expect(await contentImageIds(created.id)).toEqual([mine.id])
+  })
+
+  it('lets another editor re-send the images the content already shows', async () => {
+    // A todo someone else wrote: its image is not the test user's.
+    const theirs = await insertUpload('theirs.png', 'image/png', null)
+    const [todo] = await testDb
+      .insert(todos)
+      .values(
+        todoRow({
+          title: 'Theirs',
+          description: 'Desc',
+          content: img(theirs),
+          date: new Date('2025-01-01'),
+        })
+      )
+      .returning()
+    await testDb
+      .insert(todoContentImages)
+      .values({ todoId: todo.id, uploadId: theirs.id })
+
+    const res = await patchTodo(todo.id, {
+      content: `<p>Edited</p>${img(theirs)}`,
+    })
+    expect(res.statusCode).toBe(200)
+    expect(await contentImageIds(todo.id)).toEqual([theirs.id])
+  })
+
+  it('leaves them alone when PATCH does not send the content', async () => {
+    const image = await insertUpload('a.png', 'image/png')
+    const created = (await createTodo(img(image))).json()
+    const res = await patchTodo(created.id, { title: 'Renamed' })
+    expect(res.statusCode).toBe(200)
+    expect(await contentImageIds(created.id)).toEqual([image.id])
+  })
+
+  it('lets the orphan cleanup delete an image taken out of the text', async () => {
+    const [kept, removed] = await Promise.all([
+      insertUpload('kept.png', 'image/png'),
+      insertUpload('removed.png', 'image/png'),
+    ])
+    const created = (await createTodo(img(kept) + img(removed))).json()
+
+    const res = await patchTodo(created.id, { content: img(kept) })
+    expect(res.statusCode).toBe(200)
+    expect(await contentImageIds(created.id)).toEqual([kept.id])
+
+    await runOrphanCleanup()
+    expect(await uploadExists(kept.id)).toBe(true)
+    expect(await uploadExists(removed.id)).toBe(false)
+  })
+
+  it('deletes them with the todo', async () => {
+    const image = await insertUpload('a.png', 'image/png')
+    const created = (await createTodo(img(image))).json()
+    const res = await app.inject({
+      method: 'DELETE',
+      url: `/api/todos/${created.id}`,
+      headers: { cookie: authCookie },
+    })
+    expect(res.statusCode).toBe(204)
+    expect(await uploadExists(image.id)).toBe(false)
+  })
+
+  it('deletes an upload once when it is both the image and in the content', async () => {
+    const image = await insertUpload('a.png', 'image/png')
+    const created = (await createTodo(img(image), { imageId: image.id })).json()
+    const res = await app.inject({
+      method: 'DELETE',
+      url: `/api/todos/${created.id}`,
+      headers: { cookie: authCookie },
+    })
+    expect(res.statusCode).toBe(204)
+    expect(await uploadExists(image.id)).toBe(false)
   })
 })
 

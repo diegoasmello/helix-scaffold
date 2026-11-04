@@ -5,12 +5,14 @@ import {
   TODO_NORMALIZED_FIELDS,
   TODO_SLUG,
   todoAttachments,
+  todoContentImages,
   todos,
   uploads,
 } from '@/db/schema'
 import { buildFilterWhereClause, buildSearchClause } from '@/lib/filtering'
 import { normalizedValues } from '@/lib/normalize-text'
 import { getPaginationParams } from '@/lib/pagination'
+import { uploadIdsInHtml } from '@/lib/rich-text-uploads'
 import { withUniqueSlug } from '@/lib/slug'
 import type { StorageProvider } from '@/lib/storage'
 import { assertUsableUploads } from '@/lib/upload-ownership'
@@ -86,6 +88,35 @@ async function syncAttachments(
       .insert(todoAttachments)
       .values(attachmentIds.map((uploadId) => ({ todoId, uploadId })))
   }
+}
+
+/**
+ * Replaces the images `content` shows (`todo_content_images`, filled from the
+ * HTML by `uploadIdsInHtml()`). An image taken out of the text is no longer
+ * referenced: the orphan cleanup deletes it.
+ */
+async function syncContentImages(
+  database: Database,
+  todoId: string,
+  uploadIds: string[]
+) {
+  await database
+    .delete(todoContentImages)
+    .where(eq(todoContentImages.todoId, todoId))
+  if (uploadIds.length > 0) {
+    await database
+      .insert(todoContentImages)
+      .values(uploadIds.map((uploadId) => ({ todoId, uploadId })))
+  }
+}
+
+async function getContentImages(database: Database, todoId: string) {
+  const rows = await database
+    .select({ upload: uploads })
+    .from(todoContentImages)
+    .innerJoin(uploads, eq(todoContentImages.uploadId, uploads.id))
+    .where(eq(todoContentImages.todoId, todoId))
+  return rows.map((r) => r.upload)
 }
 
 async function getUploadsById(
@@ -205,8 +236,10 @@ export function createTodosService(
    */
   async function create(data: CreateTodoInput, actorId: string) {
     const { attachmentIds = [], ...todoData } = data
+    const contentImageIds = await uploadIdsInHtml(database, todoData.content)
     await assertUsableUploads(database, actorId, [
       ...attachmentIds,
+      ...contentImageIds,
       todoData.fileId,
       todoData.imageId,
     ])
@@ -226,6 +259,7 @@ export function createTodosService(
           .returning()
     )
     await syncAttachments(database, todo.id, attachmentIds)
+    await syncContentImages(database, todo.id, contentImageIds)
 
     const singleUploadIds = [todo.fileId, todo.imageId].filter(
       Boolean
@@ -249,25 +283,46 @@ export function createTodosService(
    */
   async function update(id: string, data: UpdateTodoInput, actorId: string) {
     const { attachmentIds, ...todoData } = data
+    const contentImageIds =
+      todoData.content === undefined
+        ? undefined
+        : await uploadIdsInHtml(database, todoData.content)
 
-    if (attachmentIds || todoData.fileId || todoData.imageId) {
+    if (
+      attachmentIds ||
+      contentImageIds?.length ||
+      todoData.fileId ||
+      todoData.imageId
+    ) {
       const [current] = await database
         .select({ fileId: todos.fileId, imageId: todos.imageId })
         .from(todos)
         .where(eq(todos.id, id))
       if (!current) return null
-      const currentAttachments = await database
-        .select({ id: todoAttachments.uploadId })
-        .from(todoAttachments)
-        .where(eq(todoAttachments.todoId, id))
+      const [currentAttachments, currentContentImages] = await Promise.all([
+        database
+          .select({ id: todoAttachments.uploadId })
+          .from(todoAttachments)
+          .where(eq(todoAttachments.todoId, id)),
+        database
+          .select({ id: todoContentImages.uploadId })
+          .from(todoContentImages)
+          .where(eq(todoContentImages.todoId, id)),
+      ])
       await assertUsableUploads(
         database,
         actorId,
-        [...(attachmentIds ?? []), todoData.fileId, todoData.imageId],
+        [
+          ...(attachmentIds ?? []),
+          ...(contentImageIds ?? []),
+          todoData.fileId,
+          todoData.imageId,
+        ],
         [
           current.fileId,
           current.imageId,
           ...currentAttachments.map((a) => a.id),
+          ...currentContentImages.map((a) => a.id),
         ]
       )
     }
@@ -297,6 +352,9 @@ export function createTodosService(
     if (attachmentIds !== undefined) {
       await syncAttachments(database, id, attachmentIds)
     }
+    if (contentImageIds !== undefined) {
+      await syncContentImages(database, id, contentImageIds)
+    }
 
     const singleUploadIds = [todo.fileId, todo.imageId].filter(
       Boolean
@@ -323,8 +381,9 @@ export function createTodosService(
       Boolean
     ) as string[]
 
-    const [attachmentsMap, singleUploads] = await Promise.all([
+    const [attachmentsMap, contentImages, singleUploads] = await Promise.all([
       getAttachmentsForTodos(database, [id]),
+      getContentImages(database, id),
       singleUploadIds.length > 0
         ? database
             .select()
@@ -334,7 +393,15 @@ export function createTodosService(
     ])
 
     const attachmentList = attachmentsMap[id] ?? []
-    const allUploads = [...attachmentList, ...singleUploads]
+    // One upload may sit in two places (the image and the content).
+    const allUploads = [
+      ...new Map(
+        [...attachmentList, ...contentImages, ...singleUploads].map((u) => [
+          u.id,
+          u,
+        ])
+      ).values(),
+    ]
     const allUploadIds = allUploads.map((u) => u.id)
 
     const deleted = await database

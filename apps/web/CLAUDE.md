@@ -591,6 +591,7 @@ See `todos` as the reference implementation. The checklist:
 4. Map to `attachmentIds` (and `fileId`, `imageId`) on submit
 5. Prefill from `item.attachments` on edit
 6. Render `<FilePreview>` in the detail screen
+7. Images inside a rich text field: pass `onUploadImage={uploadFile}` to its `RichTextEditor` — nothing else. The editor writes each image's URL into the HTML, and the API finds the uploads there (`apps/api/src/modules/uploads/CLAUDE.md` → _Images inside rich text_). The module's API side needs that section too, or the images break for every other reader and get deleted by the orphan cleanup
 
 ---
 

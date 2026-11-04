@@ -43,7 +43,7 @@ System fields:        <field — who writes it and when, from which transition (
 Business uniqueness:  <field(s) unique by product rule, or none>
 Slug:                 <no | yes, from <field>>
 Relations:            <field → module (select needs its /all), or none>
-Uploads:              <none | single file <field> | multiple; required?>
+Uploads:              <none | single file <field> | multiple; required?> · images inside rich text <field>: <yes | no>
 Delete:               hard delete · the record's uploads <deleted with it | kept>
 Plan feature:         <none | <feature key>, declared in plan(s) <…>>
 
@@ -71,7 +71,7 @@ Read the sections the sheet calls for, at the phase that needs them. The root `C
 | has normalized columns | `CLAUDE.md` → _Normalized text columns_ | — | `TODO_NORMALIZED_FIELDS` (`db/schema/todos.ts`), `normalizedValues()` in the service, `todoRow()` |
 | has a slug | `CLAUDE.md` → _Slugs_ | — (the admin never shows it) | `TODO_SLUG`, `GET /todos/by-slug/:slug`, `describe('Slug')` |
 | relates to another module | `CLAUDE.md` → _Non-paginated "all" endpoints_ | `CLAUDE.md` → _Relational select fields with inline creation_ | not in `todos`: `users` → `roleId` (`GET /roles/all`, `RoleSelectField`) |
-| has uploads | `src/modules/uploads/CLAUDE.md` → _Adding uploads to another module_ | `CLAUDE.md` → _Adding uploads to a new module_ | single file: `fileId`/`imageId`; multiple: `todo_attachments`; both in `src/config/upload-references.ts` |
+| has uploads | `src/modules/uploads/CLAUDE.md` → _Adding uploads to another module_ | `CLAUDE.md` → _Adding uploads to a new module_ | single file: `fileId`/`imageId`; multiple: `todo_attachments`; images inside rich text: `todo_content_images` (`describe('Images in the content')`); all in `src/config/upload-references.ts` |
 | is gated by a plan feature | `src/modules/subscriptions/CLAUDE.md` → _`requireSubscription` hook_ | `src/modules/subscriptions/CLAUDE.md` → _Route guards (`feature` in `PageAccess`)_ | `requireSubscription('todos')` in `todos-routes.ts`; `feature: 'todos'` in `routes/access.ts` |
 | exports PDF (only if asked) | `CLAUDE.md` → _PDF export_ | `CLAUDE.md` → _PDF export_ | `GET /todos/export`, `templates/todos-report.tsx`; `useExportPdf` in `todos-list.tsx` |
 | sends email (only if asked) | `CLAUDE.md` → _Email_ | — | not in `todos` |

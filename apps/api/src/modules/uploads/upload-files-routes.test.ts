@@ -15,6 +15,7 @@ import {
 import { config } from '@/config'
 import { user } from '@/db/schema/authentication'
 import { todoAttachments } from '@/db/schema/todo-attachments'
+import { todoContentImages } from '@/db/schema/todo-content-images'
 import { todos } from '@/db/schema/todos'
 import { uploads } from '@/db/schema/uploads'
 import {
@@ -129,9 +130,9 @@ async function createUserSession(
   }
 }
 
-type TodoReference = 'attachment' | 'file' | 'image'
+type TodoReference = 'attachment' | 'file' | 'image' | 'content'
 
-/** A todo referencing the upload through one of its three columns. */
+/** A todo referencing the upload through one of its columns or tables. */
 async function attachToTodo(reference: TodoReference, uploadId: string) {
   const [todo] = await testDb
     .insert(todos)
@@ -148,6 +149,9 @@ async function attachToTodo(reference: TodoReference, uploadId: string) {
     .returning()
   if (reference === 'attachment') {
     await testDb.insert(todoAttachments).values({ todoId: todo.id, uploadId })
+  }
+  if (reference === 'content') {
+    await testDb.insert(todoContentImages).values({ todoId: todo.id, uploadId })
   }
 }
 
@@ -243,7 +247,7 @@ describe('Who may read a file', () => {
     expect(res.statusCode).toBe(404)
   })
 
-  describe.each<TodoReference>(['attachment', 'file', 'image'])(
+  describe.each<TodoReference>(['attachment', 'file', 'image', 'content'])(
     'a todo %s',
     (reference) => {
       it('is served to a user who may read todos', async () => {

@@ -507,6 +507,7 @@ The file upload system is implemented as a standalone `uploads` module. Any othe
 | `src/lib/storage/index.ts` | `createStorageProvider(config.uploads, env.BASE_URL)` factory — returns local or throws for S3 (stub) |
 | `src/lib/image-processor.ts` | `isProcessableImage(mimeType)` + `processImage(buffer)` — 4 WebP variants via `sharp` |
 | `src/lib/upload-references.ts` / `src/lib/orphan-uploads.ts` | Registry API and the orphan cleanup job |
+| `src/lib/rich-text-uploads.ts` | `uploadIdsInHtml(database, html)` — the uploads a rich text field shows as images |
 
 The provider instance is created once in `app.ts` and injected into every module that needs it via route options. Files are served at `/api/files/*` (`src/modules/uploads/upload-files-routes.ts`, inside the `authenticated` scope): only to the uploader, to `uploads:view`, or to a reader of a record that references the upload; anyone else gets 404. `<img>` tags still work, since the browser sends the session cookie with them. Only images, PDF, plain text, audio and video open in the browser; every other file downloads in a sandbox — see `src/modules/uploads/CLAUDE.md` → _Serving files_.
 
@@ -523,6 +524,7 @@ Use `todos` as the reference implementation; the step-by-step guide (multi-file 
 3. Service: `assertUsableUploads()` on create/update (a record references only uploads its author uploaded — 400 `invalid_upload`); load uploads on reads; sync junction rows on create/update; on delete, collect upload IDs → delete the record → delete the `uploads` rows → delete storage keys (best-effort)
 4. Accept `storage: StorageProvider` in route options and pass it to the service factory
 5. **Register every new column in `src/config/upload-references.ts`**, with the guard of the record's `GET` route — otherwise the orphan cleanup job deletes those uploads after the grace period, and nobody but the uploader and `uploads:view` can open their files
+6. Images inside a rich text field (`onUploadImage`): a junction table `xxx_<field>_images` the service fills from the HTML with `uploadIdsInHtml()` (`src/lib/rich-text-uploads.ts`), checked and registered like the others — see `src/modules/uploads/CLAUDE.md` → _Images inside rich text_
 
 ---
 
