@@ -27,6 +27,8 @@ import { useResourceCache } from '@/lib/resource-cache'
 import { useExportPdf } from '@/lib/use-export-pdf'
 import { formatDate } from '@/utils/date'
 
+import { HasPermission } from '../../auth/components/has-permission'
+import { useAuth } from '../../auth/use-auth'
 import type { TodoItem } from '../types'
 import { todoListRoute } from '.'
 
@@ -34,6 +36,7 @@ export function TodoList() {
   const { t } = useTranslation('todos')
 
   const navigate = todoListRoute.useNavigate()
+  const { hasPermission } = useAuth()
   const search = todoListRoute.useSearch()
   const {
     page,
@@ -163,11 +166,13 @@ export function TodoList() {
               label: t('actions.edit', { ns: 'common' }),
               onClick: () =>
                 navigate({ to: '/todos/$id/edit', params: { id: item.id } }),
+              hidden: !hasPermission('todos', 'edit'),
             },
             {
               label: t('actions.delete', { ns: 'common' }),
               danger: true,
               onClick: () => handleConfirmDelete(item.id),
+              hidden: !hasPermission('todos', 'delete'),
             },
           ]}
         />
@@ -178,13 +183,15 @@ export function TodoList() {
   if (todosResponse.data.length === 0 && !narrowed) {
     return (
       <EmptyState title={t('empty.title')} description={t('empty.description')}>
-        <Button
-          size="lg"
-          leftSection={<IconPlus size={16} />}
-          onClick={() => navigate({ to: '/todos/create' })}
-        >
-          {t('empty.createButton')}
-        </Button>
+        <HasPermission resource="todos" action="create">
+          <Button
+            size="lg"
+            leftSection={<IconPlus size={16} />}
+            onClick={() => navigate({ to: '/todos/create' })}
+          >
+            {t('empty.createButton')}
+          </Button>
+        </HasPermission>
       </EmptyState>
     )
   }
@@ -203,12 +210,14 @@ export function TodoList() {
           >
             {t('actions.exportPdf', { ns: 'common' })}
           </Button>
-          <Button
-            leftSection={<IconPlus size={16} />}
-            onClick={() => navigate({ to: '/todos/create' })}
-          >
-            {t('actions.create', { ns: 'common' })}
-          </Button>
+          <HasPermission resource="todos" action="create">
+            <Button
+              leftSection={<IconPlus size={16} />}
+              onClick={() => navigate({ to: '/todos/create' })}
+            >
+              {t('actions.create', { ns: 'common' })}
+            </Button>
+          </HasPermission>
         </Group>
       }
     >

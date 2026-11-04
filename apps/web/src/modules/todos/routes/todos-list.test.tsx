@@ -3,6 +3,7 @@ import {
   createTodo,
   deleteTodosIdHandler,
   deleteTodosIdHandlerResponse204,
+  getMePermissionsHandler,
   getTodosHandler,
 } from '@helix/api-client/mocks'
 import {
@@ -35,6 +36,23 @@ vi.mock('.', () => ({
   todoListRoute: {
     useNavigate: () => mockNavigate,
     useSearch: () => mockSearch.state,
+  },
+}))
+
+vi.mock('../../../lib/authentication', () => ({
+  authClient: {
+    useSession: () => ({
+      data: {
+        user: {
+          id: 'test-user',
+          name: 'Test User',
+          email: 'test@example.com',
+          image: null,
+          roleId: 'test-role',
+        },
+      },
+      isPending: false,
+    }),
   },
 }))
 
@@ -94,7 +112,10 @@ beforeEach(() => {
         pageSize: 10,
         totalPages: 1,
       })
-    )
+    ),
+    getMePermissionsHandler({
+      grants: { todos: ['view', 'create', 'edit', 'delete'] },
+    })
   )
 })
 
@@ -103,6 +124,23 @@ afterEach(() => {
 })
 
 describe('TodoList', () => {
+  it('hides Create, Edit and Delete without the permissions', async () => {
+    server.use(getMePermissionsHandler({ grants: { todos: ['view'] } }))
+    renderTodoList()
+    await screen.findByText('Review quarterly report')
+    // Row actions have no aria-label: query them by role and visible name
+    expect(screen.getAllByRole('button', { name: 'View' })).toHaveLength(2)
+    expect(
+      screen.queryByRole('button', { name: 'Edit' })
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'Delete' })
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'Create' })
+    ).not.toBeInTheDocument()
+  })
+
   it('renders all todo items', async () => {
     renderTodoList()
     expect(
@@ -146,7 +184,9 @@ describe('TodoList', () => {
   it('opens delete modal when delete button is clicked', async () => {
     renderTodoList()
     await screen.findByText('Review quarterly report')
-    await userEvent.click(screen.getAllByRole('button', { name: 'Delete' })[0])
+    await userEvent.click(
+      (await screen.findAllByRole('button', { name: 'Delete' }))[0]
+    )
     const dialog = await screen.findByRole('dialog')
     expect(within(dialog).getByText('Delete todo')).toBeInTheDocument()
     expect(
@@ -167,10 +207,12 @@ describe('TodoList', () => {
 
     renderTodoList()
     await screen.findByText('Review quarterly report')
-    await userEvent.click(screen.getAllByRole('button', { name: 'Delete' })[0])
+    await userEvent.click(
+      (await screen.findAllByRole('button', { name: 'Delete' }))[0]
+    )
     const dialog = await screen.findByRole('dialog')
     await userEvent.click(
-      within(dialog).getByRole('button', { name: 'Delete' })
+      await within(dialog).findByRole('button', { name: 'Delete' })
     )
     await waitFor(() => expect(deletedId).toBe('1'))
   })
@@ -178,7 +220,9 @@ describe('TodoList', () => {
   it('closes delete modal on cancel', async () => {
     renderTodoList()
     await screen.findByText('Review quarterly report')
-    await userEvent.click(screen.getAllByRole('button', { name: 'Delete' })[0])
+    await userEvent.click(
+      (await screen.findAllByRole('button', { name: 'Delete' }))[0]
+    )
     const dialog = await screen.findByRole('dialog')
     await userEvent.click(
       within(dialog).getByRole('button', { name: 'Cancel' })
@@ -427,7 +471,9 @@ describe('TodoList layout', () => {
       expect(first.queryByText('Status')).not.toBeInTheDocument()
       expect(first.getByText('Completed')).toBeInTheDocument()
       expect(first.getByRole('button', { name: 'View' })).toBeInTheDocument()
-      expect(first.getByRole('button', { name: 'Edit' })).toBeInTheDocument()
+      expect(
+        await first.findByRole('button', { name: 'Edit' })
+      ).toBeInTheDocument()
     })
 
     it('deletes from a card', async () => {
@@ -435,7 +481,7 @@ describe('TodoList layout', () => {
       await screen.findByText('Review quarterly report')
       const [first] = screen.getAllByRole('listitem')
       await userEvent.click(
-        within(first).getByRole('button', { name: 'Delete' })
+        await within(first).findByRole('button', { name: 'Delete' })
       )
       const dialog = await screen.findByRole('dialog')
       expect(within(dialog).getByText('Delete todo')).toBeInTheDocument()

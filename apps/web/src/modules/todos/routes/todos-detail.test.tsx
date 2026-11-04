@@ -3,6 +3,7 @@ import {
   createUpload,
   deleteTodosIdHandler,
   deleteTodosIdHandlerResponse204,
+  getMePermissionsHandler,
   getTodosIdHandler,
 } from '@helix/api-client/mocks'
 import {
@@ -25,6 +26,23 @@ vi.mock('.', () => ({
   todoDetailRoute: {
     useNavigate: () => mockNavigate,
     useParams: () => ({ id: '1' }),
+  },
+}))
+
+vi.mock('../../../lib/authentication', () => ({
+  authClient: {
+    useSession: () => ({
+      data: {
+        user: {
+          id: 'test-user',
+          name: 'Test User',
+          email: 'test@example.com',
+          image: null,
+          roleId: 'test-role',
+        },
+      },
+      isPending: false,
+    }),
   },
 }))
 
@@ -57,7 +75,12 @@ function renderTodoDetail() {
 }
 
 beforeEach(() => {
-  server.use(getTodosIdHandler(completedTodo))
+  server.use(
+    getTodosIdHandler(completedTodo),
+    getMePermissionsHandler({
+      grants: { todos: ['view', 'create', 'edit', 'delete'] },
+    })
+  )
 })
 
 afterEach(() => {
@@ -65,6 +88,18 @@ afterEach(() => {
 })
 
 describe('TodoDetail', () => {
+  it('hides Edit and Delete without the permissions', async () => {
+    server.use(getMePermissionsHandler({ grants: { todos: ['view'] } }))
+    renderTodoDetail()
+    await screen.findByText('Review quarterly report')
+    expect(
+      screen.queryByRole('button', { name: 'Edit' })
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'Delete' })
+    ).not.toBeInTheDocument()
+  })
+
   it('renders the item title, description and date', async () => {
     renderTodoDetail()
     expect(

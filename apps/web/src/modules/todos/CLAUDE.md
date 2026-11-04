@@ -154,7 +154,7 @@ See `apps/web/CLAUDE.md` → _Filtering_ and `apps/api/CLAUDE.md` → _Filtering
 
 ## Notes
 
-- **Deviation from the convention:** the Create button and the row actions (Edit, Delete) in `TodoList` are **not** gated by permission — they are always rendered. Do not copy this when building a new module: follow `users`/`roles`, which gate them as `apps/web/CLAUDE.md` prescribes.
+- **Permission gating:** the Create button (header and empty state) sits in `<HasPermission resource="todos" action="create">`; the row actions Edit and Delete get `hidden: !hasPermission('todos', …)`; the detail header's Edit and Delete sit in `<HasPermission>`. The tests grant every `todos` action in `beforeEach` (`getMePermissionsHandler`) and check the hidden state with `grants: { todos: ['view'] }`. The buttons appear once `GET /me/permissions` resolves, so the tests find them with `findBy*`.
 - `TodoItem` has a `slug`, for the public site only: it is not in `TodoFormValues`, not sent on create/edit and not shown on any screen (see `apps/web/CLAUDE.md` → _Types_).
 - `content` is stored as an HTML string (rich text). Always use `RichTextEditor` for editing and `RichTextRenderer` for display.
 - `attachments`, `file`, and `image` are all **required** upload fields. `attachments` uses `minFiles(1)`, `file` and `image` use `required`. All three have the `required` prop on their `FilesInput`/`FileInput` components to render the asterisk indicator.

@@ -21,6 +21,7 @@ import { useTranslation } from 'react-i18next'
 import { useResourceCache } from '@/lib/resource-cache'
 import { formatDate } from '@/utils/date'
 
+import { HasPermission } from '../../auth/components/has-permission'
 import { todoDetailRoute } from '.'
 
 export function TodoDetail() {
@@ -69,20 +70,26 @@ export function TodoDetail() {
       }
       actions={
         <>
-          <Button
-            variant="default"
-            color="red"
-            leftSection={<IconTrash size={17} />}
-            onClick={handleDelete}
-          >
-            {tc('actions.delete')}
-          </Button>
-          <Button
-            leftSection={<IconPencil size={17} />}
-            onClick={() => navigate({ to: '/todos/$id/edit', params: { id } })}
-          >
-            {tc('actions.edit')}
-          </Button>
+          <HasPermission resource="todos" action="delete">
+            <Button
+              variant="default"
+              color="red"
+              leftSection={<IconTrash size={17} />}
+              onClick={handleDelete}
+            >
+              {tc('actions.delete')}
+            </Button>
+          </HasPermission>
+          <HasPermission resource="todos" action="edit">
+            <Button
+              leftSection={<IconPencil size={17} />}
+              onClick={() =>
+                navigate({ to: '/todos/$id/edit', params: { id } })
+              }
+            >
+              {tc('actions.edit')}
+            </Button>
+          </HasPermission>
         </>
       }
     >
