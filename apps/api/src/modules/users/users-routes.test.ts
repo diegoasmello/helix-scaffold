@@ -850,7 +850,7 @@ describe('Privilege ceiling', () => {
   it('refuses removing the role of a higher account', async () => {
     const { cookie } = await managerSession()
     const peer = await userWith(
-      (await roleWith('Todos', [{ resource: 'todos', action: 'view' }])).id
+      (await roleWith('Auditors', [{ resource: 'audit', action: 'view' }])).id
     )
     const res = await app.inject({
       method: 'PATCH',
@@ -865,7 +865,7 @@ describe('Privilege ceiling', () => {
   it('refuses changing the email of a user whose role grants more', async () => {
     const { cookie } = await managerSession()
     const peer = await userWith(
-      (await roleWith('Todos', [{ resource: 'todos', action: 'view' }])).id
+      (await roleWith('Auditors', [{ resource: 'audit', action: 'view' }])).id
     )
     const res = await app.inject({
       method: 'PATCH',
@@ -880,7 +880,7 @@ describe('Privilege ceiling', () => {
   it('allows a name edit that re-sends the unchanged email and role, as the edit form does', async () => {
     const { cookie } = await managerSession()
     const peer = await userWith(
-      (await roleWith('Todos', [{ resource: 'todos', action: 'view' }])).id
+      (await roleWith('Auditors', [{ resource: 'audit', action: 'view' }])).id
     )
     const res = await app.inject({
       method: 'PATCH',

@@ -3,17 +3,14 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 
 import { auditLogs } from '@/db/schema/audit-logs'
 import { user } from '@/db/schema/authentication'
-import { uploads } from '@/db/schema/uploads'
 import {
   cleanupAuditLogs,
   cleanupAuth,
   cleanupRoles,
-  cleanupUploads,
   cleanupUsers,
   createRoleWithPermissions,
   createTestApp,
   createTestSession,
-  getTestUser,
   testDb,
 } from '@/test/helpers'
 
@@ -27,7 +24,6 @@ beforeAll(async () => {
 
 beforeEach(async () => {
   await cleanupAuditLogs()
-  await cleanupUploads()
 })
 
 afterAll(async () => {
@@ -64,7 +60,7 @@ describe('GET /audit-logs', () => {
         userName: 'Alice',
         userEmail: 'alice@example.com',
         action: 'create',
-        resource: 'todos',
+        resource: 'users',
         resourceId: 't1',
         createdAt: new Date('2026-01-01T10:00:00Z'),
       },
@@ -73,7 +69,7 @@ describe('GET /audit-logs', () => {
         userName: 'Alice',
         userEmail: 'alice@example.com',
         action: 'delete',
-        resource: 'todos',
+        resource: 'users',
         resourceId: 't2',
         createdAt: new Date('2026-01-01T12:00:00Z'),
       },
@@ -99,7 +95,7 @@ describe('GET /audit-logs', () => {
         userName: 'Alice',
         userEmail: 'alice@example.com',
         action: 'create',
-        resource: 'todos',
+        resource: 'users',
         createdAt: new Date('2026-01-01T10:00:00Z'),
       },
       {
@@ -107,7 +103,7 @@ describe('GET /audit-logs', () => {
         userName: 'Alice',
         userEmail: 'alice@example.com',
         action: 'delete',
-        resource: 'todos',
+        resource: 'users',
         createdAt: new Date('2026-01-01T12:00:00Z'),
       },
     ])
@@ -130,7 +126,7 @@ describe('GET /audit-logs', () => {
         userName: 'Alice',
         userEmail: 'alice@example.com',
         action: 'create',
-        resource: 'todos',
+        resource: 'users',
         createdAt: new Date('2026-01-01T10:00:00Z'),
       },
       {
@@ -138,7 +134,7 @@ describe('GET /audit-logs', () => {
         userName: 'Alice',
         userEmail: 'alice@example.com',
         action: 'edit',
-        resource: 'todos',
+        resource: 'users',
         createdAt: new Date('2026-01-01T11:00:00Z'),
       },
       {
@@ -146,7 +142,7 @@ describe('GET /audit-logs', () => {
         userName: 'Alice',
         userEmail: 'alice@example.com',
         action: 'delete',
-        resource: 'todos',
+        resource: 'users',
         createdAt: new Date('2026-01-01T12:00:00Z'),
       },
     ])
@@ -172,7 +168,7 @@ describe('GET /audit-logs', () => {
         userName: 'Alice',
         userEmail: 'alice@example.com',
         action: 'create',
-        resource: 'todos',
+        resource: 'users',
         createdAt: new Date('2026-01-01T10:00:00Z'),
       },
       {
@@ -180,7 +176,7 @@ describe('GET /audit-logs', () => {
         userName: 'Alice',
         userEmail: 'alice@example.com',
         action: 'edit',
-        resource: 'todos',
+        resource: 'users',
         createdAt: new Date('2026-01-01T11:00:00Z'),
       },
       {
@@ -188,7 +184,7 @@ describe('GET /audit-logs', () => {
         userName: 'Alice',
         userEmail: 'alice@example.com',
         action: 'delete',
-        resource: 'todos',
+        resource: 'users',
         createdAt: new Date('2026-01-01T12:00:00Z'),
       },
     ])
@@ -212,21 +208,21 @@ describe('GET /audit-logs', () => {
         userName: 'Charlie',
         userEmail: 'charlie@example.com',
         action: 'create',
-        resource: 'todos',
+        resource: 'users',
       },
       {
         userId: 'u2',
         userName: 'Alice',
         userEmail: 'alice@example.com',
         action: 'edit',
-        resource: 'todos',
+        resource: 'users',
       },
       {
         userId: 'u3',
         userName: 'Bob',
         userEmail: 'bob@example.com',
         action: 'delete',
-        resource: 'todos',
+        resource: 'users',
       },
     ])
 
@@ -256,7 +252,7 @@ describe('GET /audit-logs', () => {
         userName: 'Alice',
         userEmail: 'alice@example.com',
         action: 'edit',
-        resource: 'todos',
+        resource: 'users',
       },
     ])
 
@@ -267,7 +263,7 @@ describe('GET /audit-logs', () => {
     })
     expect(res.statusCode).toBe(200)
     const body = res.json()
-    expect(body.data[0].resource).toBe('todos')
+    expect(body.data[0].resource).toBe('users')
     expect(body.data[1].resource).toBe('roles')
   })
 })
@@ -339,7 +335,7 @@ describe('GET /audit-logs/export', () => {
         userName: 'Alice',
         userEmail: 'alice@example.com',
         action: 'create',
-        resource: 'todos',
+        resource: 'users',
         createdAt: new Date('2026-01-01T10:00:00Z'),
       },
       {
@@ -359,82 +355,6 @@ describe('GET /audit-logs/export', () => {
     })
     expect(res.statusCode).toBe(200)
     expect(res.headers['content-type']).toContain('application/pdf')
-  })
-})
-
-describe('Audit logging via onResponse hook', () => {
-  it('creates an audit log entry when a todo is created', async () => {
-    // A todo may only reference uploads its author uploaded.
-    const { id: uploadedBy } = await getTestUser()
-    const [attachment] = await testDb
-      .insert(uploads)
-      .values({
-        uploadedBy,
-        originalName: 'att.pdf',
-        mimeType: 'application/pdf',
-        fileSize: 100,
-        storageKey: 'test/att.pdf',
-        url: 'http://localhost:3333/files/test/att.pdf',
-        variants: null,
-      })
-      .returning()
-    const [file] = await testDb
-      .insert(uploads)
-      .values({
-        uploadedBy,
-        originalName: 'doc.pdf',
-        mimeType: 'application/pdf',
-        fileSize: 100,
-        storageKey: 'test/doc.pdf',
-        url: 'http://localhost:3333/files/test/doc.pdf',
-        variants: null,
-      })
-      .returning()
-    const [image] = await testDb
-      .insert(uploads)
-      .values({
-        uploadedBy,
-        originalName: 'img.jpg',
-        mimeType: 'image/jpeg',
-        fileSize: 100,
-        storageKey: 'test/img.jpg',
-        url: 'http://localhost:3333/files/test/img.jpg',
-        variants: null,
-      })
-      .returning()
-
-    await app.inject({
-      method: 'POST',
-      url: '/api/todos',
-      payload: {
-        title: 'Audited Todo',
-        description: 'Desc',
-        content: 'Content',
-        date: '2026-01-01',
-        attachmentIds: [attachment.id],
-        fileId: file.id,
-        imageId: image.id,
-      },
-      headers: { cookie: authCookie },
-    })
-
-    const logs = await testDb.select().from(auditLogs)
-    expect(logs).toHaveLength(1)
-    expect(logs[0].action).toBe('create')
-    expect(logs[0].resource).toBe('todos')
-    expect(logs[0].metadata).toMatchObject({ title: 'Audited Todo' })
-  })
-
-  it('does not create an audit log when the operation fails', async () => {
-    await app.inject({
-      method: 'POST',
-      url: '/api/todos',
-      payload: { title: '' },
-      headers: { cookie: authCookie },
-    })
-
-    const logs = await testDb.select().from(auditLogs)
-    expect(logs).toHaveLength(0)
   })
 })
 

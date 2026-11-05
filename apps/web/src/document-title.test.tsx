@@ -39,9 +39,9 @@ describe('document title', () => {
   })
 
   it("uses the page header's title, followed by the product name", () => {
-    renderWithTemplate(<PageList title="Todos">content</PageList>)
+    renderWithTemplate(<PageList title="Users">content</PageList>)
 
-    expect(document.title).toBe('Todos | Helix')
+    expect(document.title).toBe('Users | Helix')
   })
 
   it('uses the record on a detail page', () => {
@@ -52,7 +52,7 @@ describe('document title', () => {
 
   it('follows the page title when it changes', () => {
     const { rerender } = renderWithTemplate(
-      <PageList title="Todos">content</PageList>
+      <PageList title="Users">content</PageList>
     )
 
     rerender(
@@ -70,7 +70,7 @@ describe('document title', () => {
 
   it('goes back to the static title when the page unmounts', () => {
     const { unmount } = renderWithTemplate(
-      <PageList title="Todos">content</PageList>
+      <PageList title="Users">content</PageList>
     )
 
     unmount()

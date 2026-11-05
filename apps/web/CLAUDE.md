@@ -1952,7 +1952,7 @@ These come up whenever a test renders real Mantine components instead of mocks:
   expect(container.querySelector('.mantine-Loader-root')).toBeInTheDocument()
   ```
 
-- **Testing `App` (`src/app.tsx`).** The real `Layout` renders `<Outlet />`, which needs a `RouterProvider`. `app.test.tsx` mocks `Layout` from `@helix/ui` (keeping all other exports through `importOriginal`) with a stub that renders the `sidebarGroups` as links plus buttons for `onAccountSettings` and `onLogout`. The test then asserts on what `App` computes, not on the layout's markup. Extend that stub instead of rendering the real layout.
+- **Testing `App` (`src/app.tsx`).** The real `Layout` renders `<Outlet />`, which needs a `RouterProvider`. `app.test.tsx` mocks `Layout` from `@helix/ui` (keeping all other exports through `importOriginal`) with a stub that renders the `sidebarGroups` as links plus buttons for `onAccountSettings` and `onLogout`. The test then asserts on what `App` computes, not on the layout's markup. Extend that stub instead of rendering the real layout. It also mocks `./config/sidebar` to put a plan-gated entry (`Reports` — `uploads:view` and the feature `reports`) before the real groups, so the plan cases never depend on which of the product's pages a plan gates.
 
 **Mocking the shared form component in Create/Edit tests**
 

@@ -21,8 +21,8 @@ describe('redactUrl', () => {
     ],
     [
       'token among other parameters',
-      '/api/todos?page=2&token=abc&sortBy=title',
-      '/api/todos?page=2&token=[REDACTED]&sortBy=title',
+      '/api/users?page=2&token=abc&sortBy=title',
+      '/api/users?page=2&token=[REDACTED]&sortBy=title',
     ],
     [
       'the email-verification token',
@@ -49,8 +49,8 @@ describe('redactUrl', () => {
   })
 
   it.each([
-    '/api/todos',
-    '/api/todos?page=2&search=code+token',
+    '/api/users',
+    '/api/users?page=2&search=code+token',
     '/api/x?token',
     '/api/auth/reset-password',
   ])('keeps %s unchanged', (url) => {

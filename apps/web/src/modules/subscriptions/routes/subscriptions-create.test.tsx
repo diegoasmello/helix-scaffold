@@ -64,7 +64,7 @@ vi.mock('../components/subscriptions-form', () => ({
 
 const plans = [
   { id: 'starter', name: 'Starter', features: [] },
-  { id: 'pro', name: 'Pro', features: ['todos'] },
+  { id: 'pro', name: 'Pro', features: ['reports'] },
 ]
 
 function renderSubscriptionsCreate() {

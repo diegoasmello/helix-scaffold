@@ -21,12 +21,12 @@ function buildTestApp(auditService: AuditService) {
   registerAuditRequest(app, createAuditRecorder(auditService, app.log))
 
   app.get('/test', async (request) => {
-    await request.audit('create', 'todos', 'todo-1', { title: 'Buy milk' })
+    await request.audit('create', 'roles', 'role-1', { name: 'Editors' })
     return { ok: true }
   })
 
   app.get('/test-minimal', async (request) => {
-    await request.audit('delete', 'todos')
+    await request.audit('delete', 'roles')
     return { ok: true }
   })
 
@@ -54,9 +54,9 @@ describe('registerAuditRequest', () => {
         userName: mockUser.name,
         userEmail: mockUser.email,
         action: 'create',
-        resource: 'todos',
-        resourceId: 'todo-1',
-        metadata: { title: 'Buy milk' },
+        resource: 'roles',
+        resourceId: 'role-1',
+        metadata: { name: 'Editors' },
         ip: expect.any(String),
         userAgent: 'TestAgent/1.0',
       })

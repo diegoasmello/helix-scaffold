@@ -21,7 +21,7 @@ const base: SubscriptionFormValues = {
 
 const plans = [
   { id: 'starter', name: 'Starter', features: [] },
-  { id: 'pro', name: 'Pro', features: ['todos'] },
+  { id: 'pro', name: 'Pro', features: ['reports'] },
 ]
 
 function FormWrapper(

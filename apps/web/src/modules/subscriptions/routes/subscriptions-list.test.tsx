@@ -51,7 +51,7 @@ vi.mock('../../../lib/authentication', () => ({
 
 const plans = [
   { id: 'starter', name: 'Starter', features: [] },
-  { id: 'pro', name: 'Pro', features: ['todos'] },
+  { id: 'pro', name: 'Pro', features: ['reports'] },
 ]
 
 const mockSubscriptions = [

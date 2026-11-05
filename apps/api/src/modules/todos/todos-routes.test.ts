@@ -1538,3 +1538,32 @@ describe('Permission enforcement', () => {
     expect(res.json().code).toBe('permission_denied')
   })
 })
+
+// The catalog's rule for todos (`PERMISSION_REQUIREMENTS`), through the
+// permission editor's route
+describe('Permission requirements', () => {
+  beforeEach(async () => {
+    await cleanupUsers()
+    await cleanupRoles()
+  })
+
+  it('requires uploads for creating todos, not for editing them', async () => {
+    const role = await createRoleWithPermissions([])
+    const put = (grants: object) =>
+      app.inject({
+        method: 'PUT',
+        url: `/api/roles/${role.id}/permissions`,
+        payload: { grants },
+        headers: { cookie: authCookie },
+      })
+
+    const create = await put({ todos: ['view', 'create'] })
+    expect(create.statusCode).toBe(400)
+    expect(create.json().message).toContain('uploads:create')
+
+    expect((await put({ todos: ['view', 'edit'] })).statusCode).toBe(200)
+    expect(
+      (await put({ todos: ['view', 'create'], uploads: ['create'] })).statusCode
+    ).toBe(200)
+  })
+})

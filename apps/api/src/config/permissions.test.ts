@@ -17,7 +17,7 @@ describe('isResourceEnabled', () => {
   })
 
   it('answers true for any other name, prototype keys included', () => {
-    for (const resource of ['todos', 'unknown', 'toString', 'hasOwnProperty']) {
+    for (const resource of ['users', 'unknown', 'toString', 'hasOwnProperty']) {
       expect(isResourceEnabled(resource, off)).toBe(true)
     }
   })

@@ -361,7 +361,7 @@ describe('Privilege ceiling', () => {
     { resource: 'roles', action: 'view' },
     { resource: 'roles', action: 'edit' },
     { resource: 'roles', action: 'delete' },
-    { resource: 'todos', action: 'view' },
+    { resource: 'audit', action: 'view' },
   ]
 
   async function setup() {
@@ -372,7 +372,7 @@ describe('Privilege ceiling', () => {
       { resource: 'users', action: 'create' },
     ])
     const below = await createRoleWithPermissions([
-      { resource: 'todos', action: 'view' },
+      { resource: 'audit', action: 'view' },
     ])
     return { cookie, above, below }
   }
@@ -435,7 +435,7 @@ describe('Privilege ceiling', () => {
   it('ignores a leftover grant the catalog no longer declares', async () => {
     // A resource a fork removed: its row gives no access, so it blocks no one
     const role = await createRoleWithPermissions([
-      { resource: 'todos', action: 'view' },
+      { resource: 'audit', action: 'view' },
       { resource: 'reports', action: 'view' },
     ])
     const res = await app.inject({

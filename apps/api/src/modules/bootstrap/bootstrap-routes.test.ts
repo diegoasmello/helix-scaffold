@@ -203,7 +203,7 @@ describe('POST /bootstrap', () => {
       .returning()
     await testDb
       .insert(rolePermissions)
-      .values({ roleId: leftoverAdmin.id, resource: 'todos', action: 'view' })
+      .values({ roleId: leftoverAdmin.id, resource: 'audit', action: 'view' })
     const [leftoverUser] = await testDb
       .insert(roles)
       .values({ name: 'User' })
@@ -252,7 +252,7 @@ describe('POST /bootstrap', () => {
       .returning()
     await testDb
       .insert(rolePermissions)
-      .values({ roleId: members.id, resource: 'todos', action: 'view' })
+      .values({ roleId: members.id, resource: 'audit', action: 'view' })
 
     const res = await app.inject({
       method: 'POST',

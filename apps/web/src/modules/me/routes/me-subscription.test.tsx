@@ -22,7 +22,7 @@ import { MeSubscription } from './me-subscription'
 
 const plans = [
   { id: 'starter', name: 'Starter', features: [] },
-  { id: 'pro', name: 'Pro', features: ['todos'] },
+  { id: 'pro', name: 'Pro', features: ['reports'] },
 ]
 
 const mockSubscription = createSubscription({
@@ -125,7 +125,7 @@ describe('MeSubscription', () => {
       .getByText('Current plan')
       .closest('[aria-current="true"]')
     expect(current).toHaveTextContent('Pro')
-    expect(within(catalog).getByText('Todos')).toBeInTheDocument()
+    expect(within(catalog).getByText('reports')).toBeInTheDocument()
   })
 
   it('falls back to the raw plan id for plans not in the catalog', async () => {
@@ -173,7 +173,7 @@ describe('MeSubscription', () => {
         getMeEntitlementsHandler({
           operator: false,
           subscribed: true,
-          features: ['todos'],
+          features: ['reports'],
           graceEndsAt: '2026-03-08T12:00:00.000Z',
         })
       )

@@ -131,6 +131,7 @@ Route integration tests against the real test database (`helix_test`).
 - `describe('Upload types')` — a PDF as `imageId` and an image as `fileId` (400 `invalid_upload_type`, nothing written), a PDF inside `content`, any image type (SVG) as the image, any file as an attachment, a wrong type on update (the old image kept), the todo's own PDF moved to `imageId` (still refused), `invalid_upload` before the type for someone else's file.
 - `describe('Images in the content')` — the reference for _Images inside rich text_: recorded on create, external images and unknown keys ignored, kept by the orphan cleanup (`deleteOrphanUploads()` with the registered loaders and `graceHours: 0`), someone else's image on create/update (400), another editor re-sending the text (200), a `PATCH` without `content` keeps them, an image taken out gets cleaned up, deleted with the todo.
 - `describe('Attachments')` covers create/read/update of `attachmentIds` and that deleting a todo removes its attachment rows.
+- `describe('Permission requirements')` — the module's `PERMISSION_REQUIREMENTS` through `PUT /roles/:id/permissions`: `todos:create` without `uploads:create` is a 400, `todos:edit` needs no upload.
 
 **Subscription in tests:** `createTestSession()` creates an active `pro` subscription for the test admin (subscriptions are always enabled in tests via `src/config/test-overrides.ts`), so individual tests never set one up.
 

@@ -257,7 +257,7 @@ describe('ensureDefaultRole', () => {
       .returning()
     await testDb
       .insert(rolePermissions)
-      .values({ roleId: existing.id, resource: 'todos', action: 'view' })
+      .values({ roleId: existing.id, resource: 'audit', action: 'view' })
 
     await ensureDefaultRole(testDb, open)
 

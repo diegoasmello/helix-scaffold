@@ -281,26 +281,6 @@ describe('PUT /roles/:id/permissions', () => {
     expect(after.json().grants).toEqual({ roles: ['view'] })
   })
 
-  it('requires uploads for creating todos, not for editing them', async () => {
-    const role = await createRoleWithPermissions([])
-    const put = (grants: object) =>
-      app.inject({
-        method: 'PUT',
-        url: `/api/roles/${role.id}/permissions`,
-        payload: { grants },
-        headers: { cookie: authCookie },
-      })
-
-    const create = await put({ todos: ['view', 'create'] })
-    expect(create.statusCode).toBe(400)
-    expect(create.json().message).toContain('uploads:create')
-
-    expect((await put({ todos: ['view', 'edit'] })).statusCode).toBe(200)
-    expect(
-      (await put({ todos: ['view', 'create'], uploads: ['create'] })).statusCode
-    ).toBe(200)
-  })
-
   it('accepts grants that bring their requirements', async () => {
     const role = await createRoleWithPermissions([])
 
@@ -414,15 +394,13 @@ describe('PUT /roles/:id/permissions', () => {
 })
 
 describe('Privilege ceiling', () => {
-  // A delegated moderator: manages roles and their permissions, can see and
-  // edit todos, nothing else (no todos:delete, no users:*).
+  // A delegated moderator: sees and edits roles and their permissions,
+  // nothing else (no roles:delete, no users:*).
   const MODERATOR = [
     { resource: 'roles', action: 'view' },
     { resource: 'roles', action: 'edit' },
     { resource: 'permissions', action: 'view' },
     { resource: 'permissions', action: 'edit' },
-    { resource: 'todos', action: 'view' },
-    { resource: 'todos', action: 'edit' },
   ]
 
   async function moderator() {
@@ -442,23 +420,23 @@ describe('Privilege ceiling', () => {
   it('lets a moderator grant a lower role what the moderator holds', async () => {
     const { cookie } = await moderator()
     const member = await createRoleWithPermissions([])
-    const res = await put(cookie, member.id, { todos: ['view', 'edit'] })
+    const res = await put(cookie, member.id, { roles: ['view', 'edit'] })
     expect(res.statusCode).toBe(200)
-    expect(res.json().grants.todos.sort()).toEqual(['edit', 'view'])
+    expect(res.json().grants.roles.sort()).toEqual(['edit', 'view'])
   })
 
   it('refuses a permission the moderator lacks, and changes nothing', async () => {
     const { cookie } = await moderator()
     const member = await createRoleWithPermissions([
-      { resource: 'todos', action: 'view' },
+      { resource: 'roles', action: 'view' },
     ])
     const res = await put(cookie, member.id, {
-      todos: ['view', 'delete'],
+      roles: ['view', 'delete'],
       users: ['create'],
     })
     expect(res.statusCode).toBe(403)
     expect(res.json().code).toBe('permissions_not_grantable')
-    expect(res.json().message).toContain('todos:delete')
+    expect(res.json().message).toContain('roles:delete')
     expect(res.json().message).toContain('users:create')
 
     const after = await app.inject({
@@ -466,7 +444,7 @@ describe('Privilege ceiling', () => {
       url: `/api/roles/${member.id}/permissions`,
       headers: { cookie: authCookie },
     })
-    expect(after.json().grants).toEqual({ todos: ['view'] })
+    expect(after.json().grants).toEqual({ roles: ['view'] })
   })
 
   it("refuses to touch a role above the moderator's, even to remove", async () => {
@@ -483,9 +461,8 @@ describe('Privilege ceiling', () => {
   it('stops a moderator from raising their own role', async () => {
     const { cookie, role } = await moderator()
     const res = await put(cookie, role.id, {
-      roles: ['view', 'edit'],
+      roles: ['view', 'edit', 'delete'],
       permissions: ['view', 'edit'],
-      todos: ['view', 'edit', 'delete'],
     })
     expect(res.statusCode).toBe(403)
     expect(res.json().code).toBe('permissions_not_grantable')
@@ -572,12 +549,12 @@ describe('Subscriptions turned off', () => {
       .json()
       .map((def: { resource: string }) => def.resource)
     expect(resources).not.toContain('subscriptions')
-    expect(resources).toContain('todos')
+    expect(resources).toContain('audit')
   })
 
   it('shows a role without its subscription grants', async () => {
     const role = await createRoleWithPermissions([
-      { resource: 'todos', action: 'view' },
+      { resource: 'audit', action: 'view' },
       { resource: 'subscriptions', action: 'view' },
     ])
 
@@ -587,18 +564,18 @@ describe('Subscriptions turned off', () => {
       headers: { cookie: authCookie },
     })
     expect(res.statusCode).toBe(200)
-    expect(res.json().grants).toEqual({ todos: ['view'] })
+    expect(res.json().grants).toEqual({ audit: ['view'] })
   })
 
   it('refuses subscription grants, writing nothing', async () => {
     const role = await createRoleWithPermissions([
-      { resource: 'todos', action: 'view' },
+      { resource: 'audit', action: 'view' },
     ])
 
     const res = await disabledApp.inject({
       method: 'PUT',
       url: `/api/roles/${role.id}/permissions`,
-      payload: { grants: { todos: ['view'], subscriptions: ['view'] } },
+      payload: { grants: { audit: ['view'], subscriptions: ['view'] } },
       headers: { cookie: authCookie },
     })
     expect(res.statusCode).toBe(400)
@@ -610,12 +587,12 @@ describe('Subscriptions turned off', () => {
       url: `/api/roles/${role.id}/permissions`,
       headers: { cookie: authCookie },
     })
-    expect(after.json().grants).toEqual({ todos: ['view'] })
+    expect(after.json().grants).toEqual({ audit: ['view'] })
   })
 
   it('keeps the subscription grants a role already holds', async () => {
     const role = await createRoleWithPermissions([
-      { resource: 'todos', action: 'view' },
+      { resource: 'audit', action: 'view' },
       { resource: 'subscriptions', action: 'view' },
     ])
 
@@ -649,7 +626,7 @@ describe('Subscriptions turned off', () => {
     })
     expect(res.statusCode).toBe(200)
     expect(res.json().grants).not.toHaveProperty('subscriptions')
-    expect(res.json().grants.todos).toEqual(
+    expect(res.json().grants.users).toEqual(
       expect.arrayContaining(['view', 'create', 'edit', 'delete'])
     )
   })
@@ -660,11 +637,11 @@ describe('Subscriptions turned off', () => {
       { resource: 'roles', action: 'view' },
       { resource: 'permissions', action: 'view' },
       { resource: 'permissions', action: 'edit' },
-      { resource: 'todos', action: 'view' },
+      { resource: 'audit', action: 'view' },
     ])
     const cookie = await createSessionWithRole(disabledApp, moderatorRole.id)
     const target = await createRoleWithPermissions([
-      { resource: 'todos', action: 'view' },
+      { resource: 'audit', action: 'view' },
       { resource: 'subscriptions', action: 'view' },
     ])
 
@@ -673,7 +650,7 @@ describe('Subscriptions turned off', () => {
       url: `/api/roles/${target.id}/permissions`,
       headers: { cookie },
     })
-    expect(shown.json().grants).toEqual({ todos: ['view'] })
+    expect(shown.json().grants).toEqual({ audit: ['view'] })
     // The role itself tells the editor not to offer the change
     const role = await disabledApp.inject({
       method: 'GET',
@@ -685,7 +662,7 @@ describe('Subscriptions turned off', () => {
     const res = await disabledApp.inject({
       method: 'PUT',
       url: `/api/roles/${target.id}/permissions`,
-      payload: { grants: { todos: ['view'] } },
+      payload: { grants: { audit: ['view'] } },
       headers: { cookie },
     })
     expect(res.statusCode).toBe(403)
@@ -701,14 +678,14 @@ describe('Subscriptions turned off', () => {
     const res = await disabledApp.inject({
       method: 'PUT',
       url: `/api/roles/${role.id}/permissions`,
-      payload: { grants: { todos: ['view'] } },
+      payload: { grants: { audit: ['view'] } },
       headers: { cookie: authCookie },
     })
     expect(res.statusCode).toBe(200)
 
     const [entry] = await findAuditLogs('edit', 'permissions', role.id)
     expect(entry.metadata).toEqual({
-      grants: { todos: ['view'] },
+      grants: { audit: ['view'] },
       kept: { subscriptions: ['view'] },
       dropped: { subscriptions: ['create'] },
     })
@@ -725,7 +702,7 @@ describe('Subscriptions turned off', () => {
     const res = await disabledApp.inject({
       method: 'PUT',
       url: `/api/roles/${role.id}/permissions`,
-      payload: { grants: { todos: ['view'] } },
+      payload: { grants: { audit: ['view'] } },
       headers: { cookie: authCookie },
     })
     expect(res.statusCode).toBe(200)
@@ -736,7 +713,7 @@ describe('Subscriptions turned off', () => {
       headers: { cookie: authCookie },
     })
     expect(after.json().grants).toEqual({
-      todos: ['view'],
+      audit: ['view'],
       subscriptions: ['view'],
     })
   })
@@ -751,7 +728,7 @@ describe('Subscriptions turned off', () => {
     const res = await disabledApp.inject({
       method: 'PUT',
       url: `/api/roles/${role.id}/permissions`,
-      payload: { grants: { users: ['view'], todos: ['view'] } },
+      payload: { grants: { users: ['view'], audit: ['view'] } },
       headers: { cookie: authCookie },
     })
     expect(res.statusCode).toBe(200)
@@ -763,7 +740,7 @@ describe('Subscriptions turned off', () => {
     })
     expect(after.json().grants).toEqual({
       users: ['view'],
-      todos: ['view'],
+      audit: ['view'],
       subscriptions: expect.arrayContaining(['view', 'create']),
     })
   })

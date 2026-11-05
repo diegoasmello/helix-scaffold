@@ -42,9 +42,9 @@ const mockLog = createAuditLog({
   userName: 'Alice Silva',
   userEmail: 'alice@example.com',
   action: 'create',
-  resource: 'todos',
+  resource: 'roles',
   resourceId: 't1',
-  metadata: { title: 'My Todo', description: 'Desc' },
+  metadata: { name: 'Editors', description: 'Desc' },
   ip: '192.168.1.1',
   userAgent: 'Mozilla/5.0',
   createdAt: '2026-01-01T10:00:00.000Z',
@@ -92,7 +92,7 @@ describe('AuditDetail', () => {
 
   it('renders resource and resource id', async () => {
     renderAuditDetail()
-    await screen.findByText('todos')
+    await screen.findByText('roles')
     expect(screen.getByText('t1')).toBeInTheDocument()
   })
 
@@ -104,7 +104,7 @@ describe('AuditDetail', () => {
   it('renders metadata as formatted JSON', async () => {
     renderAuditDetail()
     await screen.findByText('Alice Silva')
-    expect(screen.getByText(/My Todo/)).toBeInTheDocument()
+    expect(screen.getByText(/Editors/)).toBeInTheDocument()
   })
 
   it('hides metadata section when metadata is null', async () => {

@@ -107,7 +107,7 @@ Only `view` is registered — there is no create/edit/delete permission.
 
 **Default sort test**: seeds two logs with explicit `createdAt` timestamps and asserts order without `sortBy` (defaults to `createdAt asc`).
 
-**Integration test** (`describe('Audit logging via onResponse hook')` — the name is historical; the hook runs on `onRequest`): makes a real `POST /todos` request via `app.inject` and then queries `auditLogs` directly with `testDb.select()` to assert the entry was created. Also verifies that a failed request (400) does **not** create a log.
+**Entries written by the other modules** are asserted where they are written: `request.audit()` itself on a bare Fastify app (`src/hooks/audit-request.test.ts`), each mutation's entry — and none for a refused or no-op request — in that module's route tests (`findAuditLogs`, e.g. `roles-routes.test.ts`, `users-routes.test.ts`).
 
 **Export tests** (`describe('GET /audit-logs/export')`): asserts 200 + `content-type: application/pdf` + `content-disposition` header with the expected filename pattern. A second test seeds logs and verifies the endpoint accepts `sortBy`/`sortOrder` params.
 

@@ -38,8 +38,8 @@ describe('API prefix', () => {
       paths: Record<string, unknown>
     }
     expect(spec.servers).toEqual([{ url: '/api' }])
-    expect(spec.paths['/todos']).toBeDefined()
-    expect(spec.paths['/api/todos']).toBeUndefined()
+    expect(spec.paths['/users']).toBeDefined()
+    expect(spec.paths['/api/users']).toBeUndefined()
   })
 
   it('serves the docs under /api/docs', async () => {

@@ -8,7 +8,7 @@ import {
 
 const plans = [
   { id: 'starter', name: 'Starter', features: [] },
-  { id: 'pro', name: 'Pro', features: ['todos'] },
+  { id: 'pro', name: 'Pro', features: ['reports'] },
 ]
 
 const none = {
@@ -22,7 +22,7 @@ function entitlements(overrides: Partial<Entitlements> = {}): Entitlements {
   return {
     operator: false,
     subscribed: true,
-    features: ['todos'],
+    features: ['reports'],
     graceEndsAt: null,
     ...overrides,
   }
@@ -44,7 +44,7 @@ describe('resolveEntitlements', () => {
       subscription: { planId: 'pro', status: 'active', pastDueSince: null },
     })
     expect(result.subscribed).toBe(true)
-    expect(result.features).toEqual(['todos'])
+    expect(result.features).toEqual(['reports'])
   })
 
   it('unlocks no features for a plan removed from the catalog', () => {
@@ -91,13 +91,13 @@ describe('denialFor', () => {
       subscribed: false,
       features: [],
     })
-    expect(denialFor(operator, 'todos')).toBeNull()
+    expect(denialFor(operator, 'reports')).toBeNull()
   })
 
   it('requires a subscription', () => {
     const unsubscribed = entitlements({ subscribed: false, features: [] })
     expect(denialFor(unsubscribed)).toBe('subscription_required')
-    expect(denialFor(unsubscribed, 'todos')).toBe('subscription_required')
+    expect(denialFor(unsubscribed, 'reports')).toBe('subscription_required')
   })
 
   it('accepts any subscription when no feature is asked for', () => {
@@ -105,8 +105,8 @@ describe('denialFor', () => {
   })
 
   it("requires the feature to be in the user's plan", () => {
-    expect(denialFor(entitlements(), 'todos')).toBeNull()
-    expect(denialFor(entitlements({ features: [] }), 'todos')).toBe(
+    expect(denialFor(entitlements(), 'reports')).toBeNull()
+    expect(denialFor(entitlements({ features: [] }), 'reports')).toBe(
       'feature_not_in_plan'
     )
   })

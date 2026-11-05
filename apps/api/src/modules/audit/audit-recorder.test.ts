@@ -22,8 +22,8 @@ describe('createAuditRecorder', () => {
       },
       {
         action: 'edit',
-        resource: 'todos',
-        resourceId: 't-1',
+        resource: 'roles',
+        resourceId: 'r-1',
         metadata: { a: 1 },
       }
     )
@@ -33,8 +33,8 @@ describe('createAuditRecorder', () => {
       userName: 'Alice',
       userEmail: 'alice@test.com',
       action: 'edit',
-      resource: 'todos',
-      resourceId: 't-1',
+      resource: 'roles',
+      resourceId: 'r-1',
       metadata: { a: 1 },
       ip: '10.0.0.1',
       userAgent: 'Agent/1.0',

@@ -10,9 +10,10 @@ import {
   type PageAccess,
 } from './page-access'
 
-const todosList: PageAccess = {
-  permission: { resource: 'todos', action: 'view' },
-  feature: 'todos',
+// A page gated by a plan feature
+const reports: PageAccess = {
+  permission: { resource: 'audit', action: 'view' },
+  feature: 'reports',
 }
 const adminOnly: PageAccess = {
   permission: { resource: 'subscriptions', action: 'view' },
@@ -30,7 +31,7 @@ function checkers(overrides: Partial<AccessCheckers> = {}): AccessCheckers {
 
 describe('checkPageAccess', () => {
   it('allows a page whose every requirement is met', () => {
-    expect(checkPageAccess(todosList, checkers())).toEqual({ allowed: true })
+    expect(checkPageAccess(reports, checkers())).toEqual({ allowed: true })
   })
 
   it('allows a page with no requirement', () => {
@@ -41,20 +42,20 @@ describe('checkPageAccess', () => {
 
   it('sends to /403 without the permission', () => {
     expect(
-      checkPageAccess(todosList, checkers({ hasPermission: () => false }))
+      checkPageAccess(reports, checkers({ hasPermission: () => false }))
     ).toEqual({ allowed: false, redirectTo: '/403' })
   })
 
   it('sends to /upgrade without the plan feature, before checking the permission', () => {
     expect(
       checkPageAccess(
-        todosList,
+        reports,
         checkers({
           hasPermission: () => false,
           hasSubscriptionAccess: () => false,
         })
       )
-    ).toEqual({ allowed: false, redirectTo: '/upgrade', feature: 'todos' })
+    ).toEqual({ allowed: false, redirectTo: '/upgrade', feature: 'reports' })
   })
 
   it('sends to / when the page needs subscriptions and they are off', () => {
@@ -83,8 +84,8 @@ describe('hasPagePermission', () => {
   })
 
   it('accepts a single permission, or none', () => {
-    const hasPermission = createPermissionChecker({ todos: ['view'] })
-    expect(hasPagePermission(todosList, hasPermission)).toBe(true)
+    const hasPermission = createPermissionChecker({ audit: ['view'] })
+    expect(hasPagePermission(reports, hasPermission)).toBe(true)
     expect(hasPagePermission({}, () => false)).toBe(true)
   })
 
@@ -111,37 +112,37 @@ describe('guardPage', () => {
   }
 
   it('lets the navigation through when allowed', () => {
-    expect(rejection(todosList, checkers())).toBeUndefined()
+    expect(rejection(reports, checkers())).toBeUndefined()
   })
 
   it('throws a redirect to /403', () => {
-    const error = rejection(todosList, checkers({ hasPermission: () => false }))
+    const error = rejection(reports, checkers({ hasPermission: () => false }))
     expect(isRedirect(error)).toBe(true)
     expect((error as { options: { to: string } }).options.to).toBe('/403')
   })
 
   it('throws a redirect to /upgrade with the feature', () => {
     const error = rejection(
-      todosList,
+      reports,
       checkers({ hasSubscriptionAccess: () => false })
     )
     expect(isRedirect(error)).toBe(true)
     expect(error).toMatchObject({
-      options: { to: '/upgrade', search: { feature: 'todos' } },
+      options: { to: '/upgrade', search: { feature: 'reports' } },
     })
   })
 
   it('exposes the access it enforces', () => {
-    expect(guardPage(todosList).access).toBe(todosList)
+    expect(guardPage(reports).access).toBe(reports)
   })
 })
 
 describe('createPermissionChecker', () => {
-  const hasPermission = createPermissionChecker({ todos: ['view', 'edit'] })
+  const hasPermission = createPermissionChecker({ roles: ['view', 'edit'] })
 
   it('checks resource and action against the grants', () => {
-    expect(hasPermission('todos', 'edit')).toBe(true)
-    expect(hasPermission('todos', 'delete')).toBe(false)
+    expect(hasPermission('roles', 'edit')).toBe(true)
+    expect(hasPermission('roles', 'delete')).toBe(false)
     expect(hasPermission('users', 'view')).toBe(false)
   })
 })

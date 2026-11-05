@@ -54,7 +54,7 @@ const mockLogs = [
     userName: 'Alice Silva',
     userEmail: 'alice@example.com',
     action: 'create',
-    resource: 'todos',
+    resource: 'users',
     resourceId: 't1',
     ip: '192.168.1.1',
     userAgent: 'Mozilla/5.0',
@@ -124,7 +124,7 @@ describe('AuditList', () => {
 
   it('shows resource names', async () => {
     renderAuditList()
-    await screen.findByText('todos')
+    await screen.findByText('users')
     expect(screen.getByText('roles')).toBeInTheDocument()
   })
 

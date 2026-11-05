@@ -20,8 +20,8 @@ type Grants = Record<string, PermissionAction[]>
 
 const definitions: ResourceDefinition[] = [
   {
-    resource: 'todos',
-    label: 'Todos',
+    resource: 'roles',
+    label: 'Roles',
     actions: ['view', 'create', 'edit', 'delete'],
     requires: {},
   },
@@ -130,72 +130,72 @@ describe('PermissionsTree', () => {
   it('translates resource and action labels', async () => {
     await i18n.changeLanguage('pt-BR')
     renderTree({})
-    expect(resourceCheckbox('Tarefas')).toBeInTheDocument()
-    expect(actionCheckbox('Tarefas', 'Excluir')).toBeInTheDocument()
+    expect(resourceCheckbox('Perfis')).toBeInTheDocument()
+    expect(actionCheckbox('Perfis', 'Excluir')).toBeInTheDocument()
   })
 
   it('renders one group per resource with its actions', () => {
     renderTree({})
-    expect(resourceCheckbox('Todos')).toBeInTheDocument()
+    expect(resourceCheckbox('Roles')).toBeInTheDocument()
     expect(resourceCheckbox('Audit log')).toBeInTheDocument()
     for (const action of ['View', 'Create', 'Edit', 'Delete']) {
-      expect(actionCheckbox('Todos', action)).toBeInTheDocument()
+      expect(actionCheckbox('Roles', action)).toBeInTheDocument()
     }
     expect(actionCheckbox('Audit log', 'View')).toBeInTheDocument()
     expect(screen.getAllByRole('checkbox')).toHaveLength(7)
   })
 
   it('checks the actions present in grants', () => {
-    renderTree({ todos: ['view', 'edit'] })
-    expect(actionCheckbox('Todos', 'View')).toBeChecked()
-    expect(actionCheckbox('Todos', 'Edit')).toBeChecked()
-    expect(actionCheckbox('Todos', 'Create')).not.toBeChecked()
-    expect(actionCheckbox('Todos', 'Delete')).not.toBeChecked()
+    renderTree({ roles: ['view', 'edit'] })
+    expect(actionCheckbox('Roles', 'View')).toBeChecked()
+    expect(actionCheckbox('Roles', 'Edit')).toBeChecked()
+    expect(actionCheckbox('Roles', 'Create')).not.toBeChecked()
+    expect(actionCheckbox('Roles', 'Delete')).not.toBeChecked()
   })
 
   it('checks the resource checkbox only when every action is granted', () => {
-    renderTree({ todos: ['view', 'edit'], audit: ['view'] })
-    expect(resourceCheckbox('Todos')).not.toBeChecked()
+    renderTree({ roles: ['view', 'edit'], audit: ['view'] })
+    expect(resourceCheckbox('Roles')).not.toBeChecked()
     expect(resourceCheckbox('Audit log')).toBeChecked()
   })
 
   it('marks the resource checkbox indeterminate when some actions are granted', () => {
-    renderTree({ todos: ['view'] })
-    expect(resourceCheckbox('Todos')).toHaveAttribute('data-indeterminate')
+    renderTree({ roles: ['view'] })
+    expect(resourceCheckbox('Roles')).toHaveAttribute('data-indeterminate')
     expect(resourceCheckbox('Audit log')).not.toHaveAttribute(
       'data-indeterminate'
     )
   })
 
   it('grants an action when its checkbox is clicked', async () => {
-    const onChange = renderTree({ todos: ['view'], audit: ['view'] })
-    await userEvent.click(actionCheckbox('Todos', 'Delete'))
+    const onChange = renderTree({ roles: ['view'], audit: ['view'] })
+    await userEvent.click(actionCheckbox('Roles', 'Delete'))
     expect(onChange).toHaveBeenCalledWith({
-      todos: ['view', 'delete'],
+      roles: ['view', 'delete'],
       audit: ['view'],
     })
   })
 
   it('revokes an action when its checked checkbox is clicked', async () => {
-    const onChange = renderTree({ todos: ['view', 'edit'] })
-    await userEvent.click(actionCheckbox('Todos', 'View'))
-    expect(onChange).toHaveBeenCalledWith({ todos: ['edit'] })
+    const onChange = renderTree({ roles: ['view', 'edit'] })
+    await userEvent.click(actionCheckbox('Roles', 'View'))
+    expect(onChange).toHaveBeenCalledWith({ roles: ['edit'] })
   })
 
   it('grants every action when the resource checkbox is clicked', async () => {
-    const onChange = renderTree({ todos: ['view'] })
-    await userEvent.click(resourceCheckbox('Todos'))
+    const onChange = renderTree({ roles: ['view'] })
+    await userEvent.click(resourceCheckbox('Roles'))
     expect(onChange).toHaveBeenCalledWith({
-      todos: ['view', 'create', 'edit', 'delete'],
+      roles: ['view', 'create', 'edit', 'delete'],
     })
   })
 
   it('revokes every action when a fully checked resource is clicked', async () => {
     const onChange = renderTree({
-      todos: ['view', 'create', 'edit', 'delete'],
+      roles: ['view', 'create', 'edit', 'delete'],
     })
-    await userEvent.click(resourceCheckbox('Todos'))
-    expect(onChange).toHaveBeenCalledWith({ todos: [] })
+    await userEvent.click(resourceCheckbox('Roles'))
+    expect(onChange).toHaveBeenCalledWith({ roles: [] })
   })
 
   it('updates the resource checkbox as actions are toggled', async () => {
@@ -212,12 +212,12 @@ describe('PermissionsTree', () => {
   })
 
   it('disables every checkbox and ignores clicks when disabled', async () => {
-    const onChange = renderTree({ todos: ['view'] }, { disabled: true })
+    const onChange = renderTree({ roles: ['view'] }, { disabled: true })
     for (const checkbox of screen.getAllByRole('checkbox')) {
       expect(checkbox).toBeDisabled()
     }
-    await userEvent.click(actionCheckbox('Todos', 'Edit'))
-    await userEvent.click(resourceCheckbox('Todos'))
+    await userEvent.click(actionCheckbox('Roles', 'Edit'))
+    await userEvent.click(resourceCheckbox('Roles'))
     expect(onChange).not.toHaveBeenCalled()
   })
 
@@ -274,29 +274,29 @@ describe('PermissionsTree', () => {
   })
 
   describe('privilege ceiling', () => {
-    // The user's own role holds todos:view and todos:edit only
+    // The user's own role holds roles:view and roles:edit only
     const canGrant = (resource: string, action: string) =>
-      resource === 'todos' && (action === 'view' || action === 'edit')
+      resource === 'roles' && (action === 'view' || action === 'edit')
 
     it('disables the unchecked actions the user may not grant', () => {
-      renderTree({ todos: ['view', 'delete'] }, { canGrant })
-      expect(actionCheckbox('Todos', 'Edit')).toBeEnabled()
-      expect(actionCheckbox('Todos', 'Create')).toBeDisabled()
+      renderTree({ roles: ['view', 'delete'] }, { canGrant })
+      expect(actionCheckbox('Roles', 'Edit')).toBeEnabled()
+      expect(actionCheckbox('Roles', 'Create')).toBeDisabled()
       // Checked: unchecking it never grants anything
-      expect(actionCheckbox('Todos', 'Delete')).toBeEnabled()
+      expect(actionCheckbox('Roles', 'Delete')).toBeEnabled()
       expect(resourceCheckbox('Audit log')).toBeDisabled()
     })
 
     it('checks only what the user may grant from the resource checkbox', async () => {
       const onChange = renderTree({}, { canGrant })
-      await userEvent.click(resourceCheckbox('Todos'))
-      expect(onChange).toHaveBeenCalledWith({ todos: ['view', 'edit'] })
+      await userEvent.click(resourceCheckbox('Roles'))
+      expect(onChange).toHaveBeenCalledWith({ roles: ['view', 'edit'] })
     })
 
     it('unchecks the resource once nothing is left to grant', async () => {
-      const onChange = renderTree({ todos: ['view', 'edit'] }, { canGrant })
-      await userEvent.click(resourceCheckbox('Todos'))
-      expect(onChange).toHaveBeenCalledWith({ todos: [] })
+      const onChange = renderTree({ roles: ['view', 'edit'] }, { canGrant })
+      await userEvent.click(resourceCheckbox('Roles'))
+      expect(onChange).toHaveBeenCalledWith({ roles: [] })
     })
   })
 

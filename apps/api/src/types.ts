@@ -26,7 +26,7 @@ export type PreHandler = (
 ) => Promise<void>
 
 /**
- * Only pairs `RESOURCE_DEFINITIONS` declares compile — `('todo', 'view')` and
+ * Only pairs `RESOURCE_DEFINITIONS` declares compile — `('user', 'view')` and
  * `('audit', 'edit')` do not. An undeclared pair that slips past the types
  * (a cast) throws when the route registers.
  */

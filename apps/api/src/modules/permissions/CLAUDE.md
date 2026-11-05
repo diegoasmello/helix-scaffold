@@ -135,10 +135,10 @@ Only `view` and `edit` — there is no `create` or `delete` action. Permissions 
 
 **`describe('Admin role')`** — built with `createAdminRole()` (`src/test/helpers.ts`): `GET /roles/:id/permissions` and the admin's own `GET /me/permissions` list the whole catalog with no rows; `PUT` on it answers 403 `admin_role_locked` to the test session (every permission) and to the admin, with no audit entry.
 
-**`describe('Privilege ceiling')`** — a moderator (`roles:view/edit`, `permissions:view/edit`, `todos:view/edit`) built with `createRoleWithPermissions` + `createSessionWithRole` (`src/test/helpers.ts`): grants what it holds to a lower role (200), a pair it lacks (403 `permissions_not_grantable`, the role unchanged), any change to a broader role (403 `role_not_editable`), raising its own role (403), no audit entry for a refusal.
+**`describe('Privilege ceiling')`** — a moderator (`roles:view/edit`, `permissions:view/edit`, no `roles:delete`) built with `createRoleWithPermissions` + `createSessionWithRole` (`src/test/helpers.ts`): grants what it holds to a lower role (200), a pair it lacks (403 `permissions_not_grantable`, the role unchanged), any change to a broader role (403 `role_not_editable`), raising its own role (403), no audit entry for a refusal.
 
 **Permission enforcement** is tested inline within the relevant `describe` blocks rather than in a separate `Permission enforcement` block — `GET /roles/:id/permissions` tests 403, `PUT /roles/:id/permissions` tests 403. The pattern differs slightly from other modules: some tests insert users directly via `testDb.insert(user)` instead of using the sign-up endpoint.
 
 **`Bootstrap status` describe block** — a single sanity test verifying that `GET /bootstrap/status` returns `bootstrapped: true` while the test session user exists. This is an integration-level check that the bootstrap module still works alongside the permissions module, not a permissions-specific test.
 
-**`src/hooks/require-permission.test.ts`** — the hook on a bare Fastify app with a real catalog pair (`todos:view`): 403 `permission_denied` without a role or without the grant, the handler runs with it, and an undeclared pair (`todo:view`, `audit:edit`, through a cast) throws at registration.
+**`src/hooks/require-permission.test.ts`** — the hook on a bare Fastify app with a real catalog pair (`audit:view`): 403 `permission_denied` without a role or without the grant, the handler runs with it, and an undeclared pair (`user:view`, `audit:edit`, through a cast) throws at registration.

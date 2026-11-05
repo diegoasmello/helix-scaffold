@@ -45,6 +45,32 @@ vi.mock('./lib/authentication', () => ({
   },
 }))
 
+// The real sidebar plus a plan-gated entry, so the feature cases do not depend
+// on which of the app's own pages a plan gates. Its permission (`uploads:view`)
+// opens no other entry.
+vi.mock('./config/sidebar', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('./config/sidebar')>()
+  return {
+    ...actual,
+    sidebarGroups: [
+      {
+        items: [
+          {
+            label: 'Reports',
+            icon: () => null,
+            to: '/audit',
+            access: {
+              permission: { resource: 'uploads', action: 'view' },
+              feature: 'reports',
+            },
+          },
+        ],
+      },
+      ...actual.sidebarGroups,
+    ],
+  }
+})
+
 // The real Layout renders <Outlet /> and needs a router. Render just the
 // props App computes: the sidebar groups and the header callbacks.
 vi.mock('@helix/ui', async (importOriginal) => {
@@ -78,11 +104,11 @@ vi.mock('@helix/ui', async (importOriginal) => {
 
 const plans = [
   { id: 'starter', name: 'Starter', features: [] },
-  { id: 'pro', name: 'Pro', features: ['todos'] },
+  { id: 'pro', name: 'Pro', features: ['reports'] },
 ]
 
 const ALL_GRANTS: Grants = {
-  todos: ['view'],
+  uploads: ['view'],
   users: ['view'],
   roles: ['view'],
   audit: ['view'],
@@ -180,21 +206,21 @@ describe('App', () => {
   it('shows the sidebar items the user has permission for', async () => {
     renderApp()
     await screen.findByTestId('user-name')
-    expect(sidebarLinks()).toEqual(['Todos', 'Users', 'Roles', 'Audit log'])
+    expect(sidebarLinks()).toEqual(['Reports', 'Users', 'Roles', 'Audit log'])
     expect(
       screen.getByRole('heading', { name: 'Settings' })
     ).toBeInTheDocument()
   })
 
   it('hides sidebar items the user lacks permission for', async () => {
-    mockPermissions({ todos: ['view'], users: ['view'] })
+    mockPermissions({ uploads: ['view'], users: ['view'] })
     renderApp()
     await screen.findByTestId('user-name')
-    expect(sidebarLinks()).toEqual(['Todos', 'Users'])
+    expect(sidebarLinks()).toEqual(['Reports', 'Users'])
   })
 
   it('drops groups that end up with no visible items', async () => {
-    mockPermissions({ todos: ['view'] })
+    mockPermissions({ uploads: ['view'] })
     renderApp()
     await screen.findByTestId('user-name')
     expect(screen.getAllByTestId('sidebar-group')).toHaveLength(1)
@@ -214,7 +240,7 @@ describe('App', () => {
     it('shows feature-gated items without a subscription', async () => {
       renderApp()
       await screen.findByTestId('user-name')
-      expect(sidebarLinks()).toContain('Todos')
+      expect(sidebarLinks()).toContain('Reports')
     })
   })
 
@@ -238,14 +264,14 @@ describe('App', () => {
       mockSubscriptionsEnabled('starter')
       renderApp()
       await screen.findByTestId('user-name')
-      expect(sidebarLinks()).not.toContain('Todos')
+      expect(sidebarLinks()).not.toContain('Reports')
     })
 
     it('shows feature-gated items when the plan includes the feature', async () => {
       mockSubscriptionsEnabled('pro')
       renderApp()
       await screen.findByTestId('user-name')
-      expect(sidebarLinks()).toContain('Todos')
+      expect(sidebarLinks()).toContain('Reports')
     })
 
     it('shows feature-gated items to operators without a subscription', async () => {
@@ -253,7 +279,7 @@ describe('App', () => {
       mockPermissions({ ...ALL_GRANTS, subscriptions: ['view'] })
       renderApp()
       await screen.findByTestId('user-name')
-      expect(sidebarLinks()).toContain('Todos')
+      expect(sidebarLinks()).toContain('Reports')
     })
 
     it('still requires the permission for feature-gated items', async () => {
