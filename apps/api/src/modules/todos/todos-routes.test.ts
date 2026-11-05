@@ -311,6 +311,75 @@ describe('GET /todos', () => {
       }
     )
   })
+
+  // The web sends a day as the instants that bound it in the user's time zone
+  // (`toApiFilters()`): 3/20 in São Paulo (UTC-3) is 03:00Z to 02:59:59.999Z.
+  describe('Filtering by an instant (createdAt)', () => {
+    const SAO_PAULO_MARCH_20: [string, string] = [
+      '2025-03-20T03:00:00.000Z',
+      '2025-03-21T02:59:59.999Z',
+    ]
+
+    beforeEach(async () => {
+      await testDb.insert(todos).values(
+        [
+          ['Late on 3/19', '2025-03-20T02:59:59.999Z'],
+          ['Start of 3/20', '2025-03-20T03:00:00.000Z'],
+          ['End of 3/20', '2025-03-21T02:59:59.999Z'],
+          ['Start of 3/21', '2025-03-21T03:00:00.000Z'],
+        ].map(([title, createdAt]) =>
+          todoRow({
+            title,
+            description: 'Desc',
+            content: 'Content',
+            date: '2025-03-20',
+            createdAt: new Date(createdAt),
+          })
+        )
+      )
+    })
+
+    async function titles(conditions: unknown[]) {
+      const filters = JSON.stringify(conditions)
+      const res = await app.inject({
+        method: 'GET',
+        url: `/api/todos?filters=${encodeURIComponent(filters)}&sortBy=createdAt&sortOrder=asc`,
+        headers: { cookie: authCookie },
+      })
+      expect(res.statusCode).toBe(200)
+      return res.json().data.map((t: { title: string }) => t.title)
+    }
+
+    it('keeps a day in the user’s time zone, both bounds included', async () => {
+      expect(
+        await titles([
+          { field: 'createdAt', op: 'between', value: SAO_PAULO_MARCH_20 },
+        ])
+      ).toEqual(['Start of 3/20', 'End of 3/20'])
+    })
+
+    it('compares instants with gte and lt', async () => {
+      expect(
+        await titles([
+          { field: 'createdAt', op: 'gte', value: SAO_PAULO_MARCH_20[0] },
+        ])
+      ).toEqual(['Start of 3/20', 'End of 3/20', 'Start of 3/21'])
+      expect(
+        await titles([
+          { field: 'createdAt', op: 'lt', value: SAO_PAULO_MARCH_20[0] },
+        ])
+      ).toEqual(['Late on 3/19'])
+    })
+
+    it.each(['not-a-date', '2025-03-20', '2025-03-20T03:00:00'])(
+      'skips a createdAt condition whose value is not an instant (%s)',
+      async (value) => {
+        expect(
+          await titles([{ field: 'createdAt', op: 'gte', value }])
+        ).toHaveLength(4)
+      }
+    )
+  })
 })
 
 describe('Normalized text columns', () => {

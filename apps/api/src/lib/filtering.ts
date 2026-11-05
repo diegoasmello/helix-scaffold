@@ -240,6 +240,25 @@ export function coerceCalendarDay(value: unknown): string | null {
     : null
 }
 
+const instantSchema = z.iso.datetime({ offset: true })
+
+/**
+ * `coerce` for a `timestamptz` column (an instant): turns an ISO datetime with
+ * its zone (`2025-03-20T03:00:00.000Z`, `2025-03-20T00:00:00-03:00`) into a
+ * `Date`, and anything else into `null`, which skips the condition — an
+ * invalid date never reaches Postgres (a 500). A bare day (`2025-03-20`) is
+ * skipped too: which instant it starts depends on the user's time zone, so the
+ * client sends the instants (the web's `toApiFilters()`).
+ * `{ createdAt: coerceInstant }`.
+ */
+export function coerceInstant(value: unknown): Date | null {
+  if (typeof value !== 'string' || !instantSchema.safeParse(value).success) {
+    return null
+  }
+  const date = new Date(value)
+  return Number.isNaN(date.getTime()) ? null : date
+}
+
 /**
  * `search`: free text a list matches against a few text columns (the list
  * screen's search box). Blank becomes `undefined`; capped at 200 characters.

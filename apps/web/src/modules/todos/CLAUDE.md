@@ -107,11 +107,11 @@ Every route's `beforeLoad` is `guardPage(TODOS_ACCESS.<page>)` (`routes/access.t
 
 `todoListRoute` has `validateSearch` with: `page` (default 1), `pageSize` (default 10), `sortBy` (enum: `title | status | date | createdAt`, optional), `sortOrder` (default `'desc'`), `filters` (JSON string, optional — `filtersSearchParam` from `@/lib/list-filters`, which drops an invalid value), `filterLogic` (`'AND' | 'OR'`, default `'AND'`), `search` (optional — `searchSearchParam`; matches title or description).
 
-`loaderDeps` forwards all six params so the loader re-runs on search changes.
+`loaderDeps` forwards all seven params so the loader re-runs on search changes — `filters` through `toApiFilters(filters, TODO_INSTANT_FILTERS)` (see _Filtering_).
 
 ## Data fetching hooks
 
-- List: `useGetTodosSuspense({ page, pageSize, sortBy, sortOrder, filters, filterLogic })`
+- List: `useGetTodosSuspense({ page, pageSize, sortBy, sortOrder, filters: apiFilters, filterLogic, search })` — `apiFilters` is `toApiFilters(filters, TODO_INSTANT_FILTERS)`, the loader's call, so both share one query key
 - Detail/Edit: `useGetTodosIdSuspense(id)`
 - Loaders use `getTodosSuspenseQueryOptions(deps)` and `getTodosIdSuspenseQueryOptions(id)`
 
@@ -131,7 +131,7 @@ Inline in each component — no `hooks.ts`. Cache operations in `useMutation.onS
 
 ## PDF export
 
-`TodoList` has an Export PDF button that calls `GET /todos/export` with the current sort and filter state. The download is handled by the shared `downloadReport` helper (`src/lib/download-report.ts`).
+`TodoList` has an Export PDF button that calls `GET /todos/export` with the current sort and filter state (`apiFilters`, the same as the list's query). The download is handled by the shared `downloadReport` helper (`src/lib/download-report.ts`).
 
 The button is wired via the `useExportPdf` hook (`src/lib/use-export-pdf.ts`), which handles loading state, the `downloadReport` call, and success/error notifications. No permission guard wraps the button — `todoListRoute.beforeLoad` already requires `todos:view`, which is the same permission the export endpoint enforces.
 
@@ -146,9 +146,13 @@ See `apps/web/CLAUDE.md` → _PDF export_ for the full implementation guide and 
 | `title` | `text` | `todos.title` |
 | `description` | `text` | `todos.description` |
 | `status` | `select` | `todos.status` |
-| `date` | `date` | `todos.date` (needs `FILTER_COERCE` — see `todos-service.ts`) |
+| `date` | `date` | `todos.date` — a calendar day (`coerceCalendarDay`) |
+| `createdAt` | `date` | `todos.createdAt` — an instant (`coerceInstant`), listed in `TODO_INSTANT_FILTERS` |
 
-The `date` column is a Postgres `date` (a calendar day); the filter value arrives as `YYYY-MM-DD`. `FILTER_COERCE` in `todos-service.ts` (`coerceCalendarDay`) keeps it and skips anything else.
+The two `date` fields look the same to the user — the panel picks days, the chips show them ("Creation date is on 3/20/2025") and the URL keeps them — but they reach the API differently:
+
+- `date` is a Postgres `date` (a calendar day): the value goes as picked (`YYYY-MM-DD`), and `coerceCalendarDay` keeps it.
+- `createdAt` is a `timestamptz` (an instant): `TODO_INSTANT_FILTERS` (`routes/filters.ts`) lists it, and `toApiFilters()` (`@/lib/list-filters`) rewrites its conditions into the instants that bound the days in the user's time zone before the request — in the loader's `loaderDeps`, the list query and the PDF export alike. The constant lives in its own file because both `routes/index.ts` and `todos-list.tsx` need it (the list test mocks `'.'`).
 
 See `apps/web/CLAUDE.md` → _Filtering_ and `apps/api/CLAUDE.md` → _Filtering_ for the full implementation guide.
 

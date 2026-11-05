@@ -28,6 +28,7 @@
     "statusPending": "Pending",
     "statusCompleted": "Completed",
     "date": "Date",
+    "createdAt": "Creation date",
     "search": "Search by title or description"
   },
   "form": {

@@ -22,7 +22,7 @@ import { parseISO } from 'date-fns'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import { getFilterBarProps } from '@/lib/list-filters'
+import { getFilterBarProps, toApiFilters } from '@/lib/list-filters'
 import { useResourceCache } from '@/lib/resource-cache'
 import { useExportPdf } from '@/lib/use-export-pdf'
 import { formatDate } from '@/utils/date'
@@ -31,6 +31,7 @@ import { HasPermission } from '../../auth/components/has-permission'
 import { useAuth } from '../../auth/use-auth'
 import type { TodoItem } from '../types'
 import { todoListRoute } from '.'
+import { TODO_INSTANT_FILTERS } from './filters'
 
 export function TodoList() {
   const { t } = useTranslation('todos')
@@ -48,10 +49,13 @@ export function TodoList() {
     search: searchTerm,
   } = search
   const resourceCache = useResourceCache()
+  // The URL keeps the days the user picked; the API compares `createdAt` with
+  // instants. The loader makes the same call, so the query keys match.
+  const apiFilters = toApiFilters(filters, TODO_INSTANT_FILTERS)
 
   const { isExporting, handleExport } = useExportPdf(
     '/todos/export',
-    { sortBy, sortOrder, filters, filterLogic, search: searchTerm },
+    { sortBy, sortOrder, filters: apiFilters, filterLogic, search: searchTerm },
     'todos'
   )
 
@@ -68,6 +72,7 @@ export function TodoList() {
       ],
     },
     { name: 'date', label: t('filters.date'), type: 'date' },
+    { name: 'createdAt', label: t('filters.createdAt'), type: 'date' },
   ]
 
   const {
@@ -82,7 +87,7 @@ export function TodoList() {
     pageSize,
     sortBy,
     sortOrder,
-    filters,
+    filters: apiFilters,
     filterLogic,
     search: searchTerm,
   })

@@ -58,7 +58,13 @@ export const paginatedTodosSchema = paginatedResponseSchema(todoSchema).meta({
 
 const TODO_SORT_COLUMNS = ['title', 'status', 'date', 'createdAt'] as const
 
-const TODO_FILTER_FIELDS = ['title', 'description', 'status', 'date'] as const
+const TODO_FILTER_FIELDS = [
+  'title',
+  'description',
+  'status',
+  'date',
+  'createdAt',
+] as const
 
 const todosSortingSchema = sortingQuerySchema([...TODO_SORT_COLUMNS])
 const todosFilterQuerySchema = filterQuerySchema([...TODO_FILTER_FIELDS])

@@ -5,6 +5,8 @@ import { describe, expect, it } from 'vitest'
 import {
   buildFilterWhereClause,
   buildSearchClause,
+  coerceCalendarDay,
+  coerceInstant,
   filterQuerySchema,
   searchQuerySchema,
 } from './filtering'
@@ -634,5 +636,42 @@ describe('buildSearchClause', () => {
     expect(
       buildSearchClause('\u0301', [testTable.normalizedName])
     ).toBeUndefined()
+  })
+})
+
+describe('coerceCalendarDay', () => {
+  it.each([
+    ['2025-03-20', '2025-03-20'],
+    ['2025-02-30', null],
+    ['2025-03-20T12:00:00Z', null],
+    ['garbage', null],
+    [20250320, null],
+  ])('%j → %j', (value, expected) => {
+    expect(coerceCalendarDay(value)).toBe(expected)
+  })
+})
+
+describe('coerceInstant', () => {
+  it.each([
+    ['2025-03-20T12:00:00Z', '2025-03-20T12:00:00.000Z'],
+    ['2025-03-20T12:00:00.123Z', '2025-03-20T12:00:00.123Z'],
+    ['2025-03-20T00:00:00-03:00', '2025-03-20T03:00:00.000Z'],
+  ])('%j → %j', (value, expected) => {
+    expect(coerceInstant(value)?.toISOString()).toBe(expected)
+  })
+
+  it.each([
+    // a bare day: its instant depends on the user's time zone
+    '2025-03-20',
+    // no zone: a wall time, not an instant
+    '2025-03-20T12:00:00',
+    'garbage',
+    '2025-02-30T00:00:00Z',
+    '2025-13-01T00:00:00Z',
+    '',
+    1742472000000,
+    null,
+  ])('skips %j', (value) => {
+    expect(coerceInstant(value)).toBeNull()
   })
 })

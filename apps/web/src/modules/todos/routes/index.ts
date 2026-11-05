@@ -5,13 +5,18 @@ import {
 import { createRoute } from '@tanstack/react-router'
 import { z } from 'zod'
 
-import { filtersSearchParam, searchSearchParam } from '@/lib/list-filters'
+import {
+  filtersSearchParam,
+  searchSearchParam,
+  toApiFilters,
+} from '@/lib/list-filters'
 import { guardPage } from '@/modules/auth/page-access'
 import { authenticatedRoute } from '@/routes'
 
 import { queryClient } from '../../../lib/query-client'
 import type { TodoItem } from '../types'
 import { TODOS_ACCESS } from './access'
+import { TODO_INSTANT_FILTERS } from './filters'
 import { TodoCreate } from './todos-create'
 import { TodoDetail } from './todos-detail'
 import { TodoEdit } from './todos-edit'
@@ -43,7 +48,8 @@ export const todoListRoute = createRoute({
     pageSize,
     sortBy,
     sortOrder,
-    filters,
+    // the days of `createdAt` as instants — the same call as the component's
+    filters: toApiFilters(filters, TODO_INSTANT_FILTERS),
     filterLogic,
     search,
   }),

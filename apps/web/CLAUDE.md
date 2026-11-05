@@ -153,6 +153,8 @@ Pass them to the suspense hook too:
 const { data: xxxResponse } = useGetXxxsSuspense({ page, pageSize, sortBy, sortOrder, filters, filterLogic })
 ```
 
+A list that filters an instant (`createdAt`) sends `toApiFilters(filters, XXX_INSTANT_FILTERS)` in place of `filters` here, in `loaderDeps` and in the export — see _A `date` field on an instant_.
+
 ### `FilterBar` (`@helix/ui`)
 
 Declare the filterable fields (labels from the module namespace), then spread `getFilterBarProps(search, navigate)` (`@/lib/list-filters`) — it reads `filters`/`filterLogic` with `parseFilterConditions` and writes every change back (JSON-encoded, `filters` dropped when empty, `page: 1`):
@@ -181,7 +183,16 @@ const XXX_FILTER_FIELDS: FilterFieldDef[] = [
 </PageList>
 ```
 
-Field types and their operators (`text`, `number`, `date`, `select`, `boolean`) are listed in `packages/ui/CLAUDE.md` → _Filters_. `number`/`date` offer `between` and `select` offers `in` ("is any of") — the API must accept both (it does through `src/lib/filtering.ts`), and a `date` field on a `timestamp` column needs its `coerce` entry.
+Field types and their operators (`text`, `number`, `date`, `select`, `boolean`) are listed in `packages/ui/CLAUDE.md` → _Filters_. `number`/`date` offer `between` and `select` offers `in` ("is any of") — the API must accept both (it does through `src/lib/filtering.ts`).
+
+### A `date` field on an instant
+
+A `date` field works in days: the panel picks them, the chips show them, the URL keeps them. That fits a calendar-day column as is (a `date`, `coerceCalendarDay` in the API — `todos.date`). An **instant** (`timestamptz`: `createdAt`, `publishedAt`) is compared by the API with instants (`coerceInstant`, which skips a bare day): "on 3/20" spans from local midnight to the next one, and only the browser knows the user's time zone. So the list sends its days as instants:
+
+1. List the module's instant fields in a constant of their own file — `TODO_INSTANT_FILTERS = ['createdAt'] as const` (`routes/filters.ts`). Not in `routes/index.ts` (the list test mocks `'.'`) nor in the component file (React Refresh wants it to export components only).
+2. Wherever the list sends `filters`, send `toApiFilters(filters, XXX_INSTANT_FILTERS)` (`@/lib/list-filters`) instead: in `loaderDeps`, in the list query and in `useExportPdf`. The same call in the loader and the component gives the same query key — one of them sending the raw days would make the component fetch again.
+
+`toApiFilters()` rewrites each condition on those fields into the instants that bound its days (ISO, UTC), keeping the operator's meaning in days: `eq` → `between` the day's first and last instant, `between` → the first day's start to the last day's end, `gte` → the day's start, `lte` → `lt` the next day's start, `gt` → `gte` the next day's start, `lt` → the day's start. `isNull`/`isNotNull` and a value that is not a day pass unchanged. Without such a condition it returns `filters` untouched. The field's `FilterFieldDef` stays `type: 'date'`, and the API side needs only the `coerceInstant` entry — see `apps/api/CLAUDE.md` → _Filtering_. `todos` is the reference (`createdAt`, "Creation date"); `list-filters.test.ts` covers each operator.
 
 ### Search box and "no results"
 
@@ -632,7 +643,7 @@ const { isExporting, handleExport } = useExportPdf(
 )
 ```
 
-Pass the same `sortBy`, `sortOrder`, `filters`, and `filterLogic` values the list hook already uses — this guarantees the exported PDF matches exactly what the user sees on screen.
+Pass the same `sortBy`, `sortOrder`, `filters`, and `filterLogic` values the list hook already uses (the `toApiFilters()` result, when the list filters an instant) — this guarantees the exported PDF matches exactly what the user sees on screen.
 
 ### Wiring an Export button
 

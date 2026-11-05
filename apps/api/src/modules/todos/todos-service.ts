@@ -13,6 +13,7 @@ import {
   buildFilterWhereClause,
   buildSearchClause,
   coerceCalendarDay,
+  coerceInstant,
 } from '@/lib/filtering'
 import { normalizedValues } from '@/lib/normalize-text'
 import { getPaginationParams } from '@/lib/pagination'
@@ -45,6 +46,7 @@ const FILTER_COLUMNS = {
   description: todos.description,
   status: todos.status,
   date: todos.date,
+  createdAt: todos.createdAt,
 } as const
 
 // `contains`/`startsWith`/`endsWith` on these fields use the normalized copy;
@@ -58,8 +60,11 @@ const NORMALIZED_FILTER_COLUMNS = {
 const SEARCH_COLUMNS = [todos.normalizedTitle, todos.normalizedDescription]
 
 // `date` is a calendar day: a filter value that is not `YYYY-MM-DD` is skipped.
+// `createdAt` is an instant: a value that is not an ISO datetime with its zone
+// is skipped — the web turns the user's days into instants (`toApiFilters()`).
 const FILTER_COERCE = {
   date: coerceCalendarDay,
+  createdAt: coerceInstant,
 } as const
 
 async function getAttachmentsForTodos(

@@ -1,4 +1,5 @@
 import type { FilterCondition, LogicalFilterValue } from '@helix/ui'
+import { addDays, isValid, parseISO } from 'date-fns'
 import { z } from 'zod'
 
 const filterConditionSchema = z.object({
@@ -34,6 +35,86 @@ export function parseFilterConditions(
   } catch {
     return []
   }
+}
+
+const CALENDAR_DAY = /^\d{4}-\d{2}-\d{2}$/
+
+/** Local midnight of a `YYYY-MM-DD` day, or `undefined` for anything else. */
+function startOfLocalDay(value: unknown): Date | undefined {
+  if (typeof value !== 'string' || !CALENDAR_DAY.test(value)) return undefined
+  const date = parseISO(value)
+  return isValid(date) ? date : undefined
+}
+
+const nextDay = (start: Date) => addDays(start, 1)
+const lastInstantOf = (start: Date) => new Date(nextDay(start).getTime() - 1)
+
+/**
+ * One condition of a `date` field on an instant: the user's days become the
+ * instants that bound them in the browser's time zone. Each operator keeps its
+ * meaning in days — `eq` is the whole day, `lte` includes it, `gt` starts the
+ * next one. A value that is not a day is left as is (the API skips it).
+ */
+function dayConditionToInstants(condition: FilterCondition): FilterCondition {
+  const { op, value } = condition
+  if (op === 'between') {
+    if (!Array.isArray(value) || value.length !== 2) return condition
+    const [from, to] = value.map(startOfLocalDay)
+    if (!from || !to) return condition
+    return {
+      ...condition,
+      value: [from.toISOString(), lastInstantOf(to).toISOString()],
+    }
+  }
+  const start = startOfLocalDay(value)
+  if (!start) return condition
+  switch (op) {
+    case 'eq':
+      return {
+        ...condition,
+        op: 'between',
+        value: [start.toISOString(), lastInstantOf(start).toISOString()],
+      }
+    case 'gte':
+      return { ...condition, value: start.toISOString() }
+    case 'lte':
+      return { ...condition, op: 'lt', value: nextDay(start).toISOString() }
+    case 'gt':
+      return { ...condition, op: 'gte', value: nextDay(start).toISOString() }
+    case 'lt':
+      return { ...condition, value: start.toISOString() }
+    default:
+      return condition
+  }
+}
+
+/**
+ * The `filters` param as the API receives it. The URL keeps what the user
+ * picked — days, for a `date` field — but a `date` field on an **instant**
+ * (a `timestamptz` column such as `createdAt`) is compared by the API with
+ * instants (`coerceInstant`, which skips a bare day). Each condition on one of
+ * `instantFields` is rewritten with the instants that bound its days in the
+ * user's time zone: "on 3/20" in São Paulo is 03:00Z to 02:59:59.999Z.
+ *
+ * Call it wherever the list sends its filters — the loader, the list query
+ * and the PDF export — with the same `instantFields`, so the loader's query
+ * key and the component's match. Without such a condition, returns `filters`
+ * untouched.
+ */
+export function toApiFilters(
+  filters: string | undefined,
+  instantFields: readonly string[]
+): string | undefined {
+  const conditions = parseFilterConditions(filters)
+  if (!conditions.some((condition) => instantFields.includes(condition.field)))
+    return filters
+  return JSON.stringify(
+    conditions.map((condition) =>
+      instantFields.includes(condition.field)
+        ? dayConditionToInstants(condition)
+        : condition
+    )
+  )
 }
 
 /**

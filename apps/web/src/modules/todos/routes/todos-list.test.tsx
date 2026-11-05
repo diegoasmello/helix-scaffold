@@ -5,6 +5,7 @@ import {
   deleteTodosIdHandlerResponse204,
   getMePermissionsHandler,
   getTodosHandler,
+  getTodosHandlerResponse200,
 } from '@helix/api-client/mocks'
 import {
   MantineEmotionProvider,
@@ -281,6 +282,48 @@ describe('Filters', () => {
         name: 'Remove filter: Date is between 10/1/2026 and 10/31/2026',
       })
     ).toBeInTheDocument()
+  })
+
+  it('sends the days of Creation date as the instants that bound them', async () => {
+    let sent: unknown
+    server.use(
+      getTodosHandler(({ request }) => {
+        sent = JSON.parse(new URL(request.url).searchParams.get('filters')!)
+        return getTodosHandlerResponse200(
+          createPaginatedTodos({
+            data: mockTodos,
+            total: mockTodos.length,
+            page: 1,
+            pageSize: 10,
+            totalPages: 1,
+          })
+        )
+      })
+    )
+    withFilters([
+      { field: 'date', op: 'eq', value: '2025-03-20' },
+      { field: 'createdAt', op: 'eq', value: '2025-03-20' },
+    ])
+    renderTodoList()
+
+    // The chip keeps the day the user picked
+    expect(
+      await screen.findByRole('button', {
+        name: 'Remove filter: Creation date is on 3/20/2025',
+      })
+    ).toBeInTheDocument()
+    // `date` is a calendar day and goes as is; `createdAt` is an instant
+    expect(sent).toEqual([
+      { field: 'date', op: 'eq', value: '2025-03-20' },
+      {
+        field: 'createdAt',
+        op: 'between',
+        value: [
+          new Date(2025, 2, 20).toISOString(),
+          new Date(new Date(2025, 2, 21).getTime() - 1).toISOString(),
+        ],
+      },
+    ])
   })
 
   it('ignores a malformed filters param', async () => {

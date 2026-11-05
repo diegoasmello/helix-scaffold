@@ -51,7 +51,9 @@ Plan feature:         <none | <feature key>, declared in plan(s) <…>>
 Deduced (confirm):
   Form:               <the control of each non-text field: two states → Switch, more → Select or SegmentedControl; rich text → RichTextEditor>
   Indexes:            FK on every reference · slug · business uniques · <performance only if the user brought up volume>
-  Filters / sort:     <filters> · default sort <field dir>
+  Filters (API):      <field (text · enum · number · day · instant)>, or none — a date says which: a day (`date`) or an instant (`createdAt`, `publishedAt`)
+  FilterBar fields:   <the filters the list screen offers — usually all; an instant among them goes through `toApiFilters()`>
+  Sort:               <sortable fields> · default <field dir>
   PERMISSION_REQUIREMENTS: <…>
   List columns:       <…>
   Sidebar:            <group / position>
@@ -68,7 +70,7 @@ Read the sections the sheet calls for, at the phase that needs them. The root `C
 | --- | --- | --- | --- |
 | always | `CLAUDE.md` → _Creating a new module (CRUD)_, _Pagination and sorting_, _Testing_ | `CLAUDE.md` → _Creating a new module (CRUD)_, _Pagination and sorting_, _Testing_, _Internationalization (i18n)_ | schema, service, routes and tests (api); list, create, edit, detail, form and tests (web) — including the permission gating of the buttons |
 | has business uniques | `CLAUDE.md` → _Errors the client can act on (`DomainError`)_ | — | not in `todos`: `roles` (`name_taken`) |
-| has filters | `CLAUDE.md` → _Filtering_ | `CLAUDE.md` → _Filtering_ | `FILTER_COERCE` (`todos-service.ts`); `TODO_FILTER_FIELDS`, `FilterBar` (`todos-list.tsx`) |
+| has filters | `CLAUDE.md` → _Filtering_ | `CLAUDE.md` → _Filtering_ (an instant: _A `date` field on an instant_) | `FILTER_COERCE` (`todos-service.ts` — `date` a day, `createdAt` an instant); `TODO_FILTER_FIELDS`, `FilterBar` (`todos-list.tsx`), `TODO_INSTANT_FILTERS` + `toApiFilters()` (`routes/filters.ts`, `routes/index.ts`) |
 | has normalized columns | `CLAUDE.md` → _Normalized text columns_ | — | `TODO_NORMALIZED_FIELDS` (`db/schema/todos.ts`), `normalizedValues()` in the service, `todoRow()` |
 | has a slug | `CLAUDE.md` → _Slugs_ | — (the admin never shows it) | `TODO_SLUG`, `GET /todos/by-slug/:slug`, `describe('Slug')` |
 | relates to another module | `CLAUDE.md` → _Non-paginated "all" endpoints_ | `CLAUDE.md` → _Relational select fields with inline creation_ | not in `todos`: `users` → `roleId` (`GET /roles/all`, `RoleSelectField`) |

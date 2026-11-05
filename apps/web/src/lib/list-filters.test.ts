@@ -5,6 +5,7 @@ import {
   getFilterBarProps,
   parseFilterConditions,
   searchSearchParam,
+  toApiFilters,
 } from './list-filters'
 
 const VALID = JSON.stringify([{ field: 'status', op: 'eq', value: 'pending' }])
@@ -163,5 +164,91 @@ describe('getFilterBarProps search', () => {
     expect(next.filters).toBeUndefined()
     expect(next.search).toBeUndefined()
     expect(next.page).toBe(1)
+  })
+})
+
+describe('toApiFilters', () => {
+  // Local midnights: the expectations hold in whatever zone the suite runs
+  const startOf = (month: number, day: number) =>
+    new Date(2025, month - 1, day).toISOString()
+  const lastInstantOf = (month: number, day: number) =>
+    new Date(new Date(2025, month - 1, day + 1).getTime() - 1).toISOString()
+
+  const convert = (conditions: unknown[]) =>
+    JSON.parse(toApiFilters(JSON.stringify(conditions), ['createdAt']) ?? '')
+
+  it.each([
+    [
+      'eq: the whole day',
+      { op: 'eq', value: '2025-03-20' },
+      { op: 'between', value: [startOf(3, 20), lastInstantOf(3, 20)] },
+    ],
+    [
+      'between: from the first day to the end of the last',
+      { op: 'between', value: ['2025-03-01', '2025-03-31'] },
+      { op: 'between', value: [startOf(3, 1), lastInstantOf(3, 31)] },
+    ],
+    [
+      'gte: from the start of the day',
+      { op: 'gte', value: '2025-03-20' },
+      { op: 'gte', value: startOf(3, 20) },
+    ],
+    [
+      'lte: the day included',
+      { op: 'lte', value: '2025-03-20' },
+      { op: 'lt', value: startOf(3, 21) },
+    ],
+    [
+      'gt: from the next day',
+      { op: 'gt', value: '2025-03-20' },
+      { op: 'gte', value: startOf(3, 21) },
+    ],
+    [
+      'lt: before the day',
+      { op: 'lt', value: '2025-03-20' },
+      { op: 'lt', value: startOf(3, 20) },
+    ],
+    [
+      'the last day of a month',
+      { op: 'lte', value: '2025-02-28' },
+      { op: 'lt', value: startOf(3, 1) },
+    ],
+  ])('turns the days into instants — %s', (_, condition, expected) => {
+    expect(convert([{ field: 'createdAt', ...condition }])).toEqual([
+      { field: 'createdAt', ...expected },
+    ])
+  })
+
+  it('leaves isNull / isNotNull alone', () => {
+    expect(convert([{ field: 'createdAt', op: 'isNull' }])).toEqual([
+      { field: 'createdAt', op: 'isNull' },
+    ])
+  })
+
+  it.each([
+    ['not a day', { op: 'gte', value: 'garbage' }],
+    ['an impossible day', { op: 'eq', value: '2025-02-30' }],
+    ['a between with one bound', { op: 'between', value: ['2025-03-01'] }],
+  ])('leaves a value that is %s as is (the API skips it)', (_, condition) => {
+    expect(convert([{ field: 'createdAt', ...condition }])).toEqual([
+      { field: 'createdAt', ...condition },
+    ])
+  })
+
+  it('converts only the instant fields', () => {
+    expect(
+      convert([
+        { field: 'date', op: 'eq', value: '2025-03-20' },
+        { field: 'createdAt', op: 'gte', value: '2025-03-20' },
+      ])
+    ).toEqual([
+      { field: 'date', op: 'eq', value: '2025-03-20' },
+      { field: 'createdAt', op: 'gte', value: startOf(3, 20) },
+    ])
+  })
+
+  it('returns the param untouched without an instant condition', () => {
+    expect(toApiFilters(VALID, ['createdAt'])).toBe(VALID)
+    expect(toApiFilters(undefined, ['createdAt'])).toBeUndefined()
   })
 })

@@ -126,7 +126,7 @@ Operators per type (`operators.ts`; the first is the default, labels under `ui:f
 
 **`FilteredEmptyState`** (`title`, `description?`, `onEditFilters?`, `onClear`) — the `DataTable` `emptyState` for a list emptied by its search or filters: why, plus "Edit filters" and "Clear search and filters". Not to be confused with `EmptyState` (nothing created yet).
 
-Values sent to the API: numbers for `number` fields, `true`/`false` for `boolean`, `YYYY-MM-DD` strings for dates, a list for `in`, a `[from, to]` pair for `between` (inclusive), none for `isNull`/`isNotNull`. `describe.ts` turns a condition into words (option labels, Yes/No, dates in the user's locale).
+Values sent to the API: numbers for `number` fields, `true`/`false` for `boolean`, `YYYY-MM-DD` strings for dates (a day — an app filtering an instant column turns them into instants before the request: `apps/web/CLAUDE.md` → _A `date` field on an instant_), a list for `in`, a `[from, to]` pair for `between` (inclusive), none for `isNull`/`isNotNull`. `describe.ts` turns a condition into words (option labels, Yes/No, dates in the user's locale).
 
 ## Form validation utilities
 
