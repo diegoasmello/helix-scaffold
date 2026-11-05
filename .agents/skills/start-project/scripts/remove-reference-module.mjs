@@ -268,7 +268,7 @@ for (const [file, edits] of Object.entries(EDITS)) {
   try {
     for (const edit of edits) text = apply(text, edit)
     if (file.endsWith('.json')) text = fixJson(file, text)
-    if (/todo/i.test(text) && !file.endsWith('upload-references.ts')) {
+    if (!checkOnly && /todo/i.test(text) && !file.endsWith('upload-references.ts')) {
       const left = text.split('\n').filter((line) => /todo/i.test(line))
       console.warn(`note: ${file} still mentions todos:\n  ${left.join('\n  ')}`)
     }

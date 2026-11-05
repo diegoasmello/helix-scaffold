@@ -3,6 +3,13 @@ pnpm type-check
 # Unused files, exports and dependencies (knip.json). Reads the working tree.
 pnpm --silent knip
 
+# The script /start-project runs to remove the reference module finds its
+# wiring by exact text: the scaffold must keep it applying. A product built on
+# the scaffold no longer has the module, so the check stops there.
+if [ -d apps/api/src/modules/todos ]; then
+  node .agents/skills/start-project/scripts/remove-reference-module.mjs --check
+fi
+
 # The committed OpenAPI spec must match the routes. pre-commit re-exports it
 # when apps/api/src changes; this catches what it can't see (dependency bumps,
 # rebases, --no-verify). The export reads the working tree, so it only proves
