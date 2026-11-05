@@ -98,7 +98,7 @@ export type Permission = {
   [R in PermissionResource]: { resource: R; action: ResourceAction<R> }
 }[PermissionResource]
 
-/** The same pair written `'resource:action'` — `'todos:view'`. */
+/** The same pair written `'resource:action'` — `'users:view'`. */
 type PermissionKey = {
   [R in PermissionResource]: `${R}:${ResourceAction<R>}`
 }[PermissionResource]

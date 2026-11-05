@@ -1,11 +1,12 @@
 {
   "$schema": "https://unpkg.com/knip@6/schema.json",
   "tags": ["-lintignore"],
+  "ignore": [".agents/**"],
   "workspaces": {
     "apps/api": {
       "entry": ["drizzle.config.ts"],
       "drizzle": false,
-      "ignoreDependencies": ["pino-pretty"]
+      "ignoreDependencies": ["pino-pretty", "@faker-js/faker"]
     },
     "apps/web": {
       "entry": ["e2e/*.setup.ts"]

@@ -33,4 +33,6 @@ import { uploadFile } from '@/modules/uploads/service'
 />
 ```
 
+Tested in `service.test.ts`: the multipart field it sends (`file`, the name the API reads). jsdom's `File` cannot cross Node's `fetch` inside a `FormData`, so the request itself is covered by a module's E2E spec.
+
 See `apps/web/CLAUDE.md` → _File uploads_ for the complete pattern including single-file fields and detail screen rendering.

@@ -11,6 +11,7 @@
 | `web/` | `apps/web/src/modules/todos/` | routes (list, create, edit, detail), `access.ts`, filters, the form, their tests, the module's `CLAUDE.md` |
 | `locales/` | `apps/web/src/i18n/locales/{en,pt-BR}/todos.json` | the module's strings |
 | `e2e/todos.spec.ts` | `apps/web/e2e/todos.spec.ts` | the reference spec of a module, and the plan gate journey |
+| `seed-uploads.ts` | `apps/api/src/db/seed-uploads.ts` (only in a product — moved here) | `createSeedUploads()`: sample uploads for the seed, which only the module's sample rows used. Copy it back to `src/db/` for a module that seeds uploads |
 | `wiring.diff` | — (written by `/start-project`) | how the module plugs into the shared files: every hunk the removal took out of them |
 
 ## Reading the docs
@@ -29,6 +30,8 @@ The docs name a `todos` file by its bare name (`todos-routes.ts`), by its scaffo
 | `apps/web/src/routes.ts`, `src/config/sidebar.ts` | the routes; the sidebar entry with its `+` shortcut |
 | `apps/web/src/i18n/` | the namespace registration, `nav.todos`/`nav.createTodo`, the labels in `roles.json` and `subscription.json` |
 | `apps/web/src/mocks/handlers.ts`, `src/lib/resource-cache.ts` (and its test) | the default MSW handlers; the cache entry and its keys |
-| `apps/web/e2e/fixtures.ts` | `adminApi.createTodo()` — a fixture that needs uploads |
+| `apps/web/e2e/fixtures.ts` | `adminApi.createTodo()` — a fixture that needs uploads; `sampleFiles`, the files a spec puts in upload fields |
+
+The removal also takes out what only the module used: `requireSubscription` in `app.ts` (no other route is gated by a plan feature) and the seed's `faker` import. `@faker-js/faker` itself stays for the seeds of the product's modules (`knip.json` lists it in `ignoreDependencies`, so it may go unused meanwhile).
 
 **Searching in the scaffold:** ripgrep (and the tools built on it) does not follow symlinks — search `apps/`, where the live files are.

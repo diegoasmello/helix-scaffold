@@ -110,7 +110,7 @@ export function buildApp(database: Database, options: BuildAppOptions = {}) {
         version: '1.0.0',
       },
       // The paths are written without it (`stripBasePath`), so the client's
-      // generated names stay `getTodos`, not `getApiTodos`.
+      // generated names stay `getUsers`, not `getApiUsers`.
       servers: [{ url: API_PREFIX }],
     },
     transform: jsonSchemaTransform,

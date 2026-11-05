@@ -83,6 +83,17 @@ const TODO_COUNT = 50
 const ATTACHMENT_TODO_COUNT = 15
 const ATTACHMENTS_PER_TODO = 2
 
+// A role's permission rows — none for an empty list (Drizzle refuses an
+// empty insert), so a product may leave a seed role without permissions.
+async function grant(roleId: string, permissions: Permission[]) {
+  if (permissions.length === 0) return
+  await db
+    .insert(rolePermissions)
+    .values(
+      permissions.map(({ resource, action }) => ({ roleId, resource, action }))
+    )
+}
+
 async function main() {
   const [{ count }] = await db
     .select({ count: sql<number>`count(*)` })
@@ -112,20 +123,8 @@ async function main() {
     .returning()
 
   console.log('Assigning permissions...')
-  await db.insert(rolePermissions).values(
-    MODERATOR_PERMISSIONS.map(({ resource, action }) => ({
-      roleId: moderatorRole.id,
-      resource,
-      action,
-    }))
-  )
-  await db.insert(rolePermissions).values(
-    USER_PERMISSIONS.map(({ resource, action }) => ({
-      roleId: userRole.id,
-      resource,
-      action,
-    }))
-  )
+  await grant(moderatorRole.id, MODERATOR_PERMISSIONS)
+  await grant(userRole.id, USER_PERMISSIONS)
 
   // In open registration, "User" (with its permissions) becomes the default
   // role, so people who sign up get the same access as the seeded users.

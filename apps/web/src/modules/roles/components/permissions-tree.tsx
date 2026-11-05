@@ -73,7 +73,7 @@ export function PermissionsTree(props: Readonly<PermissionsTreeProps>) {
   // Resources come from the API catalog: a resource without a translation
   // (e.g. a module added later) falls back to the catalog's English label.
   const resourceLabel = (resource: string) =>
-    t(`permissions.resources.${resource}` as 'permissions.resources.todos', {
+    t(`permissions.resources.${resource}` as 'permissions.resources.users', {
       defaultValue:
         definitions.find((def) => def.resource === resource)?.label ?? resource,
     })
