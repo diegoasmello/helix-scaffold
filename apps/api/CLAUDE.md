@@ -23,7 +23,7 @@ Run from `apps/api` (or from the root with the `pnpm db:*` / `pnpm spec:*` alias
 | `pnpm build` | `tsdown` (`tsdown.config.ts`) bundles `src/server.ts` into `dist/server.js` and `src/db/migrate.ts` into `dist/migrate.js` — `src/` only, with the `@/` alias and the PDF templates' JSX resolved; dependencies stay external (`node_modules` must be installed where it runs). `app.config.ts` is bundled, so a config change needs a rebuild |
 | `pnpm start` | `node dist/server.js` (with source maps). Does **not** load `.env` — the deploy provides the environment. Does not run migrations: run `pnpm migrate` first |
 | `pnpm migrate` | `node dist/migrate.js` — applies pending migrations with drizzle-orm's runtime migrator (`src/db/migrate.ts` → `run-migrations.ts`). Needs only `DATABASE_URL` from the environment: no `.env`, no `drizzle-kit`, no dev dependencies. The build copies `src/db/migrations` to `dist/migrations`. The same migrator `pnpm db:migrate` runs, and the same journal as `drizzle-kit` |
-| `pnpm db:generate` | Generate a migration from the Drizzle schema (`src/db/schema/`) into `src/db/migrations/` |
+| `pnpm db:generate --name <name>` | Generate a migration from the Drizzle schema (`src/db/schema/`) into `src/db/migrations/`. **Always pass `--name`** — without it drizzle-kit picks a random one (`0017_common_husk`). The name says what changes, in snake_case: a new module's table (`news`), a change to one table `<table>_<change>` (`todos_slug`, `roles_is_admin`), one across tables the change itself (`fk_indexes`, `timestamptz`). The number prefix is added for you. A custom (hand-written) migration takes it too: `pnpm --filter api exec drizzle-kit generate --custom --name <name>` |
 | `pnpm db:migrate` / `pnpm db:migrate:test` | Apply migrations to the dev DB (`.env`) / test DB (`.env.test`) with the runtime migrator (`src/db/migrate.ts`, the one `pnpm migrate` runs in production) — not `drizzle-kit migrate`, which exits 1 without printing the error when a migration fails. Same `drizzle.__drizzle_migrations` journal, so databases migrated by either work |
 | `pnpm db:check` / `pnpm db:check:test` | Compares the database's `drizzle.__drizzle_migrations` with this branch's journal, by hash (`src/db/check-migrations.ts` → `migration-status.ts`). Lists the pending migrations and exits 1 on a migration the branch does not know (another branch's — its tables and enums are still there), one whose `.sql` changed after it ran, or one older than the last applied (the migrator only applies newer ones, so it would never run). `db:migrate` reports none of these: with nothing pending it succeeds, and the leftovers fail a later migration |
 | `pnpm db:recreate:test` | Drops the `public` and `drizzle` schemas of the test DB and migrates it from scratch (`src/db/recreate.ts`) — the fix for what `db:check:test` reports. Refuses any database whose name does not end in `_test`/`_e2e`. The dev DB holds your data: on a mismatch there, either drop what the other branch created by hand, or `docker compose down`/remove its volume and `pnpm db:migrate` + `pnpm db:seed` |
@@ -413,7 +413,7 @@ const SORT_COLUMNS = { title: features.normalizedTitle, /* … */ }      // sort
 
 **4. Tests** — insert rows through a helper that fills the normalized columns the way the service does (`todoRow()` in `src/test/helpers.ts`), never by hand. In the route tests (`todos-routes.test.ts` → `describe('Normalized text columns')` is the reference), cover: search ignoring accents, case and repeated whitespace; `contains`/`startsWith`/`endsWith` on the normalized copy; `eq` still exact; `sortBy` on the field; the normalized columns absent from the response; `POST` fills them and `PATCH` refreshes only the fields sent.
 
-**Index (optional):** a `contains` (`LIKE '%v%'`) cannot use a btree index, so without one it scans the table — fine up to tens of thousands of rows. For more, a trigram index on the normalized column (`index('features_normalized_title_trgm_idx').using('gin', t.normalizedTitle.op('gin_trgm_ops'))`) needs the `pg_trgm` extension, created in a custom migration (`drizzle-kit generate --custom`) — check the host supports it first.
+**Index (optional):** a `contains` (`LIKE '%v%'`) cannot use a btree index, so without one it scans the table — fine up to tens of thousands of rows. For more, a trigram index on the normalized column (`index('features_normalized_title_trgm_idx').using('gin', t.normalizedTitle.op('gin_trgm_ops'))`) needs the `pg_trgm` extension, created in a custom migration (`drizzle-kit generate --custom --name pg_trgm`) — check the host supports it first.
 
 ---
 
@@ -847,7 +847,7 @@ A column that already leads a composite primary key or unique index is covered �
 After creating the schema, generate and apply the migration:
 
 ```bash
-pnpm db:generate
+pnpm db:generate --name features   # the table's name — see _Scripts_ for the naming rule
 pnpm db:migrate
 pnpm db:migrate:test
 ```

@@ -90,7 +90,7 @@ Follow `apps/api/CLAUDE.md` → _Creating a new module (CRUD)_ in its order, wit
 
 ### Gate 1 — the API is done (before touching `apps/web`)
 
-1. `pnpm db:generate`, then **read the generated SQL** against the sheet: table, columns, nullability, defaults, enums, an index on every FK, uniques, slug index. Fix the Drizzle schema and regenerate on any mismatch.
+1. `pnpm db:generate --name <table>` (`news` — never the random name drizzle-kit picks without it; `apps/api/CLAUDE.md` → _Scripts_), then **read the generated SQL** against the sheet: table, columns, nullability, defaults, enums, an index on every FK, uniques, slug index. Fix the Drizzle schema and regenerate on any mismatch.
 2. `pnpm db:migrate` (dev) and `pnpm db:migrate:test` — on a failure they print Postgres' error (`relation … already exists` after a clean Gate 0 means the migration itself).
 3. `pnpm --filter api type-check`, `pnpm --filter api lint` and `pnpm --filter api test` (needs `db_test` up: `docker compose up -d`).
 4. `pnpm spec:sync`, then confirm the module's paths are in `packages/api-client/openapi.json`.

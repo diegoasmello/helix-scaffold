@@ -58,7 +58,7 @@ pnpm format
 pnpm knip
 
 # Database (apps/api) — see apps/api/CLAUDE.md → Scripts
-pnpm db:generate       # migration from the Drizzle schema
+pnpm db:generate --name <name>  # migration from the Drizzle schema — always named (`news`, `todos_slug`)
 pnpm db:migrate        # apply to the dev DB
 pnpm db:migrate:test   # apply to the test DB
 pnpm db:check          # does the dev DB match this branch's migrations? (db:check:test for the test DB)
