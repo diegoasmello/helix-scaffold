@@ -1,7 +1,16 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { sql } from 'drizzle-orm'
+import { pgTable, text, uniqueIndex } from 'drizzle-orm/pg-core'
+import {
+  afterAll,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from 'vitest'
 
-import { TODO_SLUG, todos } from '@/db/schema'
-import { cleanupTodos, testDb, todoRow } from '@/test/helpers'
+import { testDb } from '@/test/helpers'
 
 import {
   distinctSlugs,
@@ -69,13 +78,13 @@ describe('slugify', () => {
 
 describe('freeSlug', () => {
   it('returns the base when free', () => {
-    expect(freeSlug('todo', new Set(['other']))).toBe('todo')
+    expect(freeSlug('item', new Set(['other']))).toBe('item')
   })
 
   it('appends the first free numeric suffix', () => {
-    expect(freeSlug('todo', new Set(['todo']))).toBe('todo-2')
-    expect(freeSlug('todo', new Set(['todo', 'todo-2', 'todo-3']))).toBe(
-      'todo-4'
+    expect(freeSlug('item', new Set(['item']))).toBe('item-2')
+    expect(freeSlug('item', new Set(['item', 'item-2', 'item-3']))).toBe(
+      'item-4'
     )
   })
 
@@ -93,11 +102,11 @@ describe('freeSlug', () => {
 
 describe('slugCandidatesPattern', () => {
   it('matches only base-N when the base has room for any suffix', () => {
-    const pattern = new RegExp(slugCandidatesPattern('todo'))
-    expect(slugCandidatesPattern('todo')).toBe('^todo-[0-9]+$')
-    expect('todo-2').toMatch(pattern)
-    expect('todo-123').toMatch(pattern)
-    for (const other of ['todo', 'todo-list-2025', 'todos-3', 'todo-a-2']) {
+    const pattern = new RegExp(slugCandidatesPattern('item'))
+    expect(slugCandidatesPattern('item')).toBe('^item-[0-9]+$')
+    expect('item-2').toMatch(pattern)
+    expect('item-123').toMatch(pattern)
+    for (const other of ['item', 'item-list-2025', 'items-3', 'item-a-2']) {
       expect(other).not.toMatch(pattern)
     }
   })
@@ -164,36 +173,57 @@ describe('distinctSlugs', () => {
 })
 
 describe('against the database', () => {
-  const collision = { code: '23505', constraint: TODO_SLUG.constraint }
+  // A table of the test's own, declared the way a module declares its slug
+  // (apps/api/CLAUDE.md → Slugs), so the helpers stay tested whichever
+  // modules use them. Created here and dropped after: it is in no migration.
+  const items = pgTable(
+    'test_slugged_items',
+    { slug: text('slug').notNull() },
+    (t) => [
+      uniqueIndex('test_slugged_items_slug_unique').on(
+        t.slug.op('text_pattern_ops')
+      ),
+    ]
+  )
+  const ITEM_SLUG = {
+    column: items.slug,
+    constraint: 'test_slugged_items_slug_unique',
+    fallback: 'item',
+  } as const satisfies SlugConfig
+  const collision = { code: '23505', constraint: ITEM_SLUG.constraint }
 
   async function insertSlugs(...slugs: string[]) {
-    await testDb.insert(todos).values(
-      slugs.map((slug) =>
-        todoRow({
-          title: 'T',
-          description: 'D',
-          content: 'C',
-          date: '2025-01-01',
-          slug,
-        })
-      )
-    )
+    await testDb.insert(items).values(slugs.map((slug) => ({ slug })))
   }
 
+  beforeAll(async () => {
+    await testDb.execute(sql`drop table if exists test_slugged_items`)
+    await testDb.execute(
+      sql`create table test_slugged_items (slug text not null)`
+    )
+    await testDb.execute(
+      sql`create unique index test_slugged_items_slug_unique on test_slugged_items (slug text_pattern_ops)`
+    )
+  })
+
   beforeEach(async () => {
-    await cleanupTodos()
+    await testDb.delete(items)
+  })
+
+  afterAll(async () => {
+    await testDb.execute(sql`drop table if exists test_slugged_items`)
   })
 
   describe('uniqueSlug', () => {
     it('ignores slugs of other bases', async () => {
-      await insertSlugs('todo', 'todo-2', 'todo-list-2025', 'todos-3')
-      expect(await uniqueSlug(testDb, TODO_SLUG, '!!!')).toBe('todo-3')
+      await insertSlugs('item', 'item-2', 'item-list-2025', 'items-3')
+      expect(await uniqueSlug(testDb, ITEM_SLUG, '!!!')).toBe('item-3')
     })
 
     it('finds the cut candidates of a long base', async () => {
       const base = 'a'.repeat(100)
       await insertSlugs(base, `${'a'.repeat(98)}-2`)
-      expect(await uniqueSlug(testDb, TODO_SLUG, base)).toBe(
+      expect(await uniqueSlug(testDb, ITEM_SLUG, base)).toBe(
         `${'a'.repeat(98)}-3`
       )
     })
@@ -209,7 +239,7 @@ describe('against the database', () => {
         }
         return slug
       })
-      expect(await withUniqueSlug(testDb, TODO_SLUG, 'Título', write)).toBe(
+      expect(await withUniqueSlug(testDb, ITEM_SLUG, 'Título', write)).toBe(
         'titulo-2'
       )
       expect(write.mock.calls.map(([slug]) => slug)).toEqual([
@@ -219,10 +249,10 @@ describe('against the database', () => {
     })
 
     it('rethrows a violation of another constraint without retrying', async () => {
-      const error = { code: '23505', constraint: 'todos_pkey' }
+      const error = { code: '23505', constraint: 'test_slugged_items_pkey' }
       const write = vi.fn(() => Promise.reject(error))
       await expect(
-        withUniqueSlug(testDb, TODO_SLUG, 'Título', write)
+        withUniqueSlug(testDb, ITEM_SLUG, 'Título', write)
       ).rejects.toBe(error)
       expect(write).toHaveBeenCalledTimes(1)
     })
@@ -231,7 +261,7 @@ describe('against the database', () => {
       const error = new Error('boom')
       const write = vi.fn(() => Promise.reject(error))
       await expect(
-        withUniqueSlug(testDb, TODO_SLUG, 'Título', write)
+        withUniqueSlug(testDb, ITEM_SLUG, 'Título', write)
       ).rejects.toBe(error)
       expect(write).toHaveBeenCalledTimes(1)
     })
@@ -239,7 +269,7 @@ describe('against the database', () => {
     it('gives up after 5 collisions', async () => {
       const write = vi.fn(() => Promise.reject(collision))
       await expect(
-        withUniqueSlug(testDb, TODO_SLUG, 'Título', write)
+        withUniqueSlug(testDb, ITEM_SLUG, 'Título', write)
       ).rejects.toBe(collision)
       expect(write).toHaveBeenCalledTimes(5)
     })

@@ -290,9 +290,9 @@ Route integration tests against the real test database (`helix_test`).
 
 `cleanupSubscriptions()` truncates the `subscriptions` table between tests. The `cleanupAuth()` call in `afterAll` cascades to subscriptions via the FK.
 
-**Test session setup:** `createTestSession()` in `src/test/helpers.ts` automatically creates an `active` subscription (`planId: 'pro'`, expires 2099) for the test admin user when `config.subscriptions.enabled` is `true` (always the case in tests — see `src/config/test-overrides.ts`). This is required because `todos-routes` (the reference module) uses `requireSubscription('todos')`, and without a subscription the test admin would fail those routes. The test catalog (`src/config/test-overrides.ts`) is `starter` (no features), `pro` and `enterprise` (both `['todos']`), with `trial: false` — independent of the product catalog.
+**Test session setup:** `createTestSession()` in `src/test/helpers.ts` automatically creates an `active` subscription (`planId: 'pro'`, expires 2099) for the test admin user when `config.subscriptions.enabled` is `true` (always the case in tests — see `src/config/test-overrides.ts`). Without it the test admin would fail every route a module gates with `requireSubscription()`. The test catalog (`src/config/test-overrides.ts`) is `starter` (no features), `pro` and `enterprise` (the modules' features plus `reports`, the suite's own), with `trial: false` — independent of the product catalog.
 
-The `requireSubscription (via GET /todos)` block covers the behavior matrix above plus the registration-time error for unknown features. Individual tests that need to verify "no subscription" behavior call `cleanupSubscriptions()` explicitly before the assertion.
+The `requireSubscription` block covers the behavior matrix above plus the registration-time error for unknown features, on a throwaway route (`createGatedApp()`: a bare Fastify app with `requireSubscription('reports')` and `requirePermission('audit', 'view')`, the session resolved through the real app's `GET /me`), so it never depends on which modules a product gates. Individual tests that need to verify "no subscription" behavior call `cleanupSubscriptions()` explicitly before the assertion.
 
 **Coverage:**
 - `GET /subscription/status` — always 200 with `{ enabled, plans }`

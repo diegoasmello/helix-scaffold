@@ -1,12 +1,16 @@
-import { isNotNull } from 'drizzle-orm'
-import { beforeEach, describe, expect, it } from 'vitest'
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 
-import { todoAttachments, todos, uploads } from '@/db/schema'
+import { uploads } from '@/db/schema'
 import type { StorageProvider } from '@/lib/storage'
-import { cleanupTodos, cleanupUploads, testDb, todoRow } from '@/test/helpers'
+import { cleanupUploads, testDb } from '@/test/helpers'
+import {
+  createScratchTables,
+  dropScratchTables,
+  insertTestDocument,
+  testDocumentReferences,
+} from '@/test/scratch-tables'
 
 import { deleteOrphanUploads } from './orphan-uploads'
-import type { UploadReferenceLoader } from './upload-references'
 
 function createMockStorage(): StorageProvider & { deletedKeys: string[] } {
   const deletedKeys: string[] = []
@@ -40,31 +44,21 @@ async function insertUpload(overrides?: Partial<typeof uploads.$inferInsert>) {
   return upload
 }
 
-const todoLoaders: UploadReferenceLoader[] = [
-  async (db) => {
-    const rows = await db
-      .selectDistinct({ id: todoAttachments.uploadId })
-      .from(todoAttachments)
-    return rows.map((r) => r.id)
-  },
-  async (db) => {
-    const rows = await db
-      .select({ id: todos.fileId })
-      .from(todos)
-      .where(isNotNull(todos.fileId))
-    return rows.map((r) => r.id).filter((id): id is string => id !== null)
-  },
-  async (db) => {
-    const rows = await db
-      .select({ id: todos.imageId })
-      .from(todos)
-      .where(isNotNull(todos.imageId))
-    return rows.map((r) => r.id).filter((id): id is string => id !== null)
-  },
-]
+// A single-file column and a junction table, as a module registers them
+const loaders = testDocumentReferences({
+  resource: 'audit',
+  action: 'view',
+}).map((reference) => reference.load)
+
+beforeAll(async () => {
+  await createScratchTables()
+})
+
+afterAll(async () => {
+  await dropScratchTables()
+})
 
 beforeEach(async () => {
-  await cleanupTodos()
   await cleanupUploads()
 })
 
@@ -73,12 +67,9 @@ describe('deleteOrphanUploads', () => {
     const storage = createMockStorage()
     const upload = await insertUpload()
 
-    const { deleted } = await deleteOrphanUploads(
-      testDb,
-      storage,
-      todoLoaders,
-      { graceHours: GRACE_HOURS }
-    )
+    const { deleted } = await deleteOrphanUploads(testDb, storage, loaders, {
+      graceHours: GRACE_HOURS,
+    })
 
     expect(deleted).toBe(1)
     expect(storage.deletedKeys).toContain(upload.storageKey)
@@ -91,12 +82,9 @@ describe('deleteOrphanUploads', () => {
     const storage = createMockStorage()
     await insertUpload({ createdAt: RECENT_DATE })
 
-    const { deleted } = await deleteOrphanUploads(
-      testDb,
-      storage,
-      todoLoaders,
-      { graceHours: GRACE_HOURS }
-    )
+    const { deleted } = await deleteOrphanUploads(testDb, storage, loaders, {
+      graceHours: GRACE_HOURS,
+    })
 
     expect(deleted).toBe(0)
     expect(storage.deletedKeys).toHaveLength(0)
@@ -106,28 +94,11 @@ describe('deleteOrphanUploads', () => {
     const storage = createMockStorage()
     const upload = await insertUpload()
 
-    const [todo] = await testDb
-      .insert(todos)
-      .values(
-        todoRow({
-          title: 'T',
-          description: 'D',
-          content: '<p>C</p>',
-          date: '2025-01-01',
-        })
-      )
-      .returning()
+    await insertTestDocument(upload.id, 'attachment')
 
-    await testDb
-      .insert(todoAttachments)
-      .values({ todoId: todo.id, uploadId: upload.id })
-
-    const { deleted } = await deleteOrphanUploads(
-      testDb,
-      storage,
-      todoLoaders,
-      { graceHours: GRACE_HOURS }
-    )
+    const { deleted } = await deleteOrphanUploads(testDb, storage, loaders, {
+      graceHours: GRACE_HOURS,
+    })
 
     expect(deleted).toBe(0)
     expect(storage.deletedKeys).toHaveLength(0)
@@ -137,22 +108,11 @@ describe('deleteOrphanUploads', () => {
     const storage = createMockStorage()
     const upload = await insertUpload()
 
-    await testDb.insert(todos).values(
-      todoRow({
-        title: 'T',
-        description: 'D',
-        content: '<p>C</p>',
-        date: '2025-01-01',
-        fileId: upload.id,
-      })
-    )
+    await insertTestDocument(upload.id, 'file')
 
-    const { deleted } = await deleteOrphanUploads(
-      testDb,
-      storage,
-      todoLoaders,
-      { graceHours: GRACE_HOURS }
-    )
+    const { deleted } = await deleteOrphanUploads(testDb, storage, loaders, {
+      graceHours: GRACE_HOURS,
+    })
 
     expect(deleted).toBe(0)
     expect(storage.deletedKeys).toHaveLength(0)
@@ -163,22 +123,11 @@ describe('deleteOrphanUploads', () => {
     const orphan = await insertUpload()
     const referenced = await insertUpload()
 
-    await testDb.insert(todos).values(
-      todoRow({
-        title: 'T',
-        description: 'D',
-        content: '<p>C</p>',
-        date: '2025-01-01',
-        imageId: referenced.id,
-      })
-    )
+    await insertTestDocument(referenced.id, 'file')
 
-    const { deleted } = await deleteOrphanUploads(
-      testDb,
-      storage,
-      todoLoaders,
-      { graceHours: GRACE_HOURS }
-    )
+    const { deleted } = await deleteOrphanUploads(testDb, storage, loaders, {
+      graceHours: GRACE_HOURS,
+    })
 
     expect(deleted).toBe(1)
     expect(storage.deletedKeys).toContain(orphan.storageKey)
@@ -201,7 +150,7 @@ describe('deleteOrphanUploads', () => {
       },
     })
 
-    await deleteOrphanUploads(testDb, storage, todoLoaders, {
+    await deleteOrphanUploads(testDb, storage, loaders, {
       graceHours: GRACE_HOURS,
     })
 
@@ -214,12 +163,9 @@ describe('deleteOrphanUploads', () => {
 
   it('returns deleted: 0 when no uploads exist', async () => {
     const storage = createMockStorage()
-    const { deleted } = await deleteOrphanUploads(
-      testDb,
-      storage,
-      todoLoaders,
-      { graceHours: GRACE_HOURS }
-    )
+    const { deleted } = await deleteOrphanUploads(testDb, storage, loaders, {
+      graceHours: GRACE_HOURS,
+    })
     expect(deleted).toBe(0)
   })
 

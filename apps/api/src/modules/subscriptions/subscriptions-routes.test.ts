@@ -1,9 +1,11 @@
 import { eq } from 'drizzle-orm'
+import fastify from 'fastify'
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 
-import { config } from '@/config'
+import { type Config, config, overrideConfig } from '@/config'
 import { subscriptions } from '@/db/schema'
 import { user } from '@/db/schema'
+import { createRequirePermission } from '@/hooks/require-permission'
 import { createRequireSubscription } from '@/hooks/require-subscription'
 import {
   cleanupAuth,
@@ -104,16 +106,53 @@ describe('GET /subscription/status', () => {
   })
 })
 
-describe('requireSubscription (via GET /todos)', () => {
-  const todosViewer = [{ resource: 'todos', action: 'view' }]
+/**
+ * A route of a module the suite knows nothing about, gated like one:
+ * `requireSubscription('reports')` — the suite's own feature
+ * (test-overrides.ts) — before `requirePermission('audit', 'view')`. The
+ * session is resolved by the real app (`GET /me`), as `requireAuth` would.
+ */
+function createGatedApp(appConfig: Config) {
+  const gated = fastify()
+  gated.addHook('preHandler', async (request) => {
+    const me = await app.inject({
+      method: 'GET',
+      url: '/api/me',
+      headers: { cookie: request.headers.cookie ?? '' },
+    })
+    const { id, name, email, roleId } = me.json()
+    request.sessionUser = { id, name, email, roleId }
+  })
+  const requireSubscription = createRequireSubscription(testDb, appConfig)
+  const requirePermission = createRequirePermission(testDb)
+  gated.get(
+    '/reports',
+    {
+      preHandler: [
+        requireSubscription('reports'),
+        requirePermission('audit', 'view'),
+      ],
+    },
+    async () => ({ ok: true })
+  )
+  return gated
+}
+
+describe('requireSubscription', () => {
+  const gated = createGatedApp(config)
+  const reader = [{ resource: 'audit', action: 'view' }]
+
+  function getReports(cookie: string) {
+    return gated.inject({ method: 'GET', url: '/reports', headers: { cookie } })
+  }
+
+  afterAll(async () => {
+    await gated.close()
+  })
 
   it('returns 403 when the user has no active subscription', async () => {
-    const cookie = await createRestrictedSession(todosViewer)
-    const res = await app.inject({
-      method: 'GET',
-      url: '/api/todos',
-      headers: { cookie },
-    })
+    const cookie = await createRestrictedSession(reader)
+    const res = await getReports(cookie)
     expect(res.statusCode).toBe(403)
     expect(res.json()).toEqual({
       message: 'Active subscription required',
@@ -122,14 +161,10 @@ describe('requireSubscription (via GET /todos)', () => {
   })
 
   it("returns 403 when the user's plan lacks the feature", async () => {
-    const cookie = await createRestrictedSession(todosViewer, {
+    const cookie = await createRestrictedSession(reader, {
       planId: 'starter',
     })
-    const res = await app.inject({
-      method: 'GET',
-      url: '/api/todos',
-      headers: { cookie },
-    })
+    const res = await getReports(cookie)
     expect(res.statusCode).toBe(403)
     expect(res.json()).toEqual({
       message: 'Your plan does not include this feature',
@@ -138,56 +173,40 @@ describe('requireSubscription (via GET /todos)', () => {
   })
 
   it("allows access when the user's plan includes the feature", async () => {
-    const cookie = await createRestrictedSession(todosViewer, {
+    const cookie = await createRestrictedSession(reader, {
       planId: 'pro',
     })
-    const res = await app.inject({
-      method: 'GET',
-      url: '/api/todos',
-      headers: { cookie },
-    })
+    const res = await getReports(cookie)
     expect(res.statusCode).toBe(200)
   })
 
   it('allows a past_due subscription within the grace period', async () => {
-    const cookie = await createRestrictedSession(todosViewer, {
+    const cookie = await createRestrictedSession(reader, {
       planId: 'pro',
       status: 'past_due',
       pastDueSince: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
     })
-    const res = await app.inject({
-      method: 'GET',
-      url: '/api/todos',
-      headers: { cookie },
-    })
+    const res = await getReports(cookie)
     expect(res.statusCode).toBe(200)
   })
 
   it('returns 403 for a past_due subscription after the grace period', async () => {
-    const cookie = await createRestrictedSession(todosViewer, {
+    const cookie = await createRestrictedSession(reader, {
       planId: 'pro',
       status: 'past_due',
       pastDueSince: new Date(Date.now() - 8 * 24 * 60 * 60 * 1000),
     })
-    const res = await app.inject({
-      method: 'GET',
-      url: '/api/todos',
-      headers: { cookie },
-    })
+    const res = await getReports(cookie)
     expect(res.statusCode).toBe(403)
     expect(res.json().code).toBe('subscription_required')
   })
 
   it('lets users with subscriptions:view through without a subscription', async () => {
     const cookie = await createRestrictedSession([
-      ...todosViewer,
+      ...reader,
       { resource: 'subscriptions', action: 'view' },
     ])
-    const res = await app.inject({
-      method: 'GET',
-      url: '/api/todos',
-      headers: { cookie },
-    })
+    const res = await getReports(cookie)
     expect(res.statusCode).toBe(200)
   })
 
@@ -227,7 +246,8 @@ describe('GET /me/entitlements', () => {
     expect(await getEntitlements(cookie)).toEqual({
       operator: false,
       subscribed: true,
-      features: ['todos'],
+      features: config.subscriptions.plans.find((plan) => plan.id === 'pro')
+        ?.features,
       graceEndsAt: null,
     })
   })
@@ -910,14 +930,18 @@ describe('with subscriptions disabled', () => {
   })
 
   it('lets requireSubscription() through without a subscription', async () => {
+    const gated = createGatedApp(
+      overrideConfig(config, { subscriptions: { enabled: false } })
+    )
     const cookie = await createRestrictedSession([
-      { resource: 'todos', action: 'view' },
+      { resource: 'audit', action: 'view' },
     ])
-    const res = await disabledApp.inject({
+    const res = await gated.inject({
       method: 'GET',
-      url: '/api/todos',
+      url: '/reports',
       headers: { cookie },
     })
+    await gated.close()
     expect(res.statusCode).toBe(200)
   })
 })

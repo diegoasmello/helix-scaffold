@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 
 import { uploads } from '@/db/schema'
-import { cleanupTodos, cleanupUploads, testDb } from '@/test/helpers'
+import { cleanupUploads, testDb } from '@/test/helpers'
 
 import { fileKeysInHtml, uploadIdsInHtml } from './rich-text-uploads'
 
@@ -54,7 +54,6 @@ describe('fileKeysInHtml', () => {
 
 describe('uploadIdsInHtml', () => {
   beforeEach(async () => {
-    await cleanupTodos()
     await cleanupUploads()
   })
 

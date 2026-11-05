@@ -100,7 +100,7 @@ Validated with Zod in `src/env.ts` at startup. If a required variable is missing
 `.env.test` only overrides `DATABASE_URL`. `vitest.config.ts` pins `NODE_ENV=test`, which makes `src/config/index.ts` apply `src/config/test-overrides.ts` on top of `app.config.ts`:
 
 - `registration.mode: 'open'` — allows `createTestSession()` to sign up the test admin via `POST /api/auth/sign-up/email`.
-- `subscriptions.enabled: true` — required because `todos-routes` (the reference implementation for `requireSubscription`) gates all its endpoints behind a subscription check; the helper creates an active subscription for the test admin automatically.
+- `subscriptions.enabled: true`, with a test plan catalog: `starter` (no features), `pro` and `enterprise` (the modules' features plus `reports`, the suite's own feature — the infrastructure tests gate their throwaway routes and records with it, so they never depend on which modules gate what). Subscription-gated modules need it; the helper creates an active `pro` subscription for the test admin automatically.
 - `uploads.dir: '/tmp/helix-test-uploads'`.
 
 The suite therefore never depends on what a product sets in `app.config.ts`. Social providers are not overridden — status endpoints assert on shape, not content.
@@ -1155,6 +1155,8 @@ The helpers in `src/test/helpers.ts` provide:
 - `grantActiveSubscription(email, planId = 'pro')` — an active subscription for that user. Restricted users on a **subscription-gated** route need it (see _Permission enforcement tests_)
 - `todoRow(values)` — a `todos` row for `testDb.insert(todos)` with its normalized columns filled and a unique `slug` (title + random suffix, unless given). A module with normalized columns or a slug adds its own (`featureRow()`)
 - Cleanup: `cleanupAuth()` (session, account, verification, user **and all roles**), `cleanupUsers()` / `cleanupRoles()` (everything except the test user / test role), `cleanupAuditLogs()`, `cleanupSubscriptions()`, `cleanupTodos()`, `cleanupUploads()`
+
+**Infrastructure tests never borrow a module.** A helper that works on any module's tables or routes (slugs, upload references, the orphan cleanup, `requireSubscription`) is tested on structures of the test's own, so it stays tested in a product that has none of the scaffold's modules: a `pgTable` created in `beforeAll` and dropped in `afterAll` (in no migration — `src/lib/slug.test.ts`; `src/test/scratch-tables.ts` for a record with a single-file column and an attachments table, with `testDocumentReferences()` to register them), a bare Fastify route with the real hooks (`subscriptions-routes.test.ts` → `createGatedApp()`), a resource every product keeps (`users`, `roles`, `audit`) and the `reports` feature of `test-overrides.ts`. A module's own rules are tested in its own test file.
 
 When adding a new module, add a `cleanupFeature()` function to `helpers.ts`:
 

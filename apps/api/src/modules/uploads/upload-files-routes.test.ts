@@ -18,6 +18,7 @@ import { todoAttachments } from '@/db/schema/todo-attachments'
 import { todoContentImages } from '@/db/schema/todo-content-images'
 import { todos } from '@/db/schema/todos'
 import { uploads } from '@/db/schema/uploads'
+import { registerUploadReference } from '@/lib/upload-references'
 import {
   cleanupAuth,
   cleanupRoles,
@@ -32,6 +33,25 @@ import {
   testDb,
   todoRow,
 } from '@/test/helpers'
+import {
+  createScratchTables,
+  dropScratchTables,
+  insertTestDocument,
+  testDocumentReferences,
+  testDocuments,
+} from '@/test/scratch-tables'
+
+// The records of a module the suite knows nothing about, registered the way
+// `src/config/upload-references.ts` registers a module's columns, with the
+// guard of their `GET`: `audit:view` and the suite's own `reports` feature.
+// The registry lives in this file's module graph only.
+for (const reference of testDocumentReferences({
+  resource: 'audit',
+  action: 'view',
+  subscription: 'reports',
+})) {
+  registerUploadReference(reference)
+}
 
 const app = createTestApp()
 const uploadDir = path.resolve(config.uploads.dir)
@@ -39,12 +59,14 @@ const folders: string[] = []
 let adminCookie = ''
 
 beforeAll(async () => {
+  await createScratchTables()
   await cleanupAuth()
   adminCookie = await createTestSession(app)
 })
 
 beforeEach(async () => {
   await cleanupTodos()
+  await testDb.delete(testDocuments)
   await cleanupUploads()
   await cleanupUsers()
   await cleanupRoles()
@@ -62,6 +84,7 @@ afterEach(async () => {
 
 afterAll(async () => {
   await cleanupTodos()
+  await dropScratchTables()
   await cleanupUploads()
   await cleanupAuth()
   await app.close()
@@ -247,6 +270,41 @@ describe('Who may read a file', () => {
     expect(res.statusCode).toBe(404)
   })
 
+  describe.each(['file', 'attachment'] as const)(
+    "a registered record's %s",
+    (column) => {
+      it('is served to a user who may read the record', async () => {
+        const upload = await insertUpload()
+        await insertTestDocument(upload.id, column)
+        const reader = await createUserSession(
+          [{ resource: 'audit', action: 'view' }],
+          { subscribed: true }
+        )
+        const res = await getFile(upload.storageKey, reader.cookie)
+        expect(res.statusCode).toBe(200)
+      })
+
+      it("returns 404 without the record's permission", async () => {
+        const upload = await insertUpload()
+        await insertTestDocument(upload.id, column)
+        const other = await createUserSession([], { subscribed: true })
+        const res = await getFile(upload.storageKey, other.cookie)
+        expect(res.statusCode).toBe(404)
+      })
+
+      it("returns 404 without the record's plan feature", async () => {
+        const upload = await insertUpload()
+        await insertTestDocument(upload.id, column)
+        const lapsed = await createUserSession([
+          { resource: 'audit', action: 'view' },
+        ])
+        const res = await getFile(upload.storageKey, lapsed.cookie)
+        expect(res.statusCode).toBe(404)
+      })
+    }
+  )
+
+  // Each module's own columns, with the guard of its `GET` route
   describe.each<TodoReference>(['attachment', 'file', 'image', 'content'])(
     'a todo %s',
     (reference) => {
@@ -288,11 +346,11 @@ describe('Who may read a file', () => {
       await unpaidApp.close()
     })
 
-    it('serves a todo attachment on todos:view alone', async () => {
+    it("serves a record's file on its permission alone", async () => {
       const upload = await insertUpload()
-      await attachToTodo('attachment', upload.id)
+      await insertTestDocument(upload.id, 'attachment')
       const reader = await createUserSession([
-        { resource: 'todos', action: 'view' },
+        { resource: 'audit', action: 'view' },
       ])
       const res = await unpaidApp.inject({
         method: 'GET',

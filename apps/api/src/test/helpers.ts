@@ -162,7 +162,7 @@ export async function createTestSession(
 
 /**
  * Gives the user an active subscription (default plan `pro`, which unlocks
- * `todos` in test-overrides.ts). Permission tests on a subscription-gated route
+ * every feature of test-overrides.ts). Permission tests on a subscription-gated route
  * need it: without one, `requireSubscription()` answers 403 before
  * `requirePermission()` runs, and the test passes for the wrong reason.
  */

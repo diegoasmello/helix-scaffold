@@ -8,9 +8,11 @@ export const testConfigOverrides: AppConfig = {
   subscriptions: {
     enabled: true,
     plans: [
+      // `reports` is the suite's own feature: the infrastructure tests gate
+      // their throwaway routes and records with it, whichever modules exist.
       { id: 'starter', name: 'Starter', features: [] },
-      { id: 'pro', name: 'Pro', features: ['todos'] },
-      { id: 'enterprise', name: 'Enterprise', features: ['todos'] },
+      { id: 'pro', name: 'Pro', features: ['todos', 'reports'] },
+      { id: 'enterprise', name: 'Enterprise', features: ['todos', 'reports'] },
     ],
     trial: false,
     pastDueGraceDays: 7,
