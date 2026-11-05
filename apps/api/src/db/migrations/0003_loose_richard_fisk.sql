@@ -1,2 +1,0 @@
-ALTER TABLE "roles" ADD COLUMN "is_default" boolean DEFAULT false NOT NULL;--> statement-breakpoint
-CREATE UNIQUE INDEX "roles_is_default_unique" ON "roles" USING btree ("is_default") WHERE is_default = true;

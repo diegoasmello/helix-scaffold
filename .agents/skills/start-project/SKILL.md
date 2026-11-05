@@ -53,12 +53,12 @@ A database gets its name when its volume is created, so this runs before `docker
 
 ## Gate 0 — Baseline
 
-1. `docker compose up -d`, then `pnpm db:migrate` and `pnpm db:migrate:test`. A "database does not exist" means the volumes were created before the rename and keep the old names: tell the user — recreating them (`docker compose down -v`) deletes the data in them, so it is theirs to run.
+1. `docker compose up -d`, then `pnpm db:migrate:test` and `pnpm db:check` (the dev database is only checked, not migrated: Phase 3 replaces the migrations, and a database migrated with the scaffold's would no longer match them). A "database does not exist" means the volumes were created before the rename and keep the old names: tell the user — recreating them (`docker compose down -v`) deletes the data in them, so it is theirs to run.
 2. `pnpm type-check` and `pnpm test`, and write down every failure: it existed before you, so a later gate failing the same way is not yours to fix — report it.
 
 ## Phase 3 — Remove the reference module
 
-`node .agents/skills/start-project/scripts/remove-reference-module.mjs`. It turns `.agents/skills/new-module/references/todos/` into copies, deletes the module, takes its wiring out of the shared files (into `references/todos/wiring.diff`), generates the `drop_todos` migration and regenerates the API client. Read the notes it prints (lines still naming todos — comments citing the reference module stay). Then `pnpm db:migrate` and `pnpm db:migrate:test`.
+`node .agents/skills/start-project/scripts/remove-reference-module.mjs`. It turns `.agents/skills/new-module/references/todos/` into copies, deletes the module, takes its wiring out of the shared files (into `references/todos/wiring.diff`), replaces the scaffold's migrations with a single `init` drizzle-kit generates from the schema left — the product's history starts without the module, never with a `drop_todos` — and regenerates the API client. Read the notes it prints (lines still naming todos — comments citing the reference module stay). Then `pnpm db:recreate:test` (Gate 0 migrated it with the old migrations) and `pnpm db:migrate`.
 
 ## Phase 4 — Configure
 

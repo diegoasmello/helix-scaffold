@@ -8,8 +8,9 @@
 //      live module into copies;
 //   3. deletes the module's files and takes its wiring out of the shared files;
 //   4. writes `references/todos/wiring.diff`, the hunks taken out of them;
-//   5. formats the edited files, generates the migration that drops the
-//      module's tables and regenerates the API client.
+//   5. formats the edited files, replaces the scaffold's migrations with one
+//      `init` generated from the schema left (the product's history starts
+//      without the module) and regenerates the API client.
 //
 // Run from the repository root: `node .agents/skills/start-project/scripts/remove-reference-module.mjs [--check]`.
 // No dependency and no git history needed. The scaffold runs `--check` to know
@@ -374,12 +375,18 @@ fs.writeFileSync(
 ${diff}`
 )
 
-// --- 5b. the database migration and the API client ---
+// --- 5b. the database migrations and the API client ---
 
-run('pnpm', ['--filter', 'api', 'db:generate', '--name', 'drop_todos'])
+// The product starts its history here: the scaffold's migrations (the
+// module's tables included) give way to a single `init` drizzle-kit generates
+// from the schema left. A database migrated before this point does not match
+// it and is recreated (SKILL.md → Phase 3).
+fs.rmSync(path.join(root, 'apps/api/src/db/migrations'), { recursive: true })
+run('pnpm', ['--filter', 'api', 'db:generate', '--name', 'init'])
 run('pnpm', ['spec:sync'])
 
 console.log(`
 The reference module is removed. Its copy and wiring.diff are in ${REFERENCES}/.
-Next: pnpm db:migrate && pnpm db:migrate:test, then pnpm type-check, pnpm lint,
+The migrations are now a single init without it.
+Next: pnpm db:recreate:test && pnpm db:migrate, then pnpm type-check, pnpm lint,
 pnpm test and pnpm knip.`)
