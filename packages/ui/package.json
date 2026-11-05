@@ -17,7 +17,6 @@
   "dependencies": {
     "@emotion/react": "11.14.0",
     "@fontsource-variable/geist": "^5.2.9",
-    "@fontsource-variable/plus-jakarta-sans": "5.2.8",
     "@mantine/core": "9.1.1",
     "@mantine/dates": "9.1.1",
     "@mantine/dropzone": "9.1.1",
@@ -43,8 +42,6 @@
     "mantine-datatable": "8.3.13"
   },
   "devDependencies": {
-    "i18next": "26.3.0",
-    "react-i18next": "17.0.8",
     "@eslint/js": "catalog:",
     "@types/react": "19.2.7",
     "eslint": "catalog:",
@@ -54,7 +51,9 @@
     "eslint-plugin-react-refresh": "0.4.24",
     "eslint-plugin-simple-import-sort": "catalog:",
     "globals": "16.5.0",
+    "i18next": "26.3.0",
     "prettier": "catalog:",
+    "react-i18next": "17.0.8",
     "typescript": "catalog:",
     "typescript-eslint": "catalog:"
   },

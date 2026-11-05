@@ -9,7 +9,6 @@ import '@mantine/tiptap/styles.css'
 import '@mantine/notifications/styles.css'
 import 'mantine-datatable/styles.css'
 import '@fontsource-variable/geist'
-import '@fontsource-variable/plus-jakarta-sans'
 import './global.css'
 
 export type { FileInputProps } from './components'
