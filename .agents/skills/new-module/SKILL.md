@@ -40,7 +40,7 @@ Fields (the user fills them):
 | name | type | required | limits / enum values | default | normalized |
 (a date is either an instant → timestamptz, or a calendar day → date — see apps/api/CLAUDE.md → _2. Database schema_, "Dates and times")
 
-System fields:        <field — who writes it and when, from which transition (publishedAt: the service, when status becomes published)>, or none
+System fields:        <field — who writes it, and its whole rule: when it is set, kept, changed or cleared>, or none — values the form never sends (a date stamped on a status change, a counter, a value computed from other fields; not createdAt/updatedAt). The rule is the user's to settle, never invent it
 Business uniqueness:  <field(s) unique by product rule, or none>
 Slug:                 <no | yes, from <field>>
 Relations:            <field → module (select needs its /all), or none>
