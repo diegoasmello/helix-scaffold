@@ -58,6 +58,13 @@ i18n
     fallbackLng: appConfig.i18n.defaultLanguage,
     supportedLngs: appConfig.i18n.languages.map(({ value }) => value),
     load: 'currentOnly',
+    // The user's choice, else the browser's. Not the detector's other sources:
+    // `htmlTag` is `index.html`'s `lang` — the default language — and an exact
+    // match there beats a browser's `en-US` before it is read as `en`.
+    detection: {
+      order: ['localStorage', 'navigator'],
+      caches: ['localStorage'],
+    },
     interpolation: { escapeValue: false },
   })
 
