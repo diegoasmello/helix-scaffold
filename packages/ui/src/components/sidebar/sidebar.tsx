@@ -100,7 +100,7 @@ export function Sidebar(props: Readonly<SidebarProps>) {
             align="center"
             className={classes.header}
           >
-            <Link to="/">
+            <Link to="/" className={classes.logoLink}>
               {visuallyCollapsed ? collapsedLogo : expandedLogo}
             </Link>
             {inDrawer ? (
@@ -217,7 +217,20 @@ const useStyles = createStyles((theme, _, u) => ({
   header: css`
     flex-shrink: 0;
     min-height: 40px;
-    padding-left: 10px;
+  `,
+  logoLink: css`
+    border-radius: ${theme.radius.md};
+    padding: ${theme.spacing.xs} ${theme.spacing.sm};
+    transition: all 250ms ease;
+
+    &:hover {
+      ${u.light} {
+        background-color: ${theme.colors.gray[2]};
+      }
+      ${u.dark} {
+        background-color: ${theme.colors.dark[5]};
+      }
+    }
   `,
   toggleButton: css`
     display: flex;
