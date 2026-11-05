@@ -2,7 +2,7 @@
 
 Full CRUD module. Reference implementation for `apps/web` — the workspace `CLAUDE.md` uses this module as the canonical example.
 
-Its E2E spec, `apps/web/e2e/todos.spec.ts` (create with the uploads and the rich text editor, view, edit, delete), is the reference for a module's spec — and `adminApi.createTodo()` in `e2e/fixtures.ts` the reference for a fixture that needs uploads. Both go away with the module in an app built on the scaffold.
+Its E2E spec, `apps/web/e2e/todos.spec.ts` (create with the uploads and the rich text editor, view, edit, delete; the plan gate of its `todos` feature), is the reference for a module's spec — and `adminApi.createTodo()` in `e2e/fixtures.ts` the reference for a fixture that needs uploads. Both go away with the module in an app built on the scaffold.
 
 ## File structure
 

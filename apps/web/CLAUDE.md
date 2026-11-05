@@ -2096,11 +2096,11 @@ E2E specs check that the layers agree — what the UI offers, what the guards le
 | Spec | Covers |
 | --- | --- |
 | `rbac.spec.ts` | A role granted in the permission editor → its user's landing page, sidebar, hidden actions and `/403`; a role granting nothing → `/me`; the editor's requirement cascade kept by the API; the privilege ceiling (a moderator's editor disables what their role lacks, the API answers 403 `permissions_not_grantable`, a role above theirs is read-only) |
-| `subscriptions.spec.ts` | No subscription → `/upgrade` ("Subscription required") and the API's 403 `subscription_required`; a plan without the feature → "Upgrade your plan" until the admin changes the plan on `/subscriptions/$id/edit`; an operator (`subscriptions:view`) passes without one |
+| `subscriptions.spec.ts` | Whichever modules a plan gates: no subscription → "No active subscription" on `/me/subscription`; the plan the admin gives, then changes on `/subscriptions/$id/edit`, is the one the profile's catalog marks as current |
 | `auth.spec.ts` | Signed out (`storageState` emptied): a protected page → `/login`; a wrong password; sign-up (open in the test config) → the default role → `/me/account`; sign-out; a sign-out in another tab signs this one out too (better-auth tells the tabs, `AuthGuard` leaves) |
 | `audit.spec.ts` | An edit made in the UI shows in `/audit` with its author, and its detail with what was sent; the bootstrap's entry, under the system actor |
 | `me.spec.ts` | Renaming the account (the header follows); changing the password — only the new one signs in |
-| `todos.spec.ts` | **The template of a module's spec** — create with the three uploads and the rich text editor, view, edit, delete (cancel, then confirm). It goes away with `todos`: copy its shape for the module that replaces it |
+| `todos.spec.ts` | **The template of a module's spec** — create with the three uploads and the rich text editor, view, edit, delete (cancel, then confirm). _Plan gate_ — the journey of a module gated by a plan feature: no subscription → `/upgrade` ("Subscription required") and the API's 403 `subscription_required`; a plan without the feature → "Upgrade your plan" until the admin changes the plan; an operator (`subscriptions:view`) passes without one. It goes away with `todos`: copy its shape for the module that replaces it |
 
 Not covered: social sign-in (needs a real OAuth provider), the reset-password email (its link only reaches the API's stdout) and the trial on sign-up (the test config has `trial: false`; turning it on would make E2E run in another mode than the API suite).
 
@@ -2128,7 +2128,7 @@ Specs import `test` and `expect` from `./fixtures`, never from `@playwright/test
 | `sampleFiles` | `png` (a real 1×1 image — the API processes images), `pdf`, `txt`, built in memory: `locator.setInputFiles(sampleFiles.png)` |
 | `uniqueName(prefix)`, `uniqueEmail(prefix)` | Names that never collide — tests run in parallel against one database |
 
-**Data through the API, the journey through the UI.** What the test is about happens on screen; what it only needs to exist (a role to edit, a user to sign in as) comes from `adminApi`. Never write to the database directly, and never rely on data another test created — nor on its absence: a list may be empty or full depending on what other tests created (`subscriptions.spec.ts` accepts the todos list or its empty state).
+**Data through the API, the journey through the UI.** What the test is about happens on screen; what it only needs to exist (a role to edit, a user to sign in as) comes from `adminApi`. Never write to the database directly, and never rely on data another test created — nor on its absence: a list may be empty or full depending on what other tests created (`todos.spec.ts` → _plan gate_ accepts the todos list or its empty state).
 
 **Never change the admin's account** (password, name, email): its session is shared by every test. Profile and password journeys use a user of their own — changing a password signs out the account's other sessions. Close every context `signInAs` opens.
 

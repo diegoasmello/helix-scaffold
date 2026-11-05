@@ -5,7 +5,7 @@ import { API_URL } from './stack'
 // editor is what the user then sees, reaches and is refused. Each layer is
 // tested on its own (API route tests, MSW screen tests); this checks they agree.
 
-const SIDEBAR_PAGES = ['Todos', 'Users', 'Roles', 'Audit log', 'Subscriptions']
+const SIDEBAR_PAGES = ['Users', 'Roles', 'Audit log', 'Subscriptions']
 
 test.describe('RBAC', () => {
   test('a role granted in the editor opens exactly its pages to its user', async ({
