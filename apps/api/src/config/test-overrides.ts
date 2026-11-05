@@ -17,5 +17,14 @@ export const testConfigOverrides: AppConfig = {
     trial: false,
     pastDueGraceDays: 7,
   },
+  // Off whatever the product enables: an enabled provider needs its OAuth
+  // credentials, which the suites' environments never have.
+  auth: {
+    socialProviders: {
+      google: { enabled: false },
+      facebook: { enabled: false },
+      apple: { enabled: false },
+    },
+  },
   uploads: { dir: '/tmp/helix-test-uploads' },
 }
