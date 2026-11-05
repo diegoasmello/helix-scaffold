@@ -340,7 +340,7 @@ Add a `describe('Filtering')` block inside `describe('GET /features')`:
 
 Seed the data via `testDb.insert` before each test case. Pass `filters` as a JSON-encoded string in the query string: `filters=JSON.stringify([{ field: 'status', op: 'eq', value: 'pending' }])`.
 
-See `apps/api/src/modules/todos/todos-routes.test.ts` for the reference implementation.
+See `todos-routes.test.ts` (the reference module) for the reference implementation.
 
 ---
 
@@ -578,7 +578,7 @@ Receive `emailProvider` in the route options (like `storage`) and pass it to the
 
 Modules can expose a `GET /xxx/export` endpoint that streams a PDF report to the client. The rendering happens server-side via `@react-pdf/renderer`. See `src/lib/pdf/CLAUDE.md` for the rendering infrastructure (templates, `BaseDocument`, colors, styles).
 
-Use `todos` as the reference implementation (`todos-schema.ts`, `todos-service.ts`, `todos-routes.ts`, `src/modules/todos/templates/todos-report.tsx`).
+Use `todos` as the reference implementation (`todos-schema.ts`, `todos-service.ts`, `todos-routes.ts`, `templates/todos-report.tsx`).
 
 ### When to add PDF export
 

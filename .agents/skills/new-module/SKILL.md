@@ -11,7 +11,7 @@ Request: $ARGUMENTS
 
 The `CLAUDE.md` files are the source of truth for **how** each part is built. This skill sets the **order**, **what to read when**, and **what "done" means**. It never restates a rule from the docs — it points to the section by its heading. If a heading named here no longer exists, find where its content moved instead of improvising.
 
-`todos` is the reference implementation on both sides. Use only the parts of it the sheet calls for; the _Section map_ below says where each part is.
+`todos` is the reference implementation on both sides. Use only the parts of it the sheet calls for; the _Section map_ below says where each part is, and `references/todos/README.md` where its files are — in a product built from the scaffold, the module is no longer in `apps/`, only its copies there and the `wiring.diff` of its place in the shared files.
 
 ## Phase 0 — Interview and module sheet (no code before approval)
 

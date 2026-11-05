@@ -693,7 +693,7 @@ expect(mockDownloadReport).toHaveBeenCalledWith(
 
 ### Reference implementation
 
-`apps/web/src/modules/todos/routes/todos-list.tsx` — `useExportPdf` and the Export PDF button.  
+`todos-list.tsx` (the reference module) — `useExportPdf` and the Export PDF button.  
 `apps/web/src/lib/download-report.ts` — `downloadReport` and `buildReportFilename`.  
 `apps/web/src/lib/use-export-pdf.ts` — `useExportPdf` hook.
 

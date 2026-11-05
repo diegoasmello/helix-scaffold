@@ -115,7 +115,7 @@ export const REPORTS_ACCESS = {
 beforeLoad: guardPage(REPORTS_ACCESS.view),   // no plan feature → /upgrade?feature=reports
 ```
 
-`todos` is the reference (`TODOS_ACCESS` in `src/modules/todos/routes/access.ts`). Without the feature in its access, typing the URL directly would hit the API's 403 and show the generic error page.
+`todos` is the reference (`TODOS_ACCESS` in its `routes/access.ts`). Without the feature in its access, typing the URL directly would hit the API's 403 and show the generic error page.
 
 ### Importing
 

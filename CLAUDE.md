@@ -21,7 +21,7 @@ Each workspace has its own `CLAUDE.md` with patterns, conventions, and step-by-s
 | `apps/api/src/lib/` | `email`, `pdf` |
 | `apps/web/src/modules/` | `audit`, `auth` (also bootstrap/login/sign-up screens), `me`, `roles` (also the permission editor), `subscriptions`, `todos`, `uploads`, `users` |
 
-`todos` is the reference implementation on both sides.
+`todos` is the reference implementation on both sides — an example, not part of any product. Its files are indexed in `.agents/skills/new-module/references/todos/README.md`: in the scaffold, links to the live module; in a product built from it, the copies `/start-project` kept when it removed the module from `apps/`.
 
 Domain terms (plan, feature, live vs. access-granting subscription, entitlements, operator…) are defined in `GLOSSARY.md` — use those names.
 
