@@ -15,18 +15,20 @@ The `CLAUDE.md` files are the source of truth for **how** each part is built. Th
 
 ## Phase 0 — Interview and module sheet (no code before approval)
 
-Interview the user until you understand the module completely, in **rounds**:
+Interview the user in **rounds**, until you could build every part without guessing:
 
 1. Start with the module's **purpose**: what it is, what it is for, who uses it. It shapes names, labels, validation limits, empty states and seed data, and opens the module's `CLAUDE.md` later.
-2. Draft the sheet below from the request. Mark each item **given** (the user said it), **deduced** (you inferred it — say from what) or **missing**.
-3. Ask for every missing or ambiguous item **in one message per round**, grouped and numbered. Their answers may raise new questions — keep going, round after round, until nothing is missing or ambiguous and you could build every part without guessing. Never fill a gap with an assumption just to move on.
-4. **No pattern, no improvising** — stop and tell the user when the module needs something the scaffold has no pattern for:
-   - **owned records** ("each user sees only their own"): `todos` has no owner column, and an improvised ownership filter is how IDORs are born;
-   - **soft delete** (records hidden instead of deleted): every module deletes for real.
-5. A relation to a module that doesn't exist yet: say so, and settle whether it is built first or left out.
-6. Limits come from the module's purpose — ask when it doesn't settle them. Never copy them from `todos`: its limits (1000 characters of content) fit an example, not real content.
-7. **Code names** matter when singular and plural coincide (`news`): the generated hooks and types get ambiguous, so settle the entity and singular names explicitly.
-8. Show the final sheet and **wait for explicit approval**. The approved sheet is the contract for the rest of the task; if the context is compacted mid-task, rebuild from it.
+2. Draft the sheet below from the request. Mark each item **given** (the user said it), **deduced** (say from what) or **missing**.
+3. Ask for every missing or ambiguous item in **one message per round**, grouped and numbered. Answers may raise new questions — keep going until nothing is missing or ambiguous. Never fill a gap with an assumption just to move on.
+4. Show the final sheet and **wait for explicit approval**. Then save it to a file outside the repo (your scratchpad directory, if you have one): it is the contract for the rest of the task, and what you rebuild from if the context is compacted.
+
+Watch for:
+
+- **No pattern, no improvising** — stop and tell the user when the module needs something the scaffold has no pattern for: **owned records** ("each user sees only their own" — `todos` has no owner column, and an improvised ownership filter is how IDORs are born) or **soft delete** (every module deletes for real).
+- **A relation to a module that doesn't exist yet**: settle whether it is built first or left out.
+- **Limits** come from the purpose — ask when it doesn't settle them. Never copy `todos`' (1000 characters of content fit an example, not real content).
+- **System fields**: when the value is set, kept, changed or cleared is the user's to settle, never yours to invent.
+- **Code names** when singular and plural coincide (`news`): the generated hooks and types get ambiguous, so settle the entity and singular names explicitly.
 
 ### Module sheet
 
@@ -38,9 +40,9 @@ Actions:      view · create · edit · delete   (drop any the module lacks)
 
 Fields (the user fills them):
 | name | type | required | limits / enum values | default | normalized |
-(a date is either an instant → timestamptz, or a calendar day → date — see apps/api/CLAUDE.md → _2. Database schema_, "Dates and times")
+(a date is an instant → timestamptz, or a calendar day → date: apps/api/CLAUDE.md → _2. Database schema_, "Dates and times")
 
-System fields:        <field — who writes it, and its whole rule: when it is set, kept, changed or cleared>, or none — values the form never sends (a date stamped on a status change, a counter, a value computed from other fields; not createdAt/updatedAt). The rule is the user's to settle, never invent it
+System fields:        <field — who writes it, and its rule>, or none   (values the form never sends: a date stamped on a status change, a counter, a computed value; not createdAt/updatedAt)
 Business uniqueness:  <field(s) unique by product rule, or none>
 Slug:                 <no | yes, from <field>>
 Relations:            <field → module (select needs its /all), or none>
@@ -49,15 +51,14 @@ Delete:               hard delete · the record's uploads <deleted with it | kep
 Plan feature:         <none | <feature key>, declared in plan(s) <…>>
 
 Deduced (confirm):
-  Form:               <layout: FormColumn (a handful of fields, no groups) | FormSections — <section: fields>…> · <the control of each non-text field: two states → Switch, more → Select or SegmentedControl; rich text → RichTextEditor>
-  Indexes:            FK on every reference · slug · business uniques · <performance only if the user brought up volume>
-  Filters (API):      <field (text · enum · number · day · instant)>, or none — a date says which: a day (`date`) or an instant (`createdAt`, `publishedAt`)
-  FilterBar fields:   <the filters the list screen offers — usually all; an instant among them goes through `toApiFilters()`>
-  Sort:               <sortable fields> · default <field dir>
+  Form:          <FormColumn (a handful of fields, no groups) | FormSections — <section: fields>…> · non-text controls: two states → Switch, more → Select or SegmentedControl, rich text → RichTextEditor
+  Indexes:       <performance indexes only if the user brought up volume> (FKs, slug and business uniques are always indexed)
+  Filters:       <field (text · enum · number · day · instant)>, or none · FilterBar offers <all | …>
+  Sort:          <sortable fields> · default <field dir>
   PERMISSION_REQUIREMENTS: <…>
-  List columns:       <…>
-  Sidebar:            <group / position>
-  Seed:               <how many sample rows, what they look like> · seed roles granted <…>
+  List columns:  <…>
+  Sidebar:       <group / position>
+  Seed:          <how many sample rows, what they look like> · seed roles granted <…>
 ```
 
 ## Section map
@@ -81,8 +82,10 @@ Read the sections the sheet calls for, at the phase that needs them. The root `C
 
 ## Gate 0 — baseline (after approval, before any change)
 
-1. `pnpm db:check` and `pnpm db:check:test` (needs `db` and `db_test` up: `docker compose up -d`). A database used on another branch keeps that branch's migrations and tables — `db:migrate` succeeds over them and the module's migration fails at Gate 1. On a mismatch, **stop and tell the user** what it lists: the test database can be recreated (`pnpm db:recreate:test` — offer it), the dev database holds their data, so they decide.
-2. `pnpm type-check` and `pnpm test`. Write down every failure: it already existed, so a later gate that fails the same way is not yours to fix — report it, don't touch it. Without this baseline you cannot prove which failures came with the module. A cached result is a real one: Turbo reruns a workspace when it or a workspace it depends on changes, and never caches the API's tests.
+Start the databases first: `docker compose up -d`.
+
+1. `pnpm db:check` and `pnpm db:check:test`. On a mismatch, **stop and tell the user** what it lists — the module's migration would fail at Gate 1. The test database can be recreated (`pnpm db:recreate:test` — offer it); the dev database holds their data, so they decide.
+2. `pnpm type-check` and `pnpm test`, and write down every failure: it already existed, so a later gate that fails the same way is not yours to fix — report it, don't touch it. A cached result counts (root `CLAUDE.md` → _Tests_).
 
 ## Phase 1 — Database and API
 
@@ -90,9 +93,9 @@ Follow `apps/api/CLAUDE.md` → _Creating a new module (CRUD)_ in its order, wit
 
 ### Gate 1 — the API is done (before touching `apps/web`)
 
-1. `pnpm db:generate --name <table>` (`news` — never the random name drizzle-kit picks without it; `apps/api/CLAUDE.md` → _Scripts_), then **read the generated SQL** against the sheet: table, columns, nullability, defaults, enums, an index on every FK, uniques, slug index. Fix the Drizzle schema and regenerate on any mismatch.
-2. `pnpm db:migrate` (dev) and `pnpm db:migrate:test` — on a failure they print Postgres' error (`relation … already exists` after a clean Gate 0 means the migration itself).
-3. `pnpm --filter api type-check`, `pnpm --filter api lint` and `pnpm --filter api test` (needs `db_test` up: `docker compose up -d`).
+1. `pnpm db:generate --name <table>` (`news`), then **read the generated SQL** against the sheet: table, columns, nullability, defaults, enums, an index on every FK, uniques, slug index. Fix the Drizzle schema and regenerate on any mismatch.
+2. `pnpm db:migrate` and `pnpm db:migrate:test`.
+3. `pnpm --filter api type-check`, `pnpm --filter api lint` and `pnpm --filter api test`.
 4. `pnpm spec:sync`, then confirm the module's paths are in `packages/api-client/openapi.json`.
 
 ## Phase 2 — Web
@@ -125,18 +128,17 @@ Written last, so they describe what was built, not what was planned.
 
 ### Checklist — each item with its evidence (`file:line`), not a tick
 
-- [ ] Resource and actions in `apps/api/src/config/permissions.ts`, plus `PERMISSION_REQUIREMENTS` → root _RBAC checklist_
-- [ ] `request.audit()` after every mutation, asserted in the tests for create, edit and delete → root _Audit logging checklist_
-- [ ] List paginated and sortable, `DataTable` on the web → root _Pagination defaults_
-- [ ] An index on every FK; business uniques turned into a `DomainError` (409), with a test → `apps/api/CLAUDE.md` → _2. Database schema_, _Errors the client can act on_
-- [ ] Normalized columns and slug exactly as the sheet says → root _Normalized text columns_, _Slugs_
-- [ ] Route tests, including _Permission enforcement tests_ → `apps/api/CLAUDE.md` → _Testing_
-- [ ] If uploads: every upload column (rich text images included) registered in `src/config/upload-references.ts` with the guard of the record's `GET`, and covered in `upload-files-routes.test.ts` → _Who may read a file_ → `src/modules/uploads/CLAUDE.md` → _5. Register upload references_
+- [ ] `permissions.ts`: resource, actions and `PERMISSION_REQUIREMENTS` → root _RBAC checklist_
 - [ ] `PageAccess` in `routes/access.ts`, `guardPage()` on every route, the sidebar entry with the same access, `<HasPermission>` on Create, `hidden` on row actions → root _RBAC checklist_
-- [ ] Locale files in `en` and `pt-BR`, registered in `src/i18n/index.ts`; the resource's label in both `roles.json` (`permissions.resources.<resource>`); no hardcoded string → root _i18n checklist_
-- [ ] Web unit + integration tests → `apps/web/CLAUDE.md` → _Testing_
-- [ ] Default MSW handlers for every new endpoint in `src/mocks/handlers.ts`, and the module's keys in `src/lib/resource-cache.test.ts` → `apps/web/CLAUDE.md` → _Testing_, _Resource cache_
-- [ ] If gated: `requireSubscription('<feature>')` on the routes, `feature` in the `PageAccess`, the feature's label in both `subscription.json`, and the feature **declared in a plan** in `apps/api/src/app.config.ts` (an undeclared feature stops the API at startup) → root _Subscription checklist_
+- [ ] `request.audit()` after every mutation, asserted for create, edit and delete → root _Audit logging checklist_
+- [ ] List paginated and sortable, `DataTable` on the web → root _Pagination defaults_
+- [ ] Normalized columns and slug as the sheet says → root _Normalized text columns_, _Slugs_
+- [ ] An index on every FK; business uniques turned into a `DomainError` (409), with a test → `apps/api/CLAUDE.md` → _2. Database schema_, _Errors the client can act on_
+- [ ] Route tests, including _Permission enforcement tests_ → `apps/api/CLAUDE.md` → _Testing_
+- [ ] Locale files in `en` and `pt-BR`, registered in `src/i18n/index.ts`; the resource's label in both `roles.json`; no hardcoded string → root _i18n checklist_
+- [ ] Web unit + integration tests; a default MSW handler for every new endpoint in `src/mocks/handlers.ts`; the module's entry in `src/lib/resource-cache.ts`, with its keys in `resource-cache.test.ts` → `apps/web/CLAUDE.md` → _Testing_, _3. Hooks and data fetching_
+- [ ] If uploads: every upload column (rich text images included) in `src/config/upload-references.ts` with the guard of the record's `GET`, and covered in `describe('Who may read a file')` → `src/modules/uploads/CLAUDE.md` → _5. Register upload references_
+- [ ] If gated: `requireSubscription('<feature>')` on the routes, `feature` in the `PageAccess`, its label in both `subscription.json`, the feature declared in a plan → root _Subscription checklist_
 - [ ] Seed rows and seed role grants
 - [ ] Module `CLAUDE.md` on both sides, the root module docs table, and every shared doc that enumerates modules
 - [ ] Every failure in Gate 3 either fixed or present in the Gate 0 baseline
