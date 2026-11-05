@@ -534,7 +534,7 @@ Use `todos` as the reference implementation; the step-by-step guide (multi-file 
 2. Response embeds `attachments: uploadSchema.array()` / `file: uploadSchema.nullable()`; create/update accept `attachmentIds` / `fileId`
 3. Service: `assertUsableUploads()` on create/update (a record references only uploads its author uploaded — 400 `invalid_upload` — and a typed field only files of its type, `{ id, accept: IMAGE_TYPES }` — 400 `invalid_upload_type`); load uploads on reads; sync junction rows on create/update; on delete, collect upload IDs → delete the record → delete the `uploads` rows → delete storage keys (best-effort)
 4. Accept `storage: StorageProvider` in route options and pass it to the service factory
-5. **Register every new column in `src/config/upload-references.ts`**, with the guard of the record's `GET` route — otherwise the orphan cleanup job deletes those uploads after the grace period, and nobody but the uploader and `uploads:view` can open their files
+5. **Register every new column in `src/config/upload-references.ts`**, with the guard of the record's `GET` route — otherwise the orphan cleanup job deletes those uploads after the grace period, and nobody but the uploader and `uploads:view` can open their files. Each column gets its cases in `upload-files-routes.test.ts` → _Who may read a file_
 6. Images inside a rich text field (`onUploadImage`): a junction table `xxx_<field>_images` the service fills from the HTML with `uploadIdsInHtml()` (`src/lib/rich-text-uploads.ts`), checked and registered like the others — see `src/modules/uploads/CLAUDE.md` → _Images inside rich text_
 
 ---

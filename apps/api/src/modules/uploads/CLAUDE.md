@@ -216,6 +216,8 @@ registerUploadReference({
 
 Add one `registerUploadReference` call per column. If a module's uploads are not registered, the job will treat them as orphaned and delete them after the grace period, and until then only their uploader and `uploads:view` can open their files.
 
+**Test who may open them** — in `upload-files-routes.test.ts` → `describe('Who may read a file')`, not in the module's own test file. Every registered column (a single file, a junction table, the images inside a rich text field) gets the three cases `todos` has in its `describe.each(['attachment', 'file', 'image', 'content'])`: a reader of the record gets 200; a user without the `GET` route's permission gets 404; one without its subscription gets 404 (when the route requires one). Add a `describe.each` of the module's own columns next to the todos one, with a helper like `attachToTodo()` that creates a record holding the upload in that column.
+
 ## Images inside rich text
 
 A `RichTextEditor` given `onUploadImage` (`apps/web` passes `uploadFile`) sends each image to `POST /uploads` and writes its `url` into the HTML: `<img src="…/api/files/<folder>/original.png">`. No column holds that upload, so without the steps below the orphan cleanup deletes it after the grace period, `GET /files/*` serves it only to its uploader (every other reader sees a broken image), and deleting the record leaves it behind.
@@ -246,4 +248,4 @@ Someone else's upload in the text is refused like any other reference (400 `inva
 
 **3. Register the junction table in step 5**, like any junction table: its `access` is the guard of the record's `GET` route, so the record's readers see the images.
 
-**Tests** (`todos-routes.test.ts` → `describe('Images in the content')` is the reference): the images recorded on create; external images and unknown keys ignored; a file that is not an image (`describe('Upload types')`); kept by the orphan cleanup; someone else's image on create and on update (400); another editor re-sending the text (200); a `PATCH` without the field keeps them; an image taken out of the text gets deleted by the orphan cleanup; deleted with the record. `GET /files/*` for the record's readers: add the table to the references of `upload-files-routes.test.ts` → _Who may read a file_.
+**Tests** (`todos-routes.test.ts` → `describe('Images in the content')` is the reference): the images recorded on create; external images and unknown keys ignored; a file that is not an image (`describe('Upload types')`); kept by the orphan cleanup; someone else's image on create and on update (400); another editor re-sending the text (200); a `PATCH` without the field keeps them; an image taken out of the text gets deleted by the orphan cleanup; deleted with the record. `GET /files/*` for the record's readers: step 5 → _Test who may open them_, like any registered column.

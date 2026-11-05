@@ -74,7 +74,7 @@ Read the sections the sheet calls for, at the phase that needs them. The root `C
 | has normalized columns | `CLAUDE.md` → _Normalized text columns_ | — | `TODO_NORMALIZED_FIELDS` (`db/schema/todos.ts`), `normalizedValues()` in the service, `todoRow()` |
 | has a slug | `CLAUDE.md` → _Slugs_ | — (the admin never shows it) | `TODO_SLUG`, `GET /todos/by-slug/:slug`, `describe('Slug')` |
 | relates to another module | `CLAUDE.md` → _Non-paginated "all" endpoints_ | `CLAUDE.md` → _Relational select fields with inline creation_ | not in `todos`: `users` → `roleId` (`GET /roles/all`, `RoleSelectField`) |
-| has uploads | `src/modules/uploads/CLAUDE.md` → _Adding uploads to another module_ | `CLAUDE.md` → _Adding uploads to a new module_ | single file: `fileId`/`imageId`; multiple: `todo_attachments`; images inside rich text: `todo_content_images` (`describe('Images in the content')`); all in `src/config/upload-references.ts` |
+| has uploads | `src/modules/uploads/CLAUDE.md` → _Adding uploads to another module_ | `CLAUDE.md` → _Adding uploads to a new module_ | single file: `fileId`/`imageId`; multiple: `todo_attachments`; images inside rich text: `todo_content_images` (`describe('Images in the content')`); all in `src/config/upload-references.ts`, each column tested in `upload-files-routes.test.ts` → `describe('Who may read a file')` |
 | is gated by a plan feature | `src/modules/subscriptions/CLAUDE.md` → _`requireSubscription` hook_ | `src/modules/subscriptions/CLAUDE.md` → _Route guards (`feature` in `PageAccess`)_ | `requireSubscription('todos')` in `todos-routes.ts`; `feature: 'todos'` in `routes/access.ts` |
 | exports PDF (only if asked) | `CLAUDE.md` → _PDF export_ | `CLAUDE.md` → _PDF export_ | `GET /todos/export`, `templates/todos-report.tsx`; `useExportPdf` in `todos-list.tsx` |
 | sends email (only if asked) | `CLAUDE.md` → _Email_ | — | not in `todos` |
@@ -131,6 +131,7 @@ Written last, so they describe what was built, not what was planned.
 - [ ] An index on every FK; business uniques turned into a `DomainError` (409), with a test → `apps/api/CLAUDE.md` → _2. Database schema_, _Errors the client can act on_
 - [ ] Normalized columns and slug exactly as the sheet says → root _Normalized text columns_, _Slugs_
 - [ ] Route tests, including _Permission enforcement tests_ → `apps/api/CLAUDE.md` → _Testing_
+- [ ] If uploads: every upload column (rich text images included) registered in `src/config/upload-references.ts` with the guard of the record's `GET`, and covered in `upload-files-routes.test.ts` → _Who may read a file_ → `src/modules/uploads/CLAUDE.md` → _5. Register upload references_
 - [ ] `PageAccess` in `routes/access.ts`, `guardPage()` on every route, the sidebar entry with the same access, `<HasPermission>` on Create, `hidden` on row actions → root _RBAC checklist_
 - [ ] Locale files in `en` and `pt-BR`, registered in `src/i18n/index.ts`; the resource's label in both `roles.json` (`permissions.resources.<resource>`); no hardcoded string → root _i18n checklist_
 - [ ] Web unit + integration tests → `apps/web/CLAUDE.md` → _Testing_
