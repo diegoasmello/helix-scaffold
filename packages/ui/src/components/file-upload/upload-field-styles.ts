@@ -6,6 +6,10 @@ export const useUploadFieldStyles = createStyles((theme, _, u) => ({
   description: css`
     margin-bottom: 6px;
   `,
+  /* The same space Mantine leaves between an input and its error. */
+  errorMessage: css`
+    margin-top: calc(${theme.spacing.xs} / 2);
+  `,
   body: css`
     display: flex;
     flex-direction: column;
@@ -25,6 +29,14 @@ export const useUploadFieldStyles = createStyles((theme, _, u) => ({
       background-color: ${theme.colors.dark[8]};
       color: ${theme.colors.dark[1]};
     }
+
+    /* :focus, not :focus-visible: like the inputs' ring, it must show when
+       Form focuses the field after a mouse click on Save. */
+    &:focus {
+      outline: 2px solid ${theme.colors[theme.primaryColor][6]};
+      outline-offset: 2px;
+      animation: var(--helix-focus-ring-animation);
+    }
   `,
   dropzoneContent: css`
     pointer-events: none;
@@ -42,6 +54,10 @@ export const useUploadFieldStyles = createStyles((theme, _, u) => ({
   `,
   error: css`
     border-color: ${theme.colors.red[6]};
+
+    &:focus {
+      outline-color: ${theme.colors.red[6]};
+    }
   `,
   uploading: css`
     min-height: 60px;

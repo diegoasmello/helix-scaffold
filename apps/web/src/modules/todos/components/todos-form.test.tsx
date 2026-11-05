@@ -1,9 +1,22 @@
-import { MantineEmotionProvider, MantineProvider, useForm } from '@helix/ui'
+import { createUpload } from '@helix/api-client/mocks'
+import {
+  Form,
+  MantineEmotionProvider,
+  MantineProvider,
+  useForm,
+} from '@helix/ui'
 import { render, screen } from '@testing-library/react'
-import { describe, expect, it } from 'vitest'
+import userEvent from '@testing-library/user-event'
+import { describe, expect, it, vi } from 'vitest'
 
 import type { TodoFormValues, TodoStatus } from '../types'
+import { todoFormValidate } from '../validation'
 import { TodoForm } from './todos-form'
+
+vi.mock('@tanstack/react-router', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@tanstack/react-router')>()
+  return { ...actual, useBlocker: vi.fn() }
+})
 
 const base: TodoFormValues = {
   title: '',
@@ -76,4 +89,64 @@ describe('TodoForm', () => {
       expect(screen.getByPlaceholderText('Pick a date')).toBeRequired()
     }
   )
+})
+
+describe('TodoForm — focus after an invalid submit', () => {
+  function ValidatedForm(
+    props: Readonly<{ initial: Partial<TodoFormValues> }>
+  ) {
+    const { initial } = props
+    const form = useForm<TodoFormValues>({
+      initialValues: { ...base, ...initial },
+      validate: todoFormValidate,
+    })
+
+    return (
+      <Form form={form} onSubmit={() => {}}>
+        <TodoForm form={form} />
+        <button type="submit">Save</button>
+      </Form>
+    )
+  }
+
+  async function submit(initial: Partial<TodoFormValues>) {
+    render(
+      <MantineProvider>
+        <MantineEmotionProvider>
+          <ValidatedForm initial={initial} />
+        </MantineEmotionProvider>
+      </MantineProvider>
+    )
+    await userEvent.click(screen.getByRole('button', { name: 'Save' }))
+  }
+
+  it('focuses the date before the content above it on screen', async () => {
+    // The rules list `content` before `date`; the date is drawn first.
+    await submit({ title: 'Buy milk', description: 'Today' })
+    expect(screen.getByPlaceholderText('Pick a date')).toHaveFocus()
+  })
+
+  it('focuses the drop area of an empty file field', async () => {
+    await submit({
+      title: 'Buy milk',
+      description: 'Today',
+      content: '<p>Two litres</p>',
+      date: '2026-11-05',
+    })
+    // Image is the first file field on screen, though its rule comes last.
+    const image = screen.getByRole('group', { name: 'Image' })
+    expect(image.querySelector('[data-path="image"]')).toHaveFocus()
+  })
+
+  it('focuses the drop area of an empty multi-file field', async () => {
+    await submit({
+      title: 'Buy milk',
+      description: 'Today',
+      content: '<p>Two litres</p>',
+      date: '2026-11-05',
+      image: createUpload({ id: 'img-1' }),
+    })
+    const attachments = screen.getByRole('group', { name: 'Attachments' })
+    expect(attachments.querySelector('[data-path="attachments"]')).toHaveFocus()
+  })
 })

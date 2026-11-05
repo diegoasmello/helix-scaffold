@@ -14,7 +14,8 @@ export type { ImageVariant, ImageVariants, UploadedFile } from './types'
 import type { UploadedFile } from './types'
 
 export interface FilesInputProps<T extends UploadedFile = UploadedFile> {
-  value: T[]
+  /** The uploaded files; none when left out. */
+  value?: T[]
   onChange: (files: T[]) => void
   onUpload: (file: File) => Promise<T>
   maxFiles?: number
@@ -23,6 +24,11 @@ export interface FilesInputProps<T extends UploadedFile = UploadedFile> {
   description?: string
   required?: boolean
   error?: string
+  /**
+   * Set by `form.getInputProps()`: marks the field's focusable element (the
+   * drop area) so `Form` can focus it after an invalid submit.
+   */
+  'data-path'?: string
 }
 
 /**
@@ -33,7 +39,7 @@ export function FilesInput<T extends UploadedFile>(
   props: Readonly<FilesInputProps<T>>
 ) {
   const {
-    value,
+    value = [],
     onChange,
     onUpload,
     maxFiles = 10,
@@ -42,6 +48,7 @@ export function FilesInput<T extends UploadedFile>(
     description,
     required,
     error,
+    'data-path': dataPath,
   } = props
 
   const { classes, cx } = useUploadFieldStyles()
@@ -96,7 +103,10 @@ export function FilesInput<T extends UploadedFile>(
       description={description}
       required={required}
       error={error}
-      classNames={{ description: classes.description }}
+      classNames={{
+        description: classes.description,
+        error: classes.errorMessage,
+      }}
     >
       <div className={classes.body}>
         {isAtLimit ? (
@@ -108,6 +118,7 @@ export function FilesInput<T extends UploadedFile>(
             onDrop={handleDrop}
             accept={accept}
             className={cx(classes.dropzone, error && classes.error)}
+            data-path={dataPath}
           >
             <div className={cx(classes.dropzoneContent, own.tall)}>
               <IconUpload size={20} />

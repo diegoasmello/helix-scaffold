@@ -93,31 +93,25 @@ export function TodoForm(props: Readonly<TodoFormProps>) {
           label={t('form.image.label')}
           description={t('form.image.description')}
           required
-          value={form.values.image}
-          onChange={(upload) => form.setFieldValue('image', upload)}
+          {...form.getInputProps('image')}
           onUpload={uploadFile}
           accept={IMAGE_MIME_TYPE}
-          error={form.errors.image as string | undefined}
         />
         <FilesInput
           label={t('form.attachments.label')}
           description={t('form.attachments.description')}
           required
-          value={form.values.attachments}
-          onChange={(uploads) => form.setFieldValue('attachments', uploads)}
+          {...form.getInputProps('attachments')}
           onUpload={uploadFile}
-          error={form.errors.attachments as string | undefined}
           maxFiles={10}
         />
         <FileInput
           label={t('form.file.label')}
           description={t('form.file.description')}
           required
-          value={form.values.file}
-          onChange={(upload) => form.setFieldValue('file', upload)}
+          {...form.getInputProps('file')}
           onUpload={uploadFile}
           accept={PDF_MIME_TYPE}
-          error={form.errors.file as string | undefined}
         />
       </FormSection>
     </>

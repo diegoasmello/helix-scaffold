@@ -221,7 +221,10 @@ export function RichTextEditor(props: Readonly<RichTextEditorProps>) {
           })}
           id={id}
           data-path={dataPath}
-          tabIndex={1}
+          // -1: focusable by a click on its padding and by `Form` after an
+          // invalid submit (it hands focus to the editor), but out of the Tab
+          // order, where the editor itself already sits in its place on screen.
+          tabIndex={-1}
           onFocus={() => {
             if (editor) {
               editor.commands.focus()

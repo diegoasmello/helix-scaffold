@@ -38,8 +38,9 @@ export function Form<Values, TransformedValues = Values>(
     },
     (errors) => {
       if (focusOnError) {
-        const firstErrorPath = Object.keys(errors)[0]
-        form.getInputNode(firstErrorPath)?.focus()
+        firstInDocumentOrder(
+          Object.keys(errors).map((path) => form.getInputNode(path))
+        )?.focus()
       }
     }
   )
@@ -51,4 +52,21 @@ export function Form<Values, TransformedValues = Values>(
       </form>
     </FormSummaryContext.Provider>
   )
+}
+
+/**
+ * The invalid field highest on the screen. The errors come in the order of
+ * the `validate` rules, which need not match the fields' order (`content`
+ * before `date` while the date sits above the editor). Paths without a
+ * `data-path` node (a field that does not forward it) are skipped.
+ */
+function firstInDocumentOrder(nodes: (HTMLElement | null)[]) {
+  return nodes.reduce<HTMLElement | null>((first, node) => {
+    if (!node) return first
+    if (!first) return node
+    return first.compareDocumentPosition(node) &
+      Node.DOCUMENT_POSITION_PRECEDING
+      ? node
+      : first
+  }, null)
 }

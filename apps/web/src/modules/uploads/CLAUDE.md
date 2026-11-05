@@ -26,8 +26,7 @@ import { uploadFile } from '@/modules/uploads/service'
 
 <FilesInput
   label="Attachments"
-  value={form.values.attachments}
-  onChange={(uploads) => form.setFieldValue('attachments', uploads)}
+  {...form.getInputProps('attachments')}
   onUpload={uploadFile}
   maxFiles={10}
 />

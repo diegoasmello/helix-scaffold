@@ -529,28 +529,26 @@ Wraps `POST /uploads` as a multipart request. Returns `Upload` from `@helix/api-
 import { FilesInput, FileInput, IMAGE_MIME_TYPE, PDF_MIME_TYPE } from '@helix/ui'
 import { uploadFile } from '@/modules/uploads/service'
 
-// Multiple files
+// Multiple files — the form value is UploadItem[]
 <FilesInput
   label="Attachments"
   description="Upload up to 10 files of any type"
-  value={form.values.attachments}           // UploadItem[]
-  onChange={(uploads) => form.setFieldValue('attachments', uploads)}
+  {...form.getInputProps('attachments')}
   onUpload={uploadFile}
-  error={form.errors.attachments as string | undefined}
   maxFiles={10}
 />
 
-// Single file
+// Single file — the form value is UploadItem | null
 <FileInput
   label="Image"
   description="JPEG, PNG, WebP or GIF"
-  value={form.values.image}                 // UploadItem | null
-  onChange={(upload) => form.setFieldValue('image', upload)}
+  {...form.getInputProps('image')}
   onUpload={uploadFile}
   accept={IMAGE_MIME_TYPE}
-  error={form.errors.image as string | undefined}
 />
 ```
+
+Bind them with `form.getInputProps()`, like any other field: besides `value`, `onChange` and `error`, it passes the `data-path` the fields put on their drop area, which `Form` focuses after an invalid submit. A field bound by hand (`value`/`onChange`/`error`) shows its error but is never focused.
 
 ### Mapping to the API on submit
 

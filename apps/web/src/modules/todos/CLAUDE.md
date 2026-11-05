@@ -90,8 +90,8 @@ image:       required      — fails when null
 For upload fields, use `minFiles(n)` (from `@helix/ui`) for `FilesInput` and `required` for `FileInput`. Both validators treat `null` / empty array as invalid. The `required` prop on the component renders the asterisk indicator and must match the validator:
 
 ```tsx
-<FilesInput required error={form.errors.attachments as string | undefined} ... />
-<FileInput  required error={form.errors.file as string | undefined} ... />
+<FilesInput required {...form.getInputProps('attachments')} ... />
+<FileInput  required {...form.getInputProps('file')} ... />
 ```
 
 ## Routes (`routes/index.ts`)

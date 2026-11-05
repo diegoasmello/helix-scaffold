@@ -11,7 +11,8 @@ import type { UploadedFile } from './types'
 import { useUploadFieldStyles } from './upload-field-styles'
 
 export interface FileInputProps<T extends UploadedFile = UploadedFile> {
-  value: T | null
+  /** The uploaded file; none when left out. */
+  value?: T | null
   onChange: (file: T | null) => void
   onUpload: (file: File) => Promise<T>
   accept?: string[]
@@ -19,6 +20,12 @@ export interface FileInputProps<T extends UploadedFile = UploadedFile> {
   description?: string
   required?: boolean
   error?: string
+  /**
+   * Set by `form.getInputProps()`: marks the field's focusable element (the
+   * drop area, or "Replace" once a file is in) so `Form` can focus it after
+   * an invalid submit.
+   */
+  'data-path'?: string
 }
 
 /**
@@ -29,7 +36,7 @@ export function FileInput<T extends UploadedFile>(
   props: Readonly<FileInputProps<T>>
 ) {
   const {
-    value,
+    value = null,
     onChange,
     onUpload,
     accept,
@@ -37,6 +44,7 @@ export function FileInput<T extends UploadedFile>(
     description,
     required,
     error,
+    'data-path': dataPath,
   } = props
 
   const { classes, cx } = useUploadFieldStyles()
@@ -66,7 +74,10 @@ export function FileInput<T extends UploadedFile>(
       description={description}
       required={required}
       error={error}
-      classNames={{ description: classes.description }}
+      classNames={{
+        description: classes.description,
+        error: classes.errorMessage,
+      }}
     >
       <div className={classes.body}>
         {isUploading ? (
@@ -83,7 +94,12 @@ export function FileInput<T extends UploadedFile>(
             extraAction={
               <FileButton onChange={upload} accept={accept?.join(',')}>
                 {(buttonProps) => (
-                  <Button variant="default" size="xs" {...buttonProps}>
+                  <Button
+                    variant="default"
+                    size="xs"
+                    data-path={dataPath}
+                    {...buttonProps}
+                  >
                     {t('fileUpload.replace')}
                   </Button>
                 )}
@@ -96,6 +112,7 @@ export function FileInput<T extends UploadedFile>(
             accept={accept}
             maxFiles={1}
             className={cx(classes.dropzone, error && classes.error)}
+            data-path={dataPath}
           >
             <div className={classes.dropzoneContent}>
               <IconUpload size={18} />
