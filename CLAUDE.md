@@ -61,6 +61,8 @@ pnpm knip
 pnpm db:generate       # migration from the Drizzle schema
 pnpm db:migrate        # apply to the dev DB
 pnpm db:migrate:test   # apply to the test DB
+pnpm db:check          # does the dev DB match this branch's migrations? (db:check:test for the test DB)
+pnpm db:recreate:test  # drop and re-migrate the test DB — another branch's leftovers included
 pnpm db:seed           # dev data — only on an empty DB
 pnpm db:reset          # truncate every table
 
@@ -79,7 +81,7 @@ pnpm --filter api test:watch
 
 **API contract → client:** the web consumes `@helix/api-client`, generated (gitignored) from the committed `packages/api-client/openapi.json`. Nothing regenerates it while you work — `pnpm dev` does not. **After changing a route, a request/response schema or the permission catalog in `apps/api`, run `pnpm spec:sync` before writing or testing web code**, or the new hooks, types and mocks don't exist yet. What counts as a contract change: `packages/api-client/CLAUDE.md` → _Workflow when creating or modifying an API endpoint_.
 
-**Local databases** (`docker compose up -d`): `db` → `helix` on port 5434, `db_test` → `helix_test` on port 5436, `db_e2e` → `helix_e2e` on port 5438. API tests need `db_test` running and migrated (`pnpm db:migrate:test`); E2E needs `db_e2e` running — the suite migrates and empties it itself.
+**Local databases** (`docker compose up -d`): `db` → `helix` on port 5434, `db_test` → `helix_test` on port 5436, `db_e2e` → `helix_e2e` on port 5438. API tests need `db_test` running and migrated (`pnpm db:migrate:test`); E2E needs `db_e2e` running — the suite migrates and empties it itself. A database used on another branch keeps that branch's migrations and tables, which `db:migrate` never reports: `pnpm db:check` / `db:check:test` compare it with this branch (see `apps/api/CLAUDE.md` → _Scripts_).
 
 **Git hooks** (Husky):
 
@@ -90,7 +92,7 @@ pnpm --filter api test:watch
 
 ## Tests
 
-`pnpm test` runs all workspaces in parallel via Turbo. Results are cached — a workspace is only re-tested when its files change.
+`pnpm test` runs all workspaces in parallel via Turbo. Results are cached — a workspace is only re-tested when its files or those of a workspace it depends on change (`lint`, `type-check` and `test` depend on `^type-check`, so `apps/web` reruns after a change in `packages/ui` or `openapi.json`). The API's tests are never cached (`apps/api/turbo.json`): they run against the test database, whose state Turbo cannot hash.
 
 | Workspace  | Tool                        | Notes                   |
 | ---------- | --------------------------- | ----------------------- |

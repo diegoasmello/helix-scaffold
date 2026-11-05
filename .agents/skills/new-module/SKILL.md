@@ -81,7 +81,8 @@ Read the sections the sheet calls for, at the phase that needs them. The root `C
 
 ## Gate 0 — baseline (after approval, before any change)
 
-`pnpm type-check` and `pnpm test`. Write down every failure: it already existed, so a later gate that fails the same way is not yours to fix — report it, don't touch it. Without this baseline you cannot prove which failures came with the module.
+1. `pnpm db:check` and `pnpm db:check:test` (needs `db` and `db_test` up: `docker compose up -d`). A database used on another branch keeps that branch's migrations and tables — `db:migrate` succeeds over them and the module's migration fails at Gate 1. On a mismatch, **stop and tell the user** what it lists: the test database can be recreated (`pnpm db:recreate:test` — offer it), the dev database holds their data, so they decide.
+2. `pnpm type-check` and `pnpm test`. Write down every failure: it already existed, so a later gate that fails the same way is not yours to fix — report it, don't touch it. Without this baseline you cannot prove which failures came with the module. A cached result is a real one: Turbo reruns a workspace when it or a workspace it depends on changes, and never caches the API's tests.
 
 ## Phase 1 — Database and API
 
@@ -90,7 +91,7 @@ Follow `apps/api/CLAUDE.md` → _Creating a new module (CRUD)_ in its order, wit
 ### Gate 1 — the API is done (before touching `apps/web`)
 
 1. `pnpm db:generate`, then **read the generated SQL** against the sheet: table, columns, nullability, defaults, enums, an index on every FK, uniques, slug index. Fix the Drizzle schema and regenerate on any mismatch.
-2. `pnpm db:migrate` (dev) and `pnpm db:migrate:test`.
+2. `pnpm db:migrate` (dev) and `pnpm db:migrate:test` — on a failure they print Postgres' error (`relation … already exists` after a clean Gate 0 means the migration itself).
 3. `pnpm --filter api type-check`, `pnpm --filter api lint` and `pnpm --filter api test` (needs `db_test` up: `docker compose up -d`).
 4. `pnpm spec:sync`, then confirm the module's paths are in `packages/api-client/openapi.json`.
 

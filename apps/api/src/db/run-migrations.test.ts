@@ -11,9 +11,10 @@ import { runMigrations } from './run-migrations'
 const MIGRATIONS = fileURLToPath(new URL('./migrations', import.meta.url))
 
 describe('runMigrations', () => {
-  // The test DB is migrated by drizzle-kit (`pnpm db:migrate:test`): the
-  // runtime migrator must read the same journal and find nothing to apply.
-  it('is a no-op on a database drizzle-kit already migrated', async () => {
+  // The test DB is already migrated (`pnpm db:migrate:test`, this migrator —
+  // or drizzle-kit, on a database migrated before the scripts moved here; both
+  // write the same journal): nothing is left to apply.
+  it('is a no-op on an already migrated database', async () => {
     const count = async () => {
       const result = await testDb.execute<{ n: string }>(
         sql`select count(*) as n from drizzle.__drizzle_migrations`

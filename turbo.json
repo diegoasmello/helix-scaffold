@@ -9,11 +9,18 @@
       "persistent": true,
       "cache": false
     },
-    "lint": {},
-    "type-check": {},
+    "lint": {
+      "dependsOn": ["^type-check"]
+    },
+    "type-check": {
+      "dependsOn": ["^type-check"]
+    },
     "format": {},
-    "test": {},
+    "test": {
+      "dependsOn": ["^type-check"]
+    },
     "test:coverage": {
+      "dependsOn": ["^type-check"],
       "outputs": ["coverage/**"]
     },
     "test:e2e": {
