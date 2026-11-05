@@ -34,6 +34,7 @@ src/modules/subscriptions/
 │   └── subscriptions-form.test.tsx
 └── routes/
     ├── index.ts                      ← route constants + combined array
+    ├── access.ts                     ← SUBSCRIPTIONS_ACCESS (requiresSubscriptions + permission)
     ├── subscriptions-pending.tsx
     ├── subscriptions-list.tsx
     ├── subscriptions-list.test.tsx
@@ -58,7 +59,7 @@ The hook tests use `renderHook` with a `QueryClientProvider` wrapper. `src/app.t
 The single hook for all subscription state. Internally fetches both `GET /subscription/status` (cached with `staleTime: Infinity`) and `GET /me/subscription` (only when enabled).
 
 ```ts
-const { subscription, plan, plans, getPlanName, isActive, isTrialing, isPending, enabled } =
+const { subscription, plan, plans, getPlanName, isActive, isTrialing, isPastDue, isPending, enabled } =
   useSubscription()
 ```
 
@@ -138,9 +139,10 @@ Conditional render guard. Mirrors `<HasPermission>` in structure and intent.
 ```tsx
 import { RequiresSubscription } from '../components/requires-subscription'
 
-<RequiresSubscription feature="reports" fallback={<UpgradePrompt />}>
+<RequiresSubscription feature="reports" fallback={<ReportsUpsell />}>
   <PremiumFeature />
 </RequiresSubscription>
+// ReportsUpsell: the product's own component (the scaffold ships none) — e.g. a link to /upgrade?feature=reports
 ```
 
 - **`feature`** — optional; when set, the user's plan must list it in `features`
@@ -263,7 +265,7 @@ Fields rendered:
 - `DataTable` with pagination and sorting (no filters — not needed for an ops tool)
 - Plan column renders `getPlanName(item.planId)`
 - Status column renders a `StatusBadge` whose tone comes from `SUBSCRIPTION_STATUS_TONES` (`constants.ts`): active → success, trialing → info, past_due → warning, canceled → neutral, expired → danger
-- `currentPeriodEnd` column renders `new Date(value).toLocaleDateString()`
+- `currentPeriodEnd` column renders `formatDate(parseISO(value), 'short')` (`@/utils/date` — the app's language)
 - Actions column: View (always), Edit (behind `subscriptions:edit`), Delete (behind `subscriptions:delete`)
 - Empty state shows "No subscriptions yet" with a Create button (behind `subscriptions:create`)
 
@@ -290,10 +292,9 @@ Fields rendered:
 
 ## Detail screen (`subscriptions-detail.tsx`)
 
-Read-only view of all subscription fields. Shows:
-- `userId`, `planId`, `status` (badge), `currentPeriodStart`, `currentPeriodEnd`, `trialEndsAt` (only if set), `pastDueSince` (only if set), `canceledAt` (only if set), `externalId` (only if set), `createdAt`
+Read-only view of all subscription fields: a `PageView` titled with the plan's name, the status `StatusBadge` in `titleAside`, and `LabeledValue`s for `userId`, `currentPeriodStart`, `currentPeriodEnd`, `trialEndsAt`, `pastDueSince`, `canceledAt`, `externalId` (each only if set) and `createdAt`.
 
-Footer: Back button → `/subscriptions`.
+Header action: Edit, inside `<HasPermission resource="subscriptions" action="edit">`. No Back button (`apps/web/CLAUDE.md` → _Screen components_).
 
 ---
 

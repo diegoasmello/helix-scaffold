@@ -54,7 +54,7 @@ interface TrialConfig {
 export interface AppConfig {
   app?: {
     /**
-     * Product name. Shown as the title of the API docs (`/docs`).
+     * Product name. Shown as the title of the API docs (`/api/docs`).
      * @default 'Helix API'
      */
     name?: string
@@ -102,8 +102,10 @@ export interface AppConfig {
   auth?: {
     /**
      * Social login providers. Credentials live in `.env` (see `.env.example`).
-     * In `'closed'` registration mode, enabled providers are still available
-     * for linking to existing accounts, but cannot create new accounts.
+     * Only offered in `'open'` registration mode: closed mode is email/password
+     * only — no social buttons on the login page and no account linking on
+     * `/me/security` (`GET /registration/status` and `GET /me/providers`
+     * list no provider there).
      */
     socialProviders?: {
       google?: SocialProviderConfig

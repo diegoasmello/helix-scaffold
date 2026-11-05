@@ -302,4 +302,4 @@ The permissions response is controlled via `getMePermissionsHandler` from `@heli
 
 ## How `app.tsx` uses auth
 
-`App` calls `useAuth()` for the user passed to `<Layout>` and for sidebar filtering: an item with `permission` shows when `hasPermission(...)` is true; an item without one shows to any authenticated user. The full filter also applies the subscription rules — see `src/modules/subscriptions/CLAUDE.md` → _Sidebar_.
+`App` calls `useAuth()` for the user passed to `<Layout>` and for sidebar filtering: each item carries its route's `PageAccess` (`access`), and `canSeeSidebarItem()` (`src/config/sidebar.ts`) keeps it when `checkPageAccess()` allows — the same decision as the route's `guardPage()`, subscription rules included. See `src/modules/subscriptions/CLAUDE.md` → _Sidebar_.

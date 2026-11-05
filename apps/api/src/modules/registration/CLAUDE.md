@@ -8,10 +8,10 @@ The frontend (login page, sign-up route guard) cannot read the backend config. T
 
 ## Registration
 
-Registered at the **root scope** in `app.ts` — outside the `authenticated` scope, no session required:
+Registered in the `/api` scope of `app.ts` — outside the `authenticated` scope, no session required:
 
 ```ts
-app.register(registrationRoutes, { config })
+api.register(registrationRoutes, { config })
 ```
 
 ## Endpoint

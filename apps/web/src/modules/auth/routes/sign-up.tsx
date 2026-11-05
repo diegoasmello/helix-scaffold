@@ -62,8 +62,8 @@ export function SignUp() {
   }
 
   return (
-    <Center h="100vh">
-      <Paper withBorder shadow="md" p="xl" w={400} radius="md">
+    <Center mih="100vh" px="md">
+      <Paper withBorder p="xl" w="100%" maw={400} radius="md">
         <form onSubmit={form.onSubmit(handleSubmit)}>
           <Stack gap="md">
             <DocumentTitle title={t('signUp.title')} />

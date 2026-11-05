@@ -23,7 +23,7 @@ Returns `{ getMe, updateMe, changeEmail, updatePassword, setPassword }`.
 
 **Re-authentication and attempt limit.** A stolen session must not be enough to take the account over, and better-auth's own rate limit skips `auth.api.*` calls. So the service keeps one `createAttemptLimiter()` (`src/lib/attempt-limiter.ts`: 5 wrong current passwords per user per 15 minutes, in memory, per process) shared by `changeEmail` and `updatePassword`: once reached, both answer **429** `too_many_attempts` — the right password included — until the window ends; a right password clears the count. `confirmPassword(userId, password)` reads the credential account's hash (`account` table, `providerId: 'credential'`) and checks it with `(await auth.$context).password.verify()`; a social-only account (no hash) is not asked.
 
-**`getMe(userId)`** — selects from the `user` table by `id`. Returns the raw user row.
+**`getMe(userId)`** — `getUserWithRole(database, userId)` from `users-service.ts`: the user with its role (`UserWithRole`).
 
 **`updateMe(userId, data)`** — only runs `db.update(...).set(data)` if `data.name` is defined. Re-fetches via `getMe(userId)` and returns the fresh row.
 
@@ -35,7 +35,7 @@ Returns `{ getMe, updateMe, changeEmail, updatePassword, setPassword }`.
 
 ## Routes (`me-routes.ts`)
 
-Receives `{ database, auth, emailProvider }` — no `requirePermission` parameter.
+Receives `{ database, auth, config, emailProvider }` — no `requirePermission` parameter. `config` feeds `GET /me/providers`.
 
 | Method  | Path                | Notes                                                                                    |
 | ------- | ------------------- | ---------------------------------------------------------------------------------------- |

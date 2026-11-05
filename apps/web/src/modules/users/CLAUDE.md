@@ -16,6 +16,7 @@ src/modules/users/
 │   └── user-select-field.test.tsx
 └── routes/
     ├── index.ts
+    ├── access.ts                    ← USERS_ACCESS (PageAccess of each page)
     ├── users-pending.tsx
     ├── users-list.tsx
     ├── users-list.test.tsx
@@ -108,7 +109,7 @@ loader: ({ params }) => {
 
 Inline in each component — no `hooks.ts`.
 
-**Create**: sends `name`, `email`, `password`, and `roleId` only when non-null — `...(values.roleId ? { roleId: values.roleId } : {})`. Invalidates list on success.
+**Create**: sends `name`, `email`, `password`, and `roleId` only when non-null — `...(values.roleId ? { roleId: values.roleId } : {})`. `resourceCache.changed('users')` on success.
 
 **Update**: always sends `roleId` (including `null` to remove the role). Does not send `password`. `resourceCache.saved('users', updated)` — seeds the item cache, refetches the lists (`/users/all` included) and `/me/permissions`.
 

@@ -52,8 +52,8 @@ export function Bootstrap() {
   }
 
   return (
-    <Center h="100vh">
-      <Paper withBorder shadow="md" p="xl" w={440} radius="md">
+    <Center mih="100vh" px="md">
+      <Paper withBorder p="xl" w="100%" maw={440} radius="md">
         <form onSubmit={form.onSubmit(handleSubmit)}>
           <Stack gap="md">
             <div>

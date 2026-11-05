@@ -182,7 +182,7 @@ When `subscriptions.enabled` is `true`, the app is responsible for:
 - [ ] Setting `subscriptions.trial: { days, planId }` in `src/app.config.ts` (if trials are offered)
 - [ ] Writing a payment processor adapter and registering it in `apps/api/src/config/billing-webhook.ts` — follow the checklist in `apps/api/src/modules/billing-webhook/CLAUDE.md`
 - [ ] Adding `requireSubscription('<feature>')` to routes that should be gated (inject it alongside `requirePermission` in route options, then add to the `preHandler` array)
-- [ ] Gating the UI the same way: `feature: '<feature>'` in the pages' `PageAccess` (`routes/access.ts` — `guardPage()` redirects to `/upgrade?feature=<feature>` and the sidebar follows), `<RequiresSubscription feature="..." fallback={<UpgradePrompt />}>` around premium sections
+- [ ] Gating the UI the same way: `feature: '<feature>'` in the pages' `PageAccess` (`routes/access.ts` — `guardPage()` redirects to `/upgrade?feature=<feature>` and the sidebar follows), `<RequiresSubscription feature="..." fallback={...}>` around premium sections (the fallback is the product's own upsell — the scaffold ships none)
 - [ ] Replacing the "contact an administrator" hint on `/upgrade` with your checkout call to action
 
 ## Starting a product

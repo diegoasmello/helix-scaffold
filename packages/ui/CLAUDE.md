@@ -21,7 +21,7 @@ The package ships TypeScript sources (`"exports": { ".": "./src/index.ts" }`) �
 ```
 side-effect imports  →  Mantine styles (core, dates, dropzone, tiptap, notifications),
                         mantine-datatable/styles.css, dayjs/locale/pt-br,
-                        fonts (Geist, Plus Jakarta Sans), ./global.css
+                        font (Geist), ./global.css
 re-exports           →  @mantine/core, @mantine/hooks, @mantine/emotion, @mantine/dates,
                         @mantine/dropzone, @mantine/form, @mantine/modals,
                         @mantine/notifications, @tabler/icons-react, clsx
@@ -68,7 +68,7 @@ Name clashes resolved explicitly in `src/index.ts`:
 
 `createTheme(overrides)` builds the base Mantine theme the app extends (`apps/web/src/config/theme.ts` adds the `main` palette and sets it as `primaryColor`):
 
-- Fonts: **Geist Variable** for body and headings (headings weight 600; `h1` 30px with -0.025em tracking — the page title). Plus Jakarta Sans is still imported but no longer used.
+- Fonts: **Geist Variable** for body and headings (headings weight 600; `h1` 30px with -0.025em tracking — the page title).
 - **Neutral palettes are zinc**: `gray` and `dark` replace Mantine's. Mantine reads them by index (`gray[6]` = light `dimmed`, 4.8:1 on white; `gray[4]` = input border; `dark[7]` = dark body; `dark[4]` = dark borders). The app's `colors` (e.g. `main`) are **merged** with these, not swapped in.
 - **No shadows** — `shadows.*` are all `none`; surfaces are separated by 1px borders (`gray[3]` / `dark[5]`). `Paper` defaults to `withBorder` + `radius="lg"`. Never reintroduce a shadow for separation.
 - Radius scale: `xs` 4, `sm` 6, `md` 8 (default), `lg` 12, `xl` 16.

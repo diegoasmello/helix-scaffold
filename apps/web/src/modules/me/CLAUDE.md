@@ -28,7 +28,7 @@ src/modules/me/
     └── me-subscription.test.tsx
 ```
 
-No `hooks.ts`. The two components live in `components/` because they are sections of one page (`MeSecurity`), not reusable fields.
+No `hooks.ts`. The three components live in `components/` because they are sections of a page (`MeAccount`, `MeSecurity`), not reusable fields.
 
 ## Routes (`routes/index.ts`)
 
@@ -108,7 +108,7 @@ Two independent forms:
 
 ## `MeSecurity` (`routes/me-security.tsx`)
 
-Renders `<PasswordSection />`, a divider, then `<SignInMethods />`. No logic of its own.
+Renders `<PasswordSection />` then `<SignInMethods />` (two `FormSection`s, no line between them). No logic of its own.
 
 ### Shared accounts query
 

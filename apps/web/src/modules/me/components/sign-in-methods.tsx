@@ -22,6 +22,8 @@ import { useQuery } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
+import { formatDate } from '@/utils/date'
+
 import { authClient } from '../../../lib/authentication'
 import { linkedAccountsQuery } from '../linked-accounts'
 
@@ -30,14 +32,6 @@ const PROVIDER_ICONS: Record<string, React.ElementType> = {
   facebook: IconBrandFacebook,
   apple: IconBrandApple,
   credential: IconLock,
-}
-
-function formatDate(date: Date) {
-  return date.toLocaleDateString(undefined, {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-  })
 }
 
 const useStyles = createStyles(() => ({
@@ -124,7 +118,7 @@ export function SignInMethods() {
                     </Text>
                     <Text size="xs" c="dimmed">
                       {t('signIn.connectedLabel')}{' '}
-                      {formatDate(account.createdAt)}
+                      {formatDate(account.createdAt, 'long')}
                     </Text>
                   </Stack>
                   <StatusBadge tone="success">

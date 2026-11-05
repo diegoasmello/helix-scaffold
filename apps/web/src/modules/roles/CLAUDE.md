@@ -23,6 +23,7 @@ src/modules/roles/
 │   └── permissions-editor.tsx       ← loads + saves a role's grants (PUT /roles/:id/permissions)
 └── routes/
     ├── index.ts
+    ├── access.ts                    ← ROLES_ACCESS (PageAccess of each page)
     ├── roles-pending.tsx
     ├── roles-list.tsx
     ├── roles-list.test.tsx
@@ -83,7 +84,7 @@ The fields sit in one `FormColumn` (no sections), so the same `RolesForm` serves
 
 ## `RoleSelectField` (`components/role-select-field.tsx`)
 
-Cross-module component exported for use by other modules. Wraps a `<Select>` backed by `useGetRolesAllSuspense()` (consumes `GET /roles/all`). Props are `Omit<SelectProps, 'data'> & { allowCreate?: boolean }`.
+Cross-module component exported for use by other modules. Wraps a `<Select>` backed by `useGetRolesAllSuspense()` (consumes `GET /roles/all`). Props (`RoleSelectFieldProps`) extend `Omit<SelectProps, 'data'>` with `allowCreate?: boolean`.
 
 Always `searchable` and `clearable`. Selecting nothing returns `null`. **Never offers the admin role** (`role.isAdmin` — the API refuses it with `admin_role_not_assignable`). Callers must ensure `getRolesAllSuspenseQueryOptions()` is prefetched in the route loader or the component will suspend on its own.
 

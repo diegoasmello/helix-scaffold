@@ -22,7 +22,7 @@ The scaffold does **not** provide:
 
 All admin routes, `GET /me/subscription` and `GET /me/entitlements` are **only registered when `subscriptions.enabled` is `true`** in `src/app.config.ts`. When `false` (the default), the module has zero overhead — no routes, no DB queries. The `requireSubscription()` hook is always created but returns a no-op preHandler when subscriptions are disabled, so apps can freely decorate routes without worrying about mode. The `subscriptions` permissions disappear from the role editor too: `GET /permissions/resources` leaves the resource out and `PUT /roles/:id/permissions` refuses it, while the grants roles already hold are kept (`src/modules/permissions/CLAUDE.md` → _Resources turned off_).
 
-`GET /subscription/status` is always registered at root scope (unauthenticated), like `GET /registration/status`. It returns `{ enabled, plans }` and is the single source of truth the frontend reads to decide whether to show subscription UI.
+`GET /subscription/status` is always registered, in the `/api` scope outside `authenticated` (no session), like `GET /registration/status`. It returns `{ enabled, plans }` and is the single source of truth the frontend reads to decide whether to show subscription UI.
 
 ---
 
@@ -46,7 +46,7 @@ All admin routes, `GET /me/subscription` and `GET /me/entitlements` are **only r
 | `createdAt` | `timestamptz NOT NULL` | `defaultNow()` |
 | `updatedAt` | `timestamptz NOT NULL` | `$onUpdateFn(() => new Date())` |
 
-**One live subscription per user:** the partial unique index `subscriptions_one_live_per_user` (`user_id WHERE status IN ('active', 'trialing')`) allows at most one active/trialing row per user. Any number of `canceled`/`expired`/`past_due` rows can coexist as history. To change plans, update the live subscription's `planId` (or cancel it first) — do not insert a second live row. Migration `0005` cancels pre-existing duplicates (keeping the most recent) before creating the index.
+**One live subscription per user:** the partial unique index `subscriptions_one_live_per_user` (`user_id WHERE status IN ('active', 'trialing')`) allows at most one active/trialing row per user. Any number of `canceled`/`expired`/`past_due` rows can coexist as history. To change plans, update the live subscription's `planId` (or cancel it first) — do not insert a second live row.
 
 **`externalId` decides who owns the row:** with an `externalId`, the payment processor is the source of truth and its webhooks update the row. Without one (trial auto-start, admin-created), the scaffold owns it and the expiration job (below) ends it.
 
@@ -139,7 +139,7 @@ Factory `createSubscriptionsService(database)` returns:
   getById(id: string): Promise<Subscription | null>
   create(data: CreateSubscriptionInput): Promise<Subscription>
   update(id: string, data: UpdateSubscriptionInput): Promise<Subscription | null>
-  remove(id: string): Promise<void>
+  remove(id: string): Promise<boolean>                       // false for an unknown id (no audit entry)
   expireLapsed(now?: Date): Promise<{ expired: string[] }>   // ids
   getByExternalId(externalId: string): Promise<Subscription | null>
   syncFromBilling(state: BillingSubscriptionState): Promise<{ subscription, created } | null>
@@ -150,7 +150,7 @@ Factory `createSubscriptionsService(database)` returns:
 
 ### Past-due grace period
 
-When a payment fails the processor moves the subscription to `past_due` and usually retries the charge for a while before canceling. `subscriptions.pastDueGraceDays` (`src/app.config.ts`, default `0`) decides whether the user keeps access meanwhile: a `past_due` subscription counts as active for that many days after `pastDueSince`. No job is involved — access simply stops qualifying once the window passes. Set it to roughly your processor's retry window. `GET /me/subscription` returns the past_due row while it is in the window, `GET /me/entitlements` returns `graceEndsAt` (when access ends), and the frontend shows a "payment failed" warning with that date. Migration `0007` backfills `pastDueSince = updatedAt` for rows already past_due.
+When a payment fails the processor moves the subscription to `past_due` and usually retries the charge for a while before canceling. `subscriptions.pastDueGraceDays` (`src/app.config.ts`, default `0`) decides whether the user keeps access meanwhile: a `past_due` subscription counts as active for that many days after `pastDueSince`. No job is involved — access simply stops qualifying once the window passes. Set it to roughly your processor's retry window. `GET /me/subscription` returns the past_due row while it is in the window, `GET /me/entitlements` returns `graceEndsAt` (when access ends), and the frontend shows a "payment failed" warning with that date.
 
 **`update`** — applies the `canceledAt` auto-set logic before writing to the DB.
 

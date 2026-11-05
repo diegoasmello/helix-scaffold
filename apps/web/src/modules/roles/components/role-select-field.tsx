@@ -13,7 +13,7 @@ import { useTranslation } from 'react-i18next'
 
 import { RoleCreateDrawer } from './role-create-drawer'
 
-export type RoleSelectFieldProps = Omit<SelectProps, 'data'> & {
+export interface RoleSelectFieldProps extends Omit<SelectProps, 'data'> {
   allowCreate?: boolean
 }
 

@@ -80,7 +80,7 @@ The file a developer edits to shape the app. Written with `defineConfig()` (Vite
 | `e2e-overrides.ts` | Applied on top of the test overrides by `src/scripts/e2e-server.ts` (`enableE2E()`, before `@/config` is imported): only what lets the E2E API run beside `pnpm dev` and the API suite — port, uploads dir, log level. E2E runs in the API suite's mode. Tested in `src/config/index.test.ts` |
 | `spec-overrides.ts` | Profile for `pnpm spec:export` (`src/scripts/export-spec.ts`): every optional route registered, placeholder plan, social providers off. Only settings that decide which routes exist belong here — see _OpenAPI spec export_ |
 | `billing-webhook.ts` | Registry, not config: the payment processor adapter (`null` = webhook off). See `src/modules/billing-webhook/CLAUDE.md` |
-| `permissions.ts` | Registry: `RESOURCE_DEFINITIONS` (RBAC resources and actions, `as const`), the types derived from it (`PermissionResource`, `ResourceAction<R>`, `Permission`), `ALL_PERMISSIONS`, `isDeclaredPermission()`, `findUnknownGrants()`; `PERMISSION_REQUIREMENTS` (which permissions each one needs), `directRequirementsOf()`, `findMissingRequirements()` — see _Creating a new module_ → _Step 0_ |
+| `permissions.ts` | Registry: `RESOURCE_DEFINITIONS` (RBAC resources and actions, `as const`), the types derived from it (`PermissionResource`, `ResourceAction<R>`, `Permission`), `ALL_PERMISSIONS`, `isDeclaredPermission()`, `findUnknownGrants()`; `PERMISSION_REQUIREMENTS` (which permissions each one needs), `directRequirementsOf()`, `findMissingRequirements()`; `RESOURCE_TOGGLES` (resources that exist only while a setting is on) and its helpers (`enabledResourceDefinitions()`, `findDisabledGrants()`…) — see _Creating a new module_ → _Step 0_ |
 | `upload-references.ts` | Registry: every column that references `uploads.id`, so orphan cleanup keeps those uploads and `GET /files/*` serves their files to the records' readers — see `src/modules/uploads/CLAUDE.md`. Imported for its side effects by `app.ts` and `server.ts` |
 
 **Modules receive the config, they never import it.** `buildApp(database, { config })` (default: `config` from `@/config`) hands it to every route plugin through its options (`{ database, config, … }`) and to the factories that need it (`createAuth(database, emailProvider, config, logger)`, `createRequireSubscription(database, config)`, `createEntitlementsService(database, config.subscriptions)`). Pure helpers take the slice they read (`getUsableSocialProviders(config)`, `isKnownPlan(config.subscriptions.plans, id)`). Only the entry points import `config`: `server.ts`, `src/db/seed.ts`, `src/scripts/export-spec.ts` (through `buildApp`'s default) and the test helpers. That is what lets one test file run the app in several modes.
@@ -754,7 +754,7 @@ app.get(
 )
 ```
 
-> **Note**: `'export'` must be present in the `action` union in `src/modules/audit/audit-service.ts` and `src/types.ts`. It is already registered — no change needed for new modules.
+> **Note**: `'export'` is one of the `AuditAction`s (`src/modules/audit/audit-recorder.ts`), the type `request.audit()` takes — no change needed for new modules.
 
 > **Note**: Binary responses cannot carry a Zod `response` schema with `fastify-type-provider-zod`. Omitting `response` from the schema is intentional and correct for this endpoint type.
 
@@ -788,6 +788,7 @@ response: { 201: roleSchema, 409: errorSchema('name_taken') },
 | todos | 400 | `invalid_upload`, `invalid_upload_type` (`assertUsableUploads()`, `src/lib/upload-ownership.ts`) |
 | me | 400, 429 | `current_password_required`, `invalid_password`, `email_change_rejected`, `password_change_rejected`, `too_many_attempts` (`me-service` — re-authentication and `createAttemptLimiter()`, `src/lib/attempt-limiter.ts`) |
 | requireSubscription / requirePermission | 403 | `subscription_required`, `feature_not_in_plan`, `permission_denied` (sent by the hooks) |
+| public API / `GET /files/*` | 429 | `rate_limited` (`registerRateLimit()`, `src/hooks/rate-limit.ts`) |
 
 Plain "not found" 404s of `GET /xxx/:id` stay `reply.status(404).send({ message })` — nothing for the client to do but show "not found". Tested in `src/lib/domain-errors.test.ts` (status + body, inside plugins; validation 400 and 500 untouched).
 ---
@@ -798,7 +799,7 @@ Use the `todos` module as the reference implementation. Follow this order exactl
 
 ### 0. Register the resource (`src/config/permissions.ts`)
 
-Every module that exposes user-facing data must declare its resource and actions here. This is the single source of truth for what permissions exist — bootstrap, test helpers, and the `GET /permissions/resources` endpoint all read from it.
+Every module that exposes user-facing data must declare its resource and actions here. This is the single source of truth for what permissions exist — the admin role (`isAdmin`), test helpers, the seed and the `GET /permissions/resources` endpoint all read from it.
 
 ```ts
 // src/config/permissions.ts
@@ -809,7 +810,7 @@ Every module that exposes user-facing data must declare its resource and actions
 },
 ```
 
-Declaring the resource is enough for the rest of the system: bootstrap grants it to the Admin role, the frontend permission editor lists it, and `PUT /roles/:id/permissions` accepts it (anything undeclared is rejected with 400).
+Declaring the resource is enough for the rest of the system: the admin role holds it at once (through `isAdmin` — no grant, no re-bootstrap; `src/modules/permissions/CLAUDE.md` → _Admin role_), the frontend permission editor lists it, and `PUT /roles/:id/permissions` accepts it (anything undeclared is rejected with 400). A resource that exists only while a setting is on (as `subscriptions` with `subscriptions.enabled`) also goes in `RESOURCE_TOGGLES` (same file) — see `src/modules/permissions/CLAUDE.md` → _Resources turned off_.
 
 `PermissionAction = "view" | "create" | "edit" | "delete"` is the full set of supported actions. TypeScript enforces this via `satisfies` — adding an unsupported action is a compile error. If the module genuinely needs a new action type, extend `PermissionAction` first.
 
@@ -1035,7 +1036,7 @@ The method signature is:
 request.audit(action, resource, resourceId?, metadata?)
 ```
 
-- `action` — `"create"`, `"edit"`, or `"delete"`
+- `action` — `"create"`, `"edit"`, `"delete"` (or `"export"`, for a PDF export — _PDF export_)
 - `resource` — a resource of `src/config/permissions.ts` (`PermissionResource`), or `me`
 - `resourceId` — the id of the affected record (omit or pass `undefined` if not applicable)
 - `metadata` — pass `request.body` for create/edit; omit for delete (no body)

@@ -1,6 +1,8 @@
 # 𖣘 helix-scaffold
 
-A full-stack TypeScript monorepo scaffold. Clone it, configure your env, and start building features. Authentication, RBAC, subscriptions, file uploads, email, PDF export, audit logging, and i18n are all wired in.
+A full-stack TypeScript monorepo scaffold. Clone it, configure your env, and start building features. Authentication, RBAC, subscriptions, file uploads, email, PDF export, audit logging, a public read API for sites, and i18n are all wired in.
+
+With Claude Code, a fresh copy becomes a product with `/start-project <description>` (rename, configuration, removal of the `todos` reference module), and each feature is added with `/new-module <description>` — both in `.agents/skills/`.
 
 ## What's included
 
@@ -16,6 +18,7 @@ A full-stack TypeScript monorepo scaffold. Clone it, configure your env, and sta
 | **Audit log**           | Every mutation is logged; browsable admin panel                                                                 |
 | **i18n**                | English and pt-BR, fully typed key safety via `i18next` + TypeScript                                            |
 | **API docs**            | Scalar UI at `/api/docs`, OpenAPI spec auto-exported for client generation                                      |
+| **Public API**          | Optional read-only routes under `/api/public/*` for a site using the API as a CMS: published records only, slugs, rate limit per IP, public cache |
 
 ## Architecture
 
@@ -56,9 +59,9 @@ pnpm monorepo with four workspaces:
 
 ## Prerequisites
 
-- Node.js 20+
+- Node.js 22+ (the API build targets `node22`)
 - pnpm 10+
-- Docker (for the bundled PostgreSQL databases) — or your own PostgreSQL 15+ with two databases: main + test
+- Docker (for the bundled PostgreSQL databases) — or your own PostgreSQL 15+ with three databases: main, test and E2E
 
 ## Getting started
 
@@ -189,7 +192,8 @@ export default defineConfig(({ mode }) => ({
 | `subscriptions.pastDueGraceDays` | `0`         | Days a past_due subscription keeps access after a failed payment  |
 | `subscriptions.trial`            | `false`     | `{ days, planId }` auto-creates a trial on self-registration      |
 | `email.from`                     | `noreply@…` | Sender address for outgoing email                                 |
-| `uploads.*`                      | —           | Storage backend, directory, max size, orphan cleanup schedule     |
+| `publicApi.*`                    | disabled    | The public API (`/api/public/*`): `enabled`, CORS `origins`, `cacheSeconds`, `rateLimit` |
+| `uploads.*`                      | —           | Storage backend, directory, max size, anonymous rate limit, orphan cleanup schedule |
 | `server.port` / `logger.*`       | `3333`      | HTTP port, log level, pretty logs                                 |
 | `server.trustProxy`              | `false`     | Proxies trusted for the client IP — set it behind a reverse proxy |
 
@@ -202,7 +206,7 @@ export default defineConfig(({ mode }) => ({
 
 RBAC resources are declared in `apps/api/src/config/permissions.ts`.
 
-Every API route is served under `/api` (endpoints, `/api/auth/*`, `/api/docs`, `/api/files/*`), so the web and the API can share one domain: point the reverse proxy's `/api/*` at the API and everything else at the web's `index.html`. `BASE_URL`, `CLIENT_URL` and `VITE_API_URL` are origins, without the prefix.
+Every API route is served under `/api` (endpoints, `/api/public/*`, `/api/auth/*`, `/api/docs`, `/api/files/*`), so the web and the API can share one domain: point the reverse proxy's `/api/*` at the API and everything else at the web's `index.html`. `BASE_URL`, `CLIENT_URL` and `VITE_API_URL` are origins, without the prefix.
 
 The frontend's only env var is `VITE_API_URL` (in `apps/web/.env`). Everything else, including registration mode, enabled social providers and subscription mode, is read from the API at runtime, so there is no `VITE_*` duplication of backend settings.
 
@@ -211,6 +215,8 @@ The frontend's only env var is `VITE_API_URL` (in `apps/web/.env`). Everything e
 Every workspace and sub-module has its own `CLAUDE.md` with patterns, conventions, and step-by-step guides. Start with the repository root:
 
 - `CLAUDE.md` — monorepo overview, registration and subscription modes, and the checklists for creating a new module (RBAC, audit logging, i18n, pagination)
+- `DESIGN.md` — the UI rules (who the screens are for, actions, surfaces, responsiveness) and what to do on a screen no recipe covers
+- `GLOSSARY.md` — the domain terms (plan, feature, entitlements, admin role, published…)
 
 Then the workspace you are working in:
 

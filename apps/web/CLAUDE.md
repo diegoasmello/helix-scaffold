@@ -50,13 +50,13 @@ rootRoute (Outlet; notFoundComponent: NotFound, errorComponent: ErrorBoundary)
         └── users, roles, audit, me, todos, subscriptions routes
 ```
 
-`authenticatedRoute.beforeLoad` redirects to `/login` without a session, then puts two functions in the **router context** for every child route's `beforeLoad`:
+`authenticatedRoute.beforeLoad` redirects to `/login` without a session, then puts three values in the **router context** for every child route's `beforeLoad`:
 
 - `context.hasPermission(resource, action)` — from `GET /me/permissions`, via `createPermissionChecker()` (the same function `useAuth()` uses)
 - `context.hasSubscriptionAccess(feature?)` — from `GET /subscription/status` (+ `GET /me/entitlements` when enabled); see `src/modules/subscriptions/CLAUDE.md` → _Route guards_
+- `context.subscriptionEnabled` — `subscriptions.enabled` from the same status
 
 Together they are the `AccessCheckers` that `guardPage()` reads — see _Route-level guards_.
-- `context.subscriptionEnabled` — `subscriptions.enabled` from the same status
 
 **The `/` redirect** uses them through `findHomeSidebarItem()` (`src/config/sidebar.ts`): the first item, in sidebar order, that `canSeeSidebarItem()` allows — the same function `app.tsx` filters the sidebar with, so `/` never lands on a page the sidebar hides (or on `/403`). With no visible item it goes to `/me`, which every signed-in user may open. Reordering `sidebarGroups` changes the landing page.
 
@@ -334,7 +334,7 @@ When a `Select` field for a related entity needs to allow creating that entity i
 **Select field (`xxx-select-field.tsx`):**
 
 ```tsx
-export type XxxSelectFieldProps = Omit<SelectProps, 'data'> & {
+export interface XxxSelectFieldProps extends Omit<SelectProps, 'data'> {
   allowCreate?: boolean
 }
 
@@ -491,7 +491,7 @@ export function XxxCreateDrawer(props: Readonly<XxxCreateDrawerProps>) {
 Two-level theming:
 
 - `src/config/theme.ts` — app-level Mantine theme: defines the `main` palette and sets it as `primaryColor`, via `createTheme()` from `@helix/ui`
-- `packages/ui/src/theme/index.ts` — base theme: fonts (Geist + Plus Jakarta Sans), radius, component styles and a **custom spacing scale** (`xs` 8px, `sm` 12px, `md` 16px, `lg` 24px, `xl` 32px — not Mantine's defaults). See `packages/ui/CLAUDE.md` → _Theme_.
+- `packages/ui/src/theme/index.ts` — base theme: font (Geist), radius, component styles and a **custom spacing scale** (`xs` 8px, `sm` 12px, `md` 16px, `lg` 24px, `xl` 32px — not Mantine's defaults). See `packages/ui/CLAUDE.md` → _Theme_.
 
 ### Styling conventions
 
@@ -507,8 +507,8 @@ File upload fields are provided by `@helix/ui` as pure UI components. The actual
 
 | Component | Use case |
 |-----------|----------|
-| `FilesInput` | Multiple files — dropzone + `SimpleGrid` of `FileCard`s |
-| `FileInput` | Single file — compact dropzone that collapses into a `FileCard` |
+| `FilesInput` | Multiple files — a dashed drop area above one bordered list of `FileCard`s |
+| `FileInput` | Single file — a drop area that becomes a `FileCard` (Replace / Remove) once it holds a file |
 | `FilePreview` | Read-only — download link wrapping a `FileCard`-style card; used in detail screens |
 
 All three accept `label`, `description`, and `error` props and use `Input.Wrapper` internally, so their spacing matches native Mantine inputs exactly.
@@ -651,7 +651,7 @@ const { isExporting, handleExport } = useExportPdf(
 )
 ```
 
-Place the button in `PageList`'s `actions` prop, between the Filters button and the Create button:
+Place the button in `PageList`'s `actions` prop, before the Create button (the filters live in the `FilterBar`, not in `actions`):
 
 ```tsx
 <Button
@@ -1134,7 +1134,7 @@ export const xxxListRoute = createRoute({
   path: '/xxx',
   component: XxxList,
   pendingComponent: XxxPending,
-  staticData: { breadcrumbs: [{ label: 'Xxx' }] },
+  staticData: { breadcrumbs: [{ label: 'nav.xxx' }] }, // i18n keys — see _Breadcrumb convention_
   beforeLoad: guardPage(XXX_ACCESS.view),
   // Pagination + sorting stored in URL params — provides defaults so /xxx works without query string
   validateSearch: z.object({
@@ -1326,7 +1326,7 @@ return (
 )
 ```
 
-When active filters are present and the result is empty, skip the `EmptyState` — the `DataTable` handles that case with its own built-in empty message, which correctly signals "no results for these filters" rather than "nothing exists yet".
+When a search or filters left the list empty, skip the `EmptyState` — the `DataTable` shows its `emptyState`, the `FilteredEmptyState` of _Search box and "no results"_ ("no results for these filters", not "nothing exists yet").
 
 Form screens use the `<Form>` component from `@helix/ui` wrapping `PageCreate`/`PageEdit`. `Form` receives `form` (the `useForm` instance) and `onSubmit` (a plain function that receives the validated values — not `form.onSubmit(...)`). It handles validation and submission internally.
 
@@ -2156,7 +2156,7 @@ The texts are English (`locale: 'en-US'`). Query by role and accessible name —
 - Assert something that exists, not only something absent: after a delete, the API's 404 (`page.request.get(...)`, which carries the page's session) says more than a heading gone from a page that may have failed.
 - On a failure, the report's page snapshot is the `page` fixture's (the admin's), not a page opened with `signInAs`.
 
-**Unauthenticated specs** (e.g. a future `e2e/auth.spec.ts`) override the storageState:
+**Unauthenticated specs** (`e2e/auth.spec.ts`) override the storageState:
 
 ```ts
 test.use({ storageState: { cookies: [], origins: [] } })

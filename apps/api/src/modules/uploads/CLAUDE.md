@@ -98,7 +98,7 @@ Always call `service.remove()` instead of a raw DB delete when storage cleanup i
 
 ## Image variants
 
-`processImage(buffer, mimeType)` from `src/lib/image-processor.ts`:
+`processImage(buffer)` from `src/lib/image-processor.ts`:
 
 | Variant | Dimensions | Format |
 |---------|-----------|--------|

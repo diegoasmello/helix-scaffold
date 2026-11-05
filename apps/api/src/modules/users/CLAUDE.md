@@ -63,7 +63,7 @@ Factory signature: `createUsersService(database: Database, auth: Auth, config)` 
 
 ## Routes (`users-routes.ts`)
 
-Receives `{ database, auth, requirePermission }` — `auth` is an extra parameter not present in other modules.
+Receives `{ database, auth, config, requirePermission }` — `auth` and `config` (for account provisioning) are extra parameters not present in other modules.
 
 | Method   | Path         | Permission     | Audit call                                                                               |
 | -------- | ------------ | -------------- | ---------------------------------------------------------------------------------------- |

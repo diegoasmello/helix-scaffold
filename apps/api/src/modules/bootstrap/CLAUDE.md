@@ -8,10 +8,10 @@ On a fresh deployment the `user` table is empty. `POST /bootstrap` must be calle
 
 ## Registration
 
-Registered at the **root scope** in `app.ts` — outside the `authenticated` scope:
+Registered in the `/api` scope of `app.ts` — outside the `authenticated` scope:
 
 ```ts
-app.register(bootstrapRoutes, { database, auth })
+api.register(bootstrapRoutes, { database, auth, config, audit })
 ```
 
 This makes both endpoints **publicly accessible** (no session required). That is intentional: before bootstrap, no session can exist.

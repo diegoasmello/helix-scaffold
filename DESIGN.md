@@ -116,7 +116,7 @@ The CRUD recipes cover lists, forms and details. For anything else:
 
 - **Loading**: the route's `pendingComponent` — `<Center h={200}><Loader /></Center>` in the module's `routes/<module>-pending.tsx`. Inside a page, a `Loader` in place of the section that is loading, not a blank area.
 - **Empty**: `EmptyState` (nothing created yet, with a CTA to create the first) or `FilteredEmptyState` (search or filters left nothing).
-- **Error**: the route tree's `ErrorBoundary` (`apps/web/src/routes.ts`) for a page that failed to load; `notify({ status: 'error' })` for an action that failed; the field's own message for invalid input.
+- **Error**: the route tree's `ErrorBoundary` (`apps/web/src/routes.ts`) for a page that failed to load; `notify({ status: 'danger' })` for an action that failed; the field's own message for invalid input.
 
 ## What a product changes, and what stays
 

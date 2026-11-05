@@ -10,6 +10,7 @@ src/modules/audit/
 │   └── audit-action-badge.tsx
 └── routes/
     ├── index.ts
+    ├── access.ts
     ├── audit-pending.tsx
     ├── audit-list.tsx
     ├── audit-list.test.tsx

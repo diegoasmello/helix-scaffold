@@ -16,6 +16,8 @@ src/modules/todos/
 │   └── todos-form.test.tsx  ← labels + required markers (route tests mock the form)
 └── routes/
     ├── index.ts             ← route constants + todosRoutes array
+    ├── access.ts            ← TODOS_ACCESS (feature + permission of each page)
+    ├── filters.ts           ← TODO_INSTANT_FILTERS (see _Filtering_)
     ├── todos-pending.tsx
     ├── todos-list.tsx
     ├── todos-create.tsx
@@ -128,7 +130,7 @@ Every route's `beforeLoad` is `guardPage(TODOS_ACCESS.<page>)` (`routes/access.t
 
 ## Mutations
 
-Inline in each component — no `hooks.ts`. Cache operations in `useMutation.onSuccess`; notifications and navigation in `mutate(data, { onSuccess, onError })`. `TodoCreate` / `TodoEdit` notify `apiErrorMessage(error, 'todos', 'notifications.createFailed' | 'notifications.updateFailed')`: `errors.invalid_upload` explains a file the API refused (one the user did not upload — API `assertUsableUploads()`).
+Inline in each component — no `hooks.ts`. Cache operations in `useMutation.onSuccess`; notifications and navigation in `mutate(data, { onSuccess, onError })`. `TodoCreate` / `TodoEdit` notify `apiErrorMessage(error, 'todos', 'notifications.createFailed' | 'notifications.updateFailed')`: `errors.invalid_upload` explains a file the API refused (one the user did not upload — API `assertUsableUploads()`), `errors.invalid_upload_type` one of the wrong type (a PDF as the image).
 
 **Create**: `resourceCache.changed('todos')`. Does NOT send `status`; sends `published`.  
 **Update**: `resourceCache.saved('todos', updated)` — seeds the item cache, refetches the lists.  

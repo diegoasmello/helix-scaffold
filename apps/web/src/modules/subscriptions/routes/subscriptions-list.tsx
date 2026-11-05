@@ -17,9 +17,11 @@ import {
   StatusBadge,
 } from '@helix/ui'
 import { useMutation } from '@tanstack/react-query'
+import { parseISO } from 'date-fns'
 import { useTranslation } from 'react-i18next'
 
 import { useResourceCache } from '@/lib/resource-cache'
+import { formatDate } from '@/utils/date'
 
 import { HasPermission } from '../../auth/components/has-permission'
 import { useAuth } from '../../auth/use-auth'
@@ -98,7 +100,7 @@ export function SubscriptionsList() {
       accessor: 'currentPeriodEnd',
       title: t('columns.currentPeriodEnd'),
       sortable: true,
-      render: (item) => new Date(item.currentPeriodEnd).toLocaleDateString(),
+      render: (item) => formatDate(parseISO(item.currentPeriodEnd), 'short'),
     },
     {
       accessor: 'actions',

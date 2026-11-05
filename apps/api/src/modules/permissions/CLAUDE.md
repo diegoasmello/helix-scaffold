@@ -29,7 +29,7 @@ No entity schema for a "permission" object. The schemas are:
 
 ## Service (`permissions-service.ts`)
 
-`createPermissionsService(database)` returns `{ isAdminRole, getByRoleId, replaceForRole, hasPermission, grantsOf, exceeds, assertRoleManageable }`.
+`createPermissionsService(database)` returns `{ isAdminRole, getByRoleId, replaceForRole, hasPermission, grantsOf, exceeds, assertRoleManageable, isRoleManageable }`.
 
 **`isAdminRole(roleId)`** — whether the role is the admin role (`roles.isAdmin`); `null` or an unknown id → `false`. See _Admin role_.
 
@@ -68,7 +68,7 @@ Four endpoints across two URL namespaces:
 
 | Method | Path                     | Permission                | Notes                                                                                                                |
 | ------ | ------------------------ | ------------------------- | -------------------------------------------------------------------------------------------------------------------- |
-| `GET`  | `/permissions/resources` | none (authenticated only) | Returns the static `RESOURCE_DEFINITIONS` catalog                                                                    |
+| `GET`  | `/permissions/resources` | none (authenticated only) | Returns the `RESOURCE_DEFINITIONS` catalog, minus the resources turned off (see _Resources turned off_)              |
 | `GET`  | `/me/permissions`        | none (authenticated only) | Returns the current user's own grants                                                                                |
 | `GET`  | `/roles/:id/permissions` | `permissions:view`        | Returns grants for any role. `permissions:edit` alone does not open it — the requirement makes the editor grant both |
 | `PUT`  | `/roles/:id/permissions` | `permissions:edit`        | Replaces all grants for a role                                                                                       |
@@ -94,7 +94,7 @@ To make another module's resource conditional, add `<resource>: (config) => …`
 
 **`PUT /roles/:id/permissions`** — uses `PUT` (full replacement), not `PATCH`. The body is `{ grants: Grants }`, identical in shape to the response.
 
-- **400** `{ message: 'Unknown permissions: <resource:action>, …' }` when any grant is not declared in `RESOURCE_DEFINITIONS` — checked by `findUnknownGrants()` (`src/config/permissions.ts`) before anything is written, so the request is all-or-nothing.
+- **400** `unknown_permissions` (`message`: `Unknown permissions: <resource:action>, …`) when any grant is not declared in `RESOURCE_DEFINITIONS` — checked by `findUnknownGrants()` (`src/config/permissions.ts`) before anything is written, so the request is all-or-nothing.
 - **400** `missing_required_permissions` when a grant comes without what it requires (`PERMISSION_REQUIREMENTS`, checked by `findMissingRequirements()`; `message` lists the missing pairs) — `permissions:edit` without `permissions:view`, `users:edit` without `roles:view`. Checked after the privilege ceiling, so a refused grant answers 403 whatever else the body lacks. Grants saved before a requirement existed stay as they are until the role's permissions are saved again.
 - **403** — admin role and privilege ceiling, checked after the `unknown_permissions` 400 and before anything is written: `admin_role_locked` for the admin role (even from the admin), `role_not_editable` when the role grants something the caller's role lacks (even to remove grants from it), `permissions_not_grantable` when the body grants a pair the caller's role lacks (`message` lists them). `permission_denied` is `requirePermission()`'s.
 - **404** `{ message: 'Role not found' }` for an unknown role id (Postgres FK violation, read with `getPgErrorCode`).

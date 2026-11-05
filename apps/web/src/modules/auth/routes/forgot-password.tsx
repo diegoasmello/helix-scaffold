@@ -49,8 +49,8 @@ export function ForgotPassword() {
   }
 
   return (
-    <Center h="100vh">
-      <Paper withBorder shadow="md" p="xl" w={400} radius="md">
+    <Center mih="100vh" px="md">
+      <Paper withBorder p="xl" w="100%" maw={400} radius="md">
         {submitted ? (
           <Stack gap="md">
             <DocumentTitle title={t('forgotPassword.successTitle')} />
