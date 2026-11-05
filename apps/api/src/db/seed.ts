@@ -173,6 +173,10 @@ async function main() {
       .slice(0, 10),
     imageId: imageUploads.imageIds[i],
     fileId: fileUploads.fileIds[i],
+    // About half published, each at its own date: the public API's sample.
+    ...(faker.datatype.boolean()
+      ? { published: true, publishedAt: faker.date.recent({ days: 365 }) }
+      : {}),
   }))
   const slugs = distinctSlugs(
     todoValues.map((values) => values.title),

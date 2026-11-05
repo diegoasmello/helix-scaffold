@@ -24,6 +24,7 @@ const base: TodoFormValues = {
   content: '',
   date: null,
   status: 'pending',
+  published: false,
   attachments: [],
   file: null,
   image: null,
@@ -56,6 +57,14 @@ describe('TodoForm', () => {
     expect(screen.getByText('Completed')).toBeInTheDocument()
     expect(screen.getByText('Attachments')).toBeInTheDocument()
     expect(screen.getByText('File (PDF)')).toBeInTheDocument()
+    expect(screen.getByRole('switch', { name: /^Published/ })).not.toBeChecked()
+  })
+
+  it('turns publication on with its switch', async () => {
+    renderForm()
+    const toggle = screen.getByRole('switch', { name: /^Published/ })
+    await userEvent.click(toggle)
+    expect(toggle).toBeChecked()
   })
 
   it('marks title and description as required', () => {

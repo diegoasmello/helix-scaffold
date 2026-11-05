@@ -32,6 +32,33 @@ export const uploadSchema = z
   })
   .meta({ id: 'Upload', title: 'Upload' })
 
+const publicImageVariantSchema = z.object({ url: z.string() })
+
+/**
+ * An upload as the public API shows it (`/api/public/*`): where to load it
+ * and what it is — no id, storage key, original name or uploader. Its `url`
+ * opens for anyone while the record is published (`isPublic` in
+ * `src/config/upload-references.ts`).
+ */
+export const publicUploadSchema = z
+  .object({
+    url: z.string(),
+    mimeType: z.string(),
+    fileSize: z.number().describe('Bytes'),
+    variants: z
+      .object({
+        thumbnail: publicImageVariantSchema,
+        small: publicImageVariantSchema,
+        medium: publicImageVariantSchema,
+        large: publicImageVariantSchema,
+      })
+      .nullable()
+      .describe(
+        'Resized WebP copies of an image (200 px square, 480, 960, 1920 px wide)'
+      ),
+  })
+  .meta({ id: 'PublicUpload', title: 'PublicUpload' })
+
 const UPLOAD_SORT_COLUMNS = ['originalName', 'createdAt'] as const
 
 const uploadsSortingSchema = sortingQuerySchema([...UPLOAD_SORT_COLUMNS])

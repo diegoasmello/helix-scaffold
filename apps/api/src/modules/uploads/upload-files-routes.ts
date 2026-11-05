@@ -4,8 +4,12 @@ import fastifyStatic from '@fastify/static'
 import type { FastifyRequest } from 'fastify'
 import z from 'zod'
 
+import type { Auth } from '@/auth'
 import type { Config } from '@/config'
 import type { Database } from '@/db'
+import { publicCacheControl } from '@/hooks/public-api'
+import { registerRateLimit } from '@/hooks/rate-limit'
+import { readSessionUser } from '@/hooks/require-auth'
 import type { StorageProvider } from '@/lib/storage'
 import type {
   UploadReaderAccess,
@@ -43,17 +47,23 @@ function opensInline(contentType: string): boolean {
 /**
  * `GET /files/*` — the stored files of uploads, for the users who may see
  * them: the uploader, `uploads:view`, or a reader of a record that references
- * the upload (`src/config/upload-references.ts`).
+ * the upload (`src/config/upload-references.ts`) — and, with
+ * `publicApi.enabled`, anyone when a published record shows it (`isPublic`).
+ *
+ * Registered outside the `authenticated` scope, so it reads the session
+ * itself: an anonymous request for a file that is not public gets 401.
  */
 export async function uploadFilesRoutes(
   app: FastifyTypedInstance,
   {
     database,
+    auth,
     config,
     storage,
     references,
   }: {
     database: Database
+    auth: Auth
     config: Config
     storage: StorageProvider
     references: readonly UploadReference[]
@@ -90,33 +100,71 @@ export async function uploadFilesRoutes(
     return denialFor(await entitlementsService.forUser(user), feature) === null
   }
 
-  async function mayRead(
-    user: SessionUser,
-    upload: { id: string; uploadedBy: string | null }
-  ): Promise<boolean> {
-    if (upload.uploadedBy === user.id) return true
-    if (await hasPermission(user, 'uploads', 'view')) return true
-    for (const reference of references) {
-      if (
-        (await reference.references(database, upload.id)) &&
-        (await grants(user, reference.access))
-      ) {
-        return true
-      }
-    }
-    return false
+  /** Whether any of the checks passes — run together, not one by one. */
+  async function anyOf(checks: Promise<boolean>[]): Promise<boolean> {
+    return (await Promise.all(checks)).some(Boolean)
   }
+
+  /** Whether a published record shows the upload — the same for everyone. */
+  async function isPublic(uploadId: string): Promise<boolean> {
+    if (!config.publicApi.enabled) return false
+    return anyOf(
+      references.flatMap((reference) =>
+        reference.isPublic ? [reference.isPublic(database, uploadId)] : []
+      )
+    )
+  }
+
+  /** Whether `user` may read a record that holds the upload. */
+  async function readsThroughReference(
+    user: SessionUser,
+    uploadId: string
+  ): Promise<boolean> {
+    return anyOf(
+      references.map(
+        async (reference) =>
+          (await reference.references(database, uploadId)) &&
+          (await grants(user, reference.access))
+      )
+    )
+  }
+
+  // The request's session, read once (the rate limit and the handler both
+  // need it). A forged or expired cookie reads as no session.
+  const sessions = new WeakMap<FastifyRequest, Promise<SessionUser | null>>()
+  function sessionOf(request: FastifyRequest) {
+    let session = sessions.get(request)
+    if (!session) {
+      session = readSessionUser(auth, request)
+      sessions.set(request, session)
+    }
+    return session
+  }
+
+  // Anyone may call it: an anonymous request is counted per IP before the
+  // upload is looked up. A signed-in user is not — the admin's thumbnails
+  // must never get a 429, even when many users share one IP (an office, or a
+  // proxy `server.trustProxy` does not know).
+  await registerRateLimit(app, {
+    ...config.uploads.rateLimit,
+    allowList: async (request) => (await sessionOf(request)) !== null,
+  })
 
   // Only for `reply.sendFile()`: the route below decides who gets a file.
   app.register(fastifyStatic, {
     root: path.resolve(config.uploads.dir),
     serve: false,
+    // The route sets it: public for a published file, private otherwise.
+    cacheControl: false,
   })
 
   app.addHook('onSend', async (_request, reply, payload) => {
     reply.header('x-content-type-options', 'nosniff')
-    // Each answer depends on who asks: never kept by a shared cache.
-    reply.header('cache-control', 'private, max-age=0')
+    // Only a public file (the handler says so) is the same for everyone; any
+    // other answer depends on who asks, so a shared cache never keeps it.
+    if (!reply.hasHeader('cache-control')) {
+      reply.header('cache-control', 'private, max-age=0')
+    }
     const contentType = String(reply.getHeader('content-type') ?? '')
     if (reply.statusCode < 300 && !opensInline(contentType)) {
       reply.header('content-disposition', 'attachment')
@@ -136,8 +184,27 @@ export async function uploadFilesRoutes(
     async (request, reply) => {
       const key = request.params['*']
       const upload = await uploadsService.getByFileKey(key)
+      // Already read by the rate limit.
+      const user = await sessionOf(request)
+      // The cheap checks first — the admin's thumbnails stop here: the
+      // uploader (no query) and `uploads:view` (one).
+      if (
+        upload &&
+        user &&
+        (upload.uploadedBy === user.id ||
+          (await hasPermission(user, 'uploads', 'view')))
+      ) {
+        return reply.sendFile(key)
+      }
+      if (upload && (await isPublic(upload.id))) {
+        reply.header('cache-control', publicCacheControl(config.publicApi))
+        return reply.sendFile(key)
+      }
+      if (!user) {
+        return reply.status(401).send({ message: 'Unauthorized' })
+      }
       // A file the user may not read answers as if it did not exist.
-      if (!upload || !(await mayRead(request.sessionUser, upload))) {
+      if (!upload || !(await readsThroughReference(user, upload.id))) {
         reply.callNotFound()
         return reply
       }

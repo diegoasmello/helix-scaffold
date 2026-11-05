@@ -32,6 +32,7 @@ Subscriptions:  <off | on>
   Plans:        <id — name>…
   Trial:        <none | <days> days on <plan id>>
   Grace:        <days a past_due subscription keeps access>
+Public site:    <none | yes — origins: <the site's browser origins | none: it fetches on its server>>
 Email sender:   <address>
 ```
 
@@ -42,6 +43,7 @@ What each setting does: the root `CLAUDE.md` → _Registration mode_, _Subscript
 - **An enabled provider stops `pnpm dev`** until its credentials are in `apps/api/.env` (the suites keep running: `test-overrides.ts` turns the providers off). Ask whether the user has them now.
 - **Plans without features** — features come from the modules, which do not exist yet: `/new-module` declares each one in a plan (its sheet's _Plan feature_). With subscriptions on, at least one plan is required.
 - **Trial** — only with open registration and subscriptions on, on one of the plans.
+- **Public site** — a site that reads published records without signing in (the API as a CMS) turns on the public API (`apps/api/CLAUDE.md` → _Public API_). Which modules, fields and files a site sees is decided per module by `/new-module`; here only whether there is a site, and its origins when it calls the API from the browser (none when it fetches on its server — SSR, static generation).
 - **Email sender** — production needs a domain verified in Resend; anything works locally.
 
 ## Phase 2 — Rename (before any database starts)
@@ -64,7 +66,7 @@ A database gets its name when its volume is created, so this runs before `docker
 
 From the sheet, and nothing else:
 
-- `apps/api/src/app.config.ts` — `app.name` (`<Product> API`), `registration.mode`, `auth.socialProviders.<name>.enabled`, `subscriptions` (`enabled`, `plans` with `features: []`, `trial`, `pastDueGraceDays`; off: `enabled: false`, the rest as it is), `email.from`. Every other setting keeps the scaffold's value.
+- `apps/api/src/app.config.ts` — `app.name` (`<Product> API`), `registration.mode`, `auth.socialProviders.<name>.enabled`, `subscriptions` (`enabled`, `plans` with `features: []`, `trial`, `pastDueGraceDays`; off: `enabled: false`, the rest as it is), `publicApi` (`enabled`, `origins`), `email.from`. Every other setting keeps the scaffold's value.
 - `apps/web/src/config/app.ts` — `name` and `i18n.defaultLanguage`.
 - Never the test config (`src/config/test-overrides.ts`, `e2e-overrides.ts`): the suites pin their own mode, whatever the product configures.
 
@@ -78,7 +80,7 @@ From the sheet, and nothing else:
 
    Where a pattern's only example was in the module ("`todoRow()` in `src/test/helpers.ts`"), point to `references/todos/` (`wiring.diff` for a shared file). Search again at the end: every remaining line is one you decided to keep.
 2. **`README.md`** — the product's: its name and purpose instead of the scaffold's introduction and _What's included_, the rest (prerequisites, getting started, testing, configuration) kept and checked against the rename (database names) and the sheet.
-3. **Root `CLAUDE.md`** — a `## This product` section right after the title: the purpose, then the sheet's decisions (registration, social sign-in, subscriptions and plans, default language), and that it has no module of its own yet (`/new-module`).
+3. **Root `CLAUDE.md`** — a `## This product` section right after the title: the purpose, then the sheet's decisions (registration, social sign-in, subscriptions and plans, public site, default language), and that it has no module of its own yet (`/new-module`).
 
 ## Gate 1 — Final
 
@@ -100,10 +102,11 @@ Then `pnpm knip` once more.
 - Each gate's result, the Gate 0 failures apart.
 - What only the user can do, in this order:
   1. **Secrets and per-deploy values** in `apps/api/.env` — `.env.example` lists them; production needs its own `AUTH_SECRET`, `RESEND_API_KEY`, `BASE_URL`, `CLIENT_URL`.
-  2. **Social sign-in**: each enabled provider's credentials (`.env.example` → _Social providers_) — `pnpm dev` refuses to start without them.
-  3. **The first admin**: open the app, `/bootstrap`.
-  4. **Subscriptions** (on): the payment processor adapter (`apps/api/src/modules/billing-webhook/CLAUDE.md` → checklist) and the `/upgrade` call to action — root `CLAUDE.md` → _Subscription checklist_.
-  5. **Branding**: the logo (`packages/ui/src/assets/helix.svg`, `helix-icon.svg` and their `alt` in `packages/ui/src/components/layout/layout.tsx`) and the primary color (`apps/web/src/config/theme.ts`).
-  6. **The default role** (open registration): grant it what regular users need once the modules exist — root `CLAUDE.md` → _Registration mode_.
+  2. **Behind a reverse proxy** (nginx, a load balancer, Cloudflare): `server.trustProxy` in `app.config.ts` — every rate limit counts per client IP (sign-ins, and with a public site `/api/public/*` and the public files), and without it all clients share the proxy's.
+  3. **Social sign-in**: each enabled provider's credentials (`.env.example` → _Social providers_) — `pnpm dev` refuses to start without them.
+  4. **The first admin**: open the app, `/bootstrap`.
+  5. **Subscriptions** (on): the payment processor adapter (`apps/api/src/modules/billing-webhook/CLAUDE.md` → checklist) and the `/upgrade` call to action — root `CLAUDE.md` → _Subscription checklist_.
+  6. **Branding**: the logo (`packages/ui/src/assets/helix.svg`, `helix-icon.svg` and their `alt` in `packages/ui/src/components/layout/layout.tsx`) and the primary color (`apps/web/src/config/theme.ts`).
+  7. **The default role** (open registration): grant it what regular users need once the modules exist — root `CLAUDE.md` → _Registration mode_.
 - The commit message and the paths to `git add` — never commit.
 - Next: `/new-module` for the first module.

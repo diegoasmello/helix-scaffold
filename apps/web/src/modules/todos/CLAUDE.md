@@ -46,6 +46,7 @@ interface TodoFormValues {
   content: string
   date: string | null      // DateInput returns string; null until user picks
   status: TodoStatus       // 'pending' | 'completed'
+  published: boolean       // shown by the public API
   attachments: UploadItem[] // multi-file upload field
   file: UploadItem | null  // single PDF upload field
   image: UploadItem | null // single image upload field
@@ -65,13 +66,23 @@ interface TodoFormValues {
 | `content`     | `RichTextEditor` | `getInputProps` + `onUploadImage={uploadFile}`; produces an HTML string — **not** a plain Textarea. Its images are uploads the API finds in the HTML (`todo_content_images`) — the form sends nothing else for them |
 | `date`        | `DateInput`      | `getInputProps`; the value is a date string (`DateStringValue`), not a `Date` |
 | `status`      | `Switch`         | `checked={form.values.status === 'completed'}`, `form.setFieldValue` |
+| `published`   | `Switch`         | `form.getInputProps('published', { type: 'checkbox' })` — see _Publication_ |
 | `attachments` | `FilesInput`     | `onUpload={uploadFile}`, `maxFiles={10}` |
 | `file`        | `FileInput`      | `accept={PDF_MIME_TYPE}`, `onUpload={uploadFile}` |
 | `image`       | `FileInput`      | `accept={IMAGE_MIME_TYPE}`, `onUpload={uploadFile}` |
 
-The form is split in three `FormSection`s — basic information (title, description, date + status), full text (content) and image and files (image, attachments, PDF). The detail screen uses `RichTextRenderer` (from `@helix/ui`) to render the `content` HTML string — never render it as plain text.
+The form is split in four `FormSection`s — basic information (title, description, date + status), full text (content), image and files (image, attachments, PDF) and public site (published). The detail screen uses `RichTextRenderer` (from `@helix/ui`) to render the `content` HTML string — never render it as plain text.
 
 `uploadFile` is imported from `@/modules/uploads/service`. `FilesInput`, `FileInput`, `PDF_MIME_TYPE`, and `IMAGE_MIME_TYPE` come from `@helix/ui`. The detail screen renders attachments using `FilePreview` from `@helix/ui` inside a `SimpleGrid cols={{ base: 1, sm: 2 }}`.
+
+## Publication
+
+A todo is shown by the public API (`GET /api/public/todos…` — `apps/api/CLAUDE.md` → _Public API_) while `published` is on. The admin is where it is turned on and off; the site itself is not part of this app.
+
+- **Form** — the last `FormSection`, _Public site_: its description says what a visitor sees (the image, the PDF and the images of the content; the attachments stay internal), and one `Switch` (`published`). Create starts it off (`published: false`) and always sends it; edit prefills it from `item.published` and sends it.
+- **List** — the _Public site_ column: `StatusBadge` `info` "Published" / `neutral` "Draft"; the `FilterBar` has a `published` field of type `boolean`.
+- **Detail** — a `LabeledValue` _Public site_: "Published on <date>" (`publishedAt`, the first publication — the API stamps it and never changes it) or "Not on the public site".
+- `publishedAt` is never in `TodoFormValues` and never sent.
 
 ## Validation (`validation.ts`)
 
@@ -85,7 +96,7 @@ file:        required      — fails when null
 image:       required      — fails when null
 ```
 
-`status` has no validator — the Switch is always in a valid state.
+`status` and `published` have no validator — a Switch is always in a valid state.
 
 For upload fields, use `minFiles(n)` (from `@helix/ui`) for `FilesInput` and `required` for `FileInput`. Both validators treat `null` / empty array as invalid. The `required` prop on the component renders the asterisk indicator and must match the validator:
 
@@ -119,7 +130,7 @@ Every route's `beforeLoad` is `guardPage(TODOS_ACCESS.<page>)` (`routes/access.t
 
 Inline in each component — no `hooks.ts`. Cache operations in `useMutation.onSuccess`; notifications and navigation in `mutate(data, { onSuccess, onError })`. `TodoCreate` / `TodoEdit` notify `apiErrorMessage(error, 'todos', 'notifications.createFailed' | 'notifications.updateFailed')`: `errors.invalid_upload` explains a file the API refused (one the user did not upload — API `assertUsableUploads()`).
 
-**Create**: `resourceCache.changed('todos')`. Does NOT send `status`.  
+**Create**: `resourceCache.changed('todos')`. Does NOT send `status`; sends `published`.  
 **Update**: `resourceCache.saved('todos', updated)` — seeds the item cache, refetches the lists.  
 **Delete**: `resourceCache.removed('todos', id)` — drops the item cache, refetches the lists. Both `TodoList` (row action) and `TodoDetail` (header button) delete; the detail navigates to `/todos` **before** dropping the cache, or its own query would refetch a 404.
 
@@ -148,6 +159,7 @@ See `apps/web/CLAUDE.md` → _PDF export_ for the full implementation guide and 
 | `status` | `select` | `todos.status` |
 | `date` | `date` | `todos.date` — a calendar day (`coerceCalendarDay`) |
 | `createdAt` | `date` | `todos.createdAt` — an instant (`coerceInstant`), listed in `TODO_INSTANT_FILTERS` |
+| `published` | `boolean` | `todos.published` |
 
 The two `date` fields look the same to the user — the panel picks days, the chips show them ("Creation date is on 3/20/2025") and the URL keeps them — but they reach the API differently:
 

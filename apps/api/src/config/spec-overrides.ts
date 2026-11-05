@@ -20,6 +20,9 @@ export const specConfigOverrides: AppConfig = {
     plans: [{ id: 'spec', name: 'Spec', features: [] }],
     trial: false,
   },
+  // Registers the public routes (`/api/public/*`), so a site can generate its
+  // client from the same spec.
+  publicApi: { enabled: true },
   // Their routes belong to better-auth (`/api/auth/*`, excluded from the
   // client). Off, so the export needs no OAuth credentials.
   auth: {

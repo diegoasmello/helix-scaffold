@@ -110,6 +110,17 @@ export function TodoDetail() {
           </LabeledValue>
         </Grid.Col>
         <Grid.Col span={{ base: 12, sm: 6 }}>
+          <LabeledValue label={t('labels.published')}>
+            <Text size="md">
+              {item.published && item.publishedAt
+                ? t('publication.publishedOn', {
+                    date: formatDate(parseISO(item.publishedAt), 'short'),
+                  })
+                : t('publication.notPublished')}
+            </Text>
+          </LabeledValue>
+        </Grid.Col>
+        <Grid.Col span={{ base: 12, sm: 6 }}>
           <LabeledValue label={t('labels.createdAt')}>
             <Text size="md">
               {formatDate(parseISO(item.createdAt), 'short')}

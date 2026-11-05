@@ -10,19 +10,25 @@ Standalone module for file uploads. Exposes `POST /uploads` (multipart), list, d
 | `GET` | `/uploads` | `uploads:view` | Paginated list (sort: `originalName`, `createdAt`) |
 | `GET` | `/uploads/:id` | `uploads:view` | Single upload |
 | `DELETE` | `/uploads/:id` | `uploads:delete` | Removes from DB **and** storage |
-| `GET` | `/files/*` | session + see _Serving files_ | The stored files (`url`, `variants.*.url`); hidden from the spec |
+| `GET` | `/files/*` | see _Serving files_ (a published record's files: none) | The stored files (`url`, `variants.*.url`); hidden from the spec |
 
 ## Serving files
 
-`GET /files/<storage key>` (`upload-files-routes.ts`) sits in the `authenticated` scope. It looks up the upload that owns the key (`service.getByFileKey()` — its `storageKey` or a variant key) and sends the file with `reply.sendFile()` (`@fastify/static`, `serve: false`) only when the user:
+`GET /files/<storage key>` (`upload-files-routes.ts`) is registered in the `/api` scope, **outside** `authenticated`, and reads the session itself (`readSessionUser()`). It looks up the upload that owns the key (`service.getByFileKey()` — its `storageKey` or a variant key) and sends the file with `reply.sendFile()` (`@fastify/static`, `serve: false`):
 
-1. uploaded it (`uploadedBy`) — the form shows a file before its record exists;
-2. holds `uploads:view`; or
-3. passes the `access` of a registered reference that points to it (`src/config/upload-references.ts`, step 5 below) — the permission and subscription of the record's `GET` route.
+- **to anyone** — signed in or not — when `publicApi.enabled` and a registered reference with `isPublic` says a **published** record shows the upload (step 5 below; `apps/api/CLAUDE.md` → _Public API_). This is how a site's `<img>` and download links work for visitors. The answer gets `Cache-Control: public, max-age=<publicApi.cacheSeconds>` (`no-cache` with `0`): it is the same for everyone, so a CDN may keep it — and may keep serving it up to that long after the record is unpublished;
+- otherwise **only to a signed-in user** who:
+  1. uploaded it (`uploadedBy`) — the form shows a file before its record exists;
+  2. holds `uploads:view`; or
+  3. passes the `access` of a registered reference that points to it (`src/config/upload-references.ts`, step 5 below) — the permission and subscription of the record's `GET` route.
 
-Anyone else, a key no upload owns, and a missing file all get 404. `<img>` tags work because the browser sends the session cookie with them.
+Anyone can call the route, so it runs behind its own rate limit — `uploads.rateLimit` (default 1000 requests per IP per minute), counted before the upload is looked up, for requests **without a valid session**: a signed-in user is never counted (the admin's thumbnails never get a 429, even when its users share an IP), and a forged or expired cookie counts as anonymous. Per IP means `server.trustProxy` behind a reverse proxy, or every visitor shares the proxy's count — and every query it runs is indexed: the key lookup (_`uploads` table_ → indexes) and each `isPublic`/`references` (the column's FK index).
 
-The Content-Type comes from the file's extension, which the uploader chose, so an `onSend` hook sets on every file `X-Content-Type-Options: nosniff` and `Cache-Control: private, max-age=0`. A file opens in the browser only when its Content-Type is `image/*`, `audio/*`, `video/*`, `application/pdf` or `text/plain` — and not XML (`image/svg+xml`). Any other file (HTML, SVG, XML, JavaScript, Office documents…) gets `Content-Disposition: attachment` and `Content-Security-Policy: default-src 'none'; sandbox`, so it can never run script on the API's origin.
+The checks run cheapest first, so the admin's thumbnails cost one query at most: the uploader (`uploadedBy`, none) and `uploads:view` (one); then `isPublic` — every registered one at once (`Promise.all`), not one by one; then the records' readers — every `references` at once too. A public answer sets its `Cache-Control` in the handler; `@fastify/static` sends none (`cacheControl: false`), and the `onSend` hook adds the private one to every answer without it.
+
+An anonymous request for anything that is not public — a draft's file, an internal column, an unknown key — gets 401; a signed-in user without access, a key no upload owns and a missing file get 404. In the admin, `<img>` tags work because the browser sends the session cookie with them.
+
+The Content-Type comes from the file's extension, which the uploader chose, so an `onSend` hook sets on every file `X-Content-Type-Options: nosniff`, and `Cache-Control: private, max-age=0` on every file that is not public. A file opens in the browser only when its Content-Type is `image/*`, `audio/*`, `video/*`, `application/pdf` or `text/plain` — and not XML (`image/svg+xml`). Any other file (HTML, SVG, XML, JavaScript, Office documents…) gets `Content-Disposition: attachment` and `Content-Security-Policy: default-src 'none'; sandbox`, so it can never run script on the API's origin.
 
 ## `POST /uploads` handler flow
 
@@ -76,6 +82,8 @@ SVG files are stored as-is (no variants generated).
   createdAt: timestamptz
 }
 ```
+
+Indexes: `uploads_uploaded_by_idx` (the FK), and those of the lookup by file key — `uploads_storage_key_idx` and one expression index per variant, `uploads_variant_<name>_key_idx` on `(variants -> '<name>' ->> 'key')`. `getByFileKey()` (every `GET /files/*`, anonymous ones included) and `uploadIdsInHtml()` build that expression with `variantKey(uploads.variants, name)` (`src/db/schema/uploads.ts`), the name as a literal: written any other way (the name as a parameter), the index no longer serves it and every request reads the whole table.
 
 ## Cascade deletion
 
@@ -136,6 +144,8 @@ xxxSchema = z.object({ ..., attachments: uploadSchema.array() })
 createXxxSchema = z.object({ ..., attachmentIds: z.array(z.string()).optional().default([]) })
 ```
 
+A module with public routes shows its uploads to a site as `publicUploadSchema` (same file): `url`, `mimeType`, `fileSize` and the variants' URLs — never the id, storage key, original name or uploader. Its public service selects those columns only.
+
 ### 3. Service changes
 
 Pass `storage: StorageProvider` into the service factory alongside `database`.
@@ -174,13 +184,13 @@ authenticated.register(xxxRoutes, { database, requirePermission, storage })
 
 Uploads are persisted immediately when the user selects a file — before the parent record exists. If the user abandons the form, those uploads become orphaned. A job in `src/server.ts` (`deleteOrphanUploads`, `src/lib/orphan-uploads.ts`) runs every `uploads.orphanCleanup.intervalHours` (default 6) and removes uploads older than `uploads.orphanCleanup.graceHours` (default 24) that no registered reference points to. Both live in `src/app.config.ts`. The job does not run at startup — only on the interval.
 
-For the job to know which uploads are in use — and `GET /files/*` who may open their files (_Serving files_) — every column that references `uploads.id` must be registered in `src/config/upload-references.ts`, with `access` set to the guard of the record's `GET` route:
+For the job to know which uploads are in use — and `GET /files/*` who may open their files (_Serving files_) — every column that references `uploads.id` must be registered in `src/config/upload-references.ts`, with `access` set to the guard of the record's `GET` route, and `isPublic` on a column the module's public schema returns (below):
 
 ```ts
 // src/config/upload-references.ts
 import { eq, isNotNull } from 'drizzle-orm'
 import { xxxAttachments, xxx } from '@/db/schema'
-import { registerUploadReference, type UploadReaderAccess } from '@/lib/upload-references'
+import { hasRows, registerUploadReference, type UploadReaderAccess } from '@/lib/upload-references'
 
 // GET /xxx/:id: requireSubscription('xxx') + requirePermission('xxx', 'view').
 // `subscription: true` for requireSubscription() without a feature; omit it without one.
@@ -193,11 +203,9 @@ registerUploadReference({
     const rows = await db.selectDistinct({ id: xxxAttachments.uploadId }).from(xxxAttachments)
     return rows.map((r) => r.id)
   },
-  references: async (db, uploadId) => {
-    const rows = await db.select({ id: xxxAttachments.uploadId }).from(xxxAttachments)
-      .where(eq(xxxAttachments.uploadId, uploadId)).limit(1)
-    return rows.length > 0
-  },
+  references: (db, uploadId) =>
+    hasRows(db.select({ id: xxxAttachments.uploadId }).from(xxxAttachments)
+      .where(eq(xxxAttachments.uploadId, uploadId)).limit(1)),
 })
 
 // Direct FK column (nullable — filter nulls)
@@ -207,16 +215,30 @@ registerUploadReference({
     const rows = await db.select({ id: xxx.fileId }).from(xxx).where(isNotNull(xxx.fileId))
     return rows.map((r) => r.id).filter((id): id is string => id !== null)
   },
-  references: async (db, uploadId) => {
-    const rows = await db.select({ id: xxx.id }).from(xxx).where(eq(xxx.fileId, uploadId)).limit(1)
-    return rows.length > 0
-  },
+  references: (db, uploadId) =>
+    hasRows(db.select({ id: xxx.id }).from(xxx).where(eq(xxx.fileId, uploadId)).limit(1)),
 })
 ```
+
+**A column a site shows** (the module has public routes — `apps/api/CLAUDE.md` → _Public API_ — and its public schema returns the column) adds `isPublic`: whether a **published** record holds the upload there, with the same publication filter the public service uses. Its files then open for anyone while the record is published. A column the public schema does not return (internal attachments) gets none — its files stay behind `access` even on a published record:
+
+```ts
+registerUploadReference({
+  access: XXX_READERS,
+  load: …, references: …, // as above
+  isPublic: (db, uploadId) =>
+    hasRows(db.select({ id: xxx.id }).from(xxx)
+      .where(and(XXX_PUBLISHED, eq(xxx.imageId, uploadId))).limit(1)),
+})
+```
+
+For the junction table of a rich text field's images, join the record: `.innerJoin(xxx, eq(xxx.id, xxxContentImages.xxxId)).where(and(XXX_PUBLISHED, eq(xxxContentImages.uploadId, uploadId)))`. `todos` registers `isPublic` on its image, file and content images, not on its attachments.
 
 Add one `registerUploadReference` call per column. If a module's uploads are not registered, the job will treat them as orphaned and delete them after the grace period, and until then only their uploader and `uploads:view` can open their files.
 
 **Test who may open them** — in `upload-files-routes.test.ts` → `describe('Who may read a file')`, not in the module's own test file. Every registered column (a single file, a junction table, the images inside a rich text field) gets the three cases `todos` has in its `describe.each(['attachment', 'file', 'image', 'content'])`: a reader of the record gets 200; a user without the `GET` route's permission gets 404; one without its subscription gets 404 (when the route requires one). Add a `describe.each` of the module's own columns next to the todos one, with a helper like `attachToTodo()` that creates a record holding the upload in that column. The mechanism itself (a registered column lets the record's readers in, its permission and plan feature apply, a subscription turned off leaves the permission alone) is covered by `describe.each(['file', 'attachment'])` on the tables of `src/test/scratch-tables.ts`, registered at the top of the file — whatever modules exist.
+
+**Test who may open them publicly** — a column with `isPublic` gets, in the same file, the two cases of `describe("A todo's files on the public API")`: published → 200 without a session; a draft → 401; and a column without `isPublic` on a published record → 401. The mechanism (public `Cache-Control`, variants, a signed-in user without permission, unpublishing, an active document still downloaded, `cacheSeconds: 0`, `publicApi.enabled: false`) is covered once by `describe('Public files (a published record)')` on the scratch tables — `test_documents.published`, `isPublic` on its file column only.
 
 ## Images inside rich text
 
@@ -237,7 +259,7 @@ export const xxxContentImages = pgTable('xxx_content_images', {
 ])
 ```
 
-**2. Service** — `uploadIdsInHtml(database, html)` (`src/lib/rich-text-uploads.ts`) returns the uploads whose files the HTML shows from `GET /files/*` (the original or a variant). It reads the `src` of every `<img>` and keeps the path only, so a `BASE_URL` changed since the text was written still matches; images from anywhere else, and keys no upload owns (an image deleted since), are left out — they reference nothing.
+**2. Service** — first `sanitizeRichText()` (`apps/api/CLAUDE.md` → _Rich text fields_): the HTML is stored sanitized, and its images are read from the sanitized text. Then `uploadIdsInHtml(database, html)` (`src/lib/rich-text-uploads.ts`) returns the uploads whose files the HTML shows from `GET /files/*` (the original or a variant). It reads the `src` of every `<img>` and keeps the path only, so a `BASE_URL` changed since the text was written still matches; images from anywhere else, and keys no upload owns (an image deleted since), are left out — they reference nothing.
 
 - **create** — `uploadIdsInHtml(database, data.content)`, then pass the ids to `assertUsableUploads()` together with the record's other upload ids, each with `accept: IMAGE_TYPES` (a PDF in an `<img>` is refused with `invalid_upload_type`), then insert the junction rows after the record.
 - **update** — only when the field is sent: the same call; the record's current content images go into `alreadyReferenced` with its other current uploads (another editor re-sends the text unchanged), then a full resync (delete all, insert new). An image taken out of the text is no longer referenced, so the orphan cleanup deletes it.
@@ -246,6 +268,6 @@ export const xxxContentImages = pgTable('xxx_content_images', {
 
 Someone else's upload in the text is refused like any other reference (400 `invalid_upload`) — readers of the record could otherwise open a file they were never given. That includes text pasted from a record someone else wrote: its images must be uploaded again.
 
-**3. Register the junction table in step 5**, like any junction table: its `access` is the guard of the record's `GET` route, so the record's readers see the images.
+**3. Register the junction table in step 5**, like any junction table: its `access` is the guard of the record's `GET` route, so the record's readers see the images — plus `isPublic` when the public schema returns the field, so a site's visitors see them too.
 
 **Tests** (`todos-routes.test.ts` → `describe('Images in the content')` is the reference): the images recorded on create; external images and unknown keys ignored; a file that is not an image (`describe('Upload types')`); kept by the orphan cleanup; someone else's image on create and on update (400); another editor re-sending the text (200); a `PATCH` without the field keeps them; an image taken out of the text gets deleted by the orphan cleanup; deleted with the record. `GET /files/*` for the record's readers: step 5 → _Test who may open them_, like any registered column.

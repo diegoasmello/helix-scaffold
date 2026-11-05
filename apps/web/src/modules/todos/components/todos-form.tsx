@@ -114,6 +114,17 @@ export function TodoForm(props: Readonly<TodoFormProps>) {
           accept={PDF_MIME_TYPE}
         />
       </FormSection>
+
+      <FormSection
+        title={t('sections.publication')}
+        description={t('sections.publicationDescription')}
+      >
+        <Switch
+          label={t('form.published.label')}
+          description={t('form.published.description')}
+          {...form.getInputProps('published', { type: 'checkbox' })}
+        />
+      </FormSection>
     </>
   )
 }

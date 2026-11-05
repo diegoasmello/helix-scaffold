@@ -79,7 +79,10 @@ export interface AppConfig {
      * - IPs / CIDRs (`'10.0.0.0/8'` or an array) — trust only those proxies.
      *
      * Behind a proxy, leaving `false` puts every client under the proxy's IP,
-     * so all sign-ins share one rate limit.
+     * so all sign-ins share one rate limit — and so do all the anonymous
+     * requests to the public API and to `/api/files/*` (`publicApi.rateLimit`,
+     * `uploads.rateLimit`). The API logs a warning when a request's
+     * `X-Forwarded-For` was ignored.
      * @default false
      */
     trustProxy?: boolean | number | string | string[]
@@ -155,6 +158,45 @@ export interface AppConfig {
     }
   }
 
+  publicApi?: {
+    /**
+     * Registers the public API: the routes under `/api/public/*` a site reads
+     * without signing in (a module's `<feature>-public-routes.ts`), and lets
+     * `GET /api/files/*` serve the files of published records to anyone.
+     * When `false`, none of it exists — zero overhead.
+     * @default false
+     */
+    enabled?: boolean
+    /**
+     * Origins allowed to call `/api/public/*` from a browser (CORS, without
+     * credentials): `['https://www.example.com']`. Leave empty when the site
+     * reads the API on its server (SSR, static generation) — it needs no CORS.
+     * `<img>` tags pointing to `/api/files/*` never need it.
+     * @default []
+     */
+    origins?: string[]
+    /**
+     * How long (seconds) browsers and CDNs may keep a public answer — the JSON
+     * of `/api/public/*` and a published record's files (`Cache-Control:
+     * public, max-age`). A record unpublished or edited may still show for
+     * that long. `0` sends `no-cache`: every request asks the API again.
+     * @default 60
+     */
+    cacheSeconds?: number
+    /**
+     * Requests one client IP (`request.ip`) may make to `/api/public/*` per
+     * window; above it the API answers 429 `rate_limited`. Counted in memory,
+     * per process. Behind a reverse proxy, set `server.trustProxy`, or every
+     * visitor shares the proxy's IP — and this one count.
+     */
+    rateLimit?: {
+      /** @default 300 */
+      max?: number
+      /** @default 60 */
+      windowSeconds?: number
+    }
+  }
+
   email?: {
     /**
      * Sender address for all outgoing emails. Must belong to a domain
@@ -180,6 +222,21 @@ export interface AppConfig {
      * @default 50
      */
     maxSizeMb?: number
+    /**
+     * Requests one client IP (`request.ip`, see `server.trustProxy`) may make
+     * to `GET /api/files/*` per window without a session — the route also
+     * serves published files to anyone. A signed-in user is never counted (a
+     * forged cookie is no session). Above it the API answers 429
+     * `rate_limited`. A site with heavy traffic puts a CDN in front of its
+     * files. Counted in memory, per process — and per proxy IP behind a proxy
+     * `server.trustProxy` does not trust.
+     */
+    rateLimit?: {
+      /** @default 1000 */
+      max?: number
+      /** @default 60 */
+      windowSeconds?: number
+    }
     /** Periodic removal of uploads that no record references anymore. */
     orphanCleanup?: {
       /**
@@ -294,6 +351,19 @@ export const appConfigSchema = z.strictObject({
         .prefault({}),
     })
     .prefault({}),
+  publicApi: z
+    .strictObject({
+      enabled: z.boolean().default(false),
+      origins: z.array(z.url()).default([]),
+      cacheSeconds: z.number().int().nonnegative().default(60),
+      rateLimit: z
+        .strictObject({
+          max: z.number().int().positive().default(300),
+          windowSeconds: z.number().int().positive().default(60),
+        })
+        .prefault({}),
+    })
+    .prefault({}),
   email: z
     .strictObject({
       from: z.string().min(1).default('noreply@localhost'),
@@ -304,6 +374,12 @@ export const appConfigSchema = z.strictObject({
       storage: z.enum(['local', 's3']).default('local'),
       dir: z.string().min(1).default('./storage'),
       maxSizeMb: z.number().positive().default(50),
+      rateLimit: z
+        .strictObject({
+          max: z.number().int().positive().default(1000),
+          windowSeconds: z.number().int().positive().default(60),
+        })
+        .prefault({}),
       orphanCleanup: z
         .strictObject({
           intervalHours: z.number().positive().default(6),

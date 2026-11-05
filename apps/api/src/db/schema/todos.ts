@@ -1,4 +1,7 @@
+import { eq, sql } from 'drizzle-orm'
 import {
+  boolean,
+  check,
   date,
   index,
   pgEnum,
@@ -35,6 +38,13 @@ export const todos = pgTable(
     // A calendar day, not an instant: `date`, read and written as `YYYY-MM-DD`
     // (`mode: 'string'`), so it is the same day in every time zone.
     date: date('date', { mode: 'string' }).notNull(),
+    // Shown by the public API (`todos-public-routes.ts`) — see
+    // `TODO_PUBLISHED`. The admin turns it on and off.
+    published: boolean('published').default(false).notNull(),
+    // When it was first published: set by the service the first time
+    // `published` turns on, never sent by a client, never changed or cleared
+    // afterwards — the date a site shows and sorts by.
+    publishedAt: timestamp('published_at', { withTimezone: true }),
     fileId: text('file_id').references(() => uploads.id, {
       onDelete: 'set null',
     }),
@@ -59,8 +69,29 @@ export const todos = pgTable(
     // cleanup look records up by upload id (`src/config/upload-references.ts`).
     index('todos_file_id_idx').on(t.fileId),
     index('todos_image_id_idx').on(t.imageId),
+    // A published row always has its date — whoever writes it (the service,
+    // the seed, a test, an import).
+    check(
+      'todos_published_at_check',
+      sql`not ${t.published} or ${t.publishedAt} is not null`
+    ),
+    // The public list (`todos-public-service.ts`): only published rows, in
+    // the order of its default sort, `published_at desc, id desc` — `NULLS
+    // FIRST` is Postgres' default for `desc`, so the query needs no clause.
+    // Read backwards, it serves `published_at asc, id asc` too; a page stops
+    // at its `LIMIT` instead of sorting every published row.
+    index('todos_published_at_idx')
+      .on(t.publishedAt.desc().nullsFirst(), t.id.desc().nullsFirst())
+      .where(sql`${t.published}`),
   ]
 )
+
+/**
+ * The rows the public API may show: `published`. Every public read — the
+ * public service and the `isPublic` of the upload references — filters with
+ * it, so "what is public" is decided in one place.
+ */
+export const TODO_PUBLISHED = eq(todos.published, true)
 
 /**
  * The text fields of `todos` with a normalized copy (`src/lib/normalize-text.ts`):

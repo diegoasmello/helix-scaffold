@@ -19,6 +19,7 @@
     "title": "Title",
     "date": "Date",
     "status": "Status",
+    "published": "Public site",
     "actions": "Actions"
   },
   "filters": {
@@ -27,6 +28,7 @@
     "status": "Status",
     "statusPending": "Pending",
     "statusCompleted": "Completed",
+    "published": "Published",
     "date": "Date",
     "createdAt": "Creation date",
     "search": "Search by title or description"
@@ -57,6 +59,10 @@
     "status": {
       "label": "Completed"
     },
+    "published": {
+      "label": "Published",
+      "description": "Shows the todo on the public site, at its own address"
+    },
     "attachments": {
       "label": "Attachments",
       "description": "Upload up to 10 files of any type"
@@ -72,6 +78,7 @@
     "content": "Content",
     "date": "Date",
     "status": "Status",
+    "published": "Public site",
     "createdAt": "Created at",
     "file": "File",
     "image": "Image",
@@ -80,6 +87,12 @@
   "status": {
     "pending": "Pending",
     "completed": "Completed"
+  },
+  "publication": {
+    "published": "Published",
+    "draft": "Draft",
+    "publishedOn": "Published on {{date}}",
+    "notPublished": "Not on the public site"
   },
   "delete": {
     "title": "Delete todo",
@@ -99,7 +112,9 @@
     "body": "Full text",
     "bodyDescription": "Accepts headings, lists, links and images.",
     "files": "Image and files",
-    "filesDescription": "The image shows on the detail page. Attachments and the PDF are available for download."
+    "filesDescription": "The image shows on the detail page. Attachments and the PDF are available for download.",
+    "publication": "Public site",
+    "publicationDescription": "A published todo shows on the public site, with its image, PDF and the images of its content — open to anyone. Attachments stay internal."
   },
   "noResults": {
     "title": "No todos found",

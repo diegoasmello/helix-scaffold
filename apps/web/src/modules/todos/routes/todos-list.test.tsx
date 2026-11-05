@@ -67,11 +67,13 @@ const mockTodos = [
     id: '1',
     title: 'Review quarterly report',
     status: 'completed',
+    published: true,
   }),
   createTodo({
     id: '2',
     title: 'Update project documentation',
     status: 'pending',
+    published: false,
   }),
 ]
 
@@ -166,6 +168,20 @@ describe('TodoList', () => {
       within(r).queryByText('Review quarterly report')
     )!
     expect(within(completedRow).getByText('Completed')).toBeInTheDocument()
+  })
+
+  it('shows whether each todo is on the public site', async () => {
+    renderTodoList()
+    await screen.findByText('Review quarterly report')
+    const rows = screen.getAllByRole('row')
+    const row = (title: string) =>
+      rows.find((r) => within(r).queryByText(title))!
+    expect(
+      within(row('Review quarterly report')).getByText('Published')
+    ).toBeInTheDocument()
+    expect(
+      within(row('Update project documentation')).getByText('Draft')
+    ).toBeInTheDocument()
   })
 
   it('shows pending badge for pending todos', async () => {

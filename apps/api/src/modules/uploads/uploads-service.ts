@@ -1,7 +1,7 @@
-import { asc, count, desc, eq, or, sql } from 'drizzle-orm'
+import { asc, count, desc, eq, or } from 'drizzle-orm'
 
 import type { Database } from '@/db'
-import { uploads } from '@/db/schema'
+import { IMAGE_VARIANT_NAMES, uploads, variantKey } from '@/db/schema'
 import type { ImageVariants } from '@/db/schema/uploads'
 import { getPaginationParams } from '@/lib/pagination'
 import type { StorageProvider } from '@/lib/storage'
@@ -57,12 +57,12 @@ export function createUploadsService(
       .select()
       .from(uploads)
       .where(
+        // Each condition has its index (`src/db/schema/uploads.ts`).
         or(
           eq(uploads.storageKey, key),
-          sql`${uploads.variants} -> 'thumbnail' ->> 'key' = ${key}`,
-          sql`${uploads.variants} -> 'small' ->> 'key' = ${key}`,
-          sql`${uploads.variants} -> 'medium' ->> 'key' = ${key}`,
-          sql`${uploads.variants} -> 'large' ->> 'key' = ${key}`
+          ...IMAGE_VARIANT_NAMES.map((name) =>
+            eq(variantKey(uploads.variants, name), key)
+          )
         )
       )
       .limit(1)

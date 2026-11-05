@@ -28,6 +28,7 @@ Watch for:
 - **A relation to a module that doesn't exist yet**: settle whether it is built first or left out.
 - **Limits** come from the purpose — ask when it doesn't settle them. Never copy `todos`' (1000 characters of content fit an example, not real content).
 - **System fields**: when the value is set, kept, changed or cleared is the user's to settle, never yours to invent.
+- **A public site** (records a site shows without signing in): which fields and which uploads it sees is the user's to list, one by one — anything not listed stays private, and "all of them" is not an answer (internal notes, workflow status, internal files). The pattern is a publication switch (`published`, with `publishedAt` stamped on the first publication) and a slug; stop and tell the user when they want what it has no pattern for: **scheduled publishing**, **a separate permission to publish**, **draft previews**, a public **write** (comments, forms).
 - **Code names** when singular and plural coincide (`news`): the generated hooks and types get ambiguous, so settle the entity and singular names explicitly.
 
 ### Module sheet
@@ -44,7 +45,8 @@ Fields (the user fills them):
 
 System fields:        <field — who writes it, and its rule>, or none   (values the form never sends: a date stamped on a status change, a counter, a computed value; not createdAt/updatedAt)
 Business uniqueness:  <field(s) unique by product rule, or none>
-Slug:                 <no | yes, from <field>>
+Slug:                 <no | yes, from <field>>   (required by a public site)
+Public site:          <no | yes — fields a site sees: <…> · uploads a site sees: <…> · public sort: <fields, default> · search: <fields | none>>
 Relations:            <field → module (select needs its /all), or none>
 Uploads:              <none | single file <field> | multiple; required?; accepted types (any | images | PDF | …)> · images inside rich text <field>: <yes | no>
 Delete:               hard delete · the record's uploads <deleted with it | kept>
@@ -74,6 +76,8 @@ Read the sections the sheet calls for, at the phase that needs them. The root `C
 | has filters | `CLAUDE.md` → _Filtering_ | `CLAUDE.md` → _Filtering_ (an instant: _A `date` field on an instant_) | `FILTER_COERCE` (`todos-service.ts` — `date` a day, `createdAt` an instant); `TODO_FILTER_FIELDS`, `FilterBar` (`todos-list.tsx`), `TODO_INSTANT_FILTERS` + `toApiFilters()` (`routes/filters.ts`, `routes/index.ts`) |
 | has normalized columns | `CLAUDE.md` → _Normalized text columns_ | — | `TODO_NORMALIZED_FIELDS` (`db/schema/todos.ts`), `normalizedValues()` in the service, `todoRow()` |
 | has a slug | `CLAUDE.md` → _Slugs_ | — (the admin never shows it) | `TODO_SLUG`, `GET /todos/by-slug/:slug`, `describe('Slug')` |
+| is read by a public site | `CLAUDE.md` → _Public API_ (and `src/modules/uploads/CLAUDE.md` → _5. Register upload references_ for `isPublic`) | the publication switch, list column, filter and detail line — `src/modules/todos/CLAUDE.md` (web) → _Publication_ | `published`/`publishedAt`/`TODO_PUBLISHED` (`db/schema/todos.ts`), `todos-public-schema.ts`, `todos-public-service.ts`, `todos-public-routes.ts` and its test, `describe('Publication')`, `isPublic` in `src/config/upload-references.ts`, `describe("A todo's files on the public API")` |
+| has a rich text field | `CLAUDE.md` → _Rich text fields_ | `RichTextEditor` in the form (`requiredHtml`), `RichTextRenderer` in the detail — `src/modules/todos/CLAUDE.md` (web) | `sanitizeRichText()` in `todos-service.ts`, `describe('Rich text sanitization')` |
 | relates to another module | `CLAUDE.md` → _Non-paginated "all" endpoints_ | `CLAUDE.md` → _Relational select fields with inline creation_ | not in `todos`: `users` → `roleId` (`GET /roles/all`, `RoleSelectField`) |
 | has uploads | `src/modules/uploads/CLAUDE.md` → _Adding uploads to another module_ | `CLAUDE.md` → _Adding uploads to a new module_ | single file: `fileId`/`imageId`; multiple: `todo_attachments`; images inside rich text: `todo_content_images` (`describe('Images in the content')`); all in `src/config/upload-references.ts`, each column tested in `upload-files-routes.test.ts` → `describe('Who may read a file')` |
 | is gated by a plan feature | `src/modules/subscriptions/CLAUDE.md` → _`requireSubscription` hook_ | `src/modules/subscriptions/CLAUDE.md` → _Route guards (`feature` in `PageAccess`)_ | `requireSubscription('todos')` in `todos-routes.ts`; `feature: 'todos'` in `routes/access.ts` |
@@ -138,6 +142,8 @@ Written last, so they describe what was built, not what was planned.
 - [ ] Locale files in `en` and `pt-BR`, registered in `src/i18n/index.ts`; the resource's label in both `roles.json`; no hardcoded string → root _i18n checklist_
 - [ ] Web unit + integration tests; a default MSW handler for every new endpoint in `src/mocks/handlers.ts`; the module's entry in `src/lib/resource-cache.ts`, with its keys in `resource-cache.test.ts` → `apps/web/CLAUDE.md` → _Testing_, _3. Hooks and data fetching_
 - [ ] If uploads: every upload column (rich text images included) in `src/config/upload-references.ts` with the guard of the record's `GET`, and covered in `describe('Who may read a file')` → `src/modules/uploads/CLAUDE.md` → _5. Register upload references_
+- [ ] If public: the publication columns with their check and partial index, `XXX_PUBLISHED`, the three `<feature>-public-*.ts` files registered in the public scope of `app.ts`, `isPublic` on exactly the upload columns the public schema returns, the public route tests (exact keys, draft → 404), `describe('Publication')` → `apps/api/CLAUDE.md` → _Public API_. And tell the user when `publicApi.enabled` is still `false` in `app.config.ts`: the routes exist only once it is on
+- [ ] Every rich text field passed through `sanitizeRichText()` on create and update → `apps/api/CLAUDE.md` → _Rich text fields_
 - [ ] If gated: `requireSubscription('<feature>')` on the routes, `feature` in the `PageAccess`, its label in both `subscription.json`, the feature declared in a plan → root _Subscription checklist_
 - [ ] Seed rows and seed role grants
 - [ ] Module `CLAUDE.md` on both sides, the root module docs table, and every shared doc that enumerates modules

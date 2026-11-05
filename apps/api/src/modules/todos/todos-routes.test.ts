@@ -629,6 +629,179 @@ describe('Slug', () => {
   })
 })
 
+describe('Publication', () => {
+  async function createTodo(payload: Record<string, unknown> = {}) {
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/todos',
+      payload: {
+        title: 'Todo',
+        description: 'Desc',
+        content: '<p>C</p>',
+        date: '2025-03-20',
+        attachmentIds: [(await insertUpload()).id],
+        fileId: (await insertUpload()).id,
+        imageId: (await insertUpload('img.png', 'image/png')).id,
+        ...payload,
+      },
+      headers: { cookie: authCookie },
+    })
+    expect(res.statusCode).toBe(201)
+    return res.json()
+  }
+
+  async function patchTodo(id: string, payload: Record<string, unknown>) {
+    const res = await app.inject({
+      method: 'PATCH',
+      url: `/api/todos/${id}`,
+      payload,
+      headers: { cookie: authCookie },
+    })
+    expect(res.statusCode).toBe(200)
+    return res.json()
+  }
+
+  it('creates a draft by default', async () => {
+    const todo = await createTodo()
+    expect(todo.published).toBe(false)
+    expect(todo.publishedAt).toBeNull()
+  })
+
+  it('dates a todo created published', async () => {
+    const before = Date.now()
+    const todo = await createTodo({ published: true })
+    expect(todo.published).toBe(true)
+    expect(new Date(todo.publishedAt).getTime()).toBeGreaterThanOrEqual(
+      before - 1000
+    )
+  })
+
+  it('dates the first publication on PATCH', async () => {
+    const todo = await createTodo()
+    const published = await patchTodo(todo.id, { published: true })
+    expect(published.published).toBe(true)
+    expect(published.publishedAt).not.toBeNull()
+  })
+
+  it('keeps the date when unpublished and published again', async () => {
+    const todo = await createTodo({ published: true })
+    const draft = await patchTodo(todo.id, { published: false })
+    expect(draft.published).toBe(false)
+    expect(draft.publishedAt).toBe(todo.publishedAt)
+    const again = await patchTodo(todo.id, { published: true })
+    expect(again.publishedAt).toBe(todo.publishedAt)
+  })
+
+  it('keeps the date on a PATCH without published', async () => {
+    const todo = await createTodo({ published: true })
+    const edited = await patchTodo(todo.id, { title: 'Renamed' })
+    expect(edited.published).toBe(true)
+    expect(edited.publishedAt).toBe(todo.publishedAt)
+  })
+
+  it('ignores a publishedAt sent by the client', async () => {
+    const todo = await createTodo({ publishedAt: '2000-01-01T00:00:00.000Z' })
+    expect(todo.publishedAt).toBeNull()
+    const published = await patchTodo(todo.id, {
+      published: true,
+      publishedAt: '2000-01-01T00:00:00.000Z',
+    })
+    expect(published.publishedAt).not.toBe('2000-01-01T00:00:00.000Z')
+  })
+
+  it('audits the change', async () => {
+    const todo = await createTodo()
+    await patchTodo(todo.id, { published: true })
+    const [entry] = await findAuditLogs('edit', 'todos', todo.id)
+    expect(entry.metadata).toMatchObject({ published: true })
+  })
+
+  it('filters the list by it', async () => {
+    await createTodo({ title: 'Draft' })
+    await createTodo({ title: 'Live', published: true })
+    const filters = JSON.stringify([
+      { field: 'published', op: 'eq', value: true },
+    ])
+    const res = await app.inject({
+      method: 'GET',
+      url: `/api/todos?filters=${encodeURIComponent(filters)}`,
+      headers: { cookie: authCookie },
+    })
+    expect(res.json().data.map((t: { title: string }) => t.title)).toEqual([
+      'Live',
+    ])
+  })
+
+  it('refuses a published row without its date (check constraint)', async () => {
+    await expect(
+      testDb.insert(todos).values(
+        todoRow({
+          title: 'Broken',
+          description: 'Desc',
+          content: 'C',
+          date: '2025-01-01',
+          published: true,
+          publishedAt: null,
+        })
+      )
+    ).rejects.toThrow()
+  })
+})
+
+describe('Rich text sanitization', () => {
+  async function createTodo(content: string) {
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/todos',
+      payload: {
+        title: 'Todo',
+        description: 'Desc',
+        content,
+        date: '2025-03-20',
+        attachmentIds: [(await insertUpload()).id],
+        fileId: (await insertUpload()).id,
+        imageId: (await insertUpload('img.png', 'image/png')).id,
+      },
+      headers: { cookie: authCookie },
+    })
+    expect(res.statusCode).toBe(201)
+    return res.json()
+  }
+
+  it('stores the content without script on create', async () => {
+    const todo = await createTodo(
+      '<p onclick="alert(1)">Hi</p><script>alert(1)</script><img src="x" onerror="alert(1)">'
+    )
+    expect(todo.content).toBe('<p>Hi</p><img src="x" />')
+    const [row] = await testDb.select().from(todos).where(eq(todos.id, todo.id))
+    expect(row.content).toBe('<p>Hi</p><img src="x" />')
+  })
+
+  it('stores the content without script on update', async () => {
+    const todo = await createTodo('<p>Hi</p>')
+    const res = await app.inject({
+      method: 'PATCH',
+      url: `/api/todos/${todo.id}`,
+      payload: { content: '<p>Bye</p><a href="javascript:alert(1)">x</a>' },
+      headers: { cookie: authCookie },
+    })
+    expect(res.statusCode).toBe(200)
+    expect(res.json().content).toBe('<p>Bye</p><a>x</a>')
+  })
+
+  it('still records the images of the sanitized content', async () => {
+    const image = await insertUpload('a.png', 'image/png')
+    const todo = await createTodo(
+      `<p>a</p><img src="http://localhost:3333/api/files/${image.storageKey}" onload="x()">`
+    )
+    const rows = await testDb
+      .select({ id: todoContentImages.uploadId })
+      .from(todoContentImages)
+      .where(eq(todoContentImages.todoId, todo.id))
+    expect(rows.map((r) => r.id)).toEqual([image.id])
+  })
+})
+
 describe('GET /todos/:id', () => {
   it('returns 404 when todo not found', async () => {
     const res = await app.inject({

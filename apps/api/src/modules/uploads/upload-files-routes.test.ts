@@ -156,7 +156,11 @@ async function createUserSession(
 type TodoReference = 'attachment' | 'file' | 'image' | 'content'
 
 /** A todo referencing the upload through one of its columns or tables. */
-async function attachToTodo(reference: TodoReference, uploadId: string) {
+async function attachToTodo(
+  reference: TodoReference,
+  uploadId: string,
+  options: { published?: boolean } = {}
+) {
   const [todo] = await testDb
     .insert(todos)
     .values(
@@ -167,6 +171,7 @@ async function attachToTodo(reference: TodoReference, uploadId: string) {
         date: '2025-01-01',
         fileId: reference === 'file' ? uploadId : null,
         imageId: reference === 'image' ? uploadId : null,
+        ...(options.published && { published: true, publishedAt: new Date() }),
       })
     )
     .returning()
@@ -359,6 +364,227 @@ describe('Who may read a file', () => {
       })
       expect(res.statusCode).toBe(200)
     })
+  })
+})
+
+describe('Public files (a published record)', () => {
+  it("serves a published record's public column to anyone, cacheable", async () => {
+    const upload = await insertUpload()
+    await insertTestDocument(upload.id, 'file', { published: true })
+    const res = await getFile(upload.storageKey)
+    expect(res.statusCode).toBe(200)
+    expect(res.body).toBe('hello')
+    expect(res.headers['cache-control']).toBe('public, max-age=60')
+    expect(res.headers['x-content-type-options']).toBe('nosniff')
+  })
+
+  it('serves it to a signed-in user without any permission', async () => {
+    const upload = await insertUpload()
+    await insertTestDocument(upload.id, 'file', { published: true })
+    const other = await createUserSession([])
+    const res = await getFile(upload.storageKey, other.cookie)
+    expect(res.statusCode).toBe(200)
+  })
+
+  it('serves the image variants of a public upload', async () => {
+    const upload = await insertUpload('original.png', { mimeType: 'image/png' })
+    const folder = upload.storageKey.split('/')[0]
+    const smallKey = `${folder}/small.webp`
+    await fs.writeFile(path.join(uploadDir, smallKey), 'small')
+    const variant = { key: smallKey, url: `http://x/${smallKey}` }
+    await testDb
+      .update(uploads)
+      .set({
+        variants: {
+          thumbnail: variant,
+          small: variant,
+          medium: variant,
+          large: variant,
+        },
+      })
+      .where(eq(uploads.id, upload.id))
+    await insertTestDocument(upload.id, 'file', { published: true })
+
+    const res = await getFile(smallKey)
+    expect(res.statusCode).toBe(200)
+    expect(res.body).toBe('small')
+  })
+
+  it("returns 401 to anyone for a draft's file", async () => {
+    const upload = await insertUpload()
+    await insertTestDocument(upload.id, 'file')
+    const res = await getFile(upload.storageKey)
+    expect(res.statusCode).toBe(401)
+  })
+
+  it("keeps a draft's file private to signed-in users", async () => {
+    const upload = await insertUpload()
+    await insertTestDocument(upload.id, 'file')
+    const other = await createUserSession([], { subscribed: true })
+    const res = await getFile(upload.storageKey, other.cookie)
+    expect(res.statusCode).toBe(404)
+    const reader = await createUserSession(
+      [{ resource: 'audit', action: 'view' }],
+      { subscribed: true }
+    )
+    const allowed = await getFile(upload.storageKey, reader.cookie)
+    expect(allowed.headers['cache-control']).toBe('private, max-age=0')
+  })
+
+  // The attachments column registers no `isPublic`: the public schema
+  // never returns it.
+  it("returns 401 for a published record's column without isPublic", async () => {
+    const upload = await insertUpload()
+    await insertTestDocument(upload.id, 'attachment', { published: true })
+    const res = await getFile(upload.storageKey)
+    expect(res.statusCode).toBe(401)
+  })
+
+  it('stops serving it once the record is unpublished', async () => {
+    const upload = await insertUpload()
+    const document = await insertTestDocument(upload.id, 'file', {
+      published: true,
+    })
+    await testDb
+      .update(testDocuments)
+      .set({ published: false })
+      .where(eq(testDocuments.id, document.id))
+    const res = await getFile(upload.storageKey)
+    expect(res.statusCode).toBe(401)
+  })
+
+  it('returns 401 to anyone for an unknown key', async () => {
+    const res = await getFile(`${crypto.randomUUID()}/original.txt`)
+    expect(res.statusCode).toBe(401)
+  })
+
+  it('still sends an active document as a sandboxed download', async () => {
+    const upload = await insertUpload('original.html')
+    await insertTestDocument(upload.id, 'file', { published: true })
+    const res = await getFile(upload.storageKey)
+    expect(res.statusCode).toBe(200)
+    expect(res.headers['content-disposition']).toBe('attachment')
+    expect(res.headers['content-security-policy']).toBe(
+      "default-src 'none'; sandbox"
+    )
+  })
+
+  it('sends no-cache with cacheSeconds 0', async () => {
+    const uncachedApp = createTestApp({ publicApi: { cacheSeconds: 0 } })
+    try {
+      const upload = await insertUpload()
+      await insertTestDocument(upload.id, 'file', { published: true })
+      const res = await uncachedApp.inject({
+        method: 'GET',
+        url: `/api/files/${upload.storageKey}`,
+      })
+      expect(res.statusCode).toBe(200)
+      expect(res.headers['cache-control']).toBe('no-cache')
+    } finally {
+      await uncachedApp.close()
+    }
+  })
+
+  describe('with the public API disabled', () => {
+    const privateApp = createTestApp({ publicApi: { enabled: false } })
+
+    afterAll(async () => {
+      await privateApp.close()
+    })
+
+    it("keeps a published record's file behind the session", async () => {
+      const upload = await insertUpload()
+      await insertTestDocument(upload.id, 'file', { published: true })
+      const res = await privateApp.inject({
+        method: 'GET',
+        url: `/api/files/${upload.storageKey}`,
+      })
+      expect(res.statusCode).toBe(401)
+    })
+  })
+})
+
+// Each module's columns its public schema returns (`isPublic`), and those it
+// does not.
+describe("A todo's files on the public API", () => {
+  describe.each<TodoReference>(['file', 'image', 'content'])(
+    "a published todo's %s",
+    (reference) => {
+      it('is served to anyone', async () => {
+        const upload = await insertUpload()
+        await attachToTodo(reference, upload.id, { published: true })
+        const res = await getFile(upload.storageKey)
+        expect(res.statusCode).toBe(200)
+      })
+
+      it('returns 401 while the todo is a draft', async () => {
+        const upload = await insertUpload()
+        await attachToTodo(reference, upload.id)
+        const res = await getFile(upload.storageKey)
+        expect(res.statusCode).toBe(401)
+      })
+    }
+  )
+
+  it("returns 401 for a published todo's attachment", async () => {
+    const upload = await insertUpload()
+    await attachToTodo('attachment', upload.id, { published: true })
+    const res = await getFile(upload.storageKey)
+    expect(res.statusCode).toBe(401)
+  })
+})
+
+// The route answers anonymous requests too: each one is counted per IP
+// before the upload is looked up; a signed-in user is not counted.
+describe('Rate limit', () => {
+  const limitedApp = createTestApp({
+    uploads: { rateLimit: { max: 2, windowSeconds: 60 } },
+  })
+
+  afterAll(async () => {
+    await limitedApp.close()
+  })
+
+  function get(key: string, remoteAddress: string, cookie?: string) {
+    return limitedApp.inject({
+      method: 'GET',
+      url: `/api/files/${key}`,
+      remoteAddress,
+      headers: cookie ? { cookie } : {},
+    })
+  }
+
+  it('answers 429 rate_limited to an anonymous client above the limit, per IP', async () => {
+    const unknown = `${crypto.randomUUID()}/original.txt`
+    expect((await get(unknown, '10.1.0.1')).statusCode).toBe(401)
+    expect((await get(unknown, '10.1.0.1')).statusCode).toBe(401)
+    const refused = await get(unknown, '10.1.0.1')
+    expect(refused.statusCode).toBe(429)
+    expect(refused.json()).toEqual({
+      message: 'Too many requests',
+      code: 'rate_limited',
+    })
+    expect(refused.headers['retry-after']).toBeDefined()
+    // Another client keeps its own count.
+    expect((await get(unknown, '10.1.0.2')).statusCode).toBe(401)
+  })
+
+  // The admin's thumbnails never get a 429, even when its users share an IP
+  // with the site's visitors (an office, a proxy trustProxy does not know).
+  it('never counts a signed-in user', async () => {
+    const upload = await insertUpload()
+    for (let i = 0; i < 4; i++) {
+      const res = await get(upload.storageKey, '10.1.0.3', adminCookie)
+      expect(res.statusCode).toBe(200)
+    }
+  })
+
+  it('counts a forged session cookie as anonymous', async () => {
+    const forged = 'better-auth.session_token=forged.signature'
+    const unknown = `${crypto.randomUUID()}/original.txt`
+    expect((await get(unknown, '10.1.0.4', forged)).statusCode).toBe(401)
+    expect((await get(unknown, '10.1.0.4', forged)).statusCode).toBe(401)
+    expect((await get(unknown, '10.1.0.4', forged)).statusCode).toBe(429)
   })
 })
 

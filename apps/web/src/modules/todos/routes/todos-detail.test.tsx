@@ -52,6 +52,8 @@ const completedTodo = createTodo({
   description: 'Go through the Q1 report.',
   date: '2020-04-10',
   status: 'completed',
+  published: false,
+  publishedAt: null,
   attachments: [],
 })
 
@@ -132,6 +134,27 @@ describe('TodoDetail', () => {
     )
     renderTodoDetail()
     expect(await screen.findByText('Pending')).toBeInTheDocument()
+  })
+
+  it('says a draft is not on the public site', async () => {
+    renderTodoDetail()
+    expect(
+      await screen.findByText('Not on the public site')
+    ).toBeInTheDocument()
+  })
+
+  it('shows when a published todo was published', async () => {
+    server.use(
+      getTodosIdHandler(
+        createTodo({
+          ...completedTodo,
+          published: true,
+          publishedAt: '2020-04-11T10:00:00.000Z',
+        })
+      )
+    )
+    renderTodoDetail()
+    expect(await screen.findByText(/^Published on /)).toBeInTheDocument()
   })
 
   it('renders attachment filenames when item has attachments', async () => {

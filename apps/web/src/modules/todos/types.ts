@@ -19,6 +19,7 @@ export interface TodoFormValues {
   content: string
   date: string | null
   status: TodoStatus
+  published: boolean
   attachments: UploadItem[]
   file: UploadItem | null
   image: UploadItem | null

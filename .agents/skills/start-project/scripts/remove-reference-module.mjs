@@ -72,7 +72,10 @@ const EDITS = {
   // --- apps/api ---
   'apps/api/src/app.ts': [
     lines(/^import \{ todosRoutes \} from '\.\/modules\/todos\/todos-routes'$/, 1),
+    lines(/^import \{ todosPublicRoutes \} from '\.\/modules\/todos\/todos-public-routes'$/, 1),
     block('        authenticated.register(todosRoutes, {\n', '        })\n'),
+    // The public scope stays, empty, for the product's first public module
+    lines(/^ +publicApi\.register\(todosPublicRoutes, \{ database \}\)$/, 1),
     // The only route a plan feature gates is the module's
     lines(/^import \{ createRequireSubscription \} from '\.\/hooks\/require-subscription'$/, 1),
     lines(/^ +const requireSubscription = createRequireSubscription\(database, config\)$/, 1),
@@ -85,6 +88,14 @@ const EDITS = {
     block(
       '  // Image, file and one attachment are required on create.\n',
       "  'todos:delete': ['todos:view'],\n\n"
+    ),
+  ],
+  // Only a public module returns uploads this way: it goes, and its first
+  // public module brings it back from wiring.diff
+  'apps/api/src/modules/uploads/uploads-schema.ts': [
+    block(
+      'const publicImageVariantSchema = z.object({ url: z.string() })\n',
+      ".meta({ id: 'PublicUpload', title: 'PublicUpload' })\n\n"
     ),
   ],
   'apps/api/src/config/upload-references.ts': [
@@ -141,6 +152,10 @@ const EDITS = {
     block(
       "  // Each module's own columns, with the guard of its `GET` route\n",
       '    }\n  )\n\n'
+    ),
+    block(
+      "// Each module's columns its public schema returns (`isPublic`), and those it\n",
+      '\n})\n\n'
     ),
   ],
 

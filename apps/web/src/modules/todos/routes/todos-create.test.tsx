@@ -216,6 +216,8 @@ describe('TodoCreate', () => {
         attachmentIds: ['att-1'],
         fileId: 'file-1',
         imageId: 'img-1',
+        // A new todo is a draft unless its switch is turned on.
+        published: false,
       })
       expect(capturedBody).not.toHaveProperty('status')
       expect(mockNavigate).toHaveBeenCalledWith({ to: '/todos' })

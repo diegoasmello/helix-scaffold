@@ -79,7 +79,7 @@ pnpm --filter web preview
 pnpm --filter api test:watch
 ```
 
-**API prefix:** every API route is served under `/api` (`apps/api/src/lib/api-prefix.ts`) — the REST endpoints, better-auth (`/api/auth/*`), the docs (`/api/docs`) and uploaded files (`/api/files/*`). Web and API can then share one domain in production: the reverse proxy sends `/api/*` to the API and everything else to the SPA, so a page (`/users`) never collides with an endpoint. Route files and the docs write paths without it (`GET /todos`); the spec declares it as its server (`servers: [{ url: '/api' }]`, paths stay `/todos`), so generated names never carry it. `VITE_API_URL` and `BASE_URL` stay the API's origin; the web adds the prefix in one place (`apps/web/src/lib/api-url.ts` → `API_URL`).
+**API prefix:** every API route is served under `/api` (`apps/api/src/lib/api-prefix.ts`) — the REST endpoints, the public API (`/api/public/*`), better-auth (`/api/auth/*`), the docs (`/api/docs`) and uploaded files (`/api/files/*`). Web and API can then share one domain in production: the reverse proxy sends `/api/*` to the API and everything else to the SPA, so a page (`/users`) never collides with an endpoint. Route files and the docs write paths without it (`GET /todos`); the spec declares it as its server (`servers: [{ url: '/api' }]`, paths stay `/todos`), so generated names never carry it. `VITE_API_URL` and `BASE_URL` stay the API's origin; the web adds the prefix in one place (`apps/web/src/lib/api-url.ts` → `API_URL`).
 
 **API contract → client:** the web consumes `@helix/api-client`, generated (gitignored) from the committed `packages/api-client/openapi.json`. Nothing regenerates it while you work — `pnpm dev` does not. **After changing a route, a request/response schema or the permission catalog in `apps/api`, run `pnpm spec:sync` before writing or testing web code**, or the new hooks, types and mocks don't exist yet. What counts as a contract change: `packages/api-client/CLAUDE.md` → _Workflow when creating or modifying an API endpoint_.
 
@@ -110,12 +110,12 @@ Backend settings are split in two places:
 
 | Where | What goes there |
 | --- | --- |
-| `apps/api/src/app.config.ts` | **Product decisions**, committed: registration mode, subscriptions and trial, social providers on/off, email sender, uploads, server port and trusted proxies, logger. Written with `defineConfig()` (Vite-style: a plain object or `({ mode }) => ({ ... })`). |
+| `apps/api/src/app.config.ts` | **Product decisions**, committed: registration mode, subscriptions and trial, social providers on/off, the public API, email sender, uploads, server port and trusted proxies, logger. Written with `defineConfig()` (Vite-style: a plain object or `({ mode }) => ({ ... })`). |
 | `apps/api/.env` | **Secrets and per-deploy values**, never committed: `DATABASE_URL`, `AUTH_SECRET`, `BASE_URL`, `CLIENT_URL`, `RESEND_API_KEY`, OAuth client IDs/secrets. |
 
 Settings are resolved once (validated, defaulted, frozen) and passed down from `buildApp(database, { config })`: route plugins get `config` in their options, factories (`createAuth`, `createRequireSubscription`, …) as a parameter. Only the entry points (`server.ts`, the seed, test helpers) import `config` from `@/config`. Secrets come from `import { env } from '@/env'`. Never put a secret in `app.config.ts`, and never add a new product setting to `.env`. To add a setting: extend the `AppConfig` interface (with JSDoc) and `appConfigSchema` in `src/config/define-config.ts`, then set it in `app.config.ts`.
 
-Tests (`NODE_ENV=test`) apply `src/config/test-overrides.ts` on top of `app.config.ts`: registration open, subscriptions enabled, social providers off, uploads in a temp dir. The suite never depends on what a fork configures. To test another mode — such as the shipped defaults — build a second app with `createTestApp({ registration: { mode: 'closed' }, subscriptions: { enabled: false } })`.
+Tests (`NODE_ENV=test`) apply `src/config/test-overrides.ts` on top of `app.config.ts`: registration open, subscriptions enabled, social providers off, the public API on, uploads in a temp dir. The suite never depends on what a fork configures. To test another mode — such as the shipped defaults — build a second app with `createTestApp({ registration: { mode: 'closed' }, subscriptions: { enabled: false } })`.
 
 See `apps/api/CLAUDE.md` → _Application config_ for the full reference.
 
@@ -214,7 +214,11 @@ Every text column users will search or filter by "contains" (the web's search bo
 
 ### Slugs
 
-A module whose records a public page shows by URL (a site using the API as a CMS: `/todos/comprar-pao`) gets a `slug` column, **always unique** in its table. It is internal to the API: generated from the title on create by `slugify()` (`apps/api/src/lib/slug.ts` — ASCII, hyphens, max 100 chars, `-2`/`-3` on collision), never accepted in a request body, never changed afterwards. The API returns it and looks records up by it (`GET /todos/by-slug/:slug`); the admin never shows or edits it. Full guide: `apps/api/CLAUDE.md` → _Slugs_; `todos` is the reference.
+A module whose records a public page shows by URL (a site using the API as a CMS: `/todos/comprar-pao`) gets a `slug` column, **always unique** in its table. It is internal to the API: generated from the title on create by `slugify()` (`apps/api/src/lib/slug.ts` — ASCII, hyphens, max 100 chars, `-2`/`-3` on collision), never accepted in a request body, never changed afterwards. The API returns it and looks records up by it (`GET /todos/by-slug/:slug` for the admin, `GET /public/todos/:slug` for a site — see _Public API_); the admin never shows or edits it. Full guide: `apps/api/CLAUDE.md` → _Slugs_; `todos` is the reference.
+
+### Public API
+
+A module whose records a site shows without signing in (the API as a CMS) gets **public routes** next to its admin ones: `GET /api/public/<feature>` (published records, paginated) and `GET /api/public/<feature>/:slug`, in `<feature>-public-{schema,service,routes}.ts`, registered in the public scope of `app.ts` — no session, a rate limit per IP, a public cache, CORS without credentials, all only with `publicApi.enabled` in `app.config.ts`. Nothing is public by default: the record must be **published** (`published`, with `publishedAt` stamped by the API on the first publication), the field must be listed in the **public schema** and the public service's `select`, and an upload's files open to anyone only for a column registered with `isPublic`. Every rich text field is stored sanitized (`sanitizeRichText()`), so a site can insert it as HTML. Full guide: `apps/api/CLAUDE.md` → _Public API_, _Rich text fields_; `todos` is the reference.
 
 ### RBAC checklist
 

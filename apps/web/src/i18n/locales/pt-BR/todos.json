@@ -19,6 +19,7 @@
     "title": "Título",
     "date": "Data",
     "status": "Status",
+    "published": "Site público",
     "actions": "Ações"
   },
   "filters": {
@@ -27,6 +28,7 @@
     "status": "Status",
     "statusPending": "Pendente",
     "statusCompleted": "Concluída",
+    "published": "Publicada",
     "date": "Data",
     "createdAt": "Data de criação",
     "search": "Buscar por título ou descrição"
@@ -57,6 +59,10 @@
     "status": {
       "label": "Concluída"
     },
+    "published": {
+      "label": "Publicada",
+      "description": "Mostra a tarefa no site público, no endereço dela"
+    },
     "attachments": {
       "label": "Anexos",
       "description": "Envie até 10 arquivos de qualquer tipo"
@@ -72,6 +78,7 @@
     "content": "Conteúdo",
     "date": "Data",
     "status": "Status",
+    "published": "Site público",
     "createdAt": "Criado em",
     "file": "Arquivo",
     "image": "Imagem",
@@ -80,6 +87,12 @@
   "status": {
     "pending": "Pendente",
     "completed": "Concluída"
+  },
+  "publication": {
+    "published": "Publicada",
+    "draft": "Rascunho",
+    "publishedOn": "Publicada em {{date}}",
+    "notPublished": "Fora do site público"
   },
   "delete": {
     "title": "Excluir tarefa",
@@ -99,7 +112,9 @@
     "body": "Texto completo",
     "bodyDescription": "Aceita títulos, listas, links e imagens.",
     "files": "Imagem e arquivos",
-    "filesDescription": "A imagem aparece no detalhe. Anexos e o PDF ficam disponíveis para download."
+    "filesDescription": "A imagem aparece no detalhe. Anexos e o PDF ficam disponíveis para download.",
+    "publication": "Site público",
+    "publicationDescription": "Uma tarefa publicada aparece no site público, com a imagem, o PDF e as imagens do conteúdo — abertos a qualquer pessoa. Os anexos continuam internos."
   },
   "noResults": {
     "title": "Nenhuma tarefa encontrada",

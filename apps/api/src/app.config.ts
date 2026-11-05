@@ -22,6 +22,8 @@ export default defineConfig(({ mode }) => ({
     host: '0.0.0.0',
     // Behind a reverse proxy (nginx, a load balancer, Cloudflare), set how
     // many hops to trust (`1`) or the proxy's IPs — see `trustProxy`'s docs.
+    // Every rate limit counts per client IP: left `false` there, all clients
+    // share the proxy's.
     trustProxy: false,
   },
 
@@ -56,6 +58,19 @@ export default defineConfig(({ mode }) => ({
     },
   },
 
+  publicApi: {
+    // Routes under /api/public/* a site reads without signing in, and the
+    // files of published records open to anyone.
+    enabled: false,
+    // Browser origins allowed to call /api/public/* (CORS). Empty when the
+    // site fetches on its server.
+    origins: [],
+    // Cache-Control max-age of public answers, in seconds.
+    cacheSeconds: 60,
+    // Requests per IP per window on /api/public/*.
+    rateLimit: { max: 300, windowSeconds: 60 },
+  },
+
   email: {
     from: 'noreply@localhost',
   },
@@ -64,6 +79,9 @@ export default defineConfig(({ mode }) => ({
     storage: 'local',
     dir: './storage',
     maxSizeMb: 50,
+    // Anonymous requests per IP per window on /api/files/* (signed-in users
+    // are not counted).
+    rateLimit: { max: 1000, windowSeconds: 60 },
     orphanCleanup: {
       intervalHours: 6,
       graceHours: 24,

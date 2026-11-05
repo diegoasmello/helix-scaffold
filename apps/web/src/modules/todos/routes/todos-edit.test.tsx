@@ -57,6 +57,13 @@ vi.mock('../components/todos-form', () => ({
         onChange={(e) => form.setFieldValue('content', e.target.value)}
       />
       <input
+        type="checkbox"
+        role="switch"
+        aria-label="Published"
+        checked={form.values.published}
+        onChange={(e) => form.setFieldValue('published', e.target.checked)}
+      />
+      <input
         placeholder="Pick a date"
         value={form.values.date ?? ''}
         onChange={(e) => form.setFieldValue('date', e.target.value)}
@@ -93,6 +100,8 @@ const mockTodo = createTodo({
   description: 'Go through the Q1 report.',
   date: '2020-04-10',
   status: 'completed',
+  published: true,
+  publishedAt: '2020-04-11T10:00:00.000Z',
   attachments: [mockAttachment],
   file: mockFile,
   image: mockImage,
@@ -172,8 +181,29 @@ describe('TodoEdit', () => {
         attachmentIds: ['attach-1'],
         fileId: 'file-1',
         imageId: 'img-1',
+        published: true,
       })
       expect(mockNavigate).toHaveBeenCalledWith({ to: '/todos' })
+    })
+  })
+
+  it('unpublishes the todo with its switch', async () => {
+    let capturedBody: UpdateTodoInput | undefined
+    server.use(
+      patchTodosIdHandler(async (info) => {
+        capturedBody = (await info.request.json()) as UpdateTodoInput
+        return patchTodosIdHandlerResponse200({ ...mockTodo, ...capturedBody })
+      })
+    )
+
+    renderTodoEdit()
+    const toggle = await screen.findByRole('switch', { name: /^Published/ })
+    expect(toggle).toBeChecked()
+    await userEvent.click(toggle)
+    await userEvent.click(screen.getByRole('button', { name: 'Save' }))
+
+    await waitFor(() => {
+      expect(capturedBody).toMatchObject({ published: false })
     })
   })
 

@@ -20,6 +20,12 @@ import { billingWebhookAdapter as configuredBillingWebhookAdapter } from './conf
 import type { Database } from './db'
 import { env } from './env'
 import { registerAuditRequest } from './hooks/audit-request'
+import {
+  isPublicApiUrl,
+  PUBLIC_API_PREFIX,
+  publicCorsOptions,
+  registerPublicApi,
+} from './hooks/public-api'
 import { createRequireAuth } from './hooks/require-auth'
 import { createRequirePermission } from './hooks/require-permission'
 import { createRequireSubscription } from './hooks/require-subscription'
@@ -41,6 +47,7 @@ import { registrationRoutes } from './modules/registration/registration-routes'
 import { rolesRoutes } from './modules/roles/roles-routes'
 import { subscriptionStatusRoutes } from './modules/subscriptions/subscription-status-routes'
 import { subscriptionsRoutes } from './modules/subscriptions/subscriptions-routes'
+import { todosPublicRoutes } from './modules/todos/todos-public-routes'
 import { todosRoutes } from './modules/todos/todos-routes'
 import { uploadFilesRoutes } from './modules/uploads/upload-files-routes'
 import { uploadsRoutes } from './modules/uploads/uploads-routes'
@@ -94,12 +101,20 @@ export function buildApp(database: Database, options: BuildAppOptions = {}) {
     limits: { fileSize: config.uploads.maxSizeMb * 1024 * 1024 },
   })
 
-  app.register(fastifyCors, {
+  // The web (`CLIENT_URL`, with its session cookie) everywhere but the
+  // public API, which has its own origins and never takes credentials.
+  const webCors = {
     origin: env.CLIENT_URL,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
     credentials: true,
     maxAge: 86400,
+  }
+  const publicCors = publicCorsOptions(config.publicApi)
+  app.register(fastifyCors, {
+    delegator: (request, callback) => {
+      callback(null, isPublicApiUrl(request.url) ? publicCors : webCors)
+    },
   })
 
   app.register(fastifySwagger, {
@@ -171,6 +186,27 @@ export function buildApp(database: Database, options: BuildAppOptions = {}) {
       api.register(registrationRoutes, { config })
       api.register(subscriptionStatusRoutes, { config })
 
+      // Reads the session itself: published files open to anyone.
+      api.register(uploadFilesRoutes, {
+        database,
+        auth,
+        config,
+        storage,
+        references: getUploadReferences(),
+      })
+
+      // What a site reads without signing in — see `src/hooks/public-api.ts`.
+      if (config.publicApi.enabled) {
+        api.register(
+          async (publicApi) => {
+            await registerPublicApi(publicApi, config.publicApi)
+
+            publicApi.register(todosPublicRoutes, { database })
+          },
+          { prefix: PUBLIC_API_PREFIX }
+        )
+      }
+
       if (config.subscriptions.enabled && billingWebhookAdapter) {
         api.register(billingWebhookRoutes, {
           database,
@@ -217,12 +253,6 @@ export function buildApp(database: Database, options: BuildAppOptions = {}) {
           database,
           requirePermission,
           storage,
-        })
-        authenticated.register(uploadFilesRoutes, {
-          database,
-          config,
-          storage,
-          references: getUploadReferences(),
         })
 
         if (config.subscriptions.enabled) {

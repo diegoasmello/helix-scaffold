@@ -1,6 +1,6 @@
 # todos module — backend
 
-Full CRUD module. Reference implementation for `apps/api` — the workspace `CLAUDE.md` uses this module as the canonical example for pagination, sorting, filtering, PDF export and file attachments (multi-file junction table, single-file FK columns **and** images inside rich text).
+Full CRUD module. Reference implementation for `apps/api` — the workspace `CLAUDE.md` uses this module as the canonical example for pagination, sorting, filtering, PDF export, file attachments (multi-file junction table, single-file FK columns **and** images inside rich text) and the **public API** (published todos a site reads without signing in — _Public routes_ below).
 
 This module also serves as the **reference implementation for `requireSubscription`**. All todos routes require both an RBAC permission and an active subscription. When building a product on this scaffold, follow this module's route registration pattern for any feature that should be gated behind a subscription.
 
@@ -17,9 +17,11 @@ This module also serves as the **reference implementation for `requireSubscripti
 | `description` | `text NOT NULL`        |                                 |
 | `normalizedTitle` | `text NOT NULL` | `normalizeText(title)` — written by the service, never returned |
 | `normalizedDescription` | `text NOT NULL` | `normalizeText(description)` — same |
-| `content`     | `text NOT NULL`        | Rich text (HTML string)         |
+| `content`     | `text NOT NULL`        | Rich text (HTML string), stored sanitized (`sanitizeRichText()`) |
 | `status`      | `todo_status NOT NULL` | Default `'pending'` at DB level |
 | `date`        | `date NOT NULL`        | A calendar day, `YYYY-MM-DD` (`mode: 'string'`) — the same day in every time zone |
+| `published`   | `boolean NOT NULL`     | Default `false`. Shown by the public API (`TODO_PUBLISHED`) |
+| `publishedAt` | `timestamptz` (nullable) | Set by the service the first time `published` turns on, never changed or cleared, never in a request body. Check `todos_published_at_check`: a published row always has it. Partial index `todos_published_at_idx` (`published_at desc nulls first, id desc nulls first where published`) serves the public list's default sort, read forwards or backwards, without a sort |
 | `fileId`      | `text` (nullable)      | FK → `uploads.id`, `ON DELETE SET NULL`, index `todos_file_id_idx` — single PDF |
 | `imageId`     | `text` (nullable)      | FK → `uploads.id`, `ON DELETE SET NULL`, index `todos_image_id_idx` — single image |
 | `createdAt`   | `timestamptz NOT NULL`   | `defaultNow()`                  |
@@ -33,18 +35,20 @@ This module also serves as the **reference implementation for `requireSubscripti
 
 **Slug:** `TODO_SLUG` (next to the table) is the `SlugConfig` — column, constraint, fallback `todo`. This module is the reference for the pattern — see `apps/api/CLAUDE.md` → _Slugs_.
 
-All four upload references (`todo_attachments.upload_id`, `todos.file_id`, `todos.image_id`, `todo_content_images.upload_id`) are registered in `src/config/upload-references.ts`, so the orphan cleanup job never deletes them and `GET /files/*` serves their files to the users `GET /todos/:id` lets in (`todos:view` and the `todos` feature).
+**Publication:** `TODO_PUBLISHED` (next to the table, `eq(todos.published, true)`) is the one definition of "public": the public service and the `isPublic` of the upload references filter with it. See `apps/api/CLAUDE.md` → _Public API_.
+
+All four upload references (`todo_attachments.upload_id`, `todos.file_id`, `todos.image_id`, `todo_content_images.upload_id`) are registered in `src/config/upload-references.ts`, so the orphan cleanup job never deletes them and `GET /files/*` serves their files to the users `GET /todos/:id` lets in (`todos:view` and the `todos` feature). The file, the image and the content images — the ones `publicTodoSchema` returns — also have `isPublic`: while the todo is published, anyone opens them. The attachments are internal: no `isPublic`.
 
 ## Schema (`todos-schema.ts`)
 
-- `todoSchema` — full entity returned by the API, including `slug`, with the uploads embedded: `attachments: Upload[]`, `file: Upload | null`, `image: Upload | null`. Registered with `.meta({ id: 'Todo', title: 'Todo' })` so swagger emits it as a named `$ref`
-- `createTodoSchema` — `{ title, description, content, date, attachmentIds (min 1), fileId, imageId }`. All required. **No `status` field** — status defaults to `'pending'` via the DB column default and is not accepted on create.
-- `updateTodoSchema` — all fields optional: `title`, `description`, `content`, `status`, `date`, `attachmentIds` (min 1 when sent), `fileId`, `imageId`. This is the only way to change status.
+- `todoSchema` — full entity returned by the API, including `slug`, `published` and `publishedAt`, with the uploads embedded: `attachments: Upload[]`, `file: Upload | null`, `image: Upload | null`. Registered with `.meta({ id: 'Todo', title: 'Todo' })` so swagger emits it as a named `$ref`
+- `createTodoSchema` — `{ title, description, content, date, published, attachmentIds (min 1), fileId, imageId }`. All required but `published` (default `false`). **No `status` field** — status defaults to `'pending'` via the DB column default and is not accepted on create.
+- `updateTodoSchema` — all fields optional: `title`, `description`, `content`, `status`, `date`, `published`, `attachmentIds` (min 1 when sent), `fileId`, `imageId`. This is the only way to change status.
 - `todosExportQuerySchema` — sorting + filtering only (no pagination): `todosSortingSchema.merge(todosFilterQuerySchema)`. Used by `GET /todos/export`.
 - `date` is `z.iso.date()` in the entity, create and update schemas: `YYYY-MM-DD` in and out, a datetime or an impossible day (`2025-02-30`) is a 400. See `apps/api/CLAUDE.md` → _2. Database schema_ → _Dates and times_.
 - Sort columns: `['title', 'status', 'date', 'createdAt']`. Default sort: `createdAt`. `title` sorts by `normalizedTitle`; `id` breaks ties.
-- Filter fields: `['title', 'description', 'status', 'date', 'createdAt']`.
-- `slug` is in no request schema: a `slug` sent in a body is stripped by Zod.
+- Filter fields: `['title', 'description', 'status', 'published', 'date', 'createdAt']`.
+- `slug` and `publishedAt` are in no request schema: sent in a body, Zod strips them.
 
 ## Service (`todos-service.ts`)
 
@@ -53,8 +57,9 @@ Factory `createTodosService(database, storage)` returns `{ list, getById, getByS
 - `list` applies filters (`FILTER_COLUMNS`, `FILTER_COERCE` — `coerceCalendarDay` for `date`, which skips a value that is not a day, and `coerceInstant` for `createdAt`, which skips a value that is not an ISO datetime with its zone — `NORMALIZED_FILTER_COLUMNS` for the text operators on `title`/`description`) and the `search` param (`SEARCH_COLUMNS`: `normalizedTitle`, `normalizedDescription` — combined with `and()`), ordering (`SORT_COLUMNS`, then `id`) and pagination, then loads attachments (one query for the page, via `todo_attachments`) and the single `file`/`image` uploads (one `inArray` query).
 - `getById` / `getBySlug` share `findOne(where)`, which assembles the embedded uploads.
 - `create(data, actorId)` / `update(id, data, actorId)` first check the referenced uploads with `assertUsableUploads()` (`src/lib/upload-ownership.ts`): each `attachmentIds` / `fileId` / `imageId`, and each image of `content` (`uploadIdsInHtml()`, `src/lib/rich-text-uploads.ts`), must have been uploaded by `actorId` (`request.sessionUser.id`), or already belong to this todo on update (another editor re-sends them) — else **400** `invalid_upload`, before anything is written. In the same call, `imageId` and the images of `content` must be images (`IMAGE_TYPES`) and `fileId` a PDF (`PDF_TYPES`) — else **400** `invalid_upload_type`, on the todo's current files too; `attachmentIds` take any file. `update` answers `null` for an unknown id before looking at uploads.
-- `create` inserts the row with `normalizedValues(data, TODO_NORMALIZED_FIELDS)` (no `status` — the DB default applies) and a slug from `withUniqueSlug(database, TODO_SLUG, title, insert)`, then inserts one `todo_attachments` row per `attachmentId` and one `todo_content_images` row per image of `content`.
-- `update` updates only the sent columns, and the normalized copy of each text field sent (same `normalizedValues` call) — never the slug, even when `title` changes; when `attachmentIds` is sent it fully resyncs the junction rows (delete all, insert new), and when `content` is sent, its `todo_content_images` rows the same way. Returns `null` for an unknown id.
+- `create` and `update` pass `content` through `sanitizeRichText()` (`src/lib/sanitize-rich-text.ts`) before anything else reads it — the images are found in the sanitized HTML.
+- `create` inserts the row with `normalizedValues(data, TODO_NORMALIZED_FIELDS)` (no `status` — the DB default applies), `publishedAt: published ? new Date() : null` and a slug from `withUniqueSlug(database, TODO_SLUG, title, insert)`, then inserts one `todo_attachments` row per `attachmentId` and one `todo_content_images` row per image of `content`.
+- `update` updates only the sent columns, and the normalized copy of each text field sent (same `normalizedValues` call) — never the slug, even when `title` changes; with `published: true`, `publishedAt = coalesce(published_at, now())` (the first publication's date survives unpublishing and publishing again); when `attachmentIds` is sent it fully resyncs the junction rows (delete all, insert new), and when `content` is sent, its `todo_content_images` rows the same way. Returns `null` for an unknown id.
 - `remove` is a hard delete: collects the todo's attachment, file, image and content image uploads (each once) → deletes the todo (cascades the junction rows) → deletes those `uploads` rows → deletes their storage keys, original + variants (best-effort, `Promise.allSettled`).
 - `generateReport` queries up to 5000 rows (hard limit) with the same sort/filter params as `list`, then delegates to `renderTodosReport` via dynamic import.
 
@@ -77,6 +82,18 @@ preHandler: [requireSubscription('todos'), requirePermission('todos', 'view')]
 | `DELETE` | `/todos/:id` | `[requireSubscription('todos'), requirePermission('todos', 'delete')]` | `request.audit('delete', 'todos', id)` |
 
 `GET /todos/by-slug/:slug` is the lookup of a public page (200 or 404); its explicit `operationId: 'getTodoBySlug'` keeps kubb from generating a broken mock (see `apps/api/CLAUDE.md` → _Slugs_). `GET /todos/export` does not clash with `GET /todos/:id`: Fastify's router (find-my-way) always prefers a static segment over a parametric one, whatever the registration order.
+
+### Public routes (`todos-public-routes.ts`)
+
+Registered in the public scope of `app.ts` (`publicApi.register(todosPublicRoutes, { database })`, only with `publicApi.enabled`) — no session, no `preHandler`, rate limit and public cache from `registerPublicApi()`. The reference for `apps/api/CLAUDE.md` → _Public API_.
+
+| Method | Path | `operationId` | Notes |
+| --- | --- | --- | --- |
+| `GET` | `/public/todos` | `getPublicTodos` | Published todos, paginated; `sortBy` `publishedAt` (default) / `date` / `title`, `sortOrder` defaulting to `desc` for `publishedAt` and `asc` for the others (`PUBLIC_TODO_DEFAULT_ORDER`), `id` breaking ties in the same direction; `search` on the title and description. No `filters` |
+| `GET` | `/public/todos/:slug` | `getPublicTodoBySlug` | 200, or 404 for a draft and an unknown slug alike |
+
+- `todos-public-schema.ts` — `publicTodoSchema` (`PublicTodo`): `slug`, `title`, `description`, `content`, `date`, `image` and `file` (`publicUploadSchema`), `publishedAt`, `updatedAt`. Left out on purpose: `id`, `status`, `attachments`, `createdAt`, the normalized columns. `publicTodosListQuerySchema`.
+- `todos-public-service.ts` — `createTodosPublicService(database)` → `{ list, getBySlug }`. Explicit `select` (`PUBLIC_COLUMNS`, `PUBLIC_UPLOAD_COLUMNS`); every query adds `TODO_PUBLISHED` itself.
 
 ### Route options signature
 
@@ -131,7 +148,13 @@ Route integration tests against the real test database (`helix_test`).
 - `describe('Upload types')` — a PDF as `imageId` and an image as `fileId` (400 `invalid_upload_type`, nothing written), a PDF inside `content`, any image type (SVG) as the image, any file as an attachment, a wrong type on update (the old image kept), the todo's own PDF moved to `imageId` (still refused), `invalid_upload` before the type for someone else's file.
 - `describe('Images in the content')` — the reference for _Images inside rich text_: recorded on create, external images and unknown keys ignored, kept by the orphan cleanup (`deleteOrphanUploads()` with the registered loaders and `graceHours: 0`), someone else's image on create/update (400), another editor re-sending the text (200), a `PATCH` without `content` keeps them, an image taken out gets cleaned up, deleted with the todo.
 - `describe('Attachments')` covers create/read/update of `attachmentIds` and that deleting a todo removes its attachment rows.
+- `describe('Publication')` — the reference for the admin side of _Public API_: a draft by default, dated on create with `published: true` and on the first `PATCH`, the date kept on unpublish/republish and on a `PATCH` without `published`, a `publishedAt` in the body ignored, the audit, the `published` filter, the check constraint.
+- `describe('Rich text sanitization')` — a script and event handlers removed on create (in the response and the row), a `javascript:` link on update, the images of the sanitized content still recorded.
 - `describe('Permission requirements')` — the module's `PERMISSION_REQUIREMENTS` through `PUT /roles/:id/permissions`: `todos:create` without `uploads:create` is a 400, `todos:edit` needs no upload.
+
+## Public route tests (`todos-public-routes.test.ts`)
+
+No session anywhere in the file. `insertTodo()` inserts a published todo (at `publishedAt`) unless `published: false`. Covers: the list (published only, newest first, pagination, sort by title/date — ascending without `sortOrder` —, the oldest first with `sortOrder=asc`, search on published only, a non-public sort column → 400, `filters` ignored, `pageSize` capped, public `Cache-Control`), by slug (200, a draft → 404 `no-store`, unknown → 404), _What a site sees_ (the exact keys of the list item and the detail, the uploads without id/storage key/name/uploader, the variants by URL, `null` image and file) and `publicApi.enabled: false` → 404. Who opens the files publicly: `upload-files-routes.test.ts` → `describe("A todo's files on the public API")`.
 
 **Subscription in tests:** `createTestSession()` creates an active `pro` subscription for the test admin (subscriptions are always enabled in tests via `src/config/test-overrides.ts`), so individual tests never set one up.
 

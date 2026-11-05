@@ -22,6 +22,15 @@ export const todoSchema = z
     content: z.string(),
     status: z.enum(['pending', 'completed']),
     date: z.iso.date().describe('A calendar day, YYYY-MM-DD'),
+    published: z
+      .boolean()
+      .describe('Shown by the public API (GET /public/todos)'),
+    publishedAt: z
+      .date()
+      .nullable()
+      .describe(
+        'When it was first published — set by the API, never changed afterwards'
+      ),
     attachments: z.array(uploadSchema),
     file: uploadSchema.nullable(),
     image: uploadSchema.nullable(),
@@ -35,6 +44,7 @@ export const createTodoSchema = z.object({
   description: z.string().min(1).max(500),
   content: z.string().min(1).max(1000),
   date: z.iso.date(),
+  published: z.boolean().default(false),
   attachmentIds: z.array(z.string()).min(1),
   fileId: z.string(),
   imageId: z.string(),
@@ -46,6 +56,7 @@ export const updateTodoSchema = z.object({
   content: z.string().min(1).max(1000).optional(),
   status: z.enum(['pending', 'completed']).optional(),
   date: z.iso.date().optional(),
+  published: z.boolean().optional(),
   attachmentIds: z.array(z.string()).min(1).optional(),
   fileId: z.string().optional(),
   imageId: z.string().optional(),
@@ -62,6 +73,7 @@ const TODO_FILTER_FIELDS = [
   'title',
   'description',
   'status',
+  'published',
   'date',
   'createdAt',
 ] as const

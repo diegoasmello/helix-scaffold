@@ -9,6 +9,7 @@ const base: TodoFormValues = {
   content: '',
   date: null,
   status: 'completed',
+  published: false,
   attachments: [],
   file: null,
   image: null,

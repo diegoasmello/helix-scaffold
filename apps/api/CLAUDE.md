@@ -28,7 +28,7 @@ Run from `apps/api` (or from the root with the `pnpm db:*` / `pnpm spec:*` alias
 | `pnpm db:check` / `pnpm db:check:test` | Compares the database's `drizzle.__drizzle_migrations` with this branch's journal, by hash (`src/db/check-migrations.ts` → `migration-status.ts`). Lists the pending migrations and exits 1 on a migration the branch does not know (another branch's — its tables and enums are still there), one whose `.sql` changed after it ran, or one older than the last applied (the migrator only applies newer ones, so it would never run). `db:migrate` reports none of these: with nothing pending it succeeds, and the leftovers fail a later migration |
 | `pnpm db:recreate:test` | Drops the `public` and `drizzle` schemas of the test DB and migrates it from scratch (`src/db/recreate.ts`) — the fix for what `db:check:test` reports. Refuses any database whose name does not end in `_test`/`_e2e`. The dev DB holds your data: on a mismatch there, either drop what the other branch created by hand, or `docker compose down`/remove its volume and `pnpm db:migrate` + `pnpm db:seed` |
 | `pnpm db:studio` | Drizzle Studio |
-| `pnpm db:seed` | Dev data (`src/db/seed.ts`). **Refuses to run if any user exists.** Wipes `uploads.dir`, creates Admin (the admin role — `isAdmin`, no permission rows)/Moderator/User roles (in open registration `User` becomes the default role, through `ensureDefaultRole()`), an admin login (`admin@example.com` / `pass1234`), 20 extra users (same password) and sample todos with uploads |
+| `pnpm db:seed` | Dev data (`src/db/seed.ts`). **Refuses to run if any user exists.** Wipes `uploads.dir`, creates Admin (the admin role — `isAdmin`, no permission rows)/Moderator/User roles (in open registration `User` becomes the default role, through `ensureDefaultRole()`), an admin login (`admin@example.com` / `pass1234`), 20 extra users (same password) and sample todos with uploads (about half published, for the public API) |
 | `pnpm db:reset` | Truncates every table in the schema (`drizzle-seed` `reset`). Does not touch `uploads.dir` |
 | `pnpm e2e:server` | The API of the web's E2E suite — started by `apps/web/playwright.config.ts`, which provides its environment (no `.env`). Migrates and empties the database (`src/db/migrate.ts`, `src/db/reset.ts`), then runs `src/scripts/e2e-server.ts`: `src/server.ts` with the test config plus `src/config/e2e-overrides.ts` (port 3334, uploads in `/tmp/helix-e2e-uploads`, `warn` logs) |
 | `pnpm spec:export <file>` | Writes the OpenAPI spec — see _OpenAPI spec export_. After a contract change, run `pnpm spec:sync` from the repo root instead: it exports to `packages/api-client/openapi.json` and regenerates the client |
@@ -50,7 +50,7 @@ The file a developer edits to shape the app. Written with `defineConfig()` (Vite
 | --- | --- | --- |
 | `app.name` | `'Helix API'` | Title of the API docs (`/api/docs`) |
 | `server.port` / `server.host` | `3333` / `'0.0.0.0'` | |
-| `server.trustProxy` | `false` | Fastify's `trustProxy`: which proxies to believe for the client IP (`request.ip`). The `/auth/*` route overwrites `X-Forwarded-For` with `request.ip` before handing the request to better-auth (`advanced.ipAddress.ipAddressHeaders` in `src/auth.ts`), so its sign-in rate limit and session IPs — and the audit log's `ip` — can't be spoofed by a client header. Behind a reverse proxy set the hop count (`1`) or the proxy's IPs, or every client shares the proxy's IP (and one rate limit). Tested in `src/auth.test.ts` → _client IP_ |
+| `server.trustProxy` | `false` | Fastify's `trustProxy`: which proxies to believe for the client IP (`request.ip`). The `/auth/*` route overwrites `X-Forwarded-For` with `request.ip` before handing the request to better-auth (`advanced.ipAddress.ipAddressHeaders` in `src/auth.ts`), so its sign-in rate limit and session IPs — and the audit log's `ip` — can't be spoofed by a client header. Behind a reverse proxy set the hop count (`1`) or the proxy's IPs, or every client shares the proxy's IP — and one count in every rate limit: the sign-ins, `publicApi.rateLimit`, `uploads.rateLimit`. `registerRateLimit()` logs a warning when a request's `X-Forwarded-For` was ignored. Tested in `src/auth.test.ts` → _client IP_ |
 | `registration.mode` | `'closed'` | `'open'` enables public self-registration. See `src/modules/registration/CLAUDE.md`. |
 | `auth.socialProviders.{google,facebook,apple}.enabled` | `false` | Requires the provider's `CLIENT_ID`/`CLIENT_SECRET` in `.env`; startup fails otherwise. `apple.appBundleId` is optional (native iOS). |
 | `subscriptions.enabled` | `false` | Activates the subscription infrastructure (routes, hooks, trial auto-start). See `src/modules/subscriptions/CLAUDE.md`. |
@@ -58,10 +58,15 @@ The file a developer edits to shape the app. Written with `defineConfig()` (Vite
 | `subscriptions.pastDueGraceDays` | `0` | Days a `past_due` subscription keeps access, counted from `pastDueSince`. `0` = cut on payment failure. |
 | `subscriptions.expiration.intervalHours` | `1` | How often lapsed scaffold-owned subscriptions (no `externalId`) are marked `expired` (`server.ts`). |
 | `subscriptions.trial` | `false` | `{ days, planId }` — auto-creates a trialing subscription on self-registration (requires `registration.mode: 'open'` and `subscriptions.enabled: true`; a warning is logged otherwise). |
+| `publicApi.enabled` | `false` | Registers the public API (`/api/public/*`) and lets `GET /api/files/*` serve a published record's files to anyone. See _Public API_ |
+| `publicApi.origins` | `[]` | Browser origins allowed to call `/api/public/*` (CORS, never with credentials). Empty when the site fetches on its server |
+| `publicApi.cacheSeconds` | `60` | `Cache-Control: public, max-age` of public answers (JSON and files); `0` → `no-cache` |
+| `publicApi.rateLimit.max` / `windowSeconds` | `300` / `60` | Requests per client IP per window on `/api/public/*` (429 `rate_limited`) |
 | `email.from` | `'noreply@localhost'` | Sender address. Must be from a domain verified in Resend for production. |
 | `uploads.storage` | `'local'` | `'s3'` stub exists but throws |
 | `uploads.dir` | `'./storage'` | Local storage root directory |
 | `uploads.maxSizeMb` | `50` | Enforced by `@fastify/multipart` |
+| `uploads.rateLimit.max` / `windowSeconds` | `1000` / `60` | Requests per client IP per window on `GET /api/files/*` **without a session** — it answers anonymous requests (429 `rate_limited`). A signed-in user is never counted, so the admin's thumbnails never get a 429 |
 | `uploads.orphanCleanup.intervalHours` / `graceHours` | `6` / `24` | Orphan upload cleanup schedule (`server.ts`) |
 | `logger.level` / `logger.pretty` | `'info'` / `false` | The scaffold sets `pretty: mode !== 'production'` |
 
@@ -102,6 +107,7 @@ Validated with Zod in `src/env.ts` at startup. If a required variable is missing
 - `registration.mode: 'open'` — allows `createTestSession()` to sign up the test admin via `POST /api/auth/sign-up/email`.
 - `subscriptions.enabled: true`, with a test plan catalog: `starter` (no features), `pro` and `enterprise` (the modules' features plus `reports`, the suite's own feature — the infrastructure tests gate their throwaway routes and records with it, so they never depend on which modules gate what). Subscription-gated modules need it; the helper creates an active `pro` subscription for the test admin automatically.
 - `uploads.dir: '/tmp/helix-test-uploads'`.
+- `publicApi.enabled: true` (no origins, `cacheSeconds: 60`) — the public routes exist whatever the product sets. Tests of the limit or the CORS origins build an app with their own values.
 
 - `auth.socialProviders`: all off — an enabled provider needs OAuth credentials the suites' environments never have (the E2E server inherits this too).
 
@@ -115,7 +121,7 @@ The suite therefore never depends on what a product sets in `app.config.ts`.
 
 **While developing, the hooks are not enough:** `pnpm dev` never regenerates `@helix/api-client`, so after changing a route, a request/response schema (including `errorSchema` codes and `.meta({ id })`) or `src/config/permissions.ts`, run `pnpm spec:sync` from the repo root before the web uses it. See `packages/api-client/CLAUDE.md` → _Workflow when creating or modifying an API endpoint_.
 
-`/api/docs` on a running server keeps serving the spec of its own config. **When a new setting registers routes conditionally** (like `subscriptions.enabled`), turn it on in `spec-overrides.ts`, or its routes vanish from the client. In this profile `requireSubscription()` skips its unknown-feature check, since the placeholder plan declares no features.
+`/api/docs` on a running server keeps serving the spec of its own config. **When a new setting registers routes conditionally** (like `subscriptions.enabled` or `publicApi.enabled`), turn it on in `spec-overrides.ts`, or its routes vanish from the client. In this profile `requireSubscription()` skips its unknown-feature check, since the placeholder plan declares no features.
 
 ## Shared social provider utility (`src/lib/social-providers.ts`)
 
@@ -130,22 +136,25 @@ The suite therefore never depends on what a product sets in `app.config.ts`.
 src/modules/<feature>/
 ├── <feature>-schema.ts   ← Zod schemas + inferred types
 ├── <feature>-service.ts  ← database operations (factory function)
-└── <feature>-routes.ts   ← Fastify route registrations
+├── <feature>-routes.ts   ← Fastify route registrations
+└── <feature>-public-{schema,service,routes}.ts ← only when a site reads it (see _Public API_)
 ```
 
 **Export only what another file imports.** The schema file exports the schemas and inferred types its routes and service use; the sort columns, the sorting and filter schemas, and any type nobody imports stay local. The service exports its factory, no `ReturnType` alias. `pnpm knip` (from the repo root) reports an export no file imports.
 
-**Every route lives under `/api`** (`API_PREFIX`, `src/lib/api-prefix.ts`): `buildApp` registers all route plugins — public, better-auth, docs, static files and the `authenticated` scope — inside one plugin with `{ prefix: API_PREFIX }`. Route files declare paths without it (`app.get('/features', …)`), tests inject with it (`url: '/api/features'`), and the spec lists `/api` as its server with prefix-less paths (`@fastify/swagger`'s `stripBasePath`), so the generated client keeps `getFeatures`. `src/app.test.ts` checks that nothing answers outside the prefix. Code building a public URL from `env.BASE_URL` (the API's origin) adds `API_PREFIX` itself (`local-storage.ts`).
+**Every route lives under `/api`** (`API_PREFIX`, `src/lib/api-prefix.ts`): `buildApp` registers all route plugins — the unauthenticated ones, better-auth, docs, the uploaded files, the public API scope and the `authenticated` scope — inside one plugin with `{ prefix: API_PREFIX }`. Route files declare paths without it (`app.get('/features', …)`), tests inject with it (`url: '/api/features'`), and the spec lists `/api` as its server with prefix-less paths (`@fastify/swagger`'s `stripBasePath`), so the generated client keeps `getFeatures`. `src/app.test.ts` checks that nothing answers outside the prefix. Code building a public URL from `env.BASE_URL` (the API's origin) adds `API_PREFIX` itself (`local-storage.ts`).
 
 The entry point is `src/app.ts`, which exports `buildApp(database: Database, options?)` (`options.config` replaces the default settings and `options.billingWebhookAdapter` overrides `src/config/billing-webhook.ts` — both used by tests). Each route module is registered there, inside the `/api` scope, via `api.register(featureRoutes, { database })`, plus `config` when the module reads a setting.
 
 ## Hooks (`src/hooks/`)
 
-The `src/hooks/` directory contains request-lifecycle hooks injected into the authenticated scope in `app.ts`.
+The `src/hooks/` directory contains request-lifecycle hooks injected into the scopes of `app.ts` — the authenticated scope, and the public API scope (`public-api.ts`).
 
 | Hook | Factory | Purpose |
 | --- | --- | --- |
-| `require-auth.ts` | `createRequireAuth(auth)` | Validates the session cookie; attaches `request.sessionUser` |
+| `require-auth.ts` | `createRequireAuth(auth)` | Validates the session cookie; attaches `request.sessionUser`. `readSessionUser(auth, request)` returns the user or `null`, for a route outside the scope that also answers anonymous requests (`GET /files/*`) |
+| `rate-limit.ts` | `registerRateLimit(scope, { max, windowSeconds, allowList? })` | `@fastify/rate-limit` per `request.ip` on every route of the scope, before any query; 429 `{ message, code: 'rate_limited' }`; `allowList` skips the requests it accepts (`GET /files/*`: a valid session). Logs a warning, once, when a request's `X-Forwarded-For` was ignored — a proxy `server.trustProxy` does not cover. For the routes that answer anonymous requests: the public API and `GET /files/*` |
+| `public-api.ts` | `registerPublicApi(scope, config.publicApi)` | Turns a scope into the public API (`/api/public/*`): rate limit per IP, public `Cache-Control`. Also `PUBLIC_API_PREFIX`, `isPublicApiUrl()`, `publicCorsOptions()` (the CORS of `app.ts`) and `publicCacheControl()` — see _Public API_ |
 | `require-permission.ts` | `createRequirePermission(database)` | Returns `requirePermission(resource, action) → PreHandler`; enforces RBAC per route. Only catalog pairs compile, and an undeclared one throws at registration |
 | `require-subscription.ts` | `createRequireSubscription(database, config)` | Returns `requireSubscription(feature?) → PreHandler`; enforces active subscription (and plan feature) per route |
 | `audit-request.ts` | `registerAuditRequest(app, recorder)` | Attaches `request.audit(action, resource, id?, metadata?)` globally — the audit recorder with the session user as actor |
@@ -219,6 +228,7 @@ Every list endpoint can optionally support field-level filtering via the reusabl
 | `src/lib/filtering.ts`  | `filterQuerySchema`, `buildFilterWhereClause`, `FilterWhereOptions`, `coerceCalendarDay`, `coerceInstant`, `searchQuerySchema`, `buildSearchClause`, `FilterLogic` |
 | `src/lib/normalize-text.ts` | `normalizeText`, `normalizedValues`, `NormalizedFieldMap` — see _Normalized text columns_ |
 | `src/lib/slug.ts` | `slugify`, `withUniqueSlug`, `SlugConfig`… — see _Slugs_ |
+| `src/lib/sanitize-rich-text.ts` | `sanitizeRichText` — see _Rich text fields_ |
 
 **`filterQuerySchema(allowedFields)`** — factory that accepts a non-empty tuple of filterable column names and returns a Zod schema with two fields:
 
@@ -503,7 +513,80 @@ async function getBySlug(slug: string) {
 
 **5. Seed and tests** — the seed computes the slugs with `distinctSlugs(titles, FEATURE_SLUG)`. The test row helper (`todoRow()` in `src/test/helpers.ts`) defaults `slug` to the title's slug plus a random suffix, so rows with the same title never collide; pass `slug` when the test looks it up. In the route tests (`todos-routes.test.ts` → `describe('Slug')` is the reference), cover: generated from the title; suffix on a repeated title; fallback for a title with no slug character; a 100-character title whose suffixed slugs are cut to stay at 100 (`'a'.repeat(100)` → `aaa…-2`, which runs the long-base lookup); concurrent creates with the same title get distinct slugs; a `slug` in the `POST`/`PATCH` body ignored; a title change keeps the slug; the unique index; `GET /by-slug/:slug` 200 and 404; and the route in _Permission enforcement_. The helpers themselves (the rule, the candidate pattern, the retry with a fake `write`: a collision then success, another constraint rethrown at once, giving up after 5) are tested once in `src/lib/slug.test.ts`.
 
-**Public access:** `GET /by-slug/:slug` sits behind the session, the permission and the subscription like every other route, so a site calls it with a service account. An unauthenticated public read (API keys, a public scope) is a separate pattern.
+**Public access:** `GET /by-slug/:slug` sits behind the session, the permission and the subscription like every other route — it is the admin's lookup. A site reads records without signing in through the module's public routes (`GET /public/<feature>/:slug`, published records only) — see _Public API_.
+
+---
+
+## Public API (`/api/public/*`)
+
+What a site reads **without signing in** — a site using the API as a CMS: a list of published records and one record by its slug. The admin keeps its own routes; the public ones are a separate, read-only contract of their own. `todos` is the reference (`todos-public-schema.ts`, `todos-public-service.ts`, `todos-public-routes.ts`).
+
+**Nothing is public by default.** A record reaches a site only through three opt-ins, each written on purpose:
+
+1. **The module** has public routes (`<feature>-public-routes.ts`), registered in the public scope.
+2. **The record** is published (`published`), and every public read filters by it — in the service, never in the route.
+3. **The field** is listed in the public schema (`publicTodoSchema`) **and** in the public service's `select`. A column added to the table stays private until both list it; an upload column's files open to anyone only with `isPublic` in `src/config/upload-references.ts`.
+
+### Infrastructure
+
+| Where | What |
+| --- | --- |
+| `publicApi` in `src/app.config.ts` | `enabled` (default `false` — no route, no public file), `origins`, `cacheSeconds`, `rateLimit` — see _Application config_. On in `test-overrides.ts` and `spec-overrides.ts`, so the suite and the client always have the routes |
+| `src/app.ts` | The public scope, `api.register(…, { prefix: PUBLIC_API_PREFIX })` inside `if (config.publicApi.enabled)`: `registerPublicApi()` first, then each module's `xxxPublicRoutes` with `{ database }`. And the CORS: one `@fastify/cors` with a `delegator` — the web's policy (`CLIENT_URL`, credentials) everywhere, `publicCorsOptions()` (the configured origins, `GET` only, **never credentials**) on `/api/public/*` |
+| `src/hooks/public-api.ts` | `registerPublicApi(scope, settings)`: `registerRateLimit()` (`src/hooks/rate-limit.ts` — per `request.ip`, so `server.trustProxy` matters behind a proxy; 429 `{ message, code: 'rate_limited' }` through the domain error handler); `Cache-Control: public, max-age=<cacheSeconds>` on a success, `no-store` on anything else (a 404 must not outlive a publication) |
+| `src/modules/uploads/upload-files-routes.ts` | `GET /files/*`, registered **outside** the authenticated scope: a file a published record shows (`isPublic`) is served to anyone with the public `Cache-Control`; any other file needs the session as before (anonymous → 401, no access → 404). Since anyone reaches it, it has its own rate limit (`uploads.rateLimit`) and every lookup it runs is indexed. See `src/modules/uploads/CLAUDE.md` → _Serving files_ |
+| `publicUploadSchema` (`uploads-schema.ts`) | An upload as a site sees it: `url`, `mimeType`, `fileSize`, `variants` (URLs only) — no id, storage key, original name or uploader |
+| `src/lib/sanitize-rich-text.ts` | Every rich text field is stored sanitized, so a site can insert it as HTML — see _Rich text fields_ |
+
+Nothing in the public scope reads the session or a cookie: a public route answers the same to everyone, which is what lets a CDN keep it. `requirePermission` and `requireSubscription` do not apply there — they decide who uses the admin, not who visits the site.
+
+### Adding public routes to a module
+
+**1. Publication** (`src/db/schema/<feature>.ts`) — the record says whether it is public:
+
+```ts
+published: boolean('published').default(false).notNull(),
+// Set by the service the first time `published` turns on; never sent by a
+// client, never changed or cleared — the date a site shows and sorts by.
+publishedAt: timestamp('published_at', { withTimezone: true }),
+// …
+(t) => [
+  check('features_published_at_check', sql`not ${t.published} or ${t.publishedAt} is not null`),
+  // The order of the public list's default sort, nulls as Postgres' `desc` puts them
+  index('features_published_at_idx')
+    .on(t.publishedAt.desc().nullsFirst(), t.id.desc().nullsFirst())
+    .where(sql`${t.published}`),
+]
+
+/** The rows the public API may show — every public read filters with it. */
+export const FEATURE_PUBLISHED = eq(features.published, true)
+```
+
+The check keeps any writer (seed, test, import) from leaving a published row without its date; the partial index serves the public list's default sort without sorting — only if it matches the `ORDER BY` exactly: the public service orders by `publishedAt` then `id` **in the same direction**, and drizzle writes `.desc()` as `DESC NULLS LAST` while Postgres' `ORDER BY … DESC` is `NULLS FIRST`, hence `.nullsFirst()` on both columns. Read forwards the index serves `desc`, backwards `asc`. Check a new one with `EXPLAIN`: an `Index Scan` (or `Backward`), no `Sort`. The admin contract gets `published` in the entity, in create (`z.boolean().default(false)`) and update (`optional()`), and in the filter fields; `publishedAt` is in the entity only. The service sets it: on create `publishedAt: data.published ? new Date() : null`; on update, when `published` is `true`, `publishedAt: sql\`coalesce(${features.publishedAt}, now())\`` — so unpublishing and publishing again keeps the first date. Publishing is an edit (`features:edit`); a product where only some editors publish adds a `publish` action to the resource and checks it when `published` changes.
+
+**2. Public schema** (`<feature>-public-schema.ts`) — the public entity, `.meta({ id: 'PublicFeature' })`, each field listed on purpose: the `slug` (a site addresses records by it — no id), the fields a page shows, uploads as `publicUploadSchema`, `publishedAt` (not nullable — published rows always have it) and `updatedAt` (sitemaps, caches). Left out: workflow fields (`status`), internal files, `createdAt`, the normalized columns. The list query is pagination + its own `sortBy` enum (default `publishedAt`) and an optional `sortOrder` whose default depends on the column (`PUBLIC_TODO_DEFAULT_ORDER`: `desc` for `publishedAt`, newest first; `asc` for the others, as in the admin) + `searchQuerySchema` — **no `filters`**: the admin's filter language reaches columns a site has no business querying.
+
+**3. Public service** (`<feature>-public-service.ts`) — `createFeaturePublicService(database)` with `list` and `getBySlug`. It selects explicit columns (`PUBLIC_COLUMNS`, the uploads' `PUBLIC_UPLOAD_COLUMNS` — the variants as their URLs only, built by Postgres with `jsonb_build_object`, never the storage keys) — nothing else is read, whatever the response schema would strip; the upload ids that attach the files are dropped by `toPublicUpload()` — and adds `FEATURE_PUBLISHED` to every query itself. `getBySlug` returns `null` for a draft, exactly as for an unknown slug.
+
+**4. Public routes** (`<feature>-public-routes.ts`) — `GET /<feature>` and `GET /<feature>/:slug` (served at `/api/public/<feature>…`), `tags: ['public']`, explicit `operationId`s (`getPublicFeatures`, `getPublicFeatureBySlug`), no `preHandler`, 404 for a draft. Register them in the public scope of `app.ts`: `publicApi.register(featurePublicRoutes, { database })`.
+
+**5. Files** — in `src/config/upload-references.ts`, add `isPublic` to each upload column the public schema returns (the image, a PDF, the junction table of a rich text field's images), with the same publication filter (`and(FEATURE_PUBLISHED, eq(features.imageId, uploadId))`). A column the site never shows (internal attachments) gets no `isPublic`: its files stay behind `access`. See `src/modules/uploads/CLAUDE.md` → _Serving files_.
+
+**6. Tests** — `todos-public-routes.test.ts` is the reference, with no session anywhere: the list shows published records only, newest first; pagination, search, sort; a sort column that is not public → 400; `filters` ignored; `pageSize` capped; `Cache-Control` public. By slug: 200; a draft → 404 with `no-store`; unknown → 404. _What a site sees_: the exact set of keys (`Object.keys(body).sort()`), the uploads' shape. `publicApi.enabled: false` → 404. In the module's own test file, `describe('Publication')` (`todos-routes.test.ts`): a draft by default, dated on create or first `PATCH`, the date kept on unpublish/republish, a `publishedAt` in the body ignored, the filter, the check constraint. The files: a `describe` of the module's public columns in `upload-files-routes.test.ts` (see the uploads doc).
+
+**7. Contract** — `pnpm spec:sync`. The routes are in `openapi.json` under the `public` tag (the generated hooks `useGetPublicFeatures`… exist; the admin does not use them): a site generates its own client from the same file. The spec declares `/api` as its server, so a site points its client at `<API origin>/api`.
+
+### Limits to know
+
+- **Unpublishing is not instant everywhere:** a browser or CDN may keep a public answer — and a published file — for `cacheSeconds`.
+- **The rate limits count per client IP — set `server.trustProxy` behind a reverse proxy.** Without it, `request.ip` is the proxy's for every visitor, and the whole site shares one count (300/min on `/api/public/*`, 1000/min of anonymous requests on `/api/files/*`). The API logs a warning when it sees an `X-Forwarded-For` it ignored. Signed-in users are never counted on `/api/files/*`, so the admin keeps working either way.
+- **The rate limits count in memory, per process:** several instances each keep their own count; a cluster that needs one count gives `@fastify/rate-limit` a Redis store (`src/hooks/rate-limit.ts`). A site with heavy traffic puts a CDN in front of its images, which also keeps them off `uploads.rateLimit`.
+- **A route that answers anonymous requests runs only indexed queries, behind a rate limit:** before the change, `requireAuth` stopped them without touching the database; now nothing does. `GET /files/*` looks the key up through `uploads_storage_key_idx` and `uploads_variant_<name>_key_idx`, and each `isPublic` through the column's FK index.
+- **Not built (yet):** a preview of drafts for editors (a signed, expiring token), a key per site, a webhook that tells a statically generated site to rebuild.
+
+## Rich text fields
+
+The HTML of a rich text field (`RichTextEditor` in the web) comes from the client, so the API stores it sanitized: the service passes it through `sanitizeRichText()` (`src/lib/sanitize-rich-text.ts`) on create and on every update that sends it, **before** `uploadIdsInHtml()`. What is left is what the editor writes — paragraphs, headings, marks, lists, quotes, code, links (`http`, `https`, `mailto`, `tel`; the `rel` sent is always dropped, a `target` survives only as `_blank` — any case, as browsers read it — with `rel="noopener noreferrer nofollow"`, so the page a link opens never gets `window.opener`), images (`http`/`https` only), `text-align` — and nothing that runs: no `<script>`, event handler, `javascript:`/`data:` URL, `<iframe>`, form or other `style`. The admin renders it through TipTap, which would drop the rest anyway; a public site inserting it as HTML relies on this. A new editor extension adds its tags and attributes to the allowlist in the same file, or they vanish on save. The rules are tested in `src/lib/sanitize-rich-text.test.ts`; the module's tests check that a write stores the sanitized HTML (`todos-routes.test.ts` → `describe('Rich text sanitization')`).
 
 ---
 
@@ -522,7 +605,7 @@ The file upload system is implemented as a standalone `uploads` module. Any othe
 | `src/lib/upload-references.ts` / `src/lib/orphan-uploads.ts` | Registry API and the orphan cleanup job |
 | `src/lib/rich-text-uploads.ts` | `uploadIdsInHtml(database, html)` — the uploads a rich text field shows as images |
 
-The provider instance is created once in `app.ts` and injected into every module that needs it via route options. Files are served at `/api/files/*` (`src/modules/uploads/upload-files-routes.ts`, inside the `authenticated` scope): only to the uploader, to `uploads:view`, or to a reader of a record that references the upload; anyone else gets 404. `<img>` tags still work, since the browser sends the session cookie with them. Only images, PDF, plain text, audio and video open in the browser; every other file downloads in a sandbox — see `src/modules/uploads/CLAUDE.md` → _Serving files_.
+The provider instance is created once in `app.ts` and injected into every module that needs it via route options. Files are served at `/api/files/*` (`src/modules/uploads/upload-files-routes.ts`, outside the `authenticated` scope — it reads the session itself): to the uploader, to `uploads:view`, or to a reader of a record that references the upload; with `publicApi.enabled`, to anyone when a published record shows it (`isPublic`); a signed-in user without access gets 404, an anonymous request 401. `<img>` tags still work, since the browser sends the session cookie with them. Only images, PDF, plain text, audio and video open in the browser; every other file downloads in a sandbox — see `src/modules/uploads/CLAUDE.md` → _Serving files_.
 
 ### Configuration
 
@@ -536,8 +619,8 @@ Use `todos` as the reference implementation; the step-by-step guide (multi-file 
 2. Response embeds `attachments: uploadSchema.array()` / `file: uploadSchema.nullable()`; create/update accept `attachmentIds` / `fileId`
 3. Service: `assertUsableUploads()` on create/update (a record references only uploads its author uploaded — 400 `invalid_upload` — and a typed field only files of its type, `{ id, accept: IMAGE_TYPES }` — 400 `invalid_upload_type`); load uploads on reads; sync junction rows on create/update; on delete, collect upload IDs → delete the record → delete the `uploads` rows → delete storage keys (best-effort)
 4. Accept `storage: StorageProvider` in route options and pass it to the service factory
-5. **Register every new column in `src/config/upload-references.ts`**, with the guard of the record's `GET` route — otherwise the orphan cleanup job deletes those uploads after the grace period, and nobody but the uploader and `uploads:view` can open their files. Each column gets its cases in `upload-files-routes.test.ts` → _Who may read a file_
-6. Images inside a rich text field (`onUploadImage`): a junction table `xxx_<field>_images` the service fills from the HTML with `uploadIdsInHtml()` (`src/lib/rich-text-uploads.ts`), checked and registered like the others — see `src/modules/uploads/CLAUDE.md` → _Images inside rich text_
+5. **Register every new column in `src/config/upload-references.ts`**, with the guard of the record's `GET` route (and `isPublic` when the module's public schema returns it — _Public API_) — otherwise the orphan cleanup job deletes those uploads after the grace period, and nobody but the uploader and `uploads:view` can open their files. Each column gets its cases in `upload-files-routes.test.ts` → _Who may read a file_
+6. Images inside a rich text field (`onUploadImage`): a junction table `xxx_<field>_images` the service fills from the HTML with `uploadIdsInHtml()` (`src/lib/rich-text-uploads.ts`), checked and registered like the others — see `src/modules/uploads/CLAUDE.md` → _Images inside rich text_ — after `sanitizeRichText()` (_Rich text fields_)
 
 ---
 
@@ -846,6 +929,8 @@ Every text column users will search or filter by "contains" gets a normalized co
 
 A column that already leads a composite primary key or unique index is covered — `todo_attachments` (`PRIMARY KEY (todo_id, upload_id)`) indexes `upload_id` alone and not `todo_id`. Indexes for performance only (sorting, filtering, the trigram of _Normalized text columns_) are added when the table is expected to grow, not by default.
 
+**An index on a table that is already large in production:** a plain `CREATE INDEX` blocks writes to the table while it builds. `CREATE INDEX CONCURRENTLY` does not, but Postgres refuses it inside a transaction — and the migrator (`pnpm migrate`, `src/db/run-migrations.ts`) runs the pending migrations in one. So run `CREATE INDEX CONCURRENTLY IF NOT EXISTS <name> …` by hand on that database before the deploy, and make the generated migration's statement `CREATE INDEX IF NOT EXISTS` (the same name): the migration then finds it built and does nothing there, and still creates it everywhere else (a fresh database, the tests). The scaffold's own migrations never need it: a product starts from a single `init` (`/start-project`).
+
 After creating the schema, generate and apply the migration:
 
 ```bash
@@ -1105,7 +1190,7 @@ api.register(async (authenticated) => {
 
 A module that reads a setting receives `config` in its options (`{ database, config, requirePermission }`) — never `import { config } from '@/config'` inside a module, or tests cannot run it in another mode. Routes that must exist only under a config flag are registered conditionally (`if (config.subscriptions.enabled) …`) — and the flag must then be turned on in `src/config/spec-overrides.ts`, or the routes disappear from the generated client (see _OpenAPI spec export_).
 
-Registering outside `authenticated` (directly in the `api` scope) will leave the routes publicly accessible; registering on `app` itself would also put them outside `/api`.
+Registering outside `authenticated` (directly in the `api` scope) will leave the routes publicly accessible — without the public scope's rate limit and cache rules; registering on `app` itself would also put them outside `/api`. A route a site reads without signing in goes in the public scope instead — see _Public API_.
 
 ### 6. Tests
 

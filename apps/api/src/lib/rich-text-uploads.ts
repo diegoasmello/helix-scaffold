@@ -1,7 +1,7 @@
-import { inArray, or, sql } from 'drizzle-orm'
+import { inArray, or } from 'drizzle-orm'
 
 import type { Database } from '@/db'
-import { uploads } from '@/db/schema'
+import { IMAGE_VARIANT_NAMES, uploads, variantKey } from '@/db/schema'
 
 import { API_PREFIX } from './api-prefix'
 
@@ -56,16 +56,14 @@ export async function uploadIdsInHtml(
   const keys = fileKeysInHtml(html)
   if (keys.length === 0) return []
 
-  const variantKey = (variant: string) =>
-    sql<string>`${uploads.variants} -> ${variant} ->> 'key'`
   const rows = await database
     .select({ id: uploads.id })
     .from(uploads)
     .where(
       or(
         inArray(uploads.storageKey, keys),
-        ...['thumbnail', 'small', 'medium', 'large'].map((variant) =>
-          inArray(variantKey(variant), keys)
+        ...IMAGE_VARIANT_NAMES.map((name) =>
+          inArray(variantKey(uploads.variants, name), keys)
         )
       )
     )

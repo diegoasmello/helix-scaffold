@@ -1,11 +1,12 @@
-import { eq, isNotNull, sql } from 'drizzle-orm'
-import { pgTable, text } from 'drizzle-orm/pg-core'
+import { and, eq, isNotNull, sql } from 'drizzle-orm'
+import { boolean, pgTable, text } from 'drizzle-orm/pg-core'
 
 import type { Database } from '@/db'
 import { uploads } from '@/db/schema'
-import type {
-  UploadReaderAccess,
-  UploadReference,
+import {
+  hasRows,
+  type UploadReaderAccess,
+  type UploadReference,
 } from '@/lib/upload-references'
 
 import { testDb } from './helpers'
@@ -17,7 +18,11 @@ import { testDb } from './helpers'
 // The two shapes a module references uploads with
 // (`src/modules/uploads/CLAUDE.md` → _Adding uploads to another module_):
 
-/** A record with a single-file column (`file_id`, `on delete set null`). */
+/**
+ * A record with a single-file column (`file_id`, `on delete set null`) and a
+ * publication flag: its public schema would return the file, not the
+ * attachments (`isPublic` on the file column only).
+ */
 export const testDocuments = pgTable('test_documents', {
   id: text('id')
     .primaryKey()
@@ -25,6 +30,7 @@ export const testDocuments = pgTable('test_documents', {
   fileId: text('file_id').references(() => uploads.id, {
     onDelete: 'set null',
   }),
+  published: boolean('published').notNull().default(false),
 })
 
 /** Its multi-file junction table (both sides `on delete cascade`). */
@@ -48,7 +54,8 @@ export async function createScratchTables() {
   await testDb.execute(sql`
     create table test_documents (
       id text primary key,
-      file_id text references uploads (id) on delete set null
+      file_id text references uploads (id) on delete set null,
+      published boolean not null default false
     )
   `)
   await testDb.execute(sql`
@@ -62,11 +69,15 @@ export async function createScratchTables() {
 /** A document holding the upload in its `file_id`, or as an attachment. */
 export async function insertTestDocument(
   uploadId: string,
-  column: 'file' | 'attachment'
+  column: 'file' | 'attachment',
+  options: { published?: boolean } = {}
 ) {
   const [document] = await testDb
     .insert(testDocuments)
-    .values({ fileId: column === 'file' ? uploadId : null })
+    .values({
+      fileId: column === 'file' ? uploadId : null,
+      published: options.published ?? false,
+    })
     .returning()
   if (column === 'attachment') {
     await testDb
@@ -76,13 +87,10 @@ export async function insertTestDocument(
   return document
 }
 
-async function exists(query: Promise<unknown[]>) {
-  return (await query).length > 0
-}
-
 /**
  * Both columns as a module registers them in `src/config/upload-references.ts`,
- * read by the users `access` describes.
+ * read by the users `access` describes — and the file of a published document
+ * by anyone (`isPublic`).
  */
 export function testDocumentReferences(
   access: UploadReaderAccess
@@ -100,11 +108,24 @@ export function testDocumentReferences(
           .filter((id): id is string => id !== null)
       },
       references: (db, uploadId) =>
-        exists(
+        hasRows(
           db
             .select({ id: testDocuments.id })
             .from(testDocuments)
             .where(eq(testDocuments.fileId, uploadId))
+            .limit(1)
+        ),
+      isPublic: (db, uploadId) =>
+        hasRows(
+          db
+            .select({ id: testDocuments.id })
+            .from(testDocuments)
+            .where(
+              and(
+                eq(testDocuments.published, true),
+                eq(testDocuments.fileId, uploadId)
+              )
+            )
             .limit(1)
         ),
     },
@@ -117,7 +138,7 @@ export function testDocumentReferences(
         return rows.map((row) => row.id)
       },
       references: (db, uploadId) =>
-        exists(
+        hasRows(
           db
             .select({ id: testDocumentAttachments.uploadId })
             .from(testDocumentAttachments)

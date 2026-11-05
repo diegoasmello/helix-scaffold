@@ -26,5 +26,8 @@ export const testConfigOverrides: AppConfig = {
       apple: { enabled: false },
     },
   },
+  // The public routes exist, whatever the product enables. Tests of the
+  // limit or the CORS origins build an app with their own values.
+  publicApi: { enabled: true, origins: [], cacheSeconds: 60 },
   uploads: { dir: '/tmp/helix-test-uploads' },
 }

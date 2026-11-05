@@ -71,6 +71,7 @@ export function TodoList() {
         { value: 'completed', label: t('filters.statusCompleted') },
       ],
     },
+    { name: 'published', label: t('filters.published'), type: 'boolean' },
     { name: 'date', label: t('filters.date'), type: 'date' },
     { name: 'createdAt', label: t('filters.createdAt'), type: 'date' },
   ]
@@ -128,17 +129,28 @@ export function TodoList() {
     {
       accessor: 'title',
       title: t('columns.title'),
-      width: '60%',
+      width: '45%',
       sortable: true,
       ellipsis: true,
     },
     {
       accessor: 'date',
       title: t('columns.date'),
-      width: '20%',
+      width: '15%',
       sortable: true,
       textAlign: 'center',
       render: (record) => formatDate(parseISO(record.date), 'short'),
+    },
+    {
+      accessor: 'published',
+      title: t('columns.published'),
+      width: '20%',
+      textAlign: 'center',
+      render: (item) => (
+        <StatusBadge tone={item.published ? 'info' : 'neutral'}>
+          {item.published ? t('publication.published') : t('publication.draft')}
+        </StatusBadge>
+      ),
     },
     {
       accessor: 'status',

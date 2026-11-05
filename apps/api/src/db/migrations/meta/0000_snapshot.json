@@ -1,5 +1,5 @@
 {
-  "id": "5d80d8ab-4b21-402b-bd16-a73b54a0af04",
+  "id": "e4654f81-08e1-47b4-9a08-6058d576df2c",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -1030,6 +1030,19 @@
           "primaryKey": false,
           "notNull": true
         },
+        "published": {
+          "name": "published",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "published_at": {
+          "name": "published_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
         "file_id": {
           "name": "file_id",
           "type": "text",
@@ -1103,6 +1116,28 @@
           "concurrently": false,
           "method": "btree",
           "with": {}
+        },
+        "todos_published_at_idx": {
+          "name": "todos_published_at_idx",
+          "columns": [
+            {
+              "expression": "published_at",
+              "isExpression": false,
+              "asc": false,
+              "nulls": "first"
+            },
+            {
+              "expression": "id",
+              "isExpression": false,
+              "asc": false,
+              "nulls": "first"
+            }
+          ],
+          "isUnique": false,
+          "where": "\"todos\".\"published\"",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
         }
       },
       "foreignKeys": {
@@ -1136,7 +1171,12 @@
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {},
-      "checkConstraints": {},
+      "checkConstraints": {
+        "todos_published_at_check": {
+          "name": "todos_published_at_check",
+          "value": "not \"todos\".\"published\" or \"todos\".\"published_at\" is not null"
+        }
+      },
       "isRLSEnabled": false
     },
     "public.uploads": {
@@ -1208,6 +1248,81 @@
               "expression": "uploaded_by",
               "isExpression": false,
               "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "uploads_storage_key_idx": {
+          "name": "uploads_storage_key_idx",
+          "columns": [
+            {
+              "expression": "storage_key",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "uploads_variant_thumbnail_key_idx": {
+          "name": "uploads_variant_thumbnail_key_idx",
+          "columns": [
+            {
+              "expression": "(\"variants\" -> 'thumbnail' ->> 'key')",
+              "asc": true,
+              "isExpression": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "uploads_variant_small_key_idx": {
+          "name": "uploads_variant_small_key_idx",
+          "columns": [
+            {
+              "expression": "(\"variants\" -> 'small' ->> 'key')",
+              "asc": true,
+              "isExpression": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "uploads_variant_medium_key_idx": {
+          "name": "uploads_variant_medium_key_idx",
+          "columns": [
+            {
+              "expression": "(\"variants\" -> 'medium' ->> 'key')",
+              "asc": true,
+              "isExpression": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "uploads_variant_large_key_idx": {
+          "name": "uploads_variant_large_key_idx",
+          "columns": [
+            {
+              "expression": "(\"variants\" -> 'large' ->> 'key')",
+              "asc": true,
+              "isExpression": true,
               "nulls": "last"
             }
           ],

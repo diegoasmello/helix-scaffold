@@ -1,4 +1,4 @@
-import { and, asc, count, desc, eq, inArray, type SQL } from 'drizzle-orm'
+import { and, asc, count, desc, eq, inArray, type SQL, sql } from 'drizzle-orm'
 
 import type { Database } from '@/db'
 import {
@@ -18,6 +18,7 @@ import {
 import { normalizedValues } from '@/lib/normalize-text'
 import { getPaginationParams } from '@/lib/pagination'
 import { uploadIdsInHtml } from '@/lib/rich-text-uploads'
+import { sanitizeRichText } from '@/lib/sanitize-rich-text'
 import { withUniqueSlug } from '@/lib/slug'
 import type { StorageProvider } from '@/lib/storage'
 import {
@@ -45,6 +46,7 @@ const FILTER_COLUMNS = {
   title: todos.title,
   description: todos.description,
   status: todos.status,
+  published: todos.published,
   date: todos.date,
   createdAt: todos.createdAt,
 } as const
@@ -251,7 +253,9 @@ export function createTodosService(
    * See `assertUsableUploads`.
    */
   async function create(data: CreateTodoInput, actorId: string) {
-    const { attachmentIds = [], ...todoData } = data
+    const { attachmentIds = [], ...rest } = data
+    // Stored safe to render anywhere — the admin and a public site.
+    const todoData = { ...rest, content: sanitizeRichText(rest.content) }
     const contentImageIds = await uploadIdsInHtml(database, todoData.content)
     await assertUsableUploads(database, actorId, [
       ...attachmentIds,
@@ -271,6 +275,7 @@ export function createTodosService(
             ...todoData,
             ...normalizedValues(todoData, TODO_NORMALIZED_FIELDS),
             slug,
+            publishedAt: todoData.published ? new Date() : null,
           })
           .returning()
     )
@@ -299,7 +304,11 @@ export function createTodosService(
    * Typed fields keep their type either way (400 `invalid_upload_type`).
    */
   async function update(id: string, data: UpdateTodoInput, actorId: string) {
-    const { attachmentIds, ...todoData } = data
+    const { attachmentIds, ...rest } = data
+    const todoData =
+      rest.content === undefined
+        ? rest
+        : { ...rest, content: sanitizeRichText(rest.content) }
     const contentImageIds =
       todoData.content === undefined
         ? undefined
@@ -352,6 +361,11 @@ export function createTodosService(
         .set({
           ...todoData,
           ...normalizedValues(todoData, TODO_NORMALIZED_FIELDS),
+          // The first publication only: a todo unpublished and published
+          // again keeps its date.
+          ...(todoData.published && {
+            publishedAt: sql`coalesce(${todos.publishedAt}, now())`,
+          }),
         })
         .where(eq(todos.id, id))
         .returning()

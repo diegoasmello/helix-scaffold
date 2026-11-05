@@ -117,10 +117,13 @@ CREATE TABLE "todos" (
 	"content" text NOT NULL,
 	"status" "todo_status" DEFAULT 'pending' NOT NULL,
 	"date" date NOT NULL,
+	"published" boolean DEFAULT false NOT NULL,
+	"published_at" timestamp with time zone,
 	"file_id" text,
 	"image_id" text,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
-	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
+	CONSTRAINT "todos_published_at_check" CHECK (not "todos"."published" or "todos"."published_at" is not null)
 );
 --> statement-breakpoint
 CREATE TABLE "uploads" (
@@ -163,4 +166,10 @@ CREATE INDEX "todo_content_images_upload_id_idx" ON "todo_content_images" USING 
 CREATE UNIQUE INDEX "todos_slug_unique" ON "todos" USING btree ("slug" text_pattern_ops);--> statement-breakpoint
 CREATE INDEX "todos_file_id_idx" ON "todos" USING btree ("file_id");--> statement-breakpoint
 CREATE INDEX "todos_image_id_idx" ON "todos" USING btree ("image_id");--> statement-breakpoint
-CREATE INDEX "uploads_uploaded_by_idx" ON "uploads" USING btree ("uploaded_by");
+CREATE INDEX "todos_published_at_idx" ON "todos" USING btree ("published_at" DESC NULLS FIRST,"id" DESC NULLS FIRST) WHERE "todos"."published";--> statement-breakpoint
+CREATE INDEX "uploads_uploaded_by_idx" ON "uploads" USING btree ("uploaded_by");--> statement-breakpoint
+CREATE INDEX "uploads_storage_key_idx" ON "uploads" USING btree ("storage_key");--> statement-breakpoint
+CREATE INDEX "uploads_variant_thumbnail_key_idx" ON "uploads" USING btree (("variants" -> 'thumbnail' ->> 'key'));--> statement-breakpoint
+CREATE INDEX "uploads_variant_small_key_idx" ON "uploads" USING btree (("variants" -> 'small' ->> 'key'));--> statement-breakpoint
+CREATE INDEX "uploads_variant_medium_key_idx" ON "uploads" USING btree (("variants" -> 'medium' ->> 'key'));--> statement-breakpoint
+CREATE INDEX "uploads_variant_large_key_idx" ON "uploads" USING btree (("variants" -> 'large' ->> 'key'));
