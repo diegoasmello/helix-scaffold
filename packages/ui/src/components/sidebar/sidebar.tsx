@@ -1,5 +1,12 @@
 import { css } from '@emotion/react'
-import { Box, Flex, ScrollArea, Text, UnstyledButton } from '@mantine/core'
+import {
+  Box,
+  Flex,
+  ScrollArea,
+  Text,
+  Tooltip,
+  UnstyledButton,
+} from '@mantine/core'
 import { createStyles } from '@mantine/emotion'
 import { IconLayoutSidebarLeftCollapse, IconX } from '@tabler/icons-react'
 import { Link, useRouterState } from '@tanstack/react-router'
@@ -45,6 +52,7 @@ export function Sidebar(props: Readonly<SidebarProps>) {
   const hoverTimeout = useRef<ReturnType<typeof setTimeout> | null>(null)
   const peekExpanded = hovered || focused
   const visuallyCollapsed = collapsed && !peekExpanded
+  const toggleLabel = collapsed ? t('sidebar.expand') : t('sidebar.collapse')
 
   const handleMouseEnter = () => {
     hoverTimeout.current = setTimeout(() => setHovered(true), 300)
@@ -96,30 +104,32 @@ export function Sidebar(props: Readonly<SidebarProps>) {
               {visuallyCollapsed ? collapsedLogo : expandedLogo}
             </Link>
             {inDrawer ? (
-              <UnstyledButton
-                onClick={onClose}
-                className={classes.toggleButton}
-                aria-label={t('sidebar.close')}
-              >
-                <IconX size={20} stroke={1.7} />
-              </UnstyledButton>
+              <Tooltip label={t('sidebar.close')}>
+                <UnstyledButton
+                  onClick={onClose}
+                  className={classes.toggleButton}
+                  aria-label={t('sidebar.close')}
+                >
+                  <IconX size={20} stroke={1.7} />
+                </UnstyledButton>
+              </Tooltip>
             ) : (
               !visuallyCollapsed && (
-                <UnstyledButton
-                  onClick={onToggleCollapsed}
-                  className={classes.toggleButton}
-                  aria-label={
-                    collapsed ? t('sidebar.expand') : t('sidebar.collapse')
-                  }
-                >
-                  <IconLayoutSidebarLeftCollapse
-                    size={18}
-                    stroke={1.7}
-                    className={cx(classes.toggleIcon, {
-                      [classes.toggleIconCollapsed]: collapsed,
-                    })}
-                  />
-                </UnstyledButton>
+                <Tooltip label={toggleLabel}>
+                  <UnstyledButton
+                    onClick={onToggleCollapsed}
+                    className={classes.toggleButton}
+                    aria-label={toggleLabel}
+                  >
+                    <IconLayoutSidebarLeftCollapse
+                      size={18}
+                      stroke={1.7}
+                      className={cx(classes.toggleIcon, {
+                        [classes.toggleIconCollapsed]: collapsed,
+                      })}
+                    />
+                  </UnstyledButton>
+                </Tooltip>
               )
             )}
           </Flex>

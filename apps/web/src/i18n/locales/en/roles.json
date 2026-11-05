@@ -32,7 +32,6 @@
     "roleSelect": {
       "label": "Role",
       "placeholder": "Pick one",
-      "createTooltip": "Create role",
       "createLabel": "Create related role"
     }
   },

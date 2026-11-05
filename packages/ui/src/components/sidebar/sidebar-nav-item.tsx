@@ -103,14 +103,15 @@ export function SidebarNavItem(props: Readonly<SidebarNavItemProps>) {
       }
       action={
         action ? (
-          <Link
-            to={action.to}
-            aria-label={action.label}
-            title={action.label}
-            className={cx(classes.action, { [classes.actionNested]: nested })}
-          >
-            <IconPlus size={nested ? 12 : 14} stroke={2} />
-          </Link>
+          <Tooltip label={action.label}>
+            <Link
+              to={action.to}
+              aria-label={action.label}
+              className={cx(classes.action, { [classes.actionNested]: nested })}
+            >
+              <IconPlus size={nested ? 12 : 14} stroke={2} />
+            </Link>
+          </Tooltip>
         ) : undefined
       }
     />

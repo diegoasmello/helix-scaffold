@@ -32,7 +32,6 @@
     "roleSelect": {
       "label": "Perfil",
       "placeholder": "Selecione um",
-      "createTooltip": "Criar perfil",
       "createLabel": "Criar perfil relacionado"
     }
   },

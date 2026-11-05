@@ -4,6 +4,7 @@ import {
   Button,
   Popover,
   Text,
+  Tooltip,
   UnstyledButton,
 } from '@mantine/core'
 import { createStyles } from '@mantine/emotion'
@@ -39,30 +40,32 @@ export function NotificationsMenu(props: Readonly<NotificationsMenuProps>) {
   const { t } = useTranslation('ui')
   const { classes, cx } = useStyles()
   const unread = items.filter((item) => item.unread).length
+  const bellLabel =
+    unread > 0
+      ? t('notifications.openWithUnread', { count: unread })
+      : t('notifications.open')
 
   return (
     <Popover position="bottom-end" width={392} radius="lg" withinPortal>
-      <Popover.Target>
-        <ActionIcon
-          variant="subtle"
-          color="gray"
-          size={42}
-          radius="xl"
-          className={classes.bell}
-          aria-label={
-            unread > 0
-              ? t('notifications.openWithUnread', { count: unread })
-              : t('notifications.open')
-          }
-        >
-          <IconBell size={20} stroke={1.7} />
-          {unread > 0 && (
-            <span aria-hidden className={classes.count}>
-              {unread > 99 ? '99+' : unread}
-            </span>
-          )}
-        </ActionIcon>
-      </Popover.Target>
+      <Tooltip label={bellLabel} position="bottom">
+        <Popover.Target>
+          <ActionIcon
+            variant="subtle"
+            color="gray"
+            size={42}
+            radius="xl"
+            className={classes.bell}
+            aria-label={bellLabel}
+          >
+            <IconBell size={20} stroke={1.7} />
+            {unread > 0 && (
+              <span aria-hidden className={classes.count}>
+                {unread > 99 ? '99+' : unread}
+              </span>
+            )}
+          </ActionIcon>
+        </Popover.Target>
+      </Tooltip>
       <Popover.Dropdown p={0}>
         <section aria-label={t('notifications.title')}>
           <div className={classes.head}>

@@ -1,5 +1,5 @@
 import { css } from '@emotion/react'
-import { ActionIcon, Button, Group, Menu } from '@mantine/core'
+import { ActionIcon, Button, Group, Menu, Tooltip } from '@mantine/core'
 import { createStyles } from '@mantine/emotion'
 import { IconDots } from '@tabler/icons-react'
 import { useTranslation } from 'react-i18next'
@@ -47,8 +47,8 @@ export function RowActions(props: Readonly<RowActionsProps>) {
   if (visible.length > maxInlineActions) {
     return (
       <Menu position="bottom-end" withinPortal>
-        <Menu.Target>
-          {inCard ? (
+        {inCard ? (
+          <Menu.Target>
             <Button
               variant="default"
               fullWidth
@@ -57,12 +57,16 @@ export function RowActions(props: Readonly<RowActionsProps>) {
             >
               {label}
             </Button>
-          ) : (
-            <ActionIcon variant="default" size="md" aria-label={label}>
-              <IconDots size={16} />
-            </ActionIcon>
-          )}
-        </Menu.Target>
+          </Menu.Target>
+        ) : (
+          <Tooltip label={label}>
+            <Menu.Target>
+              <ActionIcon variant="default" size="md" aria-label={label}>
+                <IconDots size={16} />
+              </ActionIcon>
+            </Menu.Target>
+          </Tooltip>
+        )}
         <Menu.Dropdown>
           {visible.map((action) => (
             <Menu.Item

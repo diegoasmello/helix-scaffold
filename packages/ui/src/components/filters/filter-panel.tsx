@@ -8,6 +8,7 @@ import {
   SegmentedControl,
   Select,
   TextInput,
+  Tooltip,
 } from '@mantine/core'
 import { DateInput } from '@mantine/dates'
 import { createStyles } from '@mantine/emotion'
@@ -245,17 +246,21 @@ export function FilterPanel<T extends string = string>(
                     {t('filters.removeConditionShort')}
                   </Button>
                 ) : (
-                  <ActionIcon
-                    variant="subtle"
-                    color="gray"
-                    size={36}
-                    aria-label={t('filters.removeCondition', {
-                      field: fieldLabel,
-                    })}
-                    onClick={() => remove(condition.id)}
+                  <Tooltip
+                    label={t('filters.removeCondition', { field: fieldLabel })}
                   >
-                    <IconX size={16} />
-                  </ActionIcon>
+                    <ActionIcon
+                      variant="subtle"
+                      color="gray"
+                      size={36}
+                      aria-label={t('filters.removeCondition', {
+                        field: fieldLabel,
+                      })}
+                      onClick={() => remove(condition.id)}
+                    >
+                      <IconX size={16} />
+                    </ActionIcon>
+                  </Tooltip>
                 )}
               </fieldset>
             </div>

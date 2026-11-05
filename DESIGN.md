@@ -48,6 +48,8 @@ When a case is not covered here, decide by these four, in this order.
   </Tooltip>
   ```
 
+  On a control that opens a `Menu` or `Popover`, the `Tooltip` goes **outside** the target — `<Tooltip><Menu.Target><ActionIcon /></Menu.Target></Tooltip>` (`RowActions`, `NotificationsMenu`): the target forwards the tooltip's ref and handlers to the button, while a `Tooltip` inside the target would swallow the menu's. The `RichTextEditor` toolbar is the one exception: its controls are Mantine's, labeled by their native `title`.
+
   A tooltip never shows on a touch screen, so it is a hint, not the only place the meaning lives: the icon itself must be one people recognize.
 - **Row actions** are always `<RowActions>`: text buttons (View / Edit / Delete) up to `maxInlineActions` (default 3), more collapse into one "⋯" menu. **Rows are never clickable** — every action comes from its button.
 - **One primary button per area** (the page header's actions, the footer). The others are `variant="default"`.

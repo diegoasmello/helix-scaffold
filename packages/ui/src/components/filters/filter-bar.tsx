@@ -6,6 +6,7 @@ import {
   Modal,
   Popover,
   TextInput,
+  Tooltip,
   useMantineTheme,
 } from '@mantine/core'
 import { createStyles } from '@mantine/emotion'
@@ -174,16 +175,18 @@ export function FilterBar<T extends string = string>(
                 </>
               )}
             </span>
-            <ActionIcon
-              variant="subtle"
-              color="gray"
-              radius="xl"
-              size={26}
-              aria-label={t('filters.removeFilter', { filter: sentence })}
-              onClick={() => removeAt(index)}
-            >
-              <IconX size={13} />
-            </ActionIcon>
+            <Tooltip label={t('filters.removeFilter', { filter: sentence })}>
+              <ActionIcon
+                variant="subtle"
+                color="gray"
+                radius="xl"
+                size={26}
+                aria-label={t('filters.removeFilter', { filter: sentence })}
+                onClick={() => removeAt(index)}
+              >
+                <IconX size={13} />
+              </ActionIcon>
+            </Tooltip>
           </span>
         )
       })}
@@ -246,15 +249,17 @@ function SearchBox(props: Readonly<NonNullable<FilterBarProps['search']>>) {
       }}
       rightSection={
         text ? (
-          <CloseButton
-            size="sm"
-            aria-label={t('filters.clearSearch')}
-            onClick={() => {
-              commit.cancel()
-              setText('')
-              onChange('')
-            }}
-          />
+          <Tooltip label={t('filters.clearSearch')}>
+            <CloseButton
+              size="sm"
+              aria-label={t('filters.clearSearch')}
+              onClick={() => {
+                commit.cancel()
+                setText('')
+                onChange('')
+              }}
+            />
+          </Tooltip>
         ) : undefined
       }
     />

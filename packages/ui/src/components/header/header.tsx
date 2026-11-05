@@ -1,5 +1,5 @@
 import { css } from '@emotion/react'
-import { ActionIcon, AppShell } from '@mantine/core'
+import { ActionIcon, AppShell, Tooltip } from '@mantine/core'
 import { createStyles } from '@mantine/emotion'
 import { IconMenu2 } from '@tabler/icons-react'
 import type { ReactNode } from 'react'
@@ -38,17 +38,19 @@ export function Header(props: Readonly<HeaderProps>) {
   return (
     <AppShell.Header className={classes.header}>
       {onOpenNavigation && (
-        <ActionIcon
-          variant="subtle"
-          color="gray"
-          size={44}
-          radius="xl"
-          aria-label={t('sidebar.open')}
-          onClick={onOpenNavigation}
-          className={classes.burger}
-        >
-          <IconMenu2 size={22} stroke={1.8} />
-        </ActionIcon>
+        <Tooltip label={t('sidebar.open')} position="bottom">
+          <ActionIcon
+            variant="subtle"
+            color="gray"
+            size={44}
+            radius="xl"
+            aria-label={t('sidebar.open')}
+            onClick={onOpenNavigation}
+            className={classes.burger}
+          >
+            <IconMenu2 size={22} stroke={1.8} />
+          </ActionIcon>
+        </Tooltip>
       )}
       {mobileLogo && <div className={classes.mobileLogo}>{mobileLogo}</div>}
       {search}

@@ -364,16 +364,13 @@ export function XxxSelectField(props: Readonly<XxxSelectFieldProps>) {
     <>
       <Stack align="flex-start" gap="xs">
         {select}
-        <Tooltip label="Create xxx">
-          <Button
-            variant="default"
-            leftSection={<IconPlus size={16} />}
-            aria-label="Create xxx"
-            onClick={open}
-          >
-            Create related xxx
-          </Button>
-        </Tooltip>
+        <Button
+          variant="default"
+          leftSection={<IconPlus size={16} />}
+          onClick={open}
+        >
+          Create related xxx
+        </Button>
       </Stack>
       <XxxCreateDrawer
         opened={opened}
@@ -391,6 +388,7 @@ const useStyles = createStyles(() => ({
 }))
 ```
 
+- The button has text ("Create related xxx"), which is its accessible name — no `aria-label` and no `Tooltip` on top (`DESIGN.md` → _Actions_: a tooltip is for an icon alone)
 - Hooks (`useDisclosure`, `useStyles`) are always called — no conditional hook calls
 - `className` from the caller is merged via `cx` with the internal `width: 100%` only when `allowCreate` is true
 - `onSuccess` calls `onChange` with the new entity's ID so the field auto-selects the created entity; the `label` argument is empty because Mantine always resolves the displayed label from `data`, not from the `onChange` callback

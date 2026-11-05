@@ -7,7 +7,6 @@ import {
   Select,
   type SelectProps,
   Stack,
-  Tooltip,
   useDisclosure,
 } from '@helix/ui'
 import { useTranslation } from 'react-i18next'
@@ -48,16 +47,13 @@ export function RoleSelectField(props: Readonly<RoleSelectFieldProps>) {
     <>
       <Stack align="flex-start" gap="xs">
         {select}
-        <Tooltip label={t('form.roleSelect.createTooltip')}>
-          <Button
-            variant="default"
-            leftSection={<IconPlus size={16} />}
-            aria-label="Create role"
-            onClick={open}
-          >
-            {t('form.roleSelect.createLabel')}
-          </Button>
-        </Tooltip>
+        <Button
+          variant="default"
+          leftSection={<IconPlus size={16} />}
+          onClick={open}
+        >
+          {t('form.roleSelect.createLabel')}
+        </Button>
       </Stack>
       <RoleCreateDrawer
         opened={opened}

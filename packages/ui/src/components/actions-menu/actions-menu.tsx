@@ -1,6 +1,7 @@
 import type { MantineColor } from '@mantine/core'
-import { ActionIcon, Menu } from '@mantine/core'
+import { ActionIcon, Menu, Tooltip } from '@mantine/core'
 import { IconDots } from '@tabler/icons-react'
+import { useTranslation } from 'react-i18next'
 
 export interface ActionsMenuItemConfig {
   label: string
@@ -15,13 +16,18 @@ export interface ActionsMenuProps {
 export function ActionsMenu(props: Readonly<ActionsMenuProps>) {
   const { items } = props
 
+  const { t } = useTranslation('ui')
+  const label = t('rowActions.more')
+
   return (
     <Menu position="bottom-end" withinPortal>
-      <Menu.Target>
-        <ActionIcon variant="default" size="md" aria-label="Actions">
-          <IconDots size={16} />
-        </ActionIcon>
-      </Menu.Target>
+      <Tooltip label={label}>
+        <Menu.Target>
+          <ActionIcon variant="default" size="md" aria-label={label}>
+            <IconDots size={16} />
+          </ActionIcon>
+        </Menu.Target>
+      </Tooltip>
       <Menu.Dropdown>
         {items.map((item) => (
           <Menu.Item key={item.label} color={item.color} onClick={item.onClick}>

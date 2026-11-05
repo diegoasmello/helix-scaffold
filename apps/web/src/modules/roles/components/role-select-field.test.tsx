@@ -101,21 +101,23 @@ describe('RoleSelectField', () => {
   it('does not offer inline creation by default', async () => {
     renderField()
     await screen.findByPlaceholderText('Pick one')
-    expect(screen.queryByLabelText('Create role')).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'Create related role' })
+    ).not.toBeInTheDocument()
   })
 
   describe('with allowCreate', () => {
     it('renders the create button', async () => {
       renderField({ allowCreate: true })
       expect(
-        await screen.findByRole('button', { name: 'Create role' })
+        await screen.findByRole('button', { name: 'Create related role' })
       ).toBeInTheDocument()
     })
 
     it('opens the create drawer when the button is clicked', async () => {
       renderField({ allowCreate: true })
       await userEvent.click(
-        await screen.findByRole('button', { name: 'Create role' })
+        await screen.findByRole('button', { name: 'Create related role' })
       )
       const dialog = await screen.findByRole('dialog')
       expect(within(dialog).getByText('Create role')).toBeInTheDocument()
@@ -139,7 +141,7 @@ describe('RoleSelectField', () => {
 
       renderField({ allowCreate: true })
       await userEvent.click(
-        await screen.findByRole('button', { name: 'Create role' })
+        await screen.findByRole('button', { name: 'Create related role' })
       )
       const dialog = await screen.findByRole('dialog')
       await userEvent.type(

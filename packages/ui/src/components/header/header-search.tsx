@@ -1,5 +1,5 @@
 import { css } from '@emotion/react'
-import { ActionIcon, Kbd, Modal, TextInput } from '@mantine/core'
+import { ActionIcon, Kbd, Modal, TextInput, Tooltip } from '@mantine/core'
 import { createStyles } from '@mantine/emotion'
 import { useDisclosure, useHotkeys } from '@mantine/hooks'
 import { IconSearch } from '@tabler/icons-react'
@@ -64,17 +64,19 @@ export function HeaderSearch(props: Readonly<HeaderSearchProps>) {
   return (
     <>
       <div className={classes.desktop}>{input(false)}</div>
-      <ActionIcon
-        variant="subtle"
-        color="gray"
-        size={44}
-        radius="xl"
-        aria-label={t('search.open')}
-        onClick={dialog.open}
-        className={classes.mobile}
-      >
-        <IconSearch size={21} stroke={1.7} />
-      </ActionIcon>
+      <Tooltip label={t('search.open')} position="bottom">
+        <ActionIcon
+          variant="subtle"
+          color="gray"
+          size={44}
+          radius="xl"
+          aria-label={t('search.open')}
+          onClick={dialog.open}
+          className={classes.mobile}
+        >
+          <IconSearch size={21} stroke={1.7} />
+        </ActionIcon>
+      </Tooltip>
       <Modal
         opened={dialogOpened}
         onClose={dialog.close}
