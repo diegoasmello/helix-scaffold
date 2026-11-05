@@ -49,7 +49,7 @@ Delete:               hard delete · the record's uploads <deleted with it | kep
 Plan feature:         <none | <feature key>, declared in plan(s) <…>>
 
 Deduced (confirm):
-  Form:               <the control of each non-text field: two states → Switch, more → Select or SegmentedControl; rich text → RichTextEditor>
+  Form:               <layout: FormColumn (a handful of fields, no groups) | FormSections — <section: fields>…> · <the control of each non-text field: two states → Switch, more → Select or SegmentedControl; rich text → RichTextEditor>
   Indexes:            FK on every reference · slug · business uniques · <performance only if the user brought up volume>
   Filters (API):      <field (text · enum · number · day · instant)>, or none — a date says which: a day (`date`) or an instant (`createdAt`, `publishedAt`)
   FilterBar fields:   <the filters the list screen offers — usually all; an instant among them goes through `toApiFilters()`>
