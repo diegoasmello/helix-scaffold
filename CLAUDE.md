@@ -25,6 +25,8 @@ Each workspace has its own `CLAUDE.md` with patterns, conventions, and step-by-s
 
 Domain terms (plan, feature, live vs. access-granting subscription, entitlements, operator…) are defined in `GLOSSARY.md` — use those names.
 
+How screens look and behave — who they are for, the UI rules (text buttons, an icon alone only with a tooltip, no clickable rows, borders instead of shadows, every width, light and dark) and what to do on a screen no recipe covers — is in `DESIGN.md`. **Read it before building or changing any UI.**
+
 ## Commands
 
 All root scripts run via **Turborepo** — they execute across all workspaces in parallel, with output cached where applicable.

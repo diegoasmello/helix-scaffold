@@ -100,7 +100,7 @@ Follow `apps/api/CLAUDE.md` → _Creating a new module (CRUD)_ in its order, wit
 
 ## Phase 2 — Web
 
-Follow `apps/web/CLAUDE.md` → _Creating a new module (CRUD)_ in its order, with the sections the map adds.
+Follow `apps/web/CLAUDE.md` → _Creating a new module (CRUD)_ in its order, with the sections the map adds. Every screen follows the root `DESIGN.md`, and passes its _Before handing a screen over_ checklist.
 
 ### Gate 2 — the web is done
 

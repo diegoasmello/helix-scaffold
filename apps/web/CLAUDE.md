@@ -1243,6 +1243,8 @@ The keys `actions.create`, `actions.edit`, `actions.view` already exist in `comm
 
 ### 6. Screen components
 
+These recipes apply the rules in the root `DESIGN.md`; a screen they don't cover (dashboard, wizard, board…) follows its _A screen no recipe covers_.
+
 Use the page wrapper components from `@helix/ui`:
 
 | Screen | Wrapper      | Key props                                                                      |

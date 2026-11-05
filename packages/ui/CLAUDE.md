@@ -2,6 +2,8 @@
 
 Shared component library (`@helix/ui`). Private — not published to npm, consumed only by `apps/web` via `workspace:*`.
 
+The UI rules every component here follows — and the checklist a new one ships with — are in the root `DESIGN.md` (_Rules_, _A screen no recipe covers_).
+
 ## Role
 
 This package is the **single source of truth for all UI imports** in `apps/web`. It re-exports everything from Mantine, Tabler Icons, and clsx, so `apps/web` never imports those packages directly — only `@helix/ui`.
