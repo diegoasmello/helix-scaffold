@@ -135,6 +135,7 @@ Written last, so they describe what was built, not what was planned.
 - [ ] `PageAccess` in `routes/access.ts`, `guardPage()` on every route, the sidebar entry with the same access, `<HasPermission>` on Create, `hidden` on row actions → root _RBAC checklist_
 - [ ] Locale files in `en` and `pt-BR`, registered in `src/i18n/index.ts`; the resource's label in both `roles.json` (`permissions.resources.<resource>`); no hardcoded string → root _i18n checklist_
 - [ ] Web unit + integration tests → `apps/web/CLAUDE.md` → _Testing_
+- [ ] Default MSW handlers for every new endpoint in `src/mocks/handlers.ts`, and the module's keys in `src/lib/resource-cache.test.ts` → `apps/web/CLAUDE.md` → _Testing_, _Resource cache_
 - [ ] If gated: `requireSubscription('<feature>')` on the routes, `feature` in the `PageAccess`, the feature's label in both `subscription.json`, and the feature **declared in a plan** in `apps/api/src/app.config.ts` (an undeclared feature stops the API at startup) → root _Subscription checklist_
 - [ ] Seed rows and seed role grants
 - [ ] Module `CLAUDE.md` on both sides, the root module docs table, and every shared doc that enumerates modules
