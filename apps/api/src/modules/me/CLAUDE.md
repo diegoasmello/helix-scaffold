@@ -81,6 +81,6 @@ None. Every `me` endpoint requires only a session, and the frontend `/me` routes
 
 **`describe('Re-authentication')`** — each test signs up its own user (so a lockout stays theirs): email change without / with a wrong password (400, no verification token), the notice to the current address (spies `console.log`, the test email provider), no password asked of a social-only account (credential row deleted), lockout after 5 wrong passwords across both routes (429 even with the right one), a right password clears the count. The limiter's window is unit-tested in `src/lib/attempt-limiter.test.ts`.
 
-**`GET /me/providers`** — asserts 200 and that `providers` is an array. Does not assert `[]` because `src/config/test-overrides.ts` does not override `auth.socialProviders`, so the result follows whatever `app.config.ts` enables.
+**`GET /me/providers`** — asserts 200 and that `providers` is an array. `src/config/test-overrides.ts` turns every social provider off, so it is `[]` whatever `app.config.ts` enables.
 
 **No permission enforcement tests** — there are no `requirePermission` guards on these routes, so no 403 cases exist.

@@ -113,7 +113,7 @@ Backend settings are split in two places:
 
 Settings are resolved once (validated, defaulted, frozen) and passed down from `buildApp(database, { config })`: route plugins get `config` in their options, factories (`createAuth`, `createRequireSubscription`, …) as a parameter. Only the entry points (`server.ts`, the seed, test helpers) import `config` from `@/config`. Secrets come from `import { env } from '@/env'`. Never put a secret in `app.config.ts`, and never add a new product setting to `.env`. To add a setting: extend the `AppConfig` interface (with JSDoc) and `appConfigSchema` in `src/config/define-config.ts`, then set it in `app.config.ts`.
 
-Tests (`NODE_ENV=test`) apply `src/config/test-overrides.ts` on top of `app.config.ts`: registration open, subscriptions enabled, uploads in a temp dir. The suite never depends on what a fork configures. To test another mode — such as the shipped defaults — build a second app with `createTestApp({ registration: { mode: 'closed' }, subscriptions: { enabled: false } })`.
+Tests (`NODE_ENV=test`) apply `src/config/test-overrides.ts` on top of `app.config.ts`: registration open, subscriptions enabled, social providers off, uploads in a temp dir. The suite never depends on what a fork configures. To test another mode — such as the shipped defaults — build a second app with `createTestApp({ registration: { mode: 'closed' }, subscriptions: { enabled: false } })`.
 
 See `apps/api/CLAUDE.md` → _Application config_ for the full reference.
 
@@ -182,6 +182,10 @@ When `subscriptions.enabled` is `true`, the app is responsible for:
 - [ ] Adding `requireSubscription('<feature>')` to routes that should be gated (inject it alongside `requirePermission` in route options, then add to the `preHandler` array)
 - [ ] Gating the UI the same way: `feature: '<feature>'` in the pages' `PageAccess` (`routes/access.ts` — `guardPage()` redirects to `/upgrade?feature=<feature>` and the sidebar follows), `<RequiresSubscription feature="..." fallback={<UpgradePrompt />}>` around premium sections
 - [ ] Replacing the "contact an administrator" hint on `/upgrade` with your checkout call to action
+
+## Starting a product
+
+A product built on the scaffold starts with `.agents/skills/start-project/SKILL.md` (in Claude Code: `/start-project <description>`), once, on a fresh copy: an interview, an approved product sheet, then the rename (`scripts/rename-product.mjs` — databases, root package, storage key), the removal of `todos` (`scripts/remove-reference-module.mjs`, which keeps its copy in the `/new-module` references), the configuration, the docs and the gates. The skill removes itself when it is done, this section included.
 
 ## Creating a new module
 

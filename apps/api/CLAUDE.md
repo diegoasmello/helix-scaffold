@@ -103,7 +103,9 @@ Validated with Zod in `src/env.ts` at startup. If a required variable is missing
 - `subscriptions.enabled: true`, with a test plan catalog: `starter` (no features), `pro` and `enterprise` (the modules' features plus `reports`, the suite's own feature — the infrastructure tests gate their throwaway routes and records with it, so they never depend on which modules gate what). Subscription-gated modules need it; the helper creates an active `pro` subscription for the test admin automatically.
 - `uploads.dir: '/tmp/helix-test-uploads'`.
 
-The suite therefore never depends on what a product sets in `app.config.ts`. Social providers are not overridden — status endpoints assert on shape, not content.
+- `auth.socialProviders`: all off — an enabled provider needs OAuth credentials the suites' environments never have (the E2E server inherits this too).
+
+The suite therefore never depends on what a product sets in `app.config.ts`.
 
 **Other modes:** `createTestApp(overrides)` builds the app with `overrideConfig(config, overrides)` — e.g. `createTestApp({ registration: { mode: 'closed' } })` or `createTestApp({ subscriptions: { enabled: false } })`, the defaults a product ships with. Keep the default `app` for the session (`createTestSession()` signs up over HTTP, so it needs open registration): sessions live in the shared database and are signed with the same secret, so its cookies work on the second app too. Close every extra app in `afterAll`. References: `registration-routes.test.ts` and `bootstrap-routes.test.ts` (closed), `subscriptions-routes.test.ts` → _with subscriptions disabled_, `billing-webhook-routes.test.ts` (webhook not registered when disabled).
 
