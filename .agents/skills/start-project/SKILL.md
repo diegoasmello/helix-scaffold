@@ -92,7 +92,8 @@ Only after Gate 1 passes:
 
 - `.agents/skills/start-project/` and its link `.claude/skills/start-project`;
 - the block of `.husky/pre-push` that runs `remove-reference-module.mjs --check` (with its comment);
-- the sentence about that check in the root `CLAUDE.md` → _Git hooks_ → `pre-push`, and its section _Starting a product_.
+- the sentence about that check in the root `CLAUDE.md` → _Git hooks_ → `pre-push`, and its section _Starting a product_;
+- step 2 of `README.md` → _Getting started_ (_Start a product_), renumbering the steps after it.
 
 Then `pnpm knip` once more.
 

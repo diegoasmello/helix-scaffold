@@ -71,7 +71,17 @@ pnpm monorepo with four workspaces:
 pnpm install
 ```
 
-**2. Start the databases**
+**2. Start a product (Claude Code)**
+
+On a fresh copy that will become a product, run this before starting any database:
+
+```
+/start-project <product name and a free description of what it is for>
+```
+
+It interviews you until the product is settled, then renames the databases (their names are set when the volumes are created), removes the `todos` reference module, applies the configuration and leaves the databases running and migrated, with the env files created. Then go on with step 6. To try the scaffold as it is, skip this step.
+
+**3. Start the databases**
 
 ```bash
 docker compose up -d
@@ -85,7 +95,7 @@ This starts three PostgreSQL 17 containers (user/password `postgres`):
 | `db_test` | `helix_test` | `5436` |
 | `db_e2e`  | `helix_e2e`  | `5438` |
 
-**3. Configure environment**
+**4. Configure environment**
 
 ```bash
 cp apps/api/.env.example apps/api/.env
@@ -101,14 +111,14 @@ cp apps/web/.env.example apps/web/.env
 
 Edit `apps/api/.env` and set `AUTH_SECRET` (`openssl rand -base64 32`). The defaults of `DATABASE_URL`, `BASE_URL` and `CLIENT_URL`, of `.env.test` and of `apps/web/.env` already match the Docker setup and `pnpm dev`.
 
-**4. Run database migrations**
+**5. Run database migrations**
 
 ```bash
 pnpm db:migrate        # main database
 pnpm db:migrate:test   # test database
 ```
 
-**5. Start the dev servers**
+**6. Start the dev servers**
 
 ```bash
 pnpm dev
@@ -116,7 +126,7 @@ pnpm dev
 
 This starts `apps/api` on `http://localhost:3333` and `apps/web` on `http://localhost:5173` in parallel.
 
-**6. Bootstrap the first admin**
+**7. Bootstrap the first admin**
 
 Open `http://localhost:5173` — you will be redirected to `/bootstrap` on the first run. Create the admin account there.
 
