@@ -84,7 +84,7 @@ No audit call on 409. Returns 204 even when the role id does not exist, but audi
 
 **`DELETE` 409 test** — seeds a role, inserts a user with `roleId` pointing to it, then asserts 409. Requires `testDb.insert(user).values({ id: uuidv7(), ..., roleId: inserted.id })`.
 
-**`describe('Privilege ceiling')`** — a moderator (`roles:view/edit/delete`, `todos:view`) against a broader and a narrower role: PATCH `isDefault` on the broader one (403, flag unchanged), DELETE it (403, row kept); both succeed on the narrower one.
+**`describe('Privilege ceiling')`** — a moderator (`roles:view/edit/delete`, `audit:view`) against a broader and a narrower role: PATCH `isDefault` on the broader one (403, flag unchanged), DELETE it (403, row kept); both succeed on the narrower one.
 
 **`describe('Admin role')`** — with `createAdminRole()`: `isAdmin` in `GET /roles/:id`; PATCH (rename + `isDefault`) answers 403 `admin_role_locked` with the role unchanged and no audit; DELETE answers it to the test session and to the admin; an `isAdmin: true` in a POST body is ignored; the admin, with no permission rows, passes `requirePermission()`.
 
