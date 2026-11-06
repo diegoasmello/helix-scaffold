@@ -73,9 +73,11 @@ From the sheet, and nothing else:
 ## Phase 5 — Docs
 
 1. **What became false.** Search every `*.md` outside `.agents/` for `todo` (any case). A line that uses `todos` as an example or as the reference ("`todos` is the reference", "see `todos-routes.ts`", "`describe('Slug')` is the reference") stays: the files are in `references/todos/`, which its README indexes. A line that says the code is **in the product** goes or changes — the known ones:
-   - root `CLAUDE.md`: the module docs table (both rows), the E2E row of _Tests_;
-   - `apps/api/CLAUDE.md`: `pnpm db:seed` in _Scripts_, the `todos` row of the codes table in _Errors the client can act on_, `todoRow()` and `cleanupTodos()` in _Test infrastructure_;
-   - `apps/web/CLAUDE.md`: the route tree, the locale tree of _Internationalization_, the `todos.spec.ts` row of the E2E specs and `createTodo()`/`sampleFiles` in the fixtures table;
+   - root `CLAUDE.md`: the module docs table (both rows), the paragraph "`todos` is the reference implementation on both sides" (keep only what it says of a product: the copies in `references/todos/`), the E2E row of _Tests_ ("`todos` as the module template");
+   - `apps/api/CLAUDE.md`: `pnpm db:seed` in _Scripts_ (its sample todos and uploads — now in `wiring.diff` → `seed.ts` and `references/todos/seed-uploads.ts`), the `todos` row of the codes table in _Errors the client can act on_, `todoRow()` and `cleanupTodos()` in _Test infrastructure_, `todoRow()` in _Normalized text columns_ step 4 and _Slugs_ step 5;
+   - `apps/api/src/modules/uploads/CLAUDE.md`: the todos `describe.each`, `attachToTodo()` and `describe("A todo's files on the public API")` in _Test who may open them_ (publicly) — taken out of `upload-files-routes.test.ts`, now in `wiring.diff`;
+   - `apps/web/CLAUDE.md`: the route tree, the locale tree of _Internationalization_, `createTodo` in _Factory naming convention_ (no longer generated), the `todos.spec.ts` row of the E2E specs, and in the fixtures table `createTodo()`, `sampleFiles` and "`pro`/`enterprise` unlock `todos`" (the test plans now unlock only `reports`);
+   - `README.md`: "sample roles, users and todos" of `pnpm db:seed` in _Getting started_;
    - any `CLAUDE.md` that lists the modules (`users, roles, …, todos`).
 
    Where a pattern's only example was in the module ("`todoRow()` in `src/test/helpers.ts`"), point to `references/todos/` (`wiring.diff` for a shared file). Search again at the end: every remaining line is one you decided to keep.
