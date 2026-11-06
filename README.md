@@ -99,16 +99,7 @@ cp apps/web/.env.example apps/web/.env
 | `apps/api/.env.test` | Overrides `.env` when running API tests — points `DATABASE_URL` to the test database |
 | `apps/web/.env`      | Frontend API URL (`VITE_API_URL`)                                                    |
 
-Edit `apps/api/.env` and fill in at minimum:
-
-```env
-DATABASE_URL=postgresql://postgres:postgres@localhost:5434/helix
-AUTH_SECRET=YOUR_SUPER_SECRET_HERE
-BASE_URL=http://localhost:3333
-CLIENT_URL=http://localhost:5173
-```
-
-The `.env.test` and `apps/web/.env` defaults already match the Docker setup.
+Edit `apps/api/.env` and set `AUTH_SECRET` (`openssl rand -base64 32`). The defaults of `DATABASE_URL`, `BASE_URL` and `CLIENT_URL`, of `.env.test` and of `apps/web/.env` already match the Docker setup and `pnpm dev`.
 
 **4. Run database migrations**
 
