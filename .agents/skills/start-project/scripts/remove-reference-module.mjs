@@ -317,23 +317,41 @@ function copyFollowingLinks(from, to) {
   }
 }
 
-const referencesDir = path.join(root, REFERENCES)
-const copy = fs.mkdtempSync(path.join(os.tmpdir(), 'references-todos-'))
-copyFollowingLinks(referencesDir, copy)
-fs.rmSync(referencesDir, { recursive: true })
-fs.renameSync(copy, referencesDir)
-for (const [from, to] of Object.entries(MOVED_TO_REFERENCES)) {
-  fs.copyFileSync(path.join(root, from), path.join(referencesDir, to))
-}
-const links = []
-;(function findLinks(dir) {
+function findLinks(dir, found = []) {
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
     const full = path.join(dir, entry.name)
-    if (entry.isSymbolicLink()) links.push(full)
-    else if (entry.isDirectory()) findLinks(full)
+    if (entry.isSymbolicLink()) found.push(full)
+    else if (entry.isDirectory()) findLinks(full, found)
   }
-})(referencesDir)
-if (links.length > 0) throw new Error(`links left in ${REFERENCES}: ${links.join(', ')}`)
+  return found
+}
+
+// The copy is built next to the links, not in the system's temp dir: `rename`
+// cannot cross file systems (a tmpfs `/tmp` fails with EXDEV). The links are
+// moved aside, not deleted, until the copy is in place — on any failure they
+// go back, and the copy goes.
+const referencesDir = path.join(root, REFERENCES)
+const copy = fs.mkdtempSync(path.join(path.dirname(referencesDir), '.todos-copy-'))
+const linksAside = `${copy}-links`
+try {
+  copyFollowingLinks(referencesDir, copy)
+  for (const [from, to] of Object.entries(MOVED_TO_REFERENCES)) {
+    fs.copyFileSync(path.join(root, from), path.join(copy, to))
+  }
+  const links = findLinks(copy)
+  if (links.length > 0) throw new Error(`links left in the copy: ${links.join(', ')}`)
+  fs.renameSync(referencesDir, linksAside)
+  fs.renameSync(copy, referencesDir)
+} catch (error) {
+  // Moved aside and the copy not in place: the links go back
+  if (fs.existsSync(linksAside) && !fs.existsSync(referencesDir)) {
+    fs.renameSync(linksAside, referencesDir)
+  }
+  fs.rmSync(copy, { recursive: true, force: true })
+  console.error(`Could not turn ${REFERENCES} into copies — nothing was changed:\n${error.message}`)
+  process.exit(1)
+}
+fs.rmSync(linksAside, { recursive: true })
 
 // --- 3. the module goes, its wiring with it ---
 
