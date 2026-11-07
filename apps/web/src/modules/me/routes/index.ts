@@ -1,6 +1,7 @@
 import { getMeSuspenseQueryOptions } from '@helix/api-client/hooks'
 import { createRoute, redirect } from '@tanstack/react-router'
 
+import { registrationStatusQueryOptions } from '@/modules/auth/use-registration-open'
 import { authenticatedRoute } from '@/routes'
 
 import { queryClient } from '../../../lib/query-client'
@@ -19,7 +20,12 @@ const meRoute = createRoute({
   staticData: {
     breadcrumbs: [{ label: 'nav.profile' }],
   },
-  loader: () => queryClient.ensureQueryData(getMeSuspenseQueryOptions()),
+  loader: () =>
+    Promise.all([
+      queryClient.ensureQueryData(getMeSuspenseQueryOptions()),
+      // `/me/account` offers the email change only when the API sends email
+      queryClient.ensureQueryData(registrationStatusQueryOptions()),
+    ]),
 })
 
 const meIndexRoute = createRoute({

@@ -42,7 +42,7 @@ No `hooks.ts`. The three components live in `components/` because they are secti
 
 No permission check on any route. No `loaderDeps`, no `validateSearch`.
 
-Loader on `meRoute`: `queryClient.ensureQueryData(getMeSuspenseQueryOptions())`.
+Loader on `meRoute`: `queryClient.ensureQueryData(getMeSuspenseQueryOptions())` and `registrationStatusQueryOptions()` (whether the API sends email, for `/me/account`).
 
 ## `MePage` (`routes/me-page.tsx`)
 
@@ -104,7 +104,17 @@ interface LinkedAccount {
 Two independent forms:
 
 - **Name**: `patchMe({ name })`. `onSuccess` writes the result to the cache with `setQueryData(getMeSuspenseQueryKey(), ...)` and notifies.
-- **Email change**: `<EmailChangeForm>` (`components/email-change-form.tsx`), mounted once `linkedAccountsQuery` resolves (a `Loader` before): with a password (`credential` account) it also asks for the current password — the API requires it (`apps/api/src/modules/me/CLAUDE.md` → _Re-authentication_) — and sends `{ newEmail, currentPassword }`; a social-only account sends `{ newEmail }`. It is a separate component because `useForm` keeps the validation it was created with, and that depends on the accounts. `patchMeEmail` sends a verification link to the new address and a notice to the current one; the email changes only after the link is clicked. On success the screen shows a pending notice for the new address (`emailChangePending` is component-local state, so it resets on unmount). Errors go through `apiErrorMessage(error, 'me', 'account.email.notifications.emailFailed')`: `errors.invalid_password`, `errors.current_password_required`, `errors.too_many_attempts`. An address that already has an account gets the same success as a free one (the API never says which) — so the pending notice shows either way.
+- **Email change**: `<EmailChangeForm>` (`components/email-change-form.tsx`), mounted once `linkedAccountsQuery` resolves (a `Loader` before): with a password (`credential` account) it also asks for the current password — the API requires it (`apps/api/src/modules/me/CLAUDE.md` → _Re-authentication_) — and sends `{ newEmail, currentPassword }`; a social-only account sends `{ newEmail }`. It is a separate component because `useForm` keeps the validation it was created with, and that depends on the accounts. `patchMeEmail` sends a verification link to the new address and a notice to the current one; the email changes only after the link is clicked. On success the screen shows a pending notice for the new address (`emailChangePending` is component-local state, so it resets on unmount). Errors go through `apiErrorMessage(error, 'me', 'account.email.notifications.emailFailed')`: `errors.invalid_password`, `errors.current_password_required`, `errors.too_many_attempts`, `errors.email_unchanged`. The form already refuses the current email, in any case (`createEmailChangeFormValidate`), as the API does. An address that already has an account gets the same success as a free one (the API never says which) — so the pending notice shows either way.
+
+**Without email** (`useEmailEnabled()` — `GET /registration/status` → `email: false`, prefetched by `meRoute.loader`), the section changes with the account (`EmailChangeMode`):
+
+| Mode | Who | Section |
+| --- | --- | --- |
+| `link` | anyone, with email | as above — request, then the pending notice |
+| `direct` | the admin (`profile.role.isAdmin`), without email | the same form, its button "Change email": the API changes it at once (`changed: true`), so `MeAccount` refetches `GET /me` and notifies "Email updated" — no pending notice. `key={profile.email}` remounts the form with empty fields, validated against the new email. `errors.email_taken` for a used address |
+| `admin` | anyone else, without email | no form: a "Change email" button opening `ContactAdminModal` (`src/modules/auth/components/contact-admin-modal.tsx`) — an administrator changes it on `/users`. The section description says so |
+
+The submit label is a prop of `EmailChangeForm` (`submitLabel`).
 
 ## `MeSecurity` (`routes/me-security.tsx`)
 
@@ -192,7 +202,7 @@ Dates use `formatDate` from `@/utils/date`, never the `date-fns` function of the
 
 | File | Covers | Wrapper |
 |---|---|---|
-| `routes/me-page.test.tsx` | `MePage` (nav links, Subscription link only when enabled), `MeAccount` (name; email change with/without the current password, wrong password) and `MeSecurity`'s password section (change + set, lockout message). `afterEach` runs `notifications.clean()` | `MantineProvider` + `<Notifications />` + `QueryClientProvider`. `MeSecurity` also needs `MantineEmotionProvider` because `SignInMethods` uses `createStyles`. The file stubs `Outlet` and `NavigationItem` (both need a router) for `MePage` |
+| `routes/me-page.test.tsx` | `MePage` (nav links, Subscription link only when enabled), `MeAccount` (name; email change with/without the current password, wrong password; without email: the modal for a non-admin, the admin's direct change) and `MeSecurity`'s password section (change + set, lockout message). `afterEach` runs `notifications.clean()` | `MantineProvider` + `<Notifications />` + `QueryClientProvider`. `MeSecurity` also needs `MantineEmotionProvider` because `SignInMethods` uses `createStyles`. The file stubs `Outlet` and `NavigationItem` (both need a router) for `MePage` |
 | `routes/me-preferences.test.tsx` | Language switch, dark mode, sidebar toggle, error outside the context | `MantineProvider` + `SidebarPreferenceContext.Provider` with a `vi.fn()` toggle. `afterEach` restores `i18n` to `en` and clears the color scheme, which are global |
 | `components/sign-in-methods.test.tsx` | Connected accounts, link-another section, `linkSocial` errors | `MantineProvider` + `MantineEmotionProvider` + `<Notifications />` + `QueryClientProvider` |
 | `routes/me-subscription.test.tsx` | Loading, empty state, plan fallback, badge, dates, past_due warning, plan catalog (current plan, no-subscription case) | `MantineProvider` + `MantineEmotionProvider` (for `LabeledValue`) + `QueryClientProvider` |

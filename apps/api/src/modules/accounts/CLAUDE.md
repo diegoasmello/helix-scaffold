@@ -33,6 +33,11 @@ applySelfRegistrationDefaults(database, userId, config, logger)       // open mo
 - **`ensureDefaultRole`** — in open mode, a role already marked `isDefault` is kept; otherwise `User` becomes the default: created with no permissions, or promoted with its permissions if a role by that name exists. Used by bootstrap and the seed. No-op in closed mode.
 - **`applySelfRegistrationDefaults`** — open mode only: assigns the default role (logs a **warning** when none is marked default — the sign-up still succeeds, but the user can only open `/me`), then, when `subscriptions.enabled` and `subscriptions.trial` are set, inserts a trialing subscription. The trial is best-effort: a failed insert is logged (`'Trial subscription creation failed'`, with `userId`) and does not fail the sign-up.
 
+## Passwords nobody confirmed (`password-replacement.ts`)
+
+- **`replacePassword(auth, userId, newPassword)`** — what better-auth's password reset does, through `auth.$context`: hashes the password, updates the credential account (or creates one for a social-only account, so it can sign in with its email) and deletes every session of the account. The caller decides who may: `PUT /users/:id/password` (`users-service.setPassword`, the admin on another account) and the function below.
+- **`resetAdminPassword(database, auth, audit, email)`** — `pnpm admin:reset-password <email>` (`src/scripts/reset-admin-password.ts`): the admin's way back in when there is no email to reset the password (`email.enabled: false`), since nobody above them can set it on `/users`. Only for the account holding the admin role (`not_admin` otherwise, `not_found` for an unknown email, case-insensitive); a random password (24 characters, `base64url`) the script prints once; audited as `system:cli`. Tested in `password-replacement.test.ts`.
+
 ## Self-registered vs. server-created
 
 The better-auth hook in `src/auth.ts` runs for every user better-auth creates. It calls `applySelfRegistrationDefaults()` only when `ctx.request` is set — sign-ups that arrive over HTTP (`POST /api/auth/sign-up/email`, social callbacks). `auth.api.signUpEmail()` called by this module carries no request, so server-created accounts get exactly the role their kind gives and never a trial. Verified empirically: better-auth passes a context without `request`/`headers` to server-side calls.

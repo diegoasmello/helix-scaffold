@@ -34,18 +34,24 @@
     "email": {
       "sectionTitle": "Endereço de E-mail",
       "sectionDescription": "Um link de verificação será enviado para o novo endereço, e um aviso para o atual.",
+      "sectionDescriptionDirect": "Seu e-mail é alterado na hora. Confirme que é você com sua senha atual.",
+      "sectionDescriptionAdmin": "Só um administrador pode alterar o e-mail da sua conta.",
       "currentLabel": "E-mail atual",
       "newLabel": "Novo e-mail",
       "alertTitle": "Verifique sua caixa de entrada",
       "alertMessage": "Enviamos um link de verificação para {{email}}. Clique nele para confirmar seu novo endereço de e-mail.",
       "changeDifferent": "Usar um e-mail diferente",
+      "changeButton": "Alterar e-mail",
+      "contactAdminTitle": "Alterar seu e-mail",
+      "contactAdminMessage": "Peça ao administrador do sistema que altere o e-mail da sua conta.",
       "validation": {
         "newEmailDiffers": "O novo e-mail deve ser diferente do atual"
       },
       "notifications": {
         "updated": "Nome atualizado com sucesso",
         "updateFailed": "Falha ao atualizar perfil",
-        "emailFailed": "Falha ao enviar e-mail de verificação"
+        "emailFailed": "Falha ao alterar o e-mail",
+        "emailChanged": "E-mail alterado"
       },
       "currentPasswordLabel": "Senha atual",
       "currentPasswordDescription": "Confirme que é você antes de mudar sua conta para outro endereço."
@@ -97,6 +103,9 @@
   "errors": {
     "current_password_required": "Digite sua senha atual para alterar o e-mail.",
     "invalid_password": "Senha atual incorreta",
-    "too_many_attempts": "Muitas senhas erradas. Aguarde 15 minutos e tente de novo."
+    "too_many_attempts": "Muitas senhas erradas. Aguarde 15 minutos e tente de novo.",
+    "email_taken": "Outra conta já usa este e-mail.",
+    "email_change_unavailable": "Só um administrador pode alterar o e-mail da sua conta.",
+    "email_unchanged": "O novo e-mail é o que você já usa."
   }
 }

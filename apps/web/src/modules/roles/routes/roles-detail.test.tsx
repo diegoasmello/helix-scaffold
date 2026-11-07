@@ -93,7 +93,11 @@ describe('RolesDetail', () => {
   it('shows whether the role is the default when registration is open', async () => {
     server.use(
       getRegistrationStatusHandler(() =>
-        getRegistrationStatusHandlerResponse200({ open: true, providers: [] })
+        getRegistrationStatusHandlerResponse200({
+          open: true,
+          providers: [],
+          email: true,
+        })
       )
     )
     renderRolesDetail()

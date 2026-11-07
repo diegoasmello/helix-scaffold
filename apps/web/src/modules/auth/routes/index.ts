@@ -1,12 +1,11 @@
-import {
-  getBootstrapStatus,
-  getRegistrationStatus,
-} from '@helix/api-client/hooks'
+import { getBootstrapStatus } from '@helix/api-client/hooks'
 import { createRoute, redirect } from '@tanstack/react-router'
 import { z } from 'zod'
 
+import { queryClient } from '@/lib/query-client'
 import { rootRoute } from '@/routes'
 
+import { registrationStatusQueryOptions } from '../use-registration-open'
 import { Bootstrap } from './bootstrap'
 import { ForgotPassword } from './forgot-password'
 import { Login } from './login'
@@ -30,12 +29,13 @@ export const loginRoute = createRoute({
   // better-auth sends a failed social sign-in back here (`errorCallbackURL`)
   validateSearch: z.object({ error: z.string().optional() }),
   loader: async () => {
-    const [{ bootstrapped }, { open, providers }] = await Promise.all([
+    const [{ bootstrapped }, { open, providers, email }] = await Promise.all([
       getBootstrapStatus(),
-      getRegistrationStatus(),
+      // Cached for the session, like every reader of the status
+      queryClient.ensureQueryData(registrationStatusQueryOptions()),
     ])
     if (!bootstrapped) throw redirect({ to: '/bootstrap' })
-    return { registrationOpen: open, providers }
+    return { registrationOpen: open, providers, emailEnabled: email }
   },
 })
 
@@ -46,7 +46,7 @@ export const signUpRoute = createRoute({
   loader: async () => {
     const [{ bootstrapped }, { open, providers }] = await Promise.all([
       getBootstrapStatus(),
-      getRegistrationStatus(),
+      queryClient.ensureQueryData(registrationStatusQueryOptions()),
     ])
     if (!bootstrapped) throw redirect({ to: '/bootstrap' })
     if (!open) throw redirect({ to: '/login' })
@@ -59,8 +59,14 @@ const forgotPasswordRoute = createRoute({
   path: '/forgot-password',
   component: ForgotPassword,
   loader: async () => {
-    const { bootstrapped } = await getBootstrapStatus()
+    const [{ bootstrapped }, { email }] = await Promise.all([
+      getBootstrapStatus(),
+      queryClient.ensureQueryData(registrationStatusQueryOptions()),
+    ])
     if (!bootstrapped) throw redirect({ to: '/bootstrap' })
+    // Without email there is no reset: the login's link opens
+    // ContactAdminModal instead, and a typed URL lands there too.
+    if (!email) throw redirect({ to: '/login' })
   },
 })
 

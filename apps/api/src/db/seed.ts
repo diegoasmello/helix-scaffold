@@ -31,6 +31,7 @@ import { createSeedUploads } from './seed-uploads'
 const auth = createAuth(
   db,
   createEmailProvider({
+    enabled: config.email.enabled,
     resendApiKey: env.RESEND_API_KEY,
     from: config.email.from,
     nodeEnv: env.NODE_ENV,

@@ -72,6 +72,10 @@ export default defineConfig(({ mode }) => ({
   },
 
   email: {
+    // false → no email, no Resend: no password reset or self-service email
+    // change (users ask an administrator). Open registration needs true.
+    // true needs RESEND_API_KEY in production (dev prints to the console).
+    enabled: false,
     from: 'noreply@localhost',
   },
 

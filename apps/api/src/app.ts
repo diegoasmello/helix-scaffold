@@ -84,6 +84,7 @@ export function buildApp(database: Database, options: BuildAppOptions = {}) {
 
   const storage = createStorageProvider(config.uploads, env.BASE_URL)
   const emailProvider = createEmailProvider({
+    enabled: config.email.enabled,
     resendApiKey: env.RESEND_API_KEY,
     from: config.email.from,
     nodeEnv: env.NODE_ENV,

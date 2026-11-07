@@ -34,18 +34,24 @@
     "email": {
       "sectionTitle": "Email address",
       "sectionDescription": "A verification link will be sent to your new address, and a notice to your current one.",
+      "sectionDescriptionDirect": "Your email changes right away. Confirm it's you with your current password.",
+      "sectionDescriptionAdmin": "Only an administrator can change the email of your account.",
       "currentLabel": "Current email",
       "newLabel": "New email",
       "alertTitle": "Check your inbox",
       "alertMessage": "We sent a verification link to {{email}}. Click it to confirm your new email address.",
       "changeDifferent": "Use a different email",
+      "changeButton": "Change email",
+      "contactAdminTitle": "Change your email",
+      "contactAdminMessage": "Ask your administrator to change the email of your account.",
       "validation": {
         "newEmailDiffers": "New email must differ from current email"
       },
       "notifications": {
         "updated": "Name updated successfully",
         "updateFailed": "Failed to update profile",
-        "emailFailed": "Failed to send verification email"
+        "emailFailed": "Failed to change email",
+        "emailChanged": "Email updated"
       },
       "currentPasswordLabel": "Current password",
       "currentPasswordDescription": "Confirm it's you before moving your account to another address."
@@ -97,6 +103,9 @@
   "errors": {
     "current_password_required": "Enter your current password to change your email.",
     "invalid_password": "Current password is incorrect",
-    "too_many_attempts": "Too many wrong passwords. Wait 15 minutes and try again."
+    "too_many_attempts": "Too many wrong passwords. Wait 15 minutes and try again.",
+    "email_taken": "Another account already uses this email.",
+    "email_change_unavailable": "Only an administrator can change the email of your account.",
+    "email_unchanged": "The new email is the one you already use."
   }
 }

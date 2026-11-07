@@ -20,7 +20,8 @@
     "view": "View",
     "exportPdf": "Export PDF",
     "requestChange": "Request change",
-    "password": "Change password"
+    "password": "Change password",
+    "close": "Close"
   },
   "report": {
     "downloaded": "Report downloaded successfully",

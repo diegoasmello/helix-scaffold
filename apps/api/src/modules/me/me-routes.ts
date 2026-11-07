@@ -5,7 +5,7 @@ import z from 'zod'
 import type { Auth } from '../../auth'
 import type { Config } from '../../config'
 import type { Database } from '../../db'
-import { DomainError, errorSchema } from '../../lib/domain-errors'
+import { errorSchema } from '../../lib/domain-errors'
 import type { EmailProvider } from '../../lib/email'
 import { getUsableSocialProviders } from '../../lib/social-providers'
 import type { FastifyTypedInstance } from '../../types'
@@ -32,7 +32,9 @@ export async function meRoutes(
     emailProvider: EmailProvider
   }
 ) {
-  const service = createMeService(database, auth, emailProvider)
+  const service = createMeService(database, auth, emailProvider, {
+    emailEnabled: config.email.enabled,
+  })
 
   app.get(
     '/me',
@@ -86,43 +88,61 @@ export async function meRoutes(
         operationId: 'patchMeEmail',
         tags: ['me'],
         description:
-          'Request an email address change (sends verification email). Accounts with a password must send `currentPassword`; the current address is told about the request',
+          'Request an email address change. Accounts with a password must send `currentPassword`. With email on, a confirmation link goes to the new address and the current one is told about the request (`changed: false`). With email off (`email.enabled: false`), only the admin may change their email, at once (`changed: true`); anyone else gets 403 `email_change_unavailable`',
         body: updateMeEmailSchema,
         response: {
-          200: z.object({ message: z.string() }),
+          200: z.object({
+            message: z.string(),
+            changed: z
+              .boolean()
+              .describe(
+                '`true` when the email changed at once, `false` when it waits for the link sent to the new address'
+              ),
+          }),
           400: errorSchema(
             'current_password_required',
             'invalid_password',
+            'email_unchanged',
             'email_change_rejected'
           ),
+          403: errorSchema('email_change_unavailable'),
+          409: errorSchema('email_taken'),
           429: errorSchema('too_many_attempts'),
-          500: z.object({ message: z.string() }),
         },
       },
     },
     async (request, reply) => {
+      let outcome: 'requested' | 'changed'
       try {
-        await service.changeEmail(
+        outcome = await service.changeEmail(
           request.sessionUser.id,
           request.body,
           fromNodeHeaders(request.headers),
           request.sessionUser.email
         )
       } catch (error) {
-        if (error instanceof DomainError) throw error
+        // better-auth refusing the change (link mode). Anything else — a
+        // DomainError, a database failure — goes on to the error handlers.
         if (error instanceof APIError) {
           return reply
             .status(400)
             .send({ message: error.message, code: 'email_change_rejected' })
         }
-        return reply
-          .status(500)
-          .send({ message: 'Failed to send verification email' })
+        throw error
+      }
+      if (outcome === 'changed') {
+        await request.audit('edit', 'me', request.sessionUser.id, {
+          emailChanged: true,
+        })
+        return { message: 'Email address changed', changed: true }
       }
       await request.audit('edit', 'me', request.sessionUser.id, {
         emailChangeRequested: true,
       })
-      return { message: 'Check your new email address to confirm the change' }
+      return {
+        message: 'Check your new email address to confirm the change',
+        changed: false,
+      }
     }
   )
 

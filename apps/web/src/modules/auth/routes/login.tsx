@@ -11,12 +11,14 @@ import {
   Text,
   TextInput,
   Title,
+  useDisclosure,
   useForm,
 } from '@helix/ui'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { authClient } from '../../../lib/authentication'
+import { ContactAdminModal } from '../components/contact-admin-modal'
 import { SocialLoginButtons } from '../components/social-login-buttons'
 import { loginRoute } from '.'
 
@@ -27,9 +29,12 @@ interface LoginFormValues {
 
 export function Login() {
   const navigate = loginRoute.useNavigate()
-  const { registrationOpen, providers } = loginRoute.useLoaderData()
+  const { registrationOpen, providers, emailEnabled } =
+    loginRoute.useLoaderData()
   const { error: socialError } = loginRoute.useSearch()
   const [serverError, setServerError] = useState<string | null>(null)
+  const [contactOpened, { open: openContact, close: closeContact }] =
+    useDisclosure(false)
   const { t } = useTranslation('auth')
 
   const form = useForm<LoginFormValues>({
@@ -78,9 +83,20 @@ export function Login() {
               {...form.getInputProps('password')}
             />
             <Group justify="flex-end" mt={-8}>
-              <Anchor href="/forgot-password" size="xs">
-                {t('login.forgotPassword')}
-              </Anchor>
+              {emailEnabled ? (
+                <Anchor href="/forgot-password" size="xs">
+                  {t('login.forgotPassword')}
+                </Anchor>
+              ) : (
+                <Anchor
+                  component="button"
+                  type="button"
+                  size="xs"
+                  onClick={openContact}
+                >
+                  {t('login.forgotPassword')}
+                </Anchor>
+              )}
             </Group>
             {serverError && (
               <Text c="red" size="sm">
@@ -112,6 +128,12 @@ export function Login() {
           </Stack>
         </form>
       </Paper>
+      <ContactAdminModal
+        opened={contactOpened}
+        onClose={closeContact}
+        title={t('contactAdmin.passwordTitle')}
+        message={t('contactAdmin.passwordMessage')}
+      />
     </Center>
   )
 }

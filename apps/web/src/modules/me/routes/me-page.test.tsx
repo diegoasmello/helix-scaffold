@@ -1,6 +1,9 @@
 import {
   createGetMe200,
   getMeHandler,
+  getMeHandlerResponse200,
+  getRegistrationStatusHandler,
+  getRegistrationStatusHandlerResponse200,
   getSubscriptionStatusHandler,
   getSubscriptionStatusHandlerResponse200,
   patchMeEmailHandler,
@@ -21,7 +24,13 @@ import {
   type PageTabsProps,
 } from '@helix/ui'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { Suspense } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -289,7 +298,10 @@ describe('Email change', () => {
     server.use(
       patchMeEmailHandler(async ({ request }) => {
         body = await request.json()
-        return patchMeEmailHandlerResponse200({ message: 'ok' })
+        return patchMeEmailHandlerResponse200({
+          message: 'ok',
+          changed: false,
+        })
       })
     )
     await submitEmailChange({ password: 'Password123!' })
@@ -307,7 +319,10 @@ describe('Email change', () => {
     server.use(
       patchMeEmailHandler(async ({ request }) => {
         body = await request.json()
-        return patchMeEmailHandlerResponse200({ message: 'ok' })
+        return patchMeEmailHandlerResponse200({
+          message: 'ok',
+          changed: false,
+        })
       })
     )
     await submitEmailChange()
@@ -333,6 +348,88 @@ describe('Email change', () => {
     await submitEmailChange({ password: 'WrongPass!' })
 
     await screen.findByText('Current password is incorrect')
+  })
+})
+
+describe('Email change without email (email.enabled: false)', () => {
+  beforeEach(() => {
+    server.use(
+      getRegistrationStatusHandler(() =>
+        getRegistrationStatusHandlerResponse200({
+          open: false,
+          providers: [],
+          email: false,
+        })
+      )
+    )
+  })
+
+  it('asks anyone but the admin to contact an administrator', async () => {
+    const user = userEvent.setup()
+    renderMeAccount()
+
+    await user.click(
+      await screen.findByRole('button', { name: 'Change email' })
+    )
+
+    expect(screen.queryByLabelText(/New email/)).not.toBeInTheDocument()
+    expect(
+      screen.getByText(
+        'Only an administrator can change the email of your account.'
+      )
+    ).toBeInTheDocument()
+    const dialog = await screen.findByRole('dialog', {
+      name: 'Change your email',
+    })
+    expect(dialog).toHaveTextContent(
+      'Ask your administrator to change the email of your account.'
+    )
+    await user.click(within(dialog).getByRole('button', { name: 'Close' }))
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    )
+  })
+
+  it('lets the admin change their email at once', async () => {
+    const user = userEvent.setup()
+    let currentEmail = 'test@example.com'
+    let body: unknown
+    server.use(
+      getMeHandler(() =>
+        getMeHandlerResponse200(
+          createGetMe200({
+            ...mockProfile,
+            email: currentEmail,
+            role: { id: 'admin', name: 'Admin', isAdmin: true },
+          })
+        )
+      ),
+      patchMeEmailHandler(async ({ request }) => {
+        body = await request.json()
+        currentEmail = 'moved@example.com'
+        return patchMeEmailHandlerResponse200({
+          message: 'Email address changed',
+          changed: true,
+        })
+      })
+    )
+    renderMeAccount()
+
+    await user.type(
+      await screen.findByLabelText(/New email/),
+      'moved@example.com'
+    )
+    await user.type(screen.getByLabelText(/Current password/), 'Password123!')
+    await user.click(screen.getByRole('button', { name: 'Change email' }))
+
+    await screen.findByText('Email updated')
+    expect(body).toEqual({
+      newEmail: 'moved@example.com',
+      currentPassword: 'Password123!',
+    })
+    expect(await screen.findByDisplayValue('moved@example.com')).toBeDisabled()
+    expect(screen.queryByText('Check your inbox')).not.toBeInTheDocument()
+    expect(screen.getByLabelText(/New email/)).toHaveValue('')
   })
 })
 

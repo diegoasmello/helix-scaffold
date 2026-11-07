@@ -17,6 +17,7 @@ import {
   EmailTakenError,
   RoleNotFoundError,
 } from '@/modules/accounts/account-provisioning'
+import { replacePassword } from '@/modules/accounts/password-replacement'
 import { createPermissionsService } from '@/modules/permissions/permissions-service'
 
 import type {
@@ -274,20 +275,7 @@ export function createUsersService(
     if (!target) return false
     if (await isAdminRole(target.roleId)) throw adminUserLocked()
 
-    const context = await auth.$context
-    const hash = await context.password.hash(newPassword)
-    const accounts = await context.internalAdapter.findAccounts(id)
-    if (accounts.some((a) => a.providerId === 'credential')) {
-      await context.internalAdapter.updatePassword(id, hash)
-    } else {
-      await context.internalAdapter.createAccount({
-        userId: id,
-        providerId: 'credential',
-        accountId: id,
-        password: hash,
-      })
-    }
-    await context.internalAdapter.deleteSessions(id)
+    await replacePassword(auth, id, newPassword)
 
     emailProvider
       .send(

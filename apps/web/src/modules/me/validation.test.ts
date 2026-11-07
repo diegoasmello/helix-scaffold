@@ -127,3 +127,20 @@ describe('passwordFormValidate', () => {
     })
   })
 })
+
+describe('emailChangeFormValidate — newEmail', () => {
+  const validate = createEmailChangeFormValidate('me@example.com')
+
+  it('refuses the current email, in any case', () => {
+    expect(validate.newEmail('me@example.com', emailChangeBase)).toBe(
+      'New email must differ from current email'
+    )
+    expect(validate.newEmail('Me@Example.com', emailChangeBase)).toBe(
+      'New email must differ from current email'
+    )
+  })
+
+  it('accepts another email', () => {
+    expect(validate.newEmail('other@example.com', emailChangeBase)).toBeNull()
+  })
+})

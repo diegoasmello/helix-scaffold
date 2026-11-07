@@ -13,7 +13,7 @@ With Claude Code, a fresh copy becomes a product with `/start-project <descripti
 | **Registration modes**  | `closed` (admin-only) or `open` (self-registration) — one setting in `apps/api/src/app.config.ts`               |
 | **Subscription gating** | Optional billing layer: plan catalog with per-plan features, `requireSubscription('feature')` on routes, `<RequiresSubscription feature>` in the UI, trial auto-start, generic payment processor webhook |
 | **File uploads**        | Multi-file and single-file inputs with image processing (4 WebP variants via sharp), local storage provider     |
-| **Email**               | Transactional email via Resend (console fallback in dev/test)                                                   |
+| **Email**               | Optional: off by default (the admin resets passwords and changes emails); on, transactional email via Resend (console fallback in dev) |
 | **PDF export**          | Server-side PDF reports via `@react-pdf/renderer`                                                               |
 | **Audit log**           | Every mutation is logged; browsable admin panel                                                                 |
 | **i18n**                | English and pt-BR, fully typed key safety via `i18next` + TypeScript                                            |
@@ -132,6 +132,8 @@ Open `http://localhost:5173` — you will be redirected to `/bootstrap` on the f
 
 Alternatively, `pnpm db:seed` fills an empty database with sample roles, users and todos — sign in as `admin@example.com` / `pass1234` (every seeded user shares that password).
 
+Without email (`email.enabled: false`, the default) nobody can reset the admin's password by email: `pnpm admin:reset-password <admin email>` sets a new random one and prints it (`pnpm --filter api reset-admin-password <admin email>` on a built deploy).
+
 ## Building for production
 
 ```bash
@@ -140,7 +142,7 @@ pnpm --filter api migrate        # apply pending migrations (node dist/migrate.j
 pnpm --filter api start          # node dist/server.js
 ```
 
-`pnpm start` does not read `apps/api/.env`: give the API its environment (`DATABASE_URL`, `AUTH_SECRET`, …) from the host — including `NODE_ENV=production` (unset means `development`) and `RESEND_API_KEY`, without which a production API refuses to start rather than print emails, reset links included, to its logs. Behind a reverse proxy, set `server.trustProxy` in `app.config.ts` (`1` for one proxy, or its IPs): otherwise every client shares the proxy's IP, and with it one sign-in rate limit. The API bundle contains only `src/`, so its dependencies must be installed where it runs. `migrate` needs only `DATABASE_URL` and the production dependencies — run it before every `start` of a new version. The product config (`app.config.ts`) is bundled in, so changing it needs a rebuild.
+`pnpm start` does not read `apps/api/.env`: give the API its environment (`DATABASE_URL`, `AUTH_SECRET`, …) from the host — including `NODE_ENV=production` (unset means `development`) and, with `email.enabled`, `RESEND_API_KEY`, without which a production API refuses to start rather than print emails, reset links included, to its logs. Behind a reverse proxy, set `server.trustProxy` in `app.config.ts` (`1` for one proxy, or its IPs): otherwise every client shares the proxy's IP, and with it one sign-in rate limit. The API bundle contains only `src/`, so its dependencies must be installed where it runs. `migrate` needs only `DATABASE_URL` and the production dependencies — run it before every `start` of a new version. The product config (`app.config.ts`) is bundled in, so changing it needs a rebuild.
 
 ## Testing
 
@@ -178,7 +180,7 @@ export default defineConfig(({ mode }) => ({
     ],
     trial: { days: 14, planId: 'pro' },
   },
-  email: { from: 'hello@myapp.com' },
+  email: { enabled: true, from: 'hello@myapp.com' }, // open registration needs it
   uploads: { maxSizeMb: 20 },
   logger: { pretty: mode !== 'production' },
 }))
@@ -192,6 +194,7 @@ export default defineConfig(({ mode }) => ({
 | `subscriptions.plans`            | `[]`        | Plan catalog; each plan lists the features it unlocks             |
 | `subscriptions.pastDueGraceDays` | `0`         | Days a past_due subscription keeps access after a failed payment  |
 | `subscriptions.trial`            | `false`     | `{ days, planId }` auto-creates a trial on self-registration      |
+| `email.enabled`                  | `false`     | Sends email through Resend: password reset, email change by link, security notices. Off, users ask the admin; open registration requires it |
 | `email.from`                     | `noreply@…` | Sender address for outgoing email                                 |
 | `publicApi.*`                    | disabled    | The public API (`/api/public/*`): `enabled`, CORS `origins`, `cacheSeconds`, `rateLimit` |
 | `uploads.*`                      | —           | Storage backend, directory, max size, anonymous rate limit, orphan cleanup schedule |
@@ -202,7 +205,7 @@ export default defineConfig(({ mode }) => ({
 | -------------------------------- | ----------------------------------------------------------------- |
 | `DATABASE_URL`, `AUTH_SECRET`    | Required                                                          |
 | `BASE_URL`, `CLIENT_URL`         | Public URLs of the API and the frontend for this deploy           |
-| `RESEND_API_KEY`                 | Required in production; omit in development to log emails to the console |
+| `RESEND_API_KEY`                 | Required in production with `email.enabled`; omit in development to log emails to the console |
 | `<PROVIDER>_CLIENT_ID` / `_SECRET` | Required for each social provider enabled in `app.config.ts`    |
 
 RBAC resources are declared in `apps/api/src/config/permissions.ts`.

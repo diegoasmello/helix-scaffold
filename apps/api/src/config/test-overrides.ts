@@ -29,5 +29,9 @@ export const testConfigOverrides: AppConfig = {
   // The public routes exist, whatever the product enables. Tests of the
   // limit or the CORS origins build an app with their own values.
   publicApi: { enabled: true, origins: [], cacheSeconds: 60 },
+  // Open registration needs it; the test email provider prints to the
+  // console, which the suites spy on. Tests of the mode without email build
+  // an app with `{ registration: { mode: 'closed' }, email: { enabled: false } }`.
+  email: { enabled: true },
   uploads: { dir: '/tmp/helix-test-uploads' },
 }

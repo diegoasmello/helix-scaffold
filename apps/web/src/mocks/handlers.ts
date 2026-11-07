@@ -224,7 +224,11 @@ export const handlers = [
   getBootstrapStatusHandler({ bootstrapped: true }),
   postBootstrapHandler(),
   getRegistrationStatusHandler(() =>
-    getRegistrationStatusHandlerResponse200({ open: false, providers: [] })
+    getRegistrationStatusHandlerResponse200({
+      open: false,
+      providers: [],
+      email: true,
+    })
   ),
 
   // Audit logs

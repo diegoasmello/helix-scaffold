@@ -8,12 +8,13 @@ Provides the authentication layer consumed by the entire application: session st
 src/modules/auth/
 ├── types.ts                        ← User and AuthState types
 ├── use-auth.ts                     ← primary auth hook
-├── use-registration-open.ts        ← useRegistrationOpen() + registrationStatusQueryOptions() (GET /registration/status, cached for the session)
+├── use-registration-open.ts        ← useRegistrationOpen(), useEmailEnabled() + registrationStatusQueryOptions() (GET /registration/status, cached for the session)
 ├── page-access.ts                  ← PageAccess, checkPageAccess, guardPage (route guards), createPermissionChecker
 ├── page-access.test.ts
 ├── components/
 │   ├── auth-guard.tsx              ← authenticated route wrapper
 │   ├── has-permission.tsx          ← conditional render by permission
+│   ├── contact-admin-modal.tsx     ← "ask your administrator" modal, in place of the flows that need email
 │   └── social-login-buttons.tsx    ← OAuth provider buttons (Google, Facebook, Apple)
 └── routes/
     ├── index.ts                    ← bootstrapRoute, loginRoute, signUpRoute, forgotPasswordRoute, resetPasswordRoute
@@ -71,7 +72,7 @@ type AuthState = {
 
 1. `authClient.useSession()` — returns the better-auth session. The `user` object is shaped from `session.user`; `roleId` is cast from `session.user` as it is not in better-auth's default type.
 
-2. `useQuery(getMeSuspenseQueryKey(), getMeSuspense)` — the profile (`GET /me`, same cache entry as `/me/account`), enabled once there is a session, `staleTime: Infinity`. It gives `user.name` (fresh after the user renames themselves) and `user.roleName` (the header's user menu shows it under the name; `null` until it loads or without a role).
+2. `useQuery(getMeSuspenseQueryKey(), getMeSuspense)` — the profile (`GET /me`, same cache entry as `/me/account`), enabled once there is a session, `staleTime: Infinity`. It gives `user.name` (fresh after the user renames themselves), `user.email` (fresh after the admin's direct email change — better-auth's session keeps the old one until it reloads) and `user.roleName` (the header's user menu shows it under the name; `null` until it loads or without a role).
 
 3. `useQuery(getMePermissionsQueryKey(), getMePermissions)` — fetches `GET /me/permissions`. Only enabled when `!!user` (skipped when unauthenticated). `staleTime: 30_000` (30 s cache).
 
@@ -126,30 +127,30 @@ All five routes have `rootRoute` as parent (not `authenticatedRoute`) — they a
 | Constant | Path | Loader data |
 | --- | --- | --- |
 | `bootstrapRoute` | `/bootstrap` | none — redirects to `/login` if already bootstrapped |
-| `loginRoute` | `/login` | `{ registrationOpen: boolean, providers: string[] }`; `validateSearch` `{ error? }` — a refused social sign-in |
+| `loginRoute` | `/login` | `{ registrationOpen: boolean, providers: string[], emailEnabled: boolean }`; `validateSearch` `{ error? }` — a refused social sign-in |
 | `signUpRoute` | `/sign-up` | `{ providers: string[] }` |
-| `forgotPasswordRoute` | `/forgot-password` | none — redirects to `/bootstrap` if not bootstrapped |
+| `forgotPasswordRoute` | `/forgot-password` | none — redirects to `/bootstrap` if not bootstrapped, to `/login` when the API sends no email |
 | `resetPasswordRoute` | `/reset-password` | none — reads `{ token?, error? }` from `validateSearch` |
 
 `bootstrapRoute` and `loginRoute` form a **mutual redirect guard**: each loader calls `getBootstrapStatus()` and redirects to the other if the system state doesn't match. This prevents accessing the bootstrap screen on a live system and prevents accessing login on a blank system.
 
 **Registration mode and social providers:**
 
-Both `loginRoute.loader` and `signUpRoute.loader` parallelise `getBootstrapStatus()` and `getRegistrationStatus()` via `Promise.all`:
+Both `loginRoute.loader` and `signUpRoute.loader` (and `forgotPasswordRoute.loader`, for `email`) parallelise `getBootstrapStatus()` and the registration status via `Promise.all`. The status goes through `queryClient.ensureQueryData(registrationStatusQueryOptions())` — the session-long cache every reader of it shares (`useRegistrationOpen()`, `useEmailEnabled()`, `meRoute`), so going from `/login` to `/forgot-password` asks once. The bootstrap status is fetched every time: it changes during the session.
 
 ```ts
 // loginRoute.loader
-const [{ bootstrapped }, { open, providers }] = await Promise.all([
+const [{ bootstrapped }, { open, providers, email }] = await Promise.all([
   getBootstrapStatus(),
-  getRegistrationStatus(),
+  queryClient.ensureQueryData(registrationStatusQueryOptions()),
 ])
 if (!bootstrapped) throw redirect({ to: '/bootstrap' })
-return { registrationOpen: open, providers }
+return { registrationOpen: open, providers, emailEnabled: email }
 
 // signUpRoute.loader
 const [{ bootstrapped }, { open, providers }] = await Promise.all([
   getBootstrapStatus(),
-  getRegistrationStatus(),
+  queryClient.ensureQueryData(registrationStatusQueryOptions()),
 ])
 if (!bootstrapped) throw redirect({ to: '/bootstrap' })
 if (!open) throw redirect({ to: '/login' })
@@ -158,12 +159,28 @@ return { providers }
 
 `signUpRoute.loader` redirects to `/login` if registration is closed — so the `SignUp` component is only reachable in open mode. The backend also enforces this via a 403 on `POST /api/auth/sign-up/email` and `disableSignUp` on each social provider.
 
-The `Login` component reads `{ registrationOpen, providers }` via `loginRoute.useLoaderData()`:
+The `Login` component reads `{ registrationOpen, providers, emailEnabled }` via `loginRoute.useLoaderData()`:
+- "Forgot password?" is a link to `/forgot-password` when `emailEnabled`; otherwise a button (same text) that opens `ContactAdminModal` — see _Without email_.
 - Shows "Create one" link only when `registrationOpen` is true.
 - Shows `<SocialLoginButtons>` only when `registrationOpen && providers.length > 0`.
 
 The `SignUp` component reads `{ providers }` via `signUpRoute.useLoaderData()`:
 - Shows `<SocialLoginButtons>` whenever `providers.length > 0` (no `registrationOpen` check — the page is only reachable when open).
+
+## Without email (`email: false`)
+
+`GET /registration/status` says whether the API sends email (`email.enabled` in `apps/api/src/app.config.ts` — root `CLAUDE.md` → _Email_). Without it there is no password reset and only the admin changes their own email, so the screens offer, in their place, **`ContactAdminModal`** (`components/contact-admin-modal.tsx` — `opened`, `onClose`, `title`, `message`; a plain Mantine `Modal` with the message and a Close button):
+
+| Where | Instead of | Modal |
+| --- | --- | --- |
+| `Login` | the "Forgot password?" link | `auth:contactAdmin.passwordTitle` / `passwordMessage` |
+| `MeAccount` (`/me/account`), anyone but the admin | the email change form | `me:account.email.contactAdminTitle` / `contactAdminMessage` — see `src/modules/me/CLAUDE.md` |
+
+`forgotPasswordRoute.loader` redirects to `/login` (a typed or old URL); `resetPasswordRoute` is left alone — no token can exist without email. The API refuses the flows on its own side too.
+
+**Reading the flag:** loaders that already fetch the status read `email` from `getRegistrationStatus()`; a component calls `useEmailEnabled()` (`use-registration-open.ts`), which suspends on `registrationStatusQueryOptions()` — prefetch it in the route's loader (`meRoute` does).
+
+Tested in `login.test.tsx` → _Forgot password_ and `me-page.test.tsx` → _Email change without email_.
 
 ## Password reset flow
 
@@ -236,7 +253,7 @@ Auth screen tests mock `loginRoute` and `signUpRoute` via `vi.mock('.')` (the lo
 ```ts
 // login.test.tsx
 const { mockUseLoaderData } = vi.hoisted(() => ({
-  mockUseLoaderData: vi.fn().mockReturnValue({ registrationOpen: false, providers: [] }),
+  mockUseLoaderData: vi.fn().mockReturnValue({ registrationOpen: false, providers: [], emailEnabled: true }),
 }))
 
 vi.mock('.', () => ({

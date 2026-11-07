@@ -17,6 +17,12 @@ const consoleLogger: ProvisioningLogger = {
   warn: (obj, msg) => console.warn(msg, obj),
 }
 
+/** What better-auth hands its email callbacks. */
+interface EmailLinkData {
+  user: { id: string; email: string }
+  url: string
+}
+
 export function createAuth(
   database: Database,
   emailProvider: EmailProvider,
@@ -25,6 +31,57 @@ export function createAuth(
 ) {
   const { google, facebook, apple } = config.auth.socialProviders
   const disableSignUp = config.registration.mode !== 'open'
+  // Without email (`email.enabled: false`) better-auth gets no sender: its own
+  // endpoints then refuse a password reset (400 `RESET_PASSWORD_DISABLED`) and
+  // a verification email, and `changeEmail` is off (400). The admin's direct
+  // email change goes through `me-service`, not better-auth.
+  const emailEnabled = config.email.enabled
+
+  // Not awaited: better-auth only calls this for a registered email, and
+  // waits for it before answering — so an awaited send (a round trip to
+  // Resend) would make `POST /auth/request-password-reset` slower for
+  // registered addresses than for unknown ones, telling anyone which
+  // emails have an account. better-auth already answered 200 when the send
+  // failed, so the client sees no difference; the failure is logged here.
+  const sendResetPassword = async ({ user, url }: EmailLinkData) => {
+    emailProvider
+      .send(
+        user.email,
+        'Reset your password',
+        `<p>You requested a password reset.</p>
+         <p>Click the link below to reset your password:</p>
+         <p><a href="${escapeHtml(url)}">Reset password</a></p>
+         <p>This link expires in 1 hour. If you did not request this change, you can safely ignore this email.</p>`
+      )
+      .catch((error: unknown) => {
+        logger.error(
+          { err: error, userId: user.id },
+          'Failed to send password reset email'
+        )
+      })
+  }
+
+  // Not awaited, for the reason `sendResetPassword` is not: better-auth
+  // sends nothing when the new address already has an account, so an
+  // awaited send would make `changeEmail` slower for a free address than
+  // for a taken one. It already ignored a failed send; it is logged here.
+  const sendVerificationEmail = async ({ user, url }: EmailLinkData) => {
+    emailProvider
+      .send(
+        user.email,
+        'Confirm your new email address',
+        `<p>You requested an email address change.</p>
+         <p>Click the link below to confirm your new email address:</p>
+         <p><a href="${escapeHtml(url)}">Confirm new email address</a></p>
+         <p>This link expires in 1 hour. If you did not request this change, you can safely ignore this email.</p>`
+      )
+      .catch((error: unknown) => {
+        logger.error(
+          { err: error, userId: user.id },
+          'Failed to send email verification'
+        )
+      })
+  }
 
   return betterAuth({
     database: drizzleAdapter(database, {
@@ -66,57 +123,15 @@ export function createAuth(
       // A reset signs out every session of the account, a stolen one included
       // — like PATCH /me/password does.
       revokeSessionsOnPasswordReset: true,
-      // Not awaited: better-auth only calls this for a registered email, and
-      // waits for it before answering — so an awaited send (a round trip to
-      // Resend) would make `POST /auth/request-password-reset` slower for
-      // registered addresses than for unknown ones, telling anyone which
-      // emails have an account. better-auth already answered 200 when the send
-      // failed, so the client sees no difference; the failure is logged here.
-      sendResetPassword: async ({ user, url }) => {
-        emailProvider
-          .send(
-            user.email,
-            'Reset your password',
-            `<p>You requested a password reset.</p>
-           <p>Click the link below to reset your password:</p>
-           <p><a href="${escapeHtml(url)}">Reset password</a></p>
-           <p>This link expires in 1 hour. If you did not request this change, you can safely ignore this email.</p>`
-          )
-          .catch((error: unknown) => {
-            logger.error(
-              { err: error, userId: user.id },
-              'Failed to send password reset email'
-            )
-          })
-      },
+      ...(emailEnabled ? { sendResetPassword } : {}),
     },
     emailVerification: {
       sendOnSignUp: false,
-      // Not awaited, for the reason `sendResetPassword` is not: better-auth
-      // sends nothing when the new address already has an account, so an
-      // awaited send would make `changeEmail` slower for a free address than
-      // for a taken one. It already ignored a failed send; it is logged here.
-      sendVerificationEmail: async ({ user, url }) => {
-        emailProvider
-          .send(
-            user.email,
-            'Confirm your new email address',
-            `<p>You requested an email address change.</p>
-           <p>Click the link below to confirm your new email address:</p>
-           <p><a href="${escapeHtml(url)}">Confirm new email address</a></p>
-           <p>This link expires in 1 hour. If you did not request this change, you can safely ignore this email.</p>`
-          )
-          .catch((error: unknown) => {
-            logger.error(
-              { err: error, userId: user.id },
-              'Failed to send email verification'
-            )
-          })
-      },
+      ...(emailEnabled ? { sendVerificationEmail } : {}),
     },
     user: {
       changeEmail: {
-        enabled: true,
+        enabled: emailEnabled,
       },
       additionalFields: {
         roleId: {

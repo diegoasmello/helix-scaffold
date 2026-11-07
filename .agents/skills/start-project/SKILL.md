@@ -33,10 +33,10 @@ Subscriptions:  <off | on>
   Trial:        <none | <days> days on <plan id>>
   Grace:        <days a past_due subscription keeps access>
 Public site:    <none | yes — origins: <the site's browser origins | none: it fetches on its server>>
-Email sender:   <address>
+Email:          <off | on — sender <address>>
 ```
 
-What each setting does: the root `CLAUDE.md` → _Registration mode_, _Subscription mode_; `apps/api/CLAUDE.md` → _Application config_. Watch for:
+What each setting does: the root `CLAUDE.md` → _Registration mode_, _Email_, _Subscription mode_; `apps/api/CLAUDE.md` → _Application config_. Watch for:
 
 - **Language** — both `en` and `pt-BR` stay offered and keep their locale files; only the default changes. The web tests assert English and use `pt-BR` for their translation cases, and `/new-module` still writes both. Say so when the user wants a single language.
 - **Social sign-in needs open registration** — closed mode is email/password only, and the providers list stays empty there.
@@ -44,7 +44,7 @@ What each setting does: the root `CLAUDE.md` → _Registration mode_, _Subscript
 - **Plans without features** — features come from the modules, which do not exist yet: `/new-module` declares each one in a plan (its sheet's _Plan feature_). With subscriptions on, at least one plan is required.
 - **Trial** — only with open registration and subscriptions on, on one of the plans.
 - **Public site** — a site that reads published records without signing in (the API as a CMS) turns on the public API (`apps/api/CLAUDE.md` → _Public API_). Which modules, fields and files a site sees is decided per module by `/new-module`; here only whether there is a site, and its origins when it calls the API from the browser (none when it fetches on its server — SSR, static generation).
-- **Email sender** — production needs a domain verified in Resend; anything works locally.
+- **Email** — off, nothing needs Resend: there is no password reset by email and no self-service email change — users ask the admin, who sets their password and email on `/users` (and recovers their own password with `pnpm admin:reset-password`). On, production needs `RESEND_API_KEY` and a sender on a domain verified in Resend; anything works locally (the console). **Open registration needs it on** — the API refuses to start otherwise.
 
 ## Phase 2 — Rename (before any database starts)
 
@@ -66,7 +66,7 @@ A database gets its name when its volume is created, so this runs before `docker
 
 From the sheet, and nothing else:
 
-- `apps/api/src/app.config.ts` — `app.name` (`<Product> API`), `registration.mode`, `auth.socialProviders.<name>.enabled`, `subscriptions` (`enabled`, `plans` with `features: []`, `trial`, `pastDueGraceDays`; off: `enabled: false`, the rest as it is), `publicApi` (`enabled`, `origins`), `email.from`. Every other setting keeps the scaffold's value.
+- `apps/api/src/app.config.ts` — `app.name` (`<Product> API`), `registration.mode`, `auth.socialProviders.<name>.enabled`, `subscriptions` (`enabled`, `plans` with `features: []`, `trial`, `pastDueGraceDays`; off: `enabled: false`, the rest as it is), `publicApi` (`enabled`, `origins`), `email` (`enabled`; `from` when on). Every other setting keeps the scaffold's value.
 - `apps/web/src/config/app.ts` — `name` and `i18n.defaultLanguage`.
 - Never the test config (`src/config/test-overrides.ts`, `e2e-overrides.ts`): the suites pin their own mode, whatever the product configures.
 
@@ -104,7 +104,7 @@ Then `pnpm knip` once more.
 - The sheet as applied, and any deviation with its reason.
 - Each gate's result, the Gate 0 failures apart.
 - What only the user can do, in this order:
-  1. **Secrets and per-deploy values** in `apps/api/.env` — `.env.example` lists them; production needs its own `AUTH_SECRET`, `RESEND_API_KEY`, `BASE_URL`, `CLIENT_URL`.
+  1. **Secrets and per-deploy values** in `apps/api/.env` — `.env.example` lists them; production needs its own `AUTH_SECRET`, `BASE_URL`, `CLIENT_URL`, and `RESEND_API_KEY` when email is on.
   2. **Behind a reverse proxy** (nginx, a load balancer, Cloudflare): `server.trustProxy` in `app.config.ts` — every rate limit counts per client IP (sign-ins, and with a public site `/api/public/*` and the public files), and without it all clients share the proxy's.
   3. **Social sign-in**: each enabled provider's credentials (`.env.example` → _Social providers_) — `pnpm dev` refuses to start without them.
   4. **The first admin**: open the app, `/bootstrap`.

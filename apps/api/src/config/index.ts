@@ -82,6 +82,21 @@ function validateAgainstEnv(resolved: ResolvedAppConfig) {
     )
   }
 
+  if (
+    resolved.email.enabled &&
+    env.NODE_ENV === 'production' &&
+    !env.RESEND_API_KEY
+  ) {
+    errors.push(
+      'email.enabled is true, but RESEND_API_KEY is not set in .env — set it, or turn email off'
+    )
+  }
+  if (resolved.registration.mode === 'open' && !resolved.email.enabled) {
+    errors.push(
+      "registration.mode is 'open', but email.enabled is false — self-registered users could never reset their password"
+    )
+  }
+
   if (errors.length > 0) {
     throw new Error(`Invalid src/app.config.ts:\n  ✖ ${errors.join('\n  ✖ ')}`)
   }

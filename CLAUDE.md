@@ -67,6 +67,7 @@ pnpm db:check          # does the dev DB match this branch's migrations? (db:che
 pnpm db:recreate:test  # drop and re-migrate the test DB — another branch's leftovers included
 pnpm db:seed           # dev data — only on an empty DB
 pnpm db:reset          # truncate every table
+pnpm admin:reset-password <email>  # new random password for the admin account, printed once (see _Email_)
 
 # OpenAPI client (packages/api-client) — see its CLAUDE.md
 pnpm spec:sync         # export + generate: run after ANY change to the API contract
@@ -110,8 +111,8 @@ Backend settings are split in two places:
 
 | Where | What goes there |
 | --- | --- |
-| `apps/api/src/app.config.ts` | **Product decisions**, committed: registration mode, subscriptions and trial, social providers on/off, the public API, email sender, uploads, server port and trusted proxies, logger. Written with `defineConfig()` (Vite-style: a plain object or `({ mode }) => ({ ... })`). |
-| `apps/api/.env` | **Secrets and per-deploy values**, never committed: `DATABASE_URL`, `AUTH_SECRET`, `BASE_URL`, `CLIENT_URL`, `RESEND_API_KEY`, OAuth client IDs/secrets. |
+| `apps/api/src/app.config.ts` | **Product decisions**, committed: registration mode, subscriptions and trial, social providers on/off, the public API, email (on/off, sender), uploads, server port and trusted proxies, logger. Written with `defineConfig()` (Vite-style: a plain object or `({ mode }) => ({ ... })`). |
+| `apps/api/.env` | **Secrets and per-deploy values**, never committed: `DATABASE_URL`, `AUTH_SECRET`, `BASE_URL`, `CLIENT_URL`, `RESEND_API_KEY` (with `email.enabled`), OAuth client IDs/secrets. |
 
 Settings are resolved once (validated, defaulted, frozen) and passed down from `buildApp(database, { config })`: route plugins get `config` in their options, factories (`createAuth`, `createRequireSubscription`, …) as a parameter. Only the entry points (`server.ts`, the seed, test helpers) import `config` from `@/config`. Secrets come from `import { env } from '@/env'`. Never put a secret in `app.config.ts`, and never add a new product setting to `.env`. To add a setting: extend the `AppConfig` interface (with JSDoc) and `appConfigSchema` in `src/config/define-config.ts`, then set it in `app.config.ts`.
 
@@ -128,7 +129,7 @@ The scaffold supports two account-creation strategies, configured via `registrat
 | Mode | Behaviour |
 | --- | --- |
 | `closed` (default) | Only admins create accounts. Bootstrap creates the first admin; subsequent users are created via `POST /users` by a permissioned admin. |
-| `open` | Anyone can self-register via `/sign-up` (email/password) or via social login (Google, Facebook, Apple). Bootstrap also creates a "User" role (`isDefault = true`) with **no permissions**. New self-registered users receive this role automatically. |
+| `open` | Anyone can self-register via `/sign-up` (email/password) or via social login (Google, Facebook, Apple). Bootstrap also creates a "User" role (`isDefault = true`) with **no permissions**. New self-registered users receive this role automatically. Requires `email.enabled: true` (see _Email_). |
 
 The profile (`/me`, `/api/me/*`) needs only a session, never a permission — there is no `me` resource. So a user holding only the empty default role can reach `/me` and nothing else: the app's `/` sends each user to the first sidebar page they may open, and to `/me` when there is none. Grant the default role whatever the product's regular users need.
 
@@ -141,6 +142,21 @@ The profile (`/me`, `/api/me/*`) needs only a session, never a permission — th
 **Changing the default role for open registration:** set `isDefault = true` on the desired role via the Roles admin panel. Only one role can be the default at a time (DB-enforced partial unique index). The previous default is automatically unset by the service in a transaction.
 
 See `apps/api/src/modules/registration/CLAUDE.md` for the full backend documentation and `apps/web/src/modules/auth/CLAUDE.md` for the frontend guard/loader pattern.
+
+## Email
+
+`email.enabled` in `apps/api/src/app.config.ts` (default `false`) decides whether the API sends email, through Resend (`RESEND_API_KEY` in `apps/api/.env`):
+
+| `email.enabled` | Behaviour |
+| --- | --- |
+| `false` (default) | Nothing is sent and nothing needs Resend. No password reset and no self-service email change: `/login`'s "Forgot password?" and the email change on `/me/account` open a "contact your administrator" modal (`ContactAdminModal`), and `/forgot-password` redirects to `/login`. The admin sets other users' passwords (`PUT /users/:id/password`) and emails (`PATCH /users/:id`), changes their own email on `/me/account` at once (with the current password), and recovers a forgotten password on the server: `pnpm admin:reset-password <email>`. |
+| `true` | Password reset by email, email change confirmed by a link sent to the new address, and security notices (password changed, email change requested). In production the API refuses to start without `RESEND_API_KEY`; in development and tests the emails are printed to the console. |
+
+**Open registration requires `email.enabled: true`** — the API refuses to start otherwise: a self-registered user has no administrator to recover their account.
+
+**Single source of truth:** the setting lives only in the backend config. The frontend reads `GET /registration/status → { open, providers, email }` (`useEmailEnabled()`), and the API enforces it on its own side (better-auth gets no sender, `PATCH /me/email` answers 403 `email_change_unavailable` to anyone but the admin).
+
+See `apps/api/src/lib/email/CLAUDE.md` for the backend and `apps/web/src/modules/auth/CLAUDE.md` for the screens.
 
 ## Subscription mode
 

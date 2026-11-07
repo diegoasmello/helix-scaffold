@@ -20,7 +20,7 @@ Run from `apps/api` (or from the root with the `pnpm db:*` / `pnpm spec:*` alias
 | Script | Does |
 | --- | --- |
 | `pnpm dev` | `tsx watch` on `src/server.ts` with `.env` |
-| `pnpm build` | `tsdown` (`tsdown.config.ts`) bundles `src/server.ts` into `dist/server.js` and `src/db/migrate.ts` into `dist/migrate.js` — `src/` only, with the `@/` alias and the PDF templates' JSX resolved; dependencies stay external (`node_modules` must be installed where it runs). `app.config.ts` is bundled, so a config change needs a rebuild |
+| `pnpm build` | `tsdown` (`tsdown.config.ts`) bundles `src/server.ts` into `dist/server.js`, `src/db/migrate.ts` into `dist/migrate.js` and `src/scripts/reset-admin-password.ts` into `dist/reset-admin-password.js` — `src/` only, with the `@/` alias and the PDF templates' JSX resolved; dependencies stay external (`node_modules` must be installed where it runs). `app.config.ts` is bundled, so a config change needs a rebuild |
 | `pnpm start` | `node dist/server.js` (with source maps). Does **not** load `.env` — the deploy provides the environment. Does not run migrations: run `pnpm migrate` first |
 | `pnpm migrate` | `node dist/migrate.js` — applies pending migrations with drizzle-orm's runtime migrator (`src/db/migrate.ts` → `run-migrations.ts`). Needs only `DATABASE_URL` from the environment: no `.env`, no `drizzle-kit`, no dev dependencies. The build copies `src/db/migrations` to `dist/migrations`. The same migrator `pnpm db:migrate` runs, and the same journal as `drizzle-kit` |
 | `pnpm db:generate --name <name>` | Generate a migration from the Drizzle schema (`src/db/schema/`) into `src/db/migrations/`. **Always pass `--name`** — without it drizzle-kit picks a random one (`0017_common_husk`). The name says what changes, in snake_case: a new module's table (`news`), a change to one table `<table>_<change>` (`todos_slug`, `roles_is_admin`), one across tables the change itself (`fk_indexes`, `timestamptz`). The number prefix is added for you. A custom (hand-written) migration takes it too: `pnpm --filter api exec drizzle-kit generate --custom --name <name>` |
@@ -28,6 +28,7 @@ Run from `apps/api` (or from the root with the `pnpm db:*` / `pnpm spec:*` alias
 | `pnpm db:check` / `pnpm db:check:test` | Compares the database's `drizzle.__drizzle_migrations` with this branch's journal, by hash (`src/db/check-migrations.ts` → `migration-status.ts`). Lists the pending migrations and exits 1 on a migration the branch does not know (another branch's — its tables and enums are still there), one whose `.sql` changed after it ran, or one older than the last applied (the migrator only applies newer ones, so it would never run). `db:migrate` reports none of these: with nothing pending it succeeds, and the leftovers fail a later migration |
 | `pnpm db:recreate:test` | Drops the `public` and `drizzle` schemas of the test DB and migrates it from scratch (`src/db/recreate.ts`) — the fix for what `db:check:test` reports. Refuses any database whose name does not end in `_test`/`_e2e`. The dev DB holds your data: on a mismatch there, either drop what the other branch created by hand, or `docker compose down`/remove its volume and `pnpm db:migrate` + `pnpm db:seed` |
 | `pnpm db:studio` | Drizzle Studio |
+| `pnpm admin:reset-password <email>` / `pnpm reset-admin-password <email>` | Gives the **admin account** a new random password, prints it once and signs the account out everywhere — the way back in when the admin forgets it and there is no email to reset it (`email.enabled: false`). The first runs the source with `.env` (`tsx`), the second the build (`node dist/reset-admin-password.js`, the deploy's environment). Refuses any other account (the admin sets those on `/users`). Audited as the system actor `cli` (`resetAdminPassword()`, `src/modules/accounts/password-replacement.ts`) |
 | `pnpm db:seed` | Dev data (`src/db/seed.ts`). **Refuses to run if any user exists.** Wipes `uploads.dir`, creates Admin (the admin role — `isAdmin`, no permission rows)/Moderator/User roles (in open registration `User` becomes the default role, through `ensureDefaultRole()`), an admin login (`admin@example.com` / `pass1234`), 20 extra users (same password) and sample todos with uploads (about half published, for the public API) |
 | `pnpm db:reset` | Truncates every table in the schema (`drizzle-seed` `reset`). Does not touch `uploads.dir` |
 | `pnpm e2e:server` | The API of the web's E2E suite — started by `apps/web/playwright.config.ts`, which provides its environment (no `.env`). Migrates and empties the database (`src/db/migrate.ts`, `src/db/reset.ts`), then runs `src/scripts/e2e-server.ts`: `src/server.ts` with the test config plus `src/config/e2e-overrides.ts` (port 3334, uploads in `/tmp/helix-e2e-uploads`, `warn` logs) |
@@ -62,6 +63,7 @@ The file a developer edits to shape the app. Written with `defineConfig()` (Vite
 | `publicApi.origins` | `[]` | Browser origins allowed to call `/api/public/*` (CORS, never with credentials). Empty when the site fetches on its server |
 | `publicApi.cacheSeconds` | `60` | `Cache-Control: public, max-age` of public answers (JSON and files); `0` → `no-cache` |
 | `publicApi.rateLimit.max` / `windowSeconds` | `300` / `60` | Requests per client IP per window on `/api/public/*` (429 `rate_limited`) |
+| `email.enabled` | `false` | Whether the API sends email (Resend). Off: no password reset, no self-service email change (only the admin changes their own, at once), no notices — see _Email_. Open registration requires it (startup error otherwise) |
 | `email.from` | `'noreply@localhost'` | Sender address. Must be from a domain verified in Resend for production. |
 | `uploads.storage` | `'local'` | `'s3'` stub exists but throws |
 | `uploads.dir` | `'./storage'` | Local storage root directory |
@@ -97,7 +99,7 @@ Validated with Zod in `src/env.ts` at startup. If a required variable is missing
 | `DATABASE_URL`, `AUTH_SECRET` | Required |
 | `BASE_URL` | Public URL of this API. Also prefixes public upload URLs. |
 | `CLIENT_URL` | Public URL of the frontend (CORS, trusted origins, email links) |
-| `RESEND_API_KEY` | Required with `NODE_ENV=production` (the API refuses to start without it — the console fallback would print reset links to the logs). Omit in development to fall back to console email logging. |
+| `RESEND_API_KEY` | Required with `email.enabled: true` and `NODE_ENV=production` (the API refuses to start without it — the console fallback would print reset links to the logs). Omit in development to fall back to console email logging, and whenever email is off. |
 | `GOOGLE_*`, `FACEBOOK_*`, `APPLE_*` (`CLIENT_ID` / `CLIENT_SECRET`) | Credentials for social providers enabled in `app.config.ts`. `APPLE_CLIENT_SECRET` is a JWT signed with the `.p8` private key (max 6-month expiry). |
 
 ### Test config
@@ -105,6 +107,7 @@ Validated with Zod in `src/env.ts` at startup. If a required variable is missing
 `.env.test` only overrides `DATABASE_URL`. `vitest.config.ts` pins `NODE_ENV=test`, which makes `src/config/index.ts` apply `src/config/test-overrides.ts` on top of `app.config.ts`:
 
 - `registration.mode: 'open'` — allows `createTestSession()` to sign up the test admin via `POST /api/auth/sign-up/email`.
+- `email.enabled: true` — open registration needs it; the console provider prints every email, which the suites spy on (`console.log`). Tests of the mode without email build `createTestApp({ registration: { mode: 'closed' }, email: { enabled: false } })` (`me-routes.test.ts`, `auth.test.ts` → _without email_).
 - `subscriptions.enabled: true`, with a test plan catalog: `starter` (no features), `pro` and `enterprise` (the modules' features plus `reports`, the suite's own feature — the infrastructure tests gate their throwaway routes and records with it, so they never depend on which modules gate what). Subscription-gated modules need it; the helper creates an active `pro` subscription for the test admin automatically.
 - `uploads.dir: '/tmp/helix-test-uploads'`.
 - `publicApi.enabled: true` (no origins, `cacheSeconds: 60`) — the public routes exist whatever the product sets. Tests of the limit or the CORS origins build an app with their own values.
@@ -626,13 +629,22 @@ Use `todos` as the reference implementation; the step-by-step guide (multi-file 
 
 ## Email
 
-Transactional email is sent via the `EmailProvider` abstraction in `src/lib/email/`. See `src/lib/email/CLAUDE.md` for the full reference (implementations, env vars, better-auth limitation, workaround pattern).
+Transactional email is sent via the `EmailProvider` abstraction in `src/lib/email/`, **only when `email.enabled` is `true`** (`src/app.config.ts`, default `false`). See `src/lib/email/CLAUDE.md` for the full reference (implementations, env vars, better-auth limitation, workaround pattern).
+
+### On and off
+
+| `email.enabled` | What the API does |
+|---|---|
+| `false` | `createEmailProvider()` returns a provider that drops every send — no Resend, no key. `createAuth()` gives better-auth no sender: `POST /auth/request-password-reset` answers 400 `RESET_PASSWORD_DISABLED` and `user.changeEmail` is off. `PATCH /me/email` answers 403 `email_change_unavailable` to anyone but the admin, and changes the admin's email at once (`src/modules/me/CLAUDE.md`). The admin's forgotten password: `pnpm admin:reset-password` (_Scripts_) |
+| `true` | Resend with `RESEND_API_KEY`, the console without it (development) — production refuses to start without the key (`validateAgainstEnv()` in `src/config/index.ts`, and `createEmailProvider()` itself) |
+
+`registration.mode: 'open'` with `email.enabled: false` stops the API at startup. `GET /registration/status` returns `email`, which the web reads.
 
 ### Infrastructure
 
 | File | Purpose |
 |---|---|
-| `src/lib/email/index.ts` | Exports the `EmailProvider` interface and `createEmailProvider({ resendApiKey, from, nodeEnv })`, which picks Resend or console (both implementations are private) |
+| `src/lib/email/index.ts` | Exports the `EmailProvider` interface and `createEmailProvider({ enabled, resendApiKey, from, nodeEnv })`, which picks nothing (off), Resend or console (the implementations are private) |
 
 The provider instance is created once in `app.ts` and injected into `createAuth` and into each route module that needs it via route options — same pattern as `storage`.
 
@@ -640,7 +652,8 @@ The provider instance is created once in `app.ts` and injected into `createAuth`
 
 | Setting | Where | Notes |
 |---|---|---|
-| `RESEND_API_KEY` | `.env` | Required in production — `createEmailProvider` throws without it. Omit in dev/test to fall back to console logging. |
+| `email.enabled` | `src/app.config.ts` | Default `false`. See _On and off_ |
+| `RESEND_API_KEY` | `.env` | Required in production with email on. Omit in dev/test to fall back to console logging. |
 | `email.from` | `src/app.config.ts` | Sender address (default `noreply@localhost`). Must be from a domain verified in Resend for production. |
 
 In `NODE_ENV=test` the console provider is always used, regardless of `RESEND_API_KEY`.
@@ -649,13 +662,13 @@ In `NODE_ENV=test` the console provider is always used, regardless of `RESEND_AP
 
 | Scenario | Pattern |
 |---|---|
-| Email is the purpose of the request (verification, invite) | Let `send` throw; catch in route; return 400/500 |
-| Email is a notification after a successful action | `.catch(() => {})` — best-effort, never blocks |
-| Better Auth lifecycle email (password reset, email verification) | Implement via the corresponding Better Auth config callback in `src/auth.ts` — `emailAndPassword.sendResetPassword` for password reset, `emailVerification.sendVerificationEmail` for email change. Better Auth handles the token lifecycle; the callback only calls `emailProvider.send`. |
+| Email is the purpose of the request (verification, invite) | Let `send` throw; catch in route; return 400/500 — and decide what the flow becomes with email off (refuse it, or give the admin another way), as `PATCH /me/email` does |
+| Email is a notification after a successful action | `.catch(() => {})` — best-effort, never blocks; with email off it is simply dropped |
+| Better Auth lifecycle email (password reset, email verification) | Implement via the corresponding Better Auth config callback in `src/auth.ts` — `emailAndPassword.sendResetPassword` for password reset, `emailVerification.sendVerificationEmail` for email change — passed only when `email.enabled`. Better Auth handles the token lifecycle; the callback only calls `emailProvider.send`. |
 
 ### Wiring a new module that needs email
 
-Receive `emailProvider` in the route options (like `storage`) and pass it to the service factory — see `src/lib/email/CLAUDE.md` → _Using EmailProvider in a module_.
+Receive `emailProvider` in the route options (like `storage`) and pass it to the service factory — see `src/lib/email/CLAUDE.md` → _Using EmailProvider in a module_. A flow that cannot work without the email also needs `config.email.enabled`.
 
 ---
 
@@ -786,7 +799,7 @@ response: { 201: roleSchema, 409: errorSchema('name_taken') },
 | subscriptions | 400, 409 | `user_not_found` (FK), `live_subscription_exists`, `external_id_taken` (`toDomainError()` in `subscriptions-routes.ts`) |
 | permissions | 400, 403, 404 | `unknown_permissions`, `missing_required_permissions`, `admin_role_locked`, `role_not_editable`, `permissions_not_grantable` (admin role and privilege ceiling), `role_not_found` |
 | todos | 400 | `invalid_upload`, `invalid_upload_type` (`assertUsableUploads()`, `src/lib/upload-ownership.ts`) |
-| me | 400, 429 | `current_password_required`, `invalid_password`, `email_change_rejected`, `password_change_rejected`, `too_many_attempts` (`me-service` — re-authentication and `createAttemptLimiter()`, `src/lib/attempt-limiter.ts`) |
+| me | 400, 403, 409, 429 | `current_password_required`, `invalid_password`, `email_change_rejected`, `password_change_rejected`, `too_many_attempts` (`me-service` — re-authentication and `createAttemptLimiter()`, `src/lib/attempt-limiter.ts`); `email_unchanged` (400) on `PATCH /me/email`; `email_change_unavailable` (403) and `email_taken` (409) there with email off |
 | requireSubscription / requirePermission | 403 | `subscription_required`, `feature_not_in_plan`, `permission_denied` (sent by the hooks) |
 | public API / `GET /files/*` | 429 | `rate_limited` (`registerRateLimit()`, `src/hooks/rate-limit.ts`) |
 

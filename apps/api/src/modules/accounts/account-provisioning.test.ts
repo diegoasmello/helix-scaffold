@@ -41,7 +41,11 @@ const noTrial = { enabled: true, trial: false as const }
 function createAuthFor(database: typeof testDb) {
   return createAuth(
     database,
-    createEmailProvider({ from: 'test@test.com', nodeEnv: 'test' }),
+    createEmailProvider({
+      enabled: true,
+      from: 'test@test.com',
+      nodeEnv: 'test',
+    }),
     config,
     { error: vi.fn(), warn: vi.fn() }
   )

@@ -16,6 +16,8 @@ interface EmailChangeFormProps {
   /** The account has a password: the API asks for it to change the email. */
   hasPassword: boolean
   loading: boolean
+  /** "Request change" when a link confirms it, "Change email" when it is at once. */
+  submitLabel: string
   onSubmit: (data: UpdateMeEmailInput) => void
 }
 
@@ -24,10 +26,9 @@ interface EmailChangeFormProps {
  * current password is required.
  */
 export function EmailChangeForm(props: Readonly<EmailChangeFormProps>) {
-  const { currentEmail, hasPassword, loading, onSubmit } = props
+  const { currentEmail, hasPassword, loading, submitLabel, onSubmit } = props
 
   const { t } = useTranslation('me')
-  const { t: tc } = useTranslation('common')
 
   const form = useForm<EmailChangeFormValues>({
     initialValues: { newEmail: '', currentPassword: '' },
@@ -64,7 +65,7 @@ export function EmailChangeForm(props: Readonly<EmailChangeFormProps>) {
         )}
         <Group justify="flex-end">
           <Button type="submit" loading={loading}>
-            {tc('actions.requestChange')}
+            {submitLabel}
           </Button>
         </Group>
       </Stack>

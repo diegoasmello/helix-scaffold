@@ -10,7 +10,11 @@ afterEach(() => {
 describe('createEmailProvider', () => {
   it('refuses to fall back to the console in production', () => {
     expect(() =>
-      createEmailProvider({ from: 'a@b.test', nodeEnv: 'production' })
+      createEmailProvider({
+        enabled: true,
+        from: 'a@b.test',
+        nodeEnv: 'production',
+      })
     ).toThrow(/RESEND_API_KEY is required/)
   })
 
@@ -20,6 +24,7 @@ describe('createEmailProvider', () => {
     const log = vi.spyOn(console, 'log').mockImplementation(() => {})
 
     const provider = createEmailProvider({
+      enabled: true,
       resendApiKey: 're_test',
       from: 'a@b.test',
       nodeEnv: 'production',
@@ -35,12 +40,38 @@ describe('createEmailProvider', () => {
     async (nodeEnv) => {
       const log = vi.spyOn(console, 'log').mockImplementation(() => {})
 
-      const provider = createEmailProvider({ from: 'a@b.test', nodeEnv })
+      const provider = createEmailProvider({
+        enabled: true,
+        from: 'a@b.test',
+        nodeEnv,
+      })
       await provider.send('to@b.test', 'Subject', '<p>dev link</p>')
 
       expect(log).toHaveBeenCalledWith(
         expect.stringContaining('<p>dev link</p>')
       )
+    }
+  )
+
+  it.each(['production', 'development'])(
+    'sends nothing when email is off (%s), with or without a key',
+    async (nodeEnv) => {
+      const fetchMock = vi.fn()
+      vi.stubGlobal('fetch', fetchMock)
+      const log = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+      for (const resendApiKey of [undefined, 're_test']) {
+        const provider = createEmailProvider({
+          enabled: false,
+          resendApiKey,
+          from: 'a@b.test',
+          nodeEnv,
+        })
+        await provider.send('to@b.test', 'Subject', '<p>x</p>')
+      }
+
+      expect(fetchMock).not.toHaveBeenCalled()
+      expect(log).not.toHaveBeenCalled()
     }
   )
 
@@ -50,6 +81,7 @@ describe('createEmailProvider', () => {
     vi.spyOn(console, 'log').mockImplementation(() => {})
 
     const provider = createEmailProvider({
+      enabled: true,
       resendApiKey: 're_test',
       from: 'a@b.test',
       nodeEnv: 'test',

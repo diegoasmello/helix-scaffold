@@ -14,6 +14,7 @@
     "db:generate": "pnpm --filter api run db:generate",
     "db:migrate": "pnpm --filter api run db:migrate",
     "db:seed": "pnpm --filter api run db:seed",
+    "admin:reset-password": "pnpm --filter api run admin:reset-password",
     "db:reset": "pnpm --filter api run db:reset",
     "db:migrate:test": "pnpm --filter api run db:migrate:test",
     "db:check": "pnpm --filter api run db:check",

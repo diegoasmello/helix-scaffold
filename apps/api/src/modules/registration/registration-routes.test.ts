@@ -37,7 +37,7 @@ describe('closed registration', () => {
       url: '/api/registration/status',
     })
     expect(res.statusCode).toBe(200)
-    expect(res.json()).toEqual({ open: false, providers: [] })
+    expect(res.json()).toEqual({ open: false, providers: [], email: true })
   })
 
   it('rejects email sign-up with 403', async () => {

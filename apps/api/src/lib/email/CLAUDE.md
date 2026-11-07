@@ -2,6 +2,8 @@
 
 Transactional email infrastructure. Provides a provider-agnostic `EmailProvider` interface so the sending implementation can be swapped without touching business logic.
 
+**Email is optional** (`email.enabled` in `src/app.config.ts`, default `false`). Off, the provider drops every send and the flows that need an email are off too — see _Without email_.
+
 ## Interface
 
 ```ts
@@ -18,15 +20,16 @@ Every value placed in an email's HTML goes through `escapeHtml()` (exported from
 
 ## Implementations
 
-Both are private factory functions in `index.ts`; only `EmailProvider` (the interface), `createEmailProvider` and `escapeHtml` are exported.
+All are private factory functions in `index.ts`; only `EmailProvider` (the interface), `createEmailProvider` and `escapeHtml` are exported.
 
 | Implementation | When used |
 |---|---|
+| `createDisabledEmailProvider` | `email.enabled: false` — `send` resolves and sends nothing, whatever the key and `NODE_ENV` |
 | `createResendEmailProvider` | `NODE_ENV !== 'test'` and `RESEND_API_KEY` is set |
 | `createConsoleEmailProvider` | `development` without `RESEND_API_KEY`, and all test runs |
-| — (throws) | `NODE_ENV=production` without `RESEND_API_KEY`: `createEmailProvider` refuses, so `buildApp` (and the API) does not start |
+| — (throws) | email on, `NODE_ENV=production` without `RESEND_API_KEY`: `createEmailProvider` refuses, so `buildApp` (and the API) does not start. The config already refuses it at startup (`validateAgainstEnv()` in `src/config/index.ts`, with a clearer message); the provider keeps the rule on its own |
 
-The console provider logs the full HTML body to stdout including the verification URL — sufficient for local testing without any external account. That is exactly why production never falls back to it: the body carries live password-reset and verification links, and anyone reading the logs could take over the account. A production deploy must set `RESEND_API_KEY` — and `NODE_ENV=production`, since an unset `NODE_ENV` means `development` (`src/env.ts`).
+The console provider logs the full HTML body to stdout including the verification URL — sufficient for local testing without any external account. That is exactly why production never falls back to it: the body carries live password-reset and verification links, and anyone reading the logs could take over the account. A production deploy with email on must set `RESEND_API_KEY` — and `NODE_ENV=production`, since an unset `NODE_ENV` means `development` (`src/env.ts`).
 
 The Resend provider uses Resend's REST API directly via `fetch` (no SDK dependency). On a non-2xx response it logs the raw body to stderr and throws a generic message, so Resend error details never leak to the caller or to error-monitoring payloads.
 
@@ -38,6 +41,7 @@ import { env } from '@/env'
 import { createEmailProvider } from '@/lib/email'
 
 const emailProvider = createEmailProvider({
+  enabled: config.email.enabled,
   resendApiKey: env.RESEND_API_KEY,
   from: config.email.from,
   nodeEnv: env.NODE_ENV,
@@ -50,10 +54,22 @@ Called once in `app.ts`. The returned instance is injected into `createAuth` and
 
 | Setting | Where | Default | Notes |
 |---|---|---|---|
-| `RESEND_API_KEY` | `.env` | — | Required in production. Omit in development to fall back to console logging. |
+| `email.enabled` | `src/app.config.ts` | `false` | Whether anything is sent. Open registration requires `true` (startup error otherwise) |
+| `RESEND_API_KEY` | `.env` | — | Required in production with email on. Omit in development to fall back to console logging. |
 | `email.from` | `src/app.config.ts` | `noreply@localhost` | Sender address. Must be from a domain verified in Resend for production. |
 
 **Resend domain requirement**: Resend rejects sends from unverified domains (including `gmail.com` or any domain you don't own). For production, add and verify your domain at resend.com/domains. For local testing without a verified domain, omit `RESEND_API_KEY` and use the console provider.
+
+## Without email (`email.enabled: false`)
+
+| Flow | What happens | Where |
+|---|---|---|
+| Password reset | better-auth gets no `sendResetPassword`: `POST /api/auth/request-password-reset` answers 400 `RESET_PASSWORD_DISABLED`, no token is created. The web's "Forgot password?" opens a "contact your administrator" modal, and `/forgot-password` redirects to `/login` | `src/auth.ts` |
+| Email change | better-auth gets no `sendVerificationEmail` and `user.changeEmail.enabled: false` (its own `/change-email` answers 400). `PATCH /me/email`: 403 `email_change_unavailable` for anyone but the admin; the admin's email changes at once, after the current password (409 `email_taken` for a used address) | `src/auth.ts`, `src/modules/me/me-service.ts` |
+| Notices (password changed, email change requested, password set by the admin) | Dropped by the disabled provider | — |
+| The admin's forgotten password | `pnpm admin:reset-password <email>` on the server | `src/scripts/reset-admin-password.ts` |
+
+Other users' passwords and emails are the admin's job on `/users` (`PUT /users/:id/password`, `PATCH /users/:id`), with or without email. Covered in `src/auth.test.ts` and `me-routes.test.ts` (`describe('Without email…')`), `src/config/index.test.ts` (the startup rules) and `index.test.ts` (the provider).
 
 ## Using EmailProvider in a module
 

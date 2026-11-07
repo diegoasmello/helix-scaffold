@@ -26,7 +26,7 @@ React 19 + Vite — the main application.
 
 **Browser tab title** — `Tasks | Helix`: the page's `h1` followed by `appConfig.name`. `main.tsx` wraps the router in `DocumentTitleProvider` (``template={`%s | ${appConfig.name}`}``) and every `PageHeader` (so `PageList`, `PageCreate`, `PageEdit`, `PageView`) turns its string `title` into the tab title — nothing to declare per page or per route. A detail page's tab shows the record (`Review quarterly report | Helix`), like its `h1`. A screen without `PageHeader` (auth screens, `/403`, `/404`, the error boundary, `/upgrade`) renders `<DocumentTitle title={...} />` from `@helix/ui` next to its heading. With no page title (while a route loads) the tab shows the static `index.html` title, the product name alone.
 
-**Never put behaviour settings here.** Registration mode, social providers and subscriptions come from the API at runtime (`GET /registration/status`, `GET /subscription/status`) — configure them in `apps/api/src/app.config.ts`. The only env var is `VITE_API_URL` (per-deploy).
+**Never put behaviour settings here.** Registration mode, social providers, email and subscriptions come from the API at runtime (`GET /registration/status`, `GET /subscription/status`) — configure them in `apps/api/src/app.config.ts`. The only env var is `VITE_API_URL` (per-deploy).
 
 ## Routing pattern
 
@@ -2100,7 +2100,7 @@ E2E specs check that the layers agree — what the UI offers, what the guards le
 | `me.spec.ts` | Renaming the account (the header follows); changing the password — only the new one signs in |
 | `todos.spec.ts` | **The template of a module's spec** — create with the three uploads and the rich text editor, view, edit, delete (cancel, then confirm). _Plan gate_ — the journey of a module gated by a plan feature: no subscription → `/upgrade` ("Subscription required") and the API's 403 `subscription_required`; a plan without the feature → "Upgrade your plan" until the admin changes the plan; an operator (`subscriptions:view`) passes without one. It goes away with `todos`: copy its shape for the module that replaces it |
 
-Not covered: social sign-in (needs a real OAuth provider), the reset-password email (its link only reaches the API's stdout) and the trial on sign-up (the test config has `trial: false`; turning it on would make E2E run in another mode than the API suite).
+Not covered: social sign-in (needs a real OAuth provider), the reset-password email (its link only reaches the API's stdout), the mode without email (E2E runs with the API suite's config, email on — `login.test.tsx` and `me-page.test.tsx` cover the screens, the API suite the rules) and the trial on sign-up (the test config has `trial: false`; turning it on would make E2E run in another mode than the API suite).
 
 #### The stack
 

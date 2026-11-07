@@ -1,5 +1,5 @@
 import { MantineEmotionProvider, MantineProvider } from '@helix/ui'
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
@@ -15,9 +15,11 @@ const {
   mockNavigate: vi.fn(),
   mockSignIn: vi.fn(),
   mockSignInSocial: vi.fn(),
-  mockUseLoaderData: vi
-    .fn()
-    .mockReturnValue({ registrationOpen: false, providers: [] }),
+  mockUseLoaderData: vi.fn().mockReturnValue({
+    registrationOpen: false,
+    providers: [],
+    emailEnabled: true,
+  }),
   mockUseSearch: vi.fn().mockReturnValue({}),
 }))
 
@@ -47,7 +49,11 @@ function renderLogin() {
 
 afterEach(() => {
   vi.clearAllMocks()
-  mockUseLoaderData.mockReturnValue({ registrationOpen: false, providers: [] })
+  mockUseLoaderData.mockReturnValue({
+    registrationOpen: false,
+    providers: [],
+    emailEnabled: true,
+  })
   mockUseSearch.mockReturnValue({})
 })
 
@@ -240,5 +246,40 @@ describe('form submission', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Sign in' }))
 
     expect(screen.getByText('Invalid credentials')).toBeInTheDocument()
+  })
+})
+
+describe('Forgot password', () => {
+  it('links to the reset screen when the API sends email', () => {
+    renderLogin()
+    expect(
+      screen.getByRole('link', { name: 'Forgot password?' })
+    ).toHaveAttribute('href', '/forgot-password')
+  })
+
+  it('asks to contact an administrator when the API sends no email', async () => {
+    const user = userEvent.setup()
+    mockUseLoaderData.mockReturnValue({
+      registrationOpen: false,
+      providers: [],
+      emailEnabled: false,
+    })
+    renderLogin()
+
+    expect(
+      screen.queryByRole('link', { name: 'Forgot password?' })
+    ).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Forgot password?' }))
+
+    const dialog = await screen.findByRole('dialog', {
+      name: 'Reset your password',
+    })
+    expect(dialog).toHaveTextContent(
+      'Ask your administrator to set a new password for your account.'
+    )
+    await user.click(within(dialog).getByRole('button', { name: 'Close' }))
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    )
   })
 })

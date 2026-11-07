@@ -18,12 +18,13 @@ api.register(registrationRoutes, { config })
 
 ### `GET /registration/status`
 
-Returns `{ open: boolean, providers: string[] }`. No auth, no permissions.
+Returns `{ open: boolean, providers: string[], email: boolean }`. No auth, no permissions.
 
 | Field | Type | Description |
 | --- | --- | --- |
 | `open` | `boolean` | `true` when `config.registration.mode === 'open'` |
 | `providers` | `string[]` | Social providers enabled in `config.auth.socialProviders`. Always `[]` when `open` is `false`. |
+| `email` | `boolean` | `config.email.enabled` — whether the API sends email. The web hides the password reset and the self-service email change without it (they open a "contact your administrator" modal); see the root `CLAUDE.md` → _Email_. Always `true` when `open` is `true` (open registration requires email) |
 
 **`providers` values:** `"google"` | `"facebook"` | `"apple"` — only providers enabled in `config.auth.socialProviders` (their credentials are guaranteed by config validation at startup).
 
@@ -96,7 +97,7 @@ What a self-registered user gets in open mode — the default role and, when `su
 
 ## Frontend counterpart
 
-- `GET /registration/status` is consumed by `loginRoute.loader` and `signUpRoute.loader` in `apps/web/src/modules/auth/routes/index.ts`.
+- `GET /registration/status` is consumed by `loginRoute.loader`, `signUpRoute.loader` and `forgotPasswordRoute.loader` in `apps/web/src/modules/auth/routes/index.ts`, and by `meRoute.loader` (`registrationStatusQueryOptions()`, read by `useEmailEnabled()` on `/me/account`).
 - Both loaders parallelise it with `getBootstrapStatus()` via `Promise.all`.
 - `signUpRoute.loader` redirects to `/login` if `open` is false.
 - Login page shows "Create one" link and social buttons only when `registrationOpen` is true.

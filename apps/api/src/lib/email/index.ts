@@ -50,16 +50,32 @@ function createConsoleEmailProvider(): EmailProvider {
 }
 
 /**
- * Resend when `RESEND_API_KEY` is set (outside tests), the console otherwise.
- * Throws in production without a key: the console provider prints every email
- * body — live password-reset and verification links included — to stdout, so
- * a production API must never fall back to it.
+ * `email.enabled: false` — every send is dropped. The flows that need an email
+ * to work (password reset, email change by link) are off in `src/auth.ts` and
+ * `me-service`; what is left calling it are the best-effort notices.
+ */
+function createDisabledEmailProvider(): EmailProvider {
+  return {
+    async send() {},
+  }
+}
+
+/**
+ * Nothing when email is off (`email.enabled: false`). Otherwise Resend when
+ * `RESEND_API_KEY` is set (outside tests), the console in development and
+ * tests. Throws in production without a key: the console provider prints
+ * every email body — live password-reset and verification links included —
+ * to stdout, so a production API must never fall back to it. (The config
+ * already refuses that combination at startup; this keeps the provider safe
+ * on its own.)
  */
 export function createEmailProvider(options: {
+  enabled: boolean
   resendApiKey?: string
   from: string
   nodeEnv: string
 }): EmailProvider {
+  if (!options.enabled) return createDisabledEmailProvider()
   if (options.nodeEnv !== 'test' && options.resendApiKey) {
     return createResendEmailProvider(options.resendApiKey, options.from)
   }

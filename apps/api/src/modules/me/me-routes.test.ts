@@ -12,6 +12,11 @@ import {
 import { account, user, verification } from '@/db/schema/authentication'
 import {
   cleanupAuth,
+  cleanupRoles,
+  cleanupUsers,
+  createAdminRole,
+  createRoleWithPermissions,
+  createSessionWithRole,
   createTestApp,
   createTestSession,
   findAuditLogs,
@@ -277,6 +282,17 @@ describe('Re-authentication', () => {
     expect(await verificationTokens()).toHaveLength(0)
   })
 
+  it('refuses the current email before asking for the password', async () => {
+    const { cookie, email } = await signUp()
+    const res = await changeEmail(cookie, {
+      newEmail: email.toUpperCase(),
+      currentPassword: 'WrongPassword!',
+    })
+    expect(res.statusCode).toBe(400)
+    expect(res.json().code).toBe('email_unchanged')
+    expect(await verificationTokens()).toHaveLength(0)
+  })
+
   it('refuses an email change with a wrong password', async () => {
     const { cookie } = await signUp()
     const res = await changeEmail(cookie, {
@@ -470,5 +486,165 @@ describe('PATCH /me/password', () => {
       headers: { cookie: authCookie },
     })
     expect(res.statusCode).toBe(400)
+  })
+})
+
+describe('Without email (email.enabled: false)', () => {
+  // Sessions live in the shared database: cookies from `app` (open
+  // registration, where the users sign up) work on this one too.
+  const noEmailApp = createTestApp({
+    registration: { mode: 'closed' },
+    email: { enabled: false },
+  })
+
+  async function signedIn(roleId: string) {
+    const cookie = await createSessionWithRole(app, roleId)
+    const me = await app.inject({
+      method: 'GET',
+      url: '/api/me',
+      headers: { cookie },
+    })
+    const { id, email } = me.json<{ id: string; email: string }>()
+    return { cookie, id, email }
+  }
+
+  function changeEmail(cookie: string, payload: object) {
+    return noEmailApp.inject({
+      method: 'PATCH',
+      url: '/api/me/email',
+      payload,
+      headers: { cookie },
+    })
+  }
+
+  async function emailOf(id: string) {
+    const [row] = await testDb
+      .select({ email: user.email })
+      .from(user)
+      .where(eq(user.id, id))
+    return row.email
+  }
+
+  afterEach(async () => {
+    vi.restoreAllMocks()
+    await testDb.delete(verification)
+    await cleanupUsers()
+    await cleanupRoles()
+  })
+
+  afterAll(async () => {
+    await noEmailApp.close()
+  })
+
+  it('refuses anyone but the admin, before asking for the password', async () => {
+    const role = await createRoleWithPermissions([
+      { resource: 'users', action: 'view' },
+      { resource: 'users', action: 'edit' },
+    ])
+    const { cookie, id, email } = await signedIn(role.id)
+
+    const res = await changeEmail(cookie, {
+      newEmail: `moved-${crypto.randomUUID()}@test.com`,
+      currentPassword: 'WrongPassword!',
+    })
+
+    expect(res.statusCode).toBe(403)
+    expect(res.json().code).toBe('email_change_unavailable')
+    expect(await emailOf(id)).toBe(email)
+    expect(await findAuditLogs('edit', 'me', id)).toHaveLength(0)
+  })
+
+  it('changes the admin email at once, without sending anything', async () => {
+    const log = vi.spyOn(console, 'log').mockImplementation(() => {})
+    const { cookie, id } = await signedIn((await createAdminRole()).id)
+    const newEmail = `Moved-${crypto.randomUUID()}@test.com`
+
+    const res = await changeEmail(cookie, {
+      newEmail,
+      currentPassword: 'Password123!',
+    })
+
+    expect(res.statusCode).toBe(200)
+    expect(res.json()).toEqual({
+      message: 'Email address changed',
+      changed: true,
+    })
+    expect(await emailOf(id)).toBe(newEmail.toLowerCase())
+    expect(await testDb.select().from(verification)).toHaveLength(0)
+    expect(log).not.toHaveBeenCalled()
+    const [entry] = await findAuditLogs('edit', 'me', id)
+    expect(entry.metadata).toEqual({ emailChanged: true })
+
+    // The admin signs in with the new address.
+    const signIn = await noEmailApp.inject({
+      method: 'POST',
+      url: '/api/auth/sign-in/email',
+      payload: { email: newEmail.toLowerCase(), password: 'Password123!' },
+    })
+    expect(signIn.statusCode).toBe(200)
+  })
+
+  it('still asks the admin for the current password', async () => {
+    const { cookie, id, email } = await signedIn((await createAdminRole()).id)
+
+    const missing = await changeEmail(cookie, {
+      newEmail: `moved-${crypto.randomUUID()}@test.com`,
+    })
+    const wrong = await changeEmail(cookie, {
+      newEmail: `moved-${crypto.randomUUID()}@test.com`,
+      currentPassword: 'WrongPassword!',
+    })
+
+    expect(missing.statusCode).toBe(400)
+    expect(missing.json().code).toBe('current_password_required')
+    expect(wrong.statusCode).toBe(400)
+    expect(wrong.json().code).toBe('invalid_password')
+    expect(await emailOf(id)).toBe(email)
+  })
+
+  it('refuses the current email, in any case, and audits nothing', async () => {
+    const { cookie, id, email } = await signedIn((await createAdminRole()).id)
+
+    const res = await changeEmail(cookie, {
+      newEmail: email.toUpperCase(),
+      currentPassword: 'Password123!',
+    })
+
+    expect(res.statusCode).toBe(400)
+    expect(res.json().code).toBe('email_unchanged')
+    expect(await emailOf(id)).toBe(email)
+    expect(await findAuditLogs('edit', 'me', id)).toHaveLength(0)
+  })
+
+  it('answers 409 when another account holds the address', async () => {
+    const { cookie, id, email } = await signedIn((await createAdminRole()).id)
+    const other = await signedIn((await createRoleWithPermissions([])).id)
+
+    const res = await changeEmail(cookie, {
+      newEmail: other.email.toUpperCase(),
+      currentPassword: 'Password123!',
+    })
+
+    expect(res.statusCode).toBe(409)
+    expect(res.json().code).toBe('email_taken')
+    expect(await emailOf(id)).toBe(email)
+  })
+
+  it('sends no notice after a password change', async () => {
+    const log = vi.spyOn(console, 'log').mockImplementation(() => {})
+    const { cookie } = await signedIn((await createRoleWithPermissions([])).id)
+
+    const res = await noEmailApp.inject({
+      method: 'PATCH',
+      url: '/api/me/password',
+      payload: {
+        currentPassword: 'Password123!',
+        newPassword: 'NewPassword456!',
+      },
+      headers: { cookie },
+    })
+
+    expect(res.statusCode).toBe(204)
+    expect(log).not.toHaveBeenCalled()
   })
 })

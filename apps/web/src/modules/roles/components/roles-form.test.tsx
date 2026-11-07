@@ -27,6 +27,7 @@ function renderForm(registrationOpen = false) {
   queryClient.setQueryData(registrationStatusQueryOptions().queryKey, {
     open: registrationOpen,
     providers: [],
+    email: true,
   })
   render(
     <MantineProvider>

@@ -231,3 +231,60 @@ describe('change-email verification', () => {
     )
   })
 })
+
+describe('without email (email.enabled: false)', () => {
+  const noEmailApp = createTestApp({
+    registration: { mode: 'closed' },
+    email: { enabled: false },
+  })
+
+  afterAll(async () => {
+    await noEmailApp.close()
+  })
+
+  async function resetTokens() {
+    return testDb
+      .select()
+      .from(verification)
+      .where(like(verification.identifier, 'reset-password:%'))
+  }
+
+  it('refuses a password reset and creates no token', async () => {
+    const log = vi.spyOn(console, 'log').mockImplementation(() => {})
+    const tokensBefore = (await resetTokens()).length
+
+    const res = await noEmailApp.inject({
+      method: 'POST',
+      url: '/api/auth/request-password-reset',
+      payload: { email: 'test@test.com' },
+    })
+
+    expect(res.statusCode).toBe(400)
+    expect(res.json().code).toBe('RESET_PASSWORD_DISABLED')
+    expect(await resetTokens()).toHaveLength(tokensBefore)
+    expect(log).not.toHaveBeenCalled()
+    log.mockRestore()
+  })
+
+  it('refuses better-auth’s own email change, reached over HTTP', async () => {
+    const email = `no-email-${crypto.randomUUID()}@test.com`
+    const signUp = await app.inject({
+      method: 'POST',
+      url: '/api/auth/sign-up/email',
+      payload: { email, name: 'No email', password: 'Password123!' },
+    })
+
+    const res = await noEmailApp.inject({
+      method: 'POST',
+      url: '/api/auth/change-email',
+      payload: { newEmail: `moved-${email}` },
+      headers: { cookie: cookieHeader(signUp.headers['set-cookie']) },
+    })
+
+    expect(res.statusCode).toBe(400)
+    expect(
+      await testDb.select().from(user).where(eq(user.email, email))
+    ).toHaveLength(1)
+    await testDb.delete(user).where(eq(user.email, email))
+  })
+})

@@ -201,8 +201,27 @@ export interface AppConfig {
 
   email?: {
     /**
+     * Whether the API sends email (through Resend, `RESEND_API_KEY` in `.env`).
+     * - `true` — password reset by email (`/forgot-password`), self-service
+     *   email change confirmed by a link, and security notices (password
+     *   changed, email change requested). In production the API refuses to
+     *   start without `RESEND_API_KEY`; in development the emails are printed
+     *   to the console instead.
+     * - `false` — nothing is sent and nothing needs Resend. There is no
+     *   password reset and no self-service email change: the web asks users to
+     *   contact an administrator, who sets their password and email on
+     *   `/users`. The admin changes their own email on `/me/account` with
+     *   their current password, and recovers a forgotten password on the
+     *   server (`pnpm admin:reset-password`).
+     *
+     * Open registration needs `true`: self-registered users have no
+     * administrator to recover their account.
+     * @default false
+     */
+    enabled?: boolean
+    /**
      * Sender address for all outgoing emails. Must belong to a domain
-     * verified in Resend when `RESEND_API_KEY` is set.
+     * verified in Resend.
      * @default 'noreply@localhost'
      */
     from?: string
@@ -368,6 +387,7 @@ export const appConfigSchema = z.strictObject({
     .prefault({}),
   email: z
     .strictObject({
+      enabled: z.boolean().default(false),
       from: z.string().min(1).default('noreply@localhost'),
     })
     .prefault({}),

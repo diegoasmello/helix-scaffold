@@ -32,7 +32,7 @@ export function useAuth(): AuthState {
     ? {
         id: session.user.id,
         name: meData?.name ?? session.user.name,
-        email: session.user.email,
+        email: meData?.email ?? session.user.email,
         avatar: session.user.image ?? undefined,
         roleId: (session.user as { roleId?: string | null }).roleId ?? null,
         roleName: meData?.role?.name ?? null,

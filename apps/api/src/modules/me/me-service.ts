@@ -8,6 +8,12 @@ import { env } from '@/env'
 import { createAttemptLimiter } from '@/lib/attempt-limiter'
 import { DomainError } from '@/lib/domain-errors'
 import { type EmailProvider, escapeHtml } from '@/lib/email'
+import {
+  getPgErrorCode,
+  getPgErrorConstraint,
+  PG_UNIQUE_VIOLATION,
+} from '@/lib/pg-errors'
+import { EmailTakenError } from '@/modules/accounts/account-provisioning'
 
 import { getUserWithRole } from '../users/users-service'
 import type {
@@ -25,10 +31,33 @@ function invalidPassword() {
   )
 }
 
+/**
+ * Without email (`email.enabled: false`) nobody but the admin changes their
+ * own email: a change can't be confirmed by a link, so an administrator does
+ * it on `/users`.
+ */
+function emailChangeUnavailable() {
+  return new DomainError(
+    403,
+    'email_change_unavailable',
+    'Email changes are made by an administrator'
+  )
+}
+
+/** The new email is the current one, in any case: nothing to change. */
+function emailUnchanged() {
+  return new DomainError(
+    400,
+    'email_unchanged',
+    'The new email is the current one'
+  )
+}
+
 export function createMeService(
   database: Database,
   auth: Auth,
-  emailProvider: EmailProvider
+  emailProvider: EmailProvider,
+  { emailEnabled }: { emailEnabled: boolean }
 ) {
   // Guessing the current password from a session: better-auth's own rate
   // limit does not apply to `auth.api.*` calls. One count per user, shared by
@@ -87,24 +116,62 @@ export function createMeService(
   }
 
   /**
+   * Without email, the admin's own change: written at once (the caller checked
+   * the admin and the password) — nobody could confirm a link, and the admin
+   * has no one above them to ask. The admin already sees every account, so a
+   * taken address is a plain 409 here.
+   */
+  async function writeEmail(userId: string, newEmail: string) {
+    await database
+      .update(user)
+      .set({ email: newEmail })
+      .where(eq(user.id, userId))
+      .catch((error: unknown) => {
+        if (
+          getPgErrorCode(error) === PG_UNIQUE_VIOLATION &&
+          getPgErrorConstraint(error) === 'user_email_unique'
+        ) {
+          throw new EmailTakenError()
+        }
+        throw error
+      })
+  }
+
+  /**
    * A stolen session alone must not move the account's email — the address
    * password resets go to. So it asks for the current password (accounts that
    * have one) before anything else, and tells the current address about the
    * request, so its owner can react before the change is confirmed.
+   *
+   * `'requested'` when a confirmation link went to the new address,
+   * `'changed'` when the email changed at once (the admin, without email).
    */
   async function changeEmail(
     userId: string,
     data: UpdateMeEmailInput,
     headers: Headers,
     currentEmail: string
-  ) {
+  ): Promise<'requested' | 'changed'> {
+    if (!emailEnabled) {
+      const me = await getUserWithRole(database, userId)
+      if (!me?.role?.isAdmin) throw emailChangeUnavailable()
+    }
+    // Before the password: nothing to change, so nothing to confirm — and no
+    // attempt counted against the limit.
+    const newEmail = data.newEmail.toLowerCase()
+    if (newEmail === currentEmail.toLowerCase()) throw emailUnchanged()
+
     await confirmPassword(userId, data.currentPassword)
+
+    if (!emailEnabled) {
+      await writeEmail(userId, newEmail)
+      return 'changed'
+    }
 
     // Same answer whether the address is free or another account's: telling
     // the caller would let any signed-in user test which emails are
     // registered. better-auth already answers 200 for a taken address
     // (sending nothing); its owner gets a notice instead, below.
-    const newEmail = data.newEmail.toLowerCase()
     const [taken] = await database
       .select({ id: user.id })
       .from(user)
@@ -137,6 +204,7 @@ export function createMeService(
         )
         .catch(() => {})
     }
+    return 'requested'
   }
 
   /**

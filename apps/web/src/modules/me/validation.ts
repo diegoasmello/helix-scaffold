@@ -22,8 +22,9 @@ export function createEmailChangeFormValidate(
     newEmail: [
       required,
       email,
+      // Emails are stored lowercase: `Me@x.com` is the same address
       (v) =>
-        v === currentEmail
+        v.trim().toLowerCase() === currentEmail.toLowerCase()
           ? i18n.t('account.email.validation.newEmailDiffers', { ns: 'me' })
           : null,
     ],

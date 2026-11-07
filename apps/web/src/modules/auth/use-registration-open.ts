@@ -1,5 +1,5 @@
 import { getRegistrationStatusQueryOptions } from '@helix/api-client/hooks'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 
 /**
  * `GET /registration/status` with the session-long cache the registration
@@ -18,4 +18,16 @@ export function useRegistrationOpen() {
   const { data } = useQuery(registrationStatusQueryOptions())
 
   return data?.open ?? false
+}
+
+/**
+ * Whether the API sends email (`email.enabled`). Without it there is no
+ * password reset and only the admin changes their own email — the screens
+ * show `ContactAdminModal` instead. Suspends until the status is known
+ * (loaders prefetch it with `registrationStatusQueryOptions()`).
+ */
+export function useEmailEnabled() {
+  const { data } = useSuspenseQuery(registrationStatusQueryOptions())
+
+  return data.email
 }
