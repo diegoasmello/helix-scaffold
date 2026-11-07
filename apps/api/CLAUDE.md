@@ -775,7 +775,7 @@ app.get(
 
 ## Errors the client can act on (`DomainError`)
 
-Throw a `DomainError` (`src/lib/domain-errors.ts`) — from the service or the handler — instead of building the response by hand. `registerDomainErrorHandler()` (installed by `buildApp` before any route) answers it with its status and `{ message, code }`; everything else goes on to Fastify's default handler (validation 400s, 500s).
+Throw a `DomainError` (`src/lib/domain-errors.ts`) — from the service or the handler — instead of building the response by hand. `registerDomainErrorHandler()` (installed by `buildApp` before any route) answers it with its status and `{ message, code }`; a client error Fastify or a plugin raised (validation 400, 413, 429…) goes on to Fastify's default handler; **anything else is logged and answered with a bare 500** (`{ statusCode: 500, error, message: 'Internal Server Error' }`) — never the error's own message, which for a failed query is Drizzle's `Failed query: <SQL> params: <values>`.
 
 ```ts
 import { DomainError, errorSchema } from '@/lib/domain-errors'
@@ -803,7 +803,7 @@ response: { 201: roleSchema, 409: errorSchema('name_taken') },
 | requireSubscription / requirePermission | 403 | `subscription_required`, `feature_not_in_plan`, `permission_denied` (sent by the hooks) |
 | public API / `GET /files/*` | 429 | `rate_limited` (`registerRateLimit()`, `src/hooks/rate-limit.ts`) |
 
-Plain "not found" 404s of `GET /xxx/:id` stay `reply.status(404).send({ message })` — nothing for the client to do but show "not found". Tested in `src/lib/domain-errors.test.ts` (status + body, inside plugins; validation 400 and 500 untouched).
+Plain "not found" 404s of `GET /xxx/:id` stay `reply.status(404).send({ message })` — nothing for the client to do but show "not found". Tested in `src/lib/domain-errors.test.ts` (status + body, inside plugins; validation 400 and a plugin's 413 untouched; a 500 never carries the error's message).
 ---
 
 ## Creating a new module (CRUD)

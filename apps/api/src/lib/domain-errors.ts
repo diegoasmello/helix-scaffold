@@ -33,18 +33,32 @@ export function errorSchema(...codes: [string, ...string[]]) {
   })
 }
 
+const INTERNAL_ERROR = {
+  statusCode: 500,
+  error: 'Internal Server Error',
+  message: 'Internal Server Error',
+}
+
 /**
- * Answers `DomainError`s with their status and `{ message, code }`. Anything
- * else goes on to Fastify's default handler (validation 400s, 500s). Call it
- * before registering routes, so every plugin inherits it.
+ * Answers `DomainError`s with their status and `{ message, code }`. A client
+ * error Fastify or a plugin raised (validation 400, 413, 429…) goes on to
+ * Fastify's default handler, as is. Anything else is a bug or an outage: it
+ * is logged whole and answered with a bare 500 — Fastify's default would send
+ * its message, and Drizzle's carries the SQL and the query's values
+ * (`Failed query: … params: …`). Call it before registering routes, so every
+ * plugin inherits it.
  */
 export function registerDomainErrorHandler(app: FastifyInstance) {
-  app.setErrorHandler((error, _request, reply) => {
+  app.setErrorHandler((error, request, reply) => {
     if (error instanceof DomainError) {
       return reply
         .status(error.status)
         .send({ message: error.message, code: error.code })
     }
-    throw error
+    const { statusCode } = error as { statusCode?: number }
+    if (statusCode !== undefined && statusCode < 500) throw error
+
+    request.log.error({ err: error }, 'Unhandled error')
+    return reply.status(500).send(INTERNAL_ERROR)
   })
 }

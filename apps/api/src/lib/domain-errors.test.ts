@@ -31,7 +31,14 @@ app.register(async (scoped) => {
       if (request.body.name === 'taken') {
         throw new DomainError(409, 'name_taken', 'Name already taken')
       }
-      throw new Error('boom')
+      if (request.body.name === 'payload') {
+        throw Object.assign(new Error('Request body is too large'), {
+          statusCode: 413,
+        })
+      }
+      throw new Error(
+        'Failed query: update "user" set "email" = $1\nparams: secret@test.com'
+      )
     }
   )
 })
@@ -58,8 +65,20 @@ describe('registerDomainErrorHandler', () => {
     expect(res.json().code).toBe('FST_ERR_VALIDATION')
   })
 
-  it('leaves other errors to Fastify (500)', async () => {
+  it('answers any other error with a bare 500, never its message', async () => {
     const res = await post('other')
     expect(res.statusCode).toBe(500)
+    expect(res.json()).toEqual({
+      statusCode: 500,
+      error: 'Internal Server Error',
+      message: 'Internal Server Error',
+    })
+    expect(res.body).not.toContain('secret@test.com')
+  })
+
+  it('leaves a client error with its own status to Fastify', async () => {
+    const res = await post('payload')
+    expect(res.statusCode).toBe(413)
+    expect(res.json().message).toBe('Request body is too large')
   })
 })
