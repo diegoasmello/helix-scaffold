@@ -3,6 +3,7 @@ import { afterAll, beforeEach, describe, expect, it } from 'vitest'
 import { todoAttachments } from '@/db/schema/todo-attachments'
 import { todos } from '@/db/schema/todos'
 import { uploads } from '@/db/schema/uploads'
+import { env } from '@/env'
 import {
   cleanupTodos,
   cleanupUploads,
@@ -223,6 +224,25 @@ describe('GET /public/todos/:slug', () => {
   it('returns 404 for an unknown slug', async () => {
     const res = await get('/todos/nope')
     expect(res.statusCode).toBe(404)
+  })
+})
+
+describe('Images inside content', () => {
+  // A site on another domain inserts the HTML as it comes: the images must
+  // carry the API's origin, though the row keeps their path only.
+  it('come with the absolute URL', async () => {
+    const origin = env.BASE_URL.replace(/\/+$/, '')
+    const external = '<img src="https://cdn.example.com/a.png" />'
+    await insertTodo({
+      slug: 'with-images',
+      content: `<p>a</p><img src="/api/files/x/original.png" />${external}`,
+    })
+    const expected = `<p>a</p><img src="${origin}/api/files/x/original.png" />${external}`
+
+    const detail = await get('/todos/with-images')
+    expect(detail.json().content).toBe(expected)
+    const list = await get('/todos')
+    expect(list.json().data[0].content).toBe(expected)
   })
 })
 

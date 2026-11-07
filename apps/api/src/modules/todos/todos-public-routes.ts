@@ -20,9 +20,9 @@ import { createTodosPublicService } from './todos-public-service'
  */
 export async function todosPublicRoutes(
   app: FastifyTypedInstance,
-  { database }: { database: Database }
+  { database, baseUrl }: { database: Database; baseUrl: string }
 ) {
-  const service = createTodosPublicService(database)
+  const service = createTodosPublicService(database, baseUrl)
 
   app.get(
     '/todos',

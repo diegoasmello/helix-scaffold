@@ -17,7 +17,11 @@ import {
 } from '@/lib/filtering'
 import { normalizedValues } from '@/lib/normalize-text'
 import { getPaginationParams } from '@/lib/pagination'
-import { uploadIdsInHtml } from '@/lib/rich-text-uploads'
+import {
+  stripFileOrigins,
+  uploadIdsInHtml,
+  withFileOrigin,
+} from '@/lib/rich-text-uploads'
 import { sanitizeRichText } from '@/lib/sanitize-rich-text'
 import { withUniqueSlug } from '@/lib/slug'
 import type { StorageProvider } from '@/lib/storage'
@@ -166,10 +170,29 @@ function deleteUploadKeys(
   return Promise.allSettled(keys.map((k) => storage.delete(k)))
 }
 
+/**
+ * `baseUrl` is the API's origin (`BASE_URL`): `content` is stored with its
+ * images addressed by path (`stripFileOrigins()`) and every answer gives them
+ * the origin back (`withFileOrigin()`).
+ */
 export function createTodosService(
   database: Database,
-  storage: StorageProvider
+  storage: StorageProvider,
+  baseUrl: string
 ) {
+  /** The row as the API answers it: `content`'s images with their origin. */
+  function withContentUrls<T extends { content: string }>(todo: T): T {
+    return { ...todo, content: withFileOrigin(todo.content, baseUrl) }
+  }
+
+  /**
+   * `content` as it is stored: sanitized (safe to render anywhere — the admin
+   * and a public site), then its images addressed by path.
+   */
+  function storedContent(content: string): string {
+    return stripFileOrigins(sanitizeRichText(content))
+  }
+
   async function list(query: TodosListQuery) {
     const { limit, offset } = getPaginationParams(query.page, query.pageSize)
     const sortCol = SORT_COLUMNS[query.sortBy ?? 'createdAt']
@@ -207,7 +230,7 @@ export function createTodosService(
 
     return {
       data: data.map((t) => ({
-        ...t,
+        ...withContentUrls(t),
         attachments: attachmentsMap[t.id] ?? [],
         file: t.fileId ? (uploadsById[t.fileId] ?? null) : null,
         image: t.imageId ? (uploadsById[t.imageId] ?? null) : null,
@@ -239,7 +262,7 @@ export function createTodosService(
     ])
 
     return {
-      ...todo,
+      ...withContentUrls(todo),
       attachments: attachmentsMap[todo.id] ?? [],
       file: todo.fileId ? (uploadsById[todo.fileId] ?? null) : null,
       image: todo.imageId ? (uploadsById[todo.imageId] ?? null) : null,
@@ -254,8 +277,7 @@ export function createTodosService(
    */
   async function create(data: CreateTodoInput, actorId: string) {
     const { attachmentIds = [], ...rest } = data
-    // Stored safe to render anywhere — the admin and a public site.
-    const todoData = { ...rest, content: sanitizeRichText(rest.content) }
+    const todoData = { ...rest, content: storedContent(rest.content) }
     const contentImageIds = await uploadIdsInHtml(database, todoData.content)
     await assertUsableUploads(database, actorId, [
       ...attachmentIds,
@@ -291,7 +313,7 @@ export function createTodosService(
     ])
 
     return {
-      ...todo,
+      ...withContentUrls(todo),
       attachments: attachmentsMap[todo.id] ?? [],
       file: todo.fileId ? (uploadsById[todo.fileId] ?? null) : null,
       image: todo.imageId ? (uploadsById[todo.imageId] ?? null) : null,
@@ -308,7 +330,7 @@ export function createTodosService(
     const todoData =
       rest.content === undefined
         ? rest
-        : { ...rest, content: sanitizeRichText(rest.content) }
+        : { ...rest, content: storedContent(rest.content) }
     const contentImageIds =
       todoData.content === undefined
         ? undefined
@@ -396,7 +418,7 @@ export function createTodosService(
     ])
 
     return {
-      ...todo,
+      ...withContentUrls(todo),
       attachments: attachmentsMap[id] ?? [],
       file: todo.fileId ? (uploadsById[todo.fileId] ?? null) : null,
       image: todo.imageId ? (uploadsById[todo.imageId] ?? null) : null,

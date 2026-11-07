@@ -75,7 +75,7 @@ const EDITS = {
     lines(/^import \{ todosPublicRoutes \} from '\.\/modules\/todos\/todos-public-routes'$/, 1),
     block('        authenticated.register(todosRoutes, {\n', '        })\n'),
     // The public scope stays, empty, for the product's first public module
-    lines(/^ +publicApi\.register\(todosPublicRoutes, \{ database \}\)$/, 1),
+    block('            publicApi.register(todosPublicRoutes, {\n', '            })\n'),
     // The only route a plan feature gates is the module's
     lines(/^import \{ createRequireSubscription \} from '\.\/hooks\/require-subscription'$/, 1),
     lines(/^ +const requireSubscription = createRequireSubscription\(database, config\)$/, 1),

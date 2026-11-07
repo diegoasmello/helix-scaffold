@@ -259,12 +259,12 @@ export const xxxContentImages = pgTable('xxx_content_images', {
 ])
 ```
 
-**2. Service** — first `sanitizeRichText()` (`apps/api/CLAUDE.md` → _Rich text fields_): the HTML is stored sanitized, and its images are read from the sanitized text. Then `uploadIdsInHtml(database, html)` (`src/lib/rich-text-uploads.ts`) returns the uploads whose files the HTML shows from `GET /files/*` (the original or a variant). It reads the `src` of every `<img>` and keeps the path only, so a `BASE_URL` changed since the text was written still matches; images from anywhere else, and keys no upload owns (an image deleted since), are left out — they reference nothing.
+**2. Service** — first `sanitizeRichText()`, then `stripFileOrigins()` (`apps/api/CLAUDE.md` → _Rich text fields_): the HTML is stored sanitized, with its images addressed by path (`/api/files/<key>`, no origin), and they are read from that text. Then `uploadIdsInHtml(database, html)` (`src/lib/rich-text-uploads.ts`) returns the uploads whose files the HTML shows from `GET /files/*` (the original or a variant). It reads the `src` of every `<img>` and keeps the path only — a relative `src` as the text is stored, or an absolute one of any origin —; images from anywhere else, and keys no upload owns (an image deleted since), are left out — they reference nothing.
 
 - **create** — `uploadIdsInHtml(database, data.content)`, then pass the ids to `assertUsableUploads()` together with the record's other upload ids, each with `accept: IMAGE_TYPES` (a PDF in an `<img>` is refused with `invalid_upload_type`), then insert the junction rows after the record.
 - **update** — only when the field is sent: the same call; the record's current content images go into `alreadyReferenced` with its other current uploads (another editor re-sends the text unchanged), then a full resync (delete all, insert new). An image taken out of the text is no longer referenced, so the orphan cleanup deletes it.
 - **delete** — collect the content images with the other uploads (an upload can be both the `image` and inside the text: delete it once), then the same order as step 3.
-- **reads** — nothing: the HTML already carries the URLs.
+- **reads** — every answer that returns the field passes it through `withFileOrigin(html, baseUrl)`, the public routes included: the database holds paths, a client always gets absolute URLs.
 
 Someone else's upload in the text is refused like any other reference (400 `invalid_upload`) — readers of the record could otherwise open a file they were never given. That includes text pasted from a record someone else wrote: its images must be uploaded again.
 

@@ -9,6 +9,7 @@ import {
 } from '@/db/schema'
 import { buildSearchClause } from '@/lib/filtering'
 import { getPaginationParams } from '@/lib/pagination'
+import { withFileOrigin } from '@/lib/rich-text-uploads'
 
 import {
   PUBLIC_TODO_DEFAULT_ORDER,
@@ -81,8 +82,12 @@ const SEARCH_COLUMNS = [todos.normalizedTitle, todos.normalizedDescription]
  * The reads of the public API (`todos-public-routes.ts`). Every query filters
  * with `TODO_PUBLISHED` here, not in the route: a draft can never be returned,
  * by any route that uses this service.
+ *
+ * `baseUrl` is the API's origin (`BASE_URL`): `content` is stored with its
+ * images addressed by path, and a site on another domain inserts it as it
+ * comes — so it gets them absolute (`withFileOrigin()`).
  */
-export function createTodosPublicService(database: Database) {
+export function createTodosPublicService(database: Database, baseUrl: string) {
   async function uploadsById(
     ids: (string | null)[]
   ): Promise<Map<string, PublicUploadRow>> {
@@ -100,6 +105,7 @@ export function createTodosPublicService(database: Database) {
     const byId = await uploadsById(rows.flatMap((r) => [r.imageId, r.fileId]))
     return rows.map(({ imageId, fileId, publishedAt, ...todo }) => ({
       ...todo,
+      content: withFileOrigin(todo.content, baseUrl),
       // Never null on a published row (`todos_published_at_check`).
       publishedAt: publishedAt as Date,
       image: imageId ? toPublicUpload(byId.get(imageId)) : null,

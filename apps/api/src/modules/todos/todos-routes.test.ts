@@ -6,6 +6,7 @@ import { todoAttachments } from '@/db/schema/todo-attachments'
 import { todoContentImages } from '@/db/schema/todo-content-images'
 import { todos } from '@/db/schema/todos'
 import { uploads } from '@/db/schema/uploads'
+import { env } from '@/env'
 import { deleteOrphanUploads } from '@/lib/orphan-uploads'
 import type { StorageProvider } from '@/lib/storage'
 import { getUploadReferenceLoaders } from '@/lib/upload-references'
@@ -799,6 +800,132 @@ describe('Rich text sanitization', () => {
       .from(todoContentImages)
       .where(eq(todoContentImages.todoId, todo.id))
     expect(rows.map((r) => r.id)).toEqual([image.id])
+  })
+})
+
+// The editor sends the absolute URL it got; the row keeps the path only, so a
+// new `BASE_URL` breaks no image, and every answer gives the origin back.
+describe('Image URLs in rich text', () => {
+  const origin = env.BASE_URL.replace(/\/+$/, '')
+  const stored = (upload: { storageKey: string }) =>
+    `<img src="/api/files/${upload.storageKey}" />`
+  const answered = (upload: { storageKey: string }) =>
+    `<img src="${origin}/api/files/${upload.storageKey}" />`
+  const external = '<img src="https://cdn.example.com/a.png" />'
+
+  async function createTodo(content: string) {
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/todos',
+      payload: {
+        title: 'Todo',
+        description: 'Desc',
+        content,
+        date: '2025-03-20',
+        attachmentIds: [(await insertUpload()).id],
+        fileId: (await insertUpload()).id,
+        imageId: (await insertUpload('img.png', 'image/png')).id,
+      },
+      headers: { cookie: authCookie },
+    })
+    expect(res.statusCode).toBe(201)
+    return res.json()
+  }
+
+  async function storedContent(id: string) {
+    const [row] = await testDb.select().from(todos).where(eq(todos.id, id))
+    return row.content
+  }
+
+  async function get(url: string) {
+    const res = await app.inject({
+      method: 'GET',
+      url,
+      headers: { cookie: authCookie },
+    })
+    expect(res.statusCode).toBe(200)
+    return res.json()
+  }
+
+  it('stores the path and answers the absolute URL on create', async () => {
+    const image = await insertUpload('a.png', 'image/png')
+    const todo = await createTodo(
+      `<p>a</p><img src="https://old.example.com/api/files/${image.storageKey}">`
+    )
+    expect(await storedContent(todo.id)).toBe(`<p>a</p>${stored(image)}`)
+    expect(todo.content).toBe(`<p>a</p>${answered(image)}`)
+  })
+
+  it('answers the absolute URL on every read', async () => {
+    const image = await insertUpload('a.png', 'image/png')
+    const todo = await createTodo(
+      `<img src="${origin}/api/files/${image.storageKey}">`
+    )
+
+    expect((await get(`/api/todos/${todo.id}`)).content).toBe(answered(image))
+    expect((await get(`/api/todos/by-slug/${todo.slug}`)).content).toBe(
+      answered(image)
+    )
+    const list = await get('/api/todos')
+    expect(list.data[0].content).toBe(answered(image))
+  })
+
+  it('stores the path on update', async () => {
+    const [before, after] = await Promise.all([
+      insertUpload('a.png', 'image/png'),
+      insertUpload('b.png', 'image/png'),
+    ])
+    const todo = await createTodo(stored(before))
+    const res = await app.inject({
+      method: 'PATCH',
+      url: `/api/todos/${todo.id}`,
+      payload: {
+        content: `<img src="http://localhost:9999/api/files/${after.storageKey}">`,
+      },
+      headers: { cookie: authCookie },
+    })
+    expect(res.statusCode).toBe(200)
+    expect(res.json().content).toBe(answered(after))
+    expect(await storedContent(todo.id)).toBe(stored(after))
+  })
+
+  it('leaves the content alone when PATCH does not send it', async () => {
+    const image = await insertUpload('a.png', 'image/png')
+    const todo = await createTodo(answered(image))
+    const res = await app.inject({
+      method: 'PATCH',
+      url: `/api/todos/${todo.id}`,
+      payload: { title: 'Renamed' },
+      headers: { cookie: authCookie },
+    })
+    expect(res.statusCode).toBe(200)
+    expect(res.json().content).toBe(answered(image))
+    expect(await storedContent(todo.id)).toBe(stored(image))
+  })
+
+  it('still records the image', async () => {
+    const image = await insertUpload('a.png', 'image/png')
+    const todo = await createTodo(answered(image))
+    const rows = await testDb
+      .select({ id: todoContentImages.uploadId })
+      .from(todoContentImages)
+      .where(eq(todoContentImages.todoId, todo.id))
+    expect(rows.map((r) => r.id)).toEqual([image.id])
+  })
+
+  it('never rewrites a src written inside another attribute', async () => {
+    const html =
+      '<img alt=" src=/api/files/x/onerror=alert(1)//" src="https://e.com/404.png" />'
+    const todo = await createTodo(html)
+    expect(await storedContent(todo.id)).toBe(html)
+    expect(todo.content).toBe(html)
+    expect((await get(`/api/todos/${todo.id}`)).content).toBe(html)
+  })
+
+  it('keeps an image from elsewhere as it is', async () => {
+    const todo = await createTodo(`<p>a</p>${external}`)
+    expect(await storedContent(todo.id)).toBe(`<p>a</p>${external}`)
+    expect(todo.content).toBe(`<p>a</p>${external}`)
   })
 })
 

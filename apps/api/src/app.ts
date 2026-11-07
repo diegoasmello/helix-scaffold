@@ -202,7 +202,10 @@ export function buildApp(database: Database, options: BuildAppOptions = {}) {
           async (publicApi) => {
             await registerPublicApi(publicApi, config.publicApi)
 
-            publicApi.register(todosPublicRoutes, { database })
+            publicApi.register(todosPublicRoutes, {
+              database,
+              baseUrl: env.BASE_URL,
+            })
           },
           { prefix: PUBLIC_API_PREFIX }
         )
@@ -250,6 +253,7 @@ export function buildApp(database: Database, options: BuildAppOptions = {}) {
           requirePermission,
           requireSubscription,
           storage,
+          baseUrl: env.BASE_URL,
         })
         authenticated.register(uploadsRoutes, {
           database,

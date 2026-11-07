@@ -27,14 +27,17 @@ export async function todosRoutes(
     requirePermission,
     requireSubscription,
     storage,
+    baseUrl,
   }: {
     database: Database
     requirePermission: RequirePermission
     requireSubscription: RequireSubscription
     storage: StorageProvider
+    /** The API's origin (`BASE_URL`) — given back to `content`'s images. */
+    baseUrl: string
   }
 ) {
-  const service = createTodosService(database, storage)
+  const service = createTodosService(database, storage, baseUrl)
 
   app.get(
     '/todos/export',
