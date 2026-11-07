@@ -5,6 +5,7 @@ import type { Config } from '@/config'
 import type { Database } from '@/db'
 import { roles, user } from '@/db/schema'
 import { DomainError } from '@/lib/domain-errors'
+import type { EmailProvider } from '@/lib/email'
 import { getPaginationParams } from '@/lib/pagination'
 import {
   getPgErrorCode,
@@ -109,7 +110,8 @@ export async function getUserWithRole(database: Database, id: string) {
 export function createUsersService(
   database: Database,
   auth: Auth,
-  config: Pick<Config, 'registration'>
+  config: Pick<Config, 'registration'>,
+  emailProvider: EmailProvider
 ) {
   const provisioning = createAccountProvisioning(database, auth, config)
 
@@ -252,6 +254,53 @@ export function createUsersService(
     return deleted.length > 0
   }
 
+  /**
+   * Sets the user's password (`users:password`, admin only) and signs out
+   * every session of the account: whoever held one must sign in with the new
+   * password. A social-only account gets a credential account, so it can
+   * sign in with its email too — what better-auth's password reset does.
+   * `false` for an unknown id. The admin account is locked here like
+   * everywhere in `/users` (403 `admin_user_locked`): the admin changes their
+   * own password on `/me/security`, which asks for the current one.
+   *
+   * The user gets a best-effort notice: a password they did not choose is a
+   * change they must hear about.
+   */
+  async function setPassword(id: string, newPassword: string) {
+    const [target] = await database
+      .select({ email: user.email, roleId: user.roleId })
+      .from(user)
+      .where(eq(user.id, id))
+    if (!target) return false
+    if (await isAdminRole(target.roleId)) throw adminUserLocked()
+
+    const context = await auth.$context
+    const hash = await context.password.hash(newPassword)
+    const accounts = await context.internalAdapter.findAccounts(id)
+    if (accounts.some((a) => a.providerId === 'credential')) {
+      await context.internalAdapter.updatePassword(id, hash)
+    } else {
+      await context.internalAdapter.createAccount({
+        userId: id,
+        providerId: 'credential',
+        accountId: id,
+        password: hash,
+      })
+    }
+    await context.internalAdapter.deleteSessions(id)
+
+    emailProvider
+      .send(
+        target.email,
+        'Your password was changed',
+        `<p>An administrator set a new password on your account, and you were signed out everywhere.</p>
+         <p>Sign in with the password the administrator gave you. If you did not expect this change, contact your system administrator.</p>`
+      )
+      .catch(() => {})
+
+    return true
+  }
+
   async function listAll() {
     const rows = await database
       .select(USER_WITH_ROLE_COLUMNS)
@@ -261,5 +310,5 @@ export function createUsersService(
     return rows.map(toUserWithRole)
   }
 
-  return { list, getById, create, update, remove, listAll }
+  return { list, getById, create, update, remove, setPassword, listAll }
 }

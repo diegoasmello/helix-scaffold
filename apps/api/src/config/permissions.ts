@@ -3,7 +3,7 @@ import z from 'zod'
 import type { Config } from '@/config'
 
 export const permissionActionSchema = z
-  .enum(['view', 'create', 'edit', 'delete'])
+  .enum(['view', 'create', 'edit', 'delete', 'password'])
   .meta({ id: 'PermissionAction', title: 'PermissionAction' })
 
 export type PermissionAction = z.infer<typeof permissionActionSchema>
@@ -23,7 +23,8 @@ export const RESOURCE_DEFINITIONS = [
   {
     resource: 'users',
     label: 'Users',
-    actions: ['view', 'create', 'edit', 'delete'],
+    // `password`: set another user's password — admin only (ADMIN_ONLY_PERMISSIONS)
+    actions: ['view', 'create', 'edit', 'delete', 'password'],
   },
   {
     resource: 'roles',
@@ -80,11 +81,19 @@ export function isResourceEnabled(resource: string, config: Config): boolean {
   return toggle ? toggle(config) : true
 }
 
-/** The catalog the role editor works with: `RESOURCE_DEFINITIONS` minus the resources turned off. */
+/**
+ * The catalog the role editor works with: `RESOURCE_DEFINITIONS` minus the
+ * resources turned off and the admin-only actions (`ADMIN_ONLY_PERMISSIONS`).
+ */
 export function enabledResourceDefinitions(config: Config) {
   return RESOURCE_DEFINITIONS.filter((def) =>
     isResourceEnabled(def.resource, config)
-  )
+  ).map((def) => ({
+    ...def,
+    actions: def.actions.filter(
+      (action: PermissionAction) => !isAdminOnlyPermission(def.resource, action)
+    ),
+  }))
 }
 
 /** The actions the catalog declares for `R` — `ResourceAction<'audit'>` is `'view'`. */
@@ -102,6 +111,42 @@ export type Permission = {
 type PermissionKey = {
   [R in PermissionResource]: `${R}:${ResourceAction<R>}`
 }[PermissionResource]
+
+/**
+ * Permissions only the admin role (`roles.isAdmin`) holds — never granted to
+ * another role, whoever asks. The admin holds them implicitly, like the rest
+ * of the catalog; the role editor neither shows (`GET /permissions/resources`
+ * leaves them out) nor sends them, `PUT /roles/:id/permissions` refuses them
+ * (400 `unknown_permissions`), and a row a role holds anyway (written to the
+ * database by hand) gives no access: `hasPermission()` and `getByRoleId()`
+ * ignore it.
+ *
+ * `users:password` — setting another user's password (`PUT
+ * /users/:id/password`) hands over that account, so no delegated role may do
+ * it.
+ */
+const ADMIN_ONLY_PERMISSIONS: readonly PermissionKey[] = ['users:password']
+
+/** Whether only the admin role may hold `resource:action` — see `ADMIN_ONLY_PERMISSIONS`. */
+export function isAdminOnlyPermission(
+  resource: string,
+  action: string
+): boolean {
+  return (ADMIN_ONLY_PERMISSIONS as readonly string[]).includes(
+    `${resource}:${action}`
+  )
+}
+
+/** The admin-only `resource:action` pairs in `grants`. Empty when none is. */
+export function findAdminOnlyGrants(
+  grants: Record<string, string[]>
+): string[] {
+  return Object.entries(grants).flatMap(([resource, actions]) =>
+    actions
+      .filter((action) => isAdminOnlyPermission(resource, action))
+      .map((action) => `${resource}:${action}`)
+  )
+}
 
 /**
  * Permissions that only work together with others: `'users:edit'` needs
@@ -179,6 +224,21 @@ const requirementsOnToggled = findRequirementsOnToggledResources(
 if (requirementsOnToggled.length > 0) {
   throw new Error(
     `PERMISSION_REQUIREMENTS: a permission cannot require a resource of RESOURCE_TOGGLES other than its own (src/config/permissions.ts): ${requirementsOnToggled.join(', ')}`
+  )
+}
+
+// An admin-only permission is never granted, so no requirement may name it:
+// as a key it would never be checked, as a value it would make its key
+// ungrantable.
+const requirementsOnAdminOnly = Object.entries(PERMISSION_REQUIREMENTS)
+  .flatMap(([from, required = []]) => [from, ...required])
+  .filter((key) => {
+    const [resource, action] = key.split(':')
+    return isAdminOnlyPermission(resource, action)
+  })
+if (requirementsOnAdminOnly.length > 0) {
+  throw new Error(
+    `PERMISSION_REQUIREMENTS: an admin-only permission (ADMIN_ONLY_PERMISSIONS) cannot require or be required (src/config/permissions.ts): ${[...new Set(requirementsOnAdminOnly)].join(', ')}`
   )
 }
 

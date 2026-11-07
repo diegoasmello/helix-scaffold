@@ -1,6 +1,10 @@
 import { and, eq, isNotNull, or } from 'drizzle-orm'
 
-import { ALL_PERMISSIONS, isDeclaredPermission } from '@/config/permissions'
+import {
+  ALL_PERMISSIONS,
+  isAdminOnlyPermission,
+  isDeclaredPermission,
+} from '@/config/permissions'
 import type { Database } from '@/db'
 import { rolePermissions, roles } from '@/db/schema'
 import { DomainError } from '@/lib/domain-errors'
@@ -49,6 +53,8 @@ export function createPermissionsService(database: Database) {
     for (const { resource, action } of rows) {
       // A role without permissions comes back as one row of nulls
       if (resource === null || action === null) continue
+      // Only the admin role holds it, whatever rows another role has
+      if (isAdminOnlyPermission(resource, action)) continue
       grants[resource] = [...(grants[resource] ?? []), action]
     }
     return grants
@@ -80,8 +86,9 @@ export function createPermissionsService(database: Database) {
     action: string
   ): Promise<boolean> {
     // One query: the admin role passes on any catalog pair, the others need
-    // the row.
+    // the row — and never pass on an admin-only pair, row or not.
     const adminPasses = isDeclaredPermission(resource, action)
+    const othersMayPass = !isAdminOnlyPermission(resource, action)
     const [row] = await database
       .select({ id: roles.id })
       .from(roles)
@@ -98,7 +105,7 @@ export function createPermissionsService(database: Database) {
           eq(roles.id, roleId),
           or(
             adminPasses ? eq(roles.isAdmin, true) : undefined,
-            isNotNull(rolePermissions.id)
+            othersMayPass ? isNotNull(rolePermissions.id) : undefined
           )
         )
       )

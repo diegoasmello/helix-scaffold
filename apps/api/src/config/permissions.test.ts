@@ -4,7 +4,10 @@ import { config, overrideConfig } from '@/config'
 
 import {
   dropUnmetRequirements,
+  enabledResourceDefinitions,
+  findAdminOnlyGrants,
   findRequirementsOnToggledResources,
+  isAdminOnlyPermission,
   isResourceEnabled,
 } from './permissions'
 
@@ -71,5 +74,27 @@ describe('dropUnmetRequirements', () => {
     expect(
       dropUnmetRequirements({}, { permissions: ['edit', 'view'] })
     ).toEqual({ kept: {}, dropped: { permissions: ['view', 'edit'] } })
+  })
+})
+
+describe('admin-only permissions', () => {
+  it('marks users:password, and nothing else of users', () => {
+    expect(isAdminOnlyPermission('users', 'password')).toBe(true)
+    expect(isAdminOnlyPermission('users', 'edit')).toBe(false)
+    expect(isAdminOnlyPermission('roles', 'password')).toBe(false)
+  })
+
+  it('finds the admin-only pairs of a grant map', () => {
+    expect(
+      findAdminOnlyGrants({ users: ['view', 'password'], roles: ['view'] })
+    ).toEqual(['users:password'])
+    expect(findAdminOnlyGrants({ users: ['view'] })).toEqual([])
+  })
+
+  it('leaves them out of the catalog the role editor works with', () => {
+    const users = enabledResourceDefinitions(config).find(
+      (def) => def.resource === 'users'
+    )
+    expect(users?.actions).toEqual(['view', 'create', 'edit', 'delete'])
   })
 })

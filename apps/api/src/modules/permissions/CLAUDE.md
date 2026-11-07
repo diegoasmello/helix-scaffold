@@ -33,11 +33,11 @@ No entity schema for a "permission" object. The schemas are:
 
 **`isAdminRole(roleId)`** — whether the role is the admin role (`roles.isAdmin`); `null` or an unknown id → `false`. See _Admin role_.
 
-**`getByRoleId(roleId)`** — one query (`roles` left-joined to its `role_permissions` rows) collapsed into a `Grants` object: `{ [resource]: action[] }`. Returns `{}` when the role has no permissions or does not exist. For the admin role it returns the whole catalog (`ALL_PERMISSIONS`), whatever rows it has — so `GET /me/permissions`, `GET /roles/:id/permissions` and `grantsOf()` all see it holding everything.
+**`getByRoleId(roleId)`** — one query (`roles` left-joined to its `role_permissions` rows) collapsed into a `Grants` object: `{ [resource]: action[] }`. Returns `{}` when the role has no permissions or does not exist. For the admin role it returns the whole catalog (`ALL_PERMISSIONS`), whatever rows it has — so `GET /me/permissions`, `GET /roles/:id/permissions` and `grantsOf()` all see it holding everything. For any other role it skips the rows of an admin-only permission (see _Admin-only permissions_).
 
 **`replaceForRole(roleId, grants)`** — runs inside a **single transaction**: deletes all existing rows for `roleId`, then bulk-inserts the new set (duplicate actions within a resource are dropped, so they never hit the unique index). Returns the result of `getByRoleId` after the transaction. If `grants` is empty, the delete runs but no insert follows — the role ends up with no permissions.
 
-**`hasPermission(roleId, resource, action)`** — one query (`roles` left-joined to the matching `role_permissions` row, `.limit(1)`): `true` when the row exists, or when the role is the admin role and the pair is in the catalog (`isDeclaredPermission()`). Used by `createRequirePermission` (`src/hooks/require-permission.ts`) on every authenticated request, by the entitlements' operator check and by upload access.
+**`hasPermission(roleId, resource, action)`** — one query (`roles` left-joined to the matching `role_permissions` row, `.limit(1)`): `true` when the row exists and the pair is not admin-only (`isAdminOnlyPermission()`), or when the role is the admin role and the pair is in the catalog (`isDeclaredPermission()`). Used by `createRequirePermission` (`src/hooks/require-permission.ts`) on every authenticated request, by the entitlements' operator check and by upload access.
 
 ### Admin role
 
@@ -50,6 +50,17 @@ The role with `roles.isAdmin = true` (partial unique index `roles_is_admin_uniqu
 - **Above the ceiling** — a role granted every permission (a moderator given everything, or the tests' `__test_admin__`) holds the same pairs, so the privilege ceiling alone would make it the admin's equal. These checks are by `isAdmin`, not by grants, and run before the ceiling.
 
 There is no way yet to hand the admin role to another account: a second admin, or a transfer, needs a direct database change.
+
+### Admin-only permissions
+
+`ADMIN_ONLY_PERMISSIONS` (`src/config/permissions.ts`) lists the pairs only the admin role holds — never granted to another role, whoever asks, the admin included. Today `users:password`: setting another user's password (`PUT /users/:id/password`) hands over that account, so no delegated role may do it. Such a pair is in `RESOURCE_DEFINITIONS` like any other (the types, `requirePermission()` and the admin's `ALL_PERMISSIONS` see it), but:
+
+- `GET /permissions/resources` leaves it out (`enabledResourceDefinitions()`), so the role editor never shows it;
+- `PUT /roles/:id/permissions` refuses it with **400** `unknown_permissions` (`findAdminOnlyGrants()`), as a typo or a resource turned off;
+- a row a role holds anyway (written to the database by hand, or by an old seed) gives nothing: `hasPermission()` answers `false` and `getByRoleId()` leaves it out, so neither `GET /me/permissions` nor the privilege ceiling count it;
+- no `PERMISSION_REQUIREMENTS` entry may name it, as a key or a value — the catalog check throws at startup otherwise.
+
+The admin holds it through `isAdmin`, like the rest of the catalog: `GET /me/permissions` and `GET /roles/:id/permissions` of the admin role list it. To make another pair admin-only, add it to `ADMIN_ONLY_PERMISSIONS`; nothing else changes.
 
 ### Privilege ceiling
 
@@ -73,7 +84,7 @@ Four endpoints across two URL namespaces:
 | `GET`  | `/roles/:id/permissions` | `permissions:view`        | Returns grants for any role. `permissions:edit` alone does not open it — the requirement makes the editor grant both |
 | `PUT`  | `/roles/:id/permissions` | `permissions:edit`        | Replaces all grants for a role                                                                                       |
 
-**`GET /permissions/resources`** — no `requirePermission` guard, but it lives inside the `authenticated` scope so it still requires a valid session. Serves `enabledResourceDefinitions(config)` (see _Resources turned off_), spreading `[...def.actions]` to convert the `readonly` tuple to a mutable array before serialisation.
+**`GET /permissions/resources`** — no `requirePermission` guard, but it lives inside the `authenticated` scope so it still requires a valid session. Serves `enabledResourceDefinitions(config)` — the catalog minus the resources turned off (see _Resources turned off_) and the admin-only actions (see _Admin-only permissions_).
 
 ### Resources turned off
 
@@ -94,7 +105,7 @@ To make another module's resource conditional, add `<resource>: (config) => …`
 
 **`PUT /roles/:id/permissions`** — uses `PUT` (full replacement), not `PATCH`. The body is `{ grants: Grants }`, identical in shape to the response.
 
-- **400** `unknown_permissions` (`message`: `Unknown permissions: <resource:action>, …`) when any grant is not declared in `RESOURCE_DEFINITIONS` — checked by `findUnknownGrants()` (`src/config/permissions.ts`) before anything is written, so the request is all-or-nothing.
+- **400** `unknown_permissions` (`message`: `Unknown permissions: <resource:action>, …`) when any grant is not declared in `RESOURCE_DEFINITIONS` (`findUnknownGrants()`), belongs to a resource turned off (`findDisabledGrants()`) or is admin-only (`findAdminOnlyGrants()`) — all in `src/config/permissions.ts`, checked before anything is written, so the request is all-or-nothing.
 - **400** `missing_required_permissions` when a grant comes without what it requires (`PERMISSION_REQUIREMENTS`, checked by `findMissingRequirements()`; `message` lists the missing pairs) — `permissions:edit` without `permissions:view`, `users:edit` without `roles:view`. Checked after the privilege ceiling, so a refused grant answers 403 whatever else the body lacks. Grants saved before a requirement existed stay as they are until the role's permissions are saved again.
 - **403** — admin role and privilege ceiling, checked after the `unknown_permissions` 400 and before anything is written: `admin_role_locked` for the admin role (even from the admin), `role_not_editable` when the role grants something the caller's role lacks (even to remove grants from it), `permissions_not_grantable` when the body grants a pair the caller's role lacks (`message` lists them). `permission_denied` is `requirePermission()`'s.
 - **404** `{ message: 'Role not found' }` for an unknown role id (Postgres FK violation, read with `getPgErrorCode`).
@@ -132,6 +143,8 @@ Only `view` and `edit` — there is no `create` or `delete` action. Permissions 
 **`PUT /roles/:id/permissions`** — covers: replace with new grants, clear all grants with `{}`, 400 for an unknown resource (and existing grants untouched), 400 for an undeclared action, 400 `missing_required_permissions` (and the role unchanged) and a body that brings its requirements, 404 for an unknown role, duplicate actions deduplicated, audit entry written.
 
 **`describe('Subscriptions turned off')`** — a second app built with `createTestApp({ subscriptions: { enabled: false } })`, using the same session: the catalog has no `subscriptions`, `GET /roles/:id/permissions` hides a role's subscription grants, `PUT` refuses them (400, nothing written), a `PUT` without them keeps the rows the role had (read back through the enabled app), drops a kept `subscriptions:create` when the body leaves out `users:view` — and keeps it when the body brings it — and audits `kept` and `dropped`. The admin role is shown without `subscriptions`, and a moderator holding every pair the editor shows still gets 403 `role_not_editable` on a role keeping `subscriptions:view`.
+
+**`describe('Admin-only permissions')`** — `users:password` absent from the catalog, held by the admin's `GET /me/permissions` and not by the test session (every grantable permission), refused by `PUT` even from the admin (400, no audit), and a row written by hand hidden from `GET /roles/:id/permissions`. The unit tests of `isAdminOnlyPermission()`, `findAdminOnlyGrants()` and the editor's catalog are in `src/config/permissions.test.ts`.
 
 **`describe('Admin role')`** — built with `createAdminRole()` (`src/test/helpers.ts`): `GET /roles/:id/permissions` and the admin's own `GET /me/permissions` list the whole catalog with no rows; `PUT` on it answers 403 `admin_role_locked` to the test session (every permission) and to the admin, with no audit entry.
 

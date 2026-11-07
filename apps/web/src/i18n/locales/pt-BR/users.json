@@ -9,6 +9,20 @@
   "detail": {
     "title": "Visualizar usuário"
   },
+  "password": {
+    "title": "Alterar senha",
+    "description": "Defina uma nova senha para {{name}} ({{email}}). Todas as sessões dessa conta serão encerradas, e um e-mail avisará da alteração.",
+    "newPassword": {
+      "label": "Nova senha",
+      "placeholder": "Mínimo de 8 caracteres"
+    },
+    "confirmPassword": {
+      "label": "Confirme a nova senha",
+      "placeholder": "Repita a nova senha"
+    },
+    "submit": "Alterar senha",
+    "passwordsNoMatch": "As senhas não coincidem"
+  },
   "columns": {
     "name": "Nome",
     "role": "Perfil",
@@ -53,7 +67,9 @@
     "updated": "Usuário atualizado com sucesso",
     "updateFailed": "Falha ao atualizar usuário",
     "deleted": "Usuário excluído com sucesso",
-    "deleteFailed": "Falha ao excluir usuário"
+    "deleteFailed": "Falha ao excluir usuário",
+    "passwordChanged": "Senha alterada. Todas as sessões de {{name}} foram encerradas.",
+    "passwordChangeFailed": "Falha ao alterar a senha"
   },
   "errors": {
     "email_taken": "Este email já está em uso por outro usuário.",

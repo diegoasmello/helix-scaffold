@@ -2,6 +2,7 @@ import { useGetUsersIdSuspense } from '@helix/api-client/hooks'
 import {
   Button,
   Grid,
+  IconKey,
   IconPencil,
   LabeledValue,
   PageView,
@@ -30,16 +31,30 @@ export function UsersDetail() {
       actions={
         // The admin account is locked here (API: admin_user_locked)
         !item.role?.isAdmin && (
-          <HasPermission resource="users" action="edit">
-            <Button
-              leftSection={<IconPencil size={17} />}
-              onClick={() =>
-                navigate({ to: '/users/$id/edit', params: { id } })
-              }
-            >
-              {tc('actions.edit')}
-            </Button>
-          </HasPermission>
+          <>
+            {/* Admin only: the API never grants users:password to another role */}
+            <HasPermission resource="users" action="password">
+              <Button
+                variant="default"
+                leftSection={<IconKey size={17} />}
+                onClick={() =>
+                  navigate({ to: '/users/$id/password', params: { id } })
+                }
+              >
+                {tc('actions.password')}
+              </Button>
+            </HasPermission>
+            <HasPermission resource="users" action="edit">
+              <Button
+                leftSection={<IconPencil size={17} />}
+                onClick={() =>
+                  navigate({ to: '/users/$id/edit', params: { id } })
+                }
+              >
+                {tc('actions.edit')}
+              </Button>
+            </HasPermission>
+          </>
         )
       }
     >

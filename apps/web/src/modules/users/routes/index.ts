@@ -16,6 +16,7 @@ import { UsersCreate } from './users-create'
 import { UsersDetail } from './users-detail'
 import { UsersEdit } from './users-edit'
 import { UsersList } from './users-list'
+import { UsersPassword } from './users-password'
 import { UsersPending } from './users-pending'
 
 export const usersListRoute = createRoute({
@@ -103,9 +104,36 @@ export const usersEditRoute = createRoute({
   },
 })
 
+export const usersPasswordRoute = createRoute({
+  getParentRoute: () => authenticatedRoute,
+  path: '/users/$id/password',
+  component: UsersPassword,
+  pendingComponent: UsersPending,
+  staticData: {
+    breadcrumbs: [
+      { label: 'nav.users', to: '/users' },
+      { label: 'actions.password' },
+      (data) => ({ label: `#${(data as UserItem).id}` }),
+    ],
+  },
+  beforeLoad: guardPage(USERS_ACCESS.password),
+  loader: async ({ params }) => {
+    const item = await queryClient.ensureQueryData(
+      getUsersIdSuspenseQueryOptions(params.id)
+    )
+    // The admin account is locked here (API: admin_user_locked) — the admin
+    // changes their own password on /me/security
+    if (item.role?.isAdmin) {
+      throw redirect({ to: '/users/$id', params: { id: params.id } })
+    }
+    return item
+  },
+})
+
 export const usersRoutes = [
   usersListRoute,
   usersCreateRoute,
   usersDetailRoute,
   usersEditRoute,
+  usersPasswordRoute,
 ]

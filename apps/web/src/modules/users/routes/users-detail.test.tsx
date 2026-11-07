@@ -1,4 +1,10 @@
-import { createUserWithRole, getUsersIdHandler } from '@helix/api-client/mocks'
+import { getMePermissionsQueryKey } from '@helix/api-client/hooks'
+import {
+  createUserWithRole,
+  getMePermissionsHandler,
+  getUsersIdHandler,
+} from '@helix/api-client/mocks'
+import type { Grants } from '@helix/api-client/types'
 import { MantineEmotionProvider, MantineProvider } from '@helix/ui'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen } from '@testing-library/react'
@@ -15,6 +21,23 @@ vi.mock('.', () => ({
   },
 }))
 
+vi.mock('../../../lib/authentication', () => ({
+  authClient: {
+    useSession: () => ({
+      data: {
+        user: {
+          id: 'test-user',
+          name: 'Test User',
+          email: 'test@example.com',
+          image: null,
+          roleId: 'test-role',
+        },
+      },
+      isPending: false,
+    }),
+  },
+}))
+
 const mockUser = createUserWithRole({
   id: '1',
   name: 'Alice Silva',
@@ -24,10 +47,12 @@ const mockUser = createUserWithRole({
   role: { id: 'role-1', name: 'Admin', isAdmin: false },
 })
 
-function renderUsersDetail() {
+/** `grants`: seeds `GET /me/permissions`, so they are there from the first render. */
+function renderUsersDetail(grants?: Grants) {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   })
+  if (grants) queryClient.setQueryData(getMePermissionsQueryKey(), { grants })
   return render(
     <MantineProvider>
       <MantineEmotionProvider>
@@ -80,5 +105,51 @@ describe('UsersDetail', () => {
     renderUsersDetail()
     await screen.findByText('Alice Silva')
     expect(screen.getByText('No')).toBeInTheDocument()
+  })
+
+  describe('Change password', () => {
+    it('shows Change password to the admin (users:password)', async () => {
+      server.use(
+        getMePermissionsHandler({
+          grants: { users: ['view', 'edit', 'password'] },
+        })
+      )
+      renderUsersDetail()
+      expect(
+        await screen.findByRole('button', { name: 'Change password' })
+      ).toBeInTheDocument()
+    })
+
+    it('hides it without users:password', async () => {
+      server.use(
+        getMePermissionsHandler({ grants: { users: ['view', 'edit'] } })
+      )
+      renderUsersDetail()
+      // The positive control: Edit shows up only once the grants have arrived
+      await screen.findByRole('button', { name: 'Edit' })
+      expect(
+        screen.queryByRole('button', { name: 'Change password' })
+      ).not.toBeInTheDocument()
+    })
+
+    it("hides it on the admin's own account", async () => {
+      server.use(
+        getUsersIdHandler(
+          createUserWithRole({
+            ...mockUser,
+            role: { id: 'admin', name: 'Admin', isAdmin: true },
+          })
+        )
+      )
+      // Grants seeded: the buttons would be there on the first render
+      renderUsersDetail({ users: ['view', 'edit', 'password'] })
+      await screen.findByText('Alice Silva')
+      expect(
+        screen.queryByRole('button', { name: 'Change password' })
+      ).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('button', { name: 'Edit' })
+      ).not.toBeInTheDocument()
+    })
   })
 })

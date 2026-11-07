@@ -3,7 +3,7 @@ import { drizzle } from 'drizzle-orm/node-postgres'
 
 import { buildApp } from '@/app'
 import { type AppConfig, config, overrideConfig } from '@/config'
-import { ALL_PERMISSIONS } from '@/config/permissions'
+import { ALL_PERMISSIONS, isAdminOnlyPermission } from '@/config/permissions'
 import * as schema from '@/db/schema'
 import {
   account,
@@ -125,8 +125,11 @@ export async function createTestSession(
       .values({ name: TEST_ROLE_NAME, description: 'Test admin role' })
       .returning()
 
+    // Every permission a role can be granted — not the admin-only ones
     await testDb.insert(rolePermissions).values(
-      ALL_PERMISSIONS.map(({ resource, action }) => ({
+      ALL_PERMISSIONS.filter(
+        ({ resource, action }) => !isAdminOnlyPermission(resource, action)
+      ).map(({ resource, action }) => ({
         roleId: testRole.id,
         resource,
         action,

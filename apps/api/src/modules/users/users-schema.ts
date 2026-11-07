@@ -37,6 +37,12 @@ export const updateUserSchema = z.object({
   roleId: z.string().nullable().optional(),
 })
 
+// 8–128: better-auth's own length limits, which a hash written directly
+// (`setPassword` in the service) does not check for us.
+export const setUserPasswordSchema = z.object({
+  newPassword: z.string().min(8).max(128),
+})
+
 export type CreateUserInput = z.infer<typeof createUserSchema>
 export type UpdateUserInput = z.infer<typeof updateUserSchema>
 

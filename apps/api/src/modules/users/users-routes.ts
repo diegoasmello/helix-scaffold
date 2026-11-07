@@ -2,6 +2,7 @@ import z from 'zod'
 
 import type { Config } from '@/config'
 import { DomainError, errorSchema } from '@/lib/domain-errors'
+import type { EmailProvider } from '@/lib/email'
 import { buildPaginatedResponse } from '@/lib/pagination'
 
 import type { Auth } from '../../auth'
@@ -10,6 +11,7 @@ import type { FastifyTypedInstance, RequirePermission } from '../../types'
 import {
   createUserSchema,
   paginatedUsersSchema,
+  setUserPasswordSchema,
   updateUserSchema,
   usersListQuerySchema,
   userWithRoleSchema,
@@ -22,15 +24,17 @@ export async function usersRoutes(
     database,
     auth,
     config,
+    emailProvider,
     requirePermission,
   }: {
     database: Database
     auth: Auth
     config: Config
+    emailProvider: EmailProvider
     requirePermission: RequirePermission
   }
 ) {
-  const service = createUsersService(database, auth, config)
+  const service = createUsersService(database, auth, config, emailProvider)
 
   app.get(
     '/users',
@@ -149,6 +153,39 @@ export async function usersRoutes(
       }
       await request.audit('edit', 'users', request.params.id, request.body)
       return item
+    }
+  )
+
+  app.put(
+    '/users/:id/password',
+    {
+      schema: {
+        tags: ['users'],
+        description:
+          "Set a user's password and sign them out everywhere (admin only)",
+        params: z.object({ id: z.string() }),
+        body: setUserPasswordSchema,
+        response: {
+          204: z.null().describe('Password set'),
+          403: errorSchema('permission_denied', 'admin_user_locked'),
+          404: errorSchema('user_not_found'),
+        },
+      },
+      preHandler: requirePermission('users', 'password'),
+    },
+    async (request, reply) => {
+      const found = await service.setPassword(
+        request.params.id,
+        request.body.newPassword
+      )
+      if (!found) {
+        throw new DomainError(404, 'user_not_found', 'User not found')
+      }
+      // Never the password itself
+      await request.audit('edit', 'users', request.params.id, {
+        passwordChanged: true,
+      })
+      return reply.status(204).send(null)
     }
   )
 

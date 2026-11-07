@@ -82,6 +82,8 @@ import {
   postUsersHandler,
   postUsersHandlerResponse201,
   putRolesIdPermissionsHandler,
+  putUsersIdPasswordHandler,
+  putUsersIdPasswordHandlerResponse404,
 } from '@helix/api-client/mocks'
 
 export const handlers = [
@@ -155,6 +157,12 @@ export const handlers = [
     })
   ),
   deleteUsersIdHandler(() => deleteUsersIdHandlerResponse204()),
+  putUsersIdPasswordHandler(() =>
+    putUsersIdPasswordHandlerResponse404({
+      message: 'User not found',
+      code: 'user_not_found',
+    })
+  ),
 
   // Permissions / Roles permissions
   getPermissionsResourcesHandler([]),

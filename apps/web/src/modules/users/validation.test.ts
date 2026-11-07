@@ -1,7 +1,11 @@
 import { describe, expect, it } from 'vitest'
 
-import type { UserFormValues } from './types'
-import { userCreateFormValidate, userEditFormValidate } from './validation'
+import type { UserFormValues, UserPasswordFormValues } from './types'
+import {
+  userCreateFormValidate,
+  userEditFormValidate,
+  userPasswordFormValidate,
+} from './validation'
 
 const base: UserFormValues = {
   name: '',
@@ -96,6 +100,51 @@ describe('userEditFormValidate', () => {
 
     it('returns null when valid', () => {
       expect(userEditFormValidate.email('alice@example.com', base)).toBeNull()
+    })
+  })
+})
+
+describe('userPasswordFormValidate', () => {
+  const values: UserPasswordFormValues = {
+    newPassword: 'NewPassword1!',
+    confirmPassword: 'NewPassword1!',
+  }
+
+  describe('newPassword', () => {
+    it('returns error when empty', () => {
+      expect(userPasswordFormValidate.newPassword('', values)).toBe('Required')
+    })
+
+    it('returns error when shorter than 8 characters', () => {
+      expect(userPasswordFormValidate.newPassword('a'.repeat(7), values)).toBe(
+        'Min 8 characters'
+      )
+    })
+
+    it('returns error when longer than 128 characters', () => {
+      expect(
+        userPasswordFormValidate.newPassword('a'.repeat(129), values)
+      ).toBe('Max 128 characters')
+    })
+
+    it('returns null at 8 characters', () => {
+      expect(
+        userPasswordFormValidate.newPassword('a'.repeat(8), values)
+      ).toBeNull()
+    })
+  })
+
+  describe('confirmPassword', () => {
+    it('returns error when it differs from the new password', () => {
+      expect(
+        userPasswordFormValidate.confirmPassword('Other1234!', values)
+      ).toBe("The passwords don't match")
+    })
+
+    it('returns null when it matches', () => {
+      expect(
+        userPasswordFormValidate.confirmPassword('NewPassword1!', values)
+      ).toBeNull()
     })
   })
 })

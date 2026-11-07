@@ -9,6 +9,20 @@
   "detail": {
     "title": "View user"
   },
+  "password": {
+    "title": "Change password",
+    "description": "Set a new password for {{name}} ({{email}}). They will be signed out of every device and get an email about the change.",
+    "newPassword": {
+      "label": "New password",
+      "placeholder": "Min 8 characters"
+    },
+    "confirmPassword": {
+      "label": "Confirm new password",
+      "placeholder": "Repeat the new password"
+    },
+    "submit": "Change password",
+    "passwordsNoMatch": "The passwords don't match"
+  },
   "columns": {
     "name": "Name",
     "role": "Role",
@@ -53,7 +67,9 @@
     "updated": "User updated successfully",
     "updateFailed": "Failed to update user",
     "deleted": "User deleted successfully",
-    "deleteFailed": "Failed to delete user"
+    "deleteFailed": "Failed to delete user",
+    "passwordChanged": "Password changed. {{name}} was signed out everywhere.",
+    "passwordChangeFailed": "Failed to change the password"
   },
   "errors": {
     "email_taken": "This email is already used by another user.",

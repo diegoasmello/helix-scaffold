@@ -19,7 +19,8 @@
     "delete": "Excluir",
     "view": "Ver",
     "exportPdf": "Exportar PDF",
-    "requestChange": "Solicitar alteração"
+    "requestChange": "Solicitar alteração",
+    "password": "Alterar senha"
   },
   "report": {
     "downloaded": "Relatório baixado com sucesso",

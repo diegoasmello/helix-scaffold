@@ -240,6 +240,7 @@ export function buildApp(database: Database, options: BuildAppOptions = {}) {
           database,
           auth,
           config,
+          emailProvider,
           requirePermission,
         })
 

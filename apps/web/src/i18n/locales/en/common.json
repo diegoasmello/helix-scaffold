@@ -19,7 +19,8 @@
     "delete": "Delete",
     "view": "View",
     "exportPdf": "Export PDF",
-    "requestChange": "Request change"
+    "requestChange": "Request change",
+    "password": "Change password"
   },
   "report": {
     "downloaded": "Report downloaded successfully",

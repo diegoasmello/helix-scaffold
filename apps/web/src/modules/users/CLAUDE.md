@@ -25,7 +25,9 @@ src/modules/users/
     ├── users-detail.tsx
     ├── users-detail.test.tsx
     ├── users-edit.tsx
-    └── users-edit.test.tsx
+    ├── users-edit.test.tsx
+    ├── users-password.tsx           ← admin only: set another user's password
+    └── users-password.test.tsx
 ```
 
 `UserSelectField` is used by the subscriptions admin form (`userId`). It needs `getUsersAllSuspenseQueryOptions()` prefetched in the route loader, or it suspends on its own.
@@ -37,6 +39,7 @@ src/modules/users/
 | `UserItem`        | `UserWithRole`                     |
 | `CreateUserInput` | `PostUsersMutationRequest`         |
 | `UpdateUserInput` | `PatchUsersIdMutationRequest`      |
+| `SetUserPasswordInput` | `PutUsersIdPasswordMutationRequest` |
 
 `UserItem` is `UserWithRole` — always has an embedded `role: { id, name, isAdmin } | null`. There is no plain `User` type used in this module.
 
@@ -56,7 +59,8 @@ interface UserFormValues {
 Two separate validator objects — one per form context:
 
 - `userCreateFormValidate` — validates `name` (required, max 100), `email` (required, valid format), `password` (required, min 8).
-- `userEditFormValidate` — validates only `name` and `email`. **No `password` field** — password change is not supported.
+- `userEditFormValidate` — validates only `name` and `email`. **No `password` field** — the password has its own page (_Change password_).
+- `userPasswordFormValidate` — `newPassword` (required, 8 to 128 — the API's limits) and `confirmPassword` (must match; `password.passwordsNoMatch` through the `i18n` singleton). Values: `UserPasswordFormValues` (`types.ts`); `confirmPassword` never leaves the web.
 
 Use `userCreateFormValidate` in `UsersCreate` and `userEditFormValidate` in `UsersEdit`. Using the wrong one will either skip password validation on create or cause a spurious error on edit.
 
@@ -96,6 +100,7 @@ loader: ({ params }) => {
 | `usersCreateRoute` | `/users/create`    | `users:create` |
 | `usersDetailRoute` | `/users/$id`       | `users:view`   |
 | `usersEditRoute`   | `/users/$id/edit`  | `users:edit`   |
+| `usersPasswordRoute` | `/users/$id/password` | `users:password` (`USERS_ACCESS.password`) |
 
 `usersListRoute` validateSearch: `page` (default 1), `pageSize` (default 10), `sortBy` (enum `name | email | createdAt`, optional), `sortOrder` (default `'desc'`).
 
@@ -126,6 +131,15 @@ Unlike the todos module, `UsersList` gates its actions by permission:
 - Row Delete → `hidden: !hasPermission('users', 'delete')`, `danger: true`
 
 View is always visible. **The admin account** (`item.role?.isAdmin`) is locked in `/users` (API: `admin_user_locked`): its row hides Edit and Delete, `UsersDetail` hides Edit, and `/users/$id/edit` redirects to the detail in its loader. A failed delete notifies `apiErrorMessage(error, 'users', 'notifications.deleteFailed')`, so `errors.user_not_editable` / `errors.admin_user_locked` explain it. `RoleSelectField` never offers the admin role (`errors.admin_role_not_assignable` covers a refusal).
+
+## Change password
+
+Only the admin may set another user's password: `users:password` is admin-only in the API (`apps/api/src/modules/permissions/CLAUDE.md` → _Admin-only permissions_), so the role editor never offers it and `hasPermission('users', 'password')` is true for the admin alone.
+
+- **Entry**: a "Change password" button (`variant="default"`, `IconKey`, label `common:actions.password`) in `UsersDetail`'s header, before Edit, inside `<HasPermission resource="users" action="password">`. Hidden on the admin account, like Edit. Not a row action: the list keeps its three buttons.
+- **Page** (`UsersPassword`, `/users/$id/password`): `PageEdit` titled "Change password", the description names the user ("… for Alice Silva (alice@example.com). They will be signed out…"), a `FormColumn` with two `PasswordInput`s (`autoComplete="new-password"`), Cancel / Change password in the footer. The loader redirects the admin account to the detail (API: `admin_user_locked` — the admin uses `/me/security`).
+- **Mutation**: `putUsersIdPassword(id, { newPassword })` → 204. Success: `notifications.passwordChanged` and back to the detail; no cache to update (the user record does not change). Failure: `apiErrorMessage(error, 'users', 'notifications.passwordChangeFailed')`.
+- The API signs the user out everywhere and emails them; the page says so before the admin submits.
 
 ## Sidebar
 

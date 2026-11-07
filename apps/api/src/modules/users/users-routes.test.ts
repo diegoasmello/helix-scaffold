@@ -1,8 +1,16 @@
 import { eq } from 'drizzle-orm'
 import { uuidv7 } from 'uuidv7'
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
+import {
+  afterAll,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from 'vitest'
 
-import { user } from '@/db/schema/authentication'
+import { account, user } from '@/db/schema/authentication'
 import { rolePermissions } from '@/db/schema/role-permissions'
 import { roles } from '@/db/schema/roles'
 import {
@@ -1077,5 +1085,144 @@ describe('Privilege ceiling on DELETE /users/:id', () => {
     })
     expect(res.statusCode).toBe(204)
     expect(await findAuditLogs('delete', 'users', target.id)).toHaveLength(1)
+  })
+})
+
+describe('PUT /users/:id/password', () => {
+  /** Signs a user up over HTTP: a credential account and a live session. */
+  async function signUp(password = 'OldPassword1!') {
+    const email = `target-${uuidv7()}@test.com`
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/auth/sign-up/email',
+      payload: { email, name: 'Target', password },
+    })
+    const setCookie = res.headers['set-cookie']
+    const cookies = Array.isArray(setCookie) ? setCookie : [setCookie ?? '']
+    const [target] = await testDb
+      .select()
+      .from(user)
+      .where(eq(user.email, email))
+    return { target, cookie: cookies.map((c) => c.split(';')[0]).join('; ') }
+  }
+
+  function signIn(email: string, password: string) {
+    return app.inject({
+      method: 'POST',
+      url: '/api/auth/sign-in/email',
+      payload: { email, password },
+    })
+  }
+
+  async function adminSession() {
+    const adminRole = await createAdminRole()
+    return createSessionWithRole(app, adminRole.id)
+  }
+
+  function setPassword(
+    id: string,
+    cookie: string,
+    newPassword = 'NewPassword1!'
+  ) {
+    return app.inject({
+      method: 'PUT',
+      url: `/api/users/${id}/password`,
+      payload: { newPassword },
+      headers: { cookie },
+    })
+  }
+
+  it('lets the admin set the password and signs the user out everywhere', async () => {
+    const log = vi.spyOn(console, 'log').mockImplementation(() => {})
+    const cookie = await adminSession()
+    const { target, cookie: targetCookie } = await signUp()
+
+    const res = await setPassword(target.id, cookie)
+
+    expect(res.statusCode).toBe(204)
+    expect((await signIn(target.email, 'NewPassword1!')).statusCode).toBe(200)
+    expect((await signIn(target.email, 'OldPassword1!')).statusCode).toBe(401)
+    const oldSession = await app.inject({
+      method: 'GET',
+      url: '/api/me',
+      headers: { cookie: targetCookie },
+    })
+    expect(oldSession.statusCode).toBe(401)
+
+    const [entry] = await findAuditLogs('edit', 'users', target.id)
+    expect(entry.metadata).toEqual({ passwordChanged: true })
+    await vi.waitFor(() =>
+      expect(log).toHaveBeenCalledWith(
+        expect.stringContaining(
+          `To: ${target.email} | Subject: Your password was changed`
+        )
+      )
+    )
+    log.mockRestore()
+  })
+
+  it('gives a social-only account a password it can sign in with', async () => {
+    const cookie = await adminSession()
+    const { target } = await signUp()
+    await testDb.delete(account).where(eq(account.userId, target.id))
+
+    const res = await setPassword(target.id, cookie)
+
+    expect(res.statusCode).toBe(204)
+    expect((await signIn(target.email, 'NewPassword1!')).statusCode).toBe(200)
+  })
+
+  it('answers 404 for an unknown user, with no audit entry', async () => {
+    const cookie = await adminSession()
+    const id = `missing-${crypto.randomUUID()}`
+    const res = await setPassword(id, cookie)
+    expect(res.statusCode).toBe(404)
+    expect(res.json().code).toBe('user_not_found')
+    expect(await findAuditLogs('edit', 'users', id)).toHaveLength(0)
+  })
+
+  it('answers 400 for a password shorter than 8 characters', async () => {
+    const cookie = await adminSession()
+    const { target } = await signUp()
+    const res = await setPassword(target.id, cookie, 'short')
+    expect(res.statusCode).toBe(400)
+    expect((await signIn(target.email, 'OldPassword1!')).statusCode).toBe(200)
+  })
+
+  it("refuses the admin's own account — the admin uses /me/security", async () => {
+    const adminRole = await createAdminRole()
+    const cookie = await createSessionWithRole(app, adminRole.id)
+    const [admin] = await testDb
+      .select()
+      .from(user)
+      .where(eq(user.roleId, adminRole.id))
+    const res = await setPassword(admin.id, cookie)
+    expect(res.statusCode).toBe(403)
+    expect(res.json().code).toBe('admin_user_locked')
+    expect(await findAuditLogs('edit', 'users', admin.id)).toHaveLength(0)
+  })
+
+  it('refuses a role holding every grantable permission', async () => {
+    const { target } = await signUp()
+    const res = await setPassword(target.id, authCookie)
+    expect(res.statusCode).toBe(403)
+    expect(res.json().code).toBe('permission_denied')
+    expect((await signIn(target.email, 'OldPassword1!')).statusCode).toBe(200)
+  })
+
+  it('refuses a role holding a users:password row written by hand', async () => {
+    const role = await createRoleWithPermissions([
+      { resource: 'users', action: 'view' },
+    ])
+    await testDb
+      .insert(rolePermissions)
+      .values({ roleId: role.id, resource: 'users', action: 'password' })
+    const cookie = await createSessionWithRole(app, role.id)
+    const { target } = await signUp()
+
+    const res = await setPassword(target.id, cookie)
+
+    expect(res.statusCode).toBe(403)
+    expect(res.json().code).toBe('permission_denied')
   })
 })

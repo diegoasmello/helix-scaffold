@@ -27,13 +27,14 @@ Two entity shapes exist:
 - `userWithRoleSchema` — extends `userSchema` with `role: { id: string, name: string, isAdmin: boolean } | null` (`isAdmin` lets the web hide the admin account's actions). Has `.meta({ id: 'UserWithRole', title: 'UserWithRole' })`. **Every `/users` endpoint returns this**, and so do `GET /me` / `PATCH /me` in the `me` module.
 
 `createUserSchema` — `{ name, email, password (min 8), roleId? (optional string) }`.  
-`updateUserSchema` — `{ name?, email?, roleId?: string | null }`. `roleId: null` removes the role. Password change is **not** supported via this endpoint.
+`updateUserSchema` — `{ name?, email?, roleId?: string | null }`. `roleId: null` removes the role. No password here — it has its own route (`PUT /users/:id/password`, admin only).
+`setUserPasswordSchema` — `{ newPassword }`, 8 to 128 characters (better-auth's limits, which a hash written directly does not check).
 
 Sort columns: `['name', 'email', 'createdAt']`. Default sort: `createdAt`.
 
 ## Service (`users-service.ts`)
 
-Factory signature: `createUsersService(database: Database, auth: Auth, config)` — receives `auth` and `config` for account provisioning (unlike other modules).
+Factory signature: `createUsersService(database: Database, auth: Auth, config, emailProvider)` — receives `auth` and `config` for account provisioning (unlike other modules), `auth` and `emailProvider` for `setPassword`.
 
 **`list`, `listAll` and `getById`** do a `leftJoin(roles, eq(user.roleId, roles.id))` and pass the row through the private `toUserWithRole` helper. The columns are the shared `USER_WITH_ROLE_COLUMNS`; the join ones are aliased (`roleRefId`, `roleName`, `roleIsAdmin`) to avoid collisions, and `toUserWithRole` rebuilds `role: { id, name, isAdmin } | null`.
 
@@ -57,13 +58,15 @@ Factory signature: `createUsersService(database: Database, auth: Auth, config)` 
 
 **`remove(id, actorRoleId)`** — returns `false` for an unknown id. Refuses (403) an admin account (`admin_user_locked`) and an account whose role exceeds the caller's (`user_not_editable` — the same ceiling as `update`), then hard deletes the `user` row. Sessions and accounts cascade via FK.
 
+**`setPassword(id, newPassword)`** — admin only (`users:password`, see `src/modules/permissions/CLAUDE.md` → _Admin-only permissions_). Returns `false` for an unknown id. Refuses the admin account (403 `admin_user_locked`, like every `/users` write — the admin changes their own password on `/me/security`, which asks for the current one). Then, through better-auth's own context (`auth.$context`), as its password reset does: hashes the password, updates the credential account (`internalAdapter.updatePassword`) or, for a social-only account, creates one (`createAccount`, `providerId: 'credential'`) so it can sign in with its email; deletes every session of the account (`deleteSessions`) — whoever held one must sign in with the new password. Sends the user a best-effort notice ("Your password was changed"). No privilege ceiling: only the admin, who is never limited by it, holds the permission.
+
 **`listAll`** — every user with its role, no pagination. Backs `GET /users/all`.
 
 **No self-registration side effects:** `create` goes through `auth.api.signUpEmail`, which fires the `databaseHooks.user.create.after` hook in `auth.ts` — but a server-side call carries no request, so the hook skips it. An admin-created user gets exactly the `roleId` sent (`null` when omitted) and never a trial, in either registration mode. Covered by `accounts/account-provisioning.test.ts`.
 
 ## Routes (`users-routes.ts`)
 
-Receives `{ database, auth, config, requirePermission }` — `auth` and `config` (for account provisioning) are extra parameters not present in other modules.
+Receives `{ database, auth, config, emailProvider, requirePermission }` — `auth` and `config` (for account provisioning) and `emailProvider` (for the password notice) are extra parameters not present in other modules.
 
 | Method   | Path         | Permission     | Audit call                                                                               |
 | -------- | ------------ | -------------- | ---------------------------------------------------------------------------------------- |
@@ -72,6 +75,7 @@ Receives `{ database, auth, config, requirePermission }` — `auth` and `config`
 | `GET`    | `/users/:id` | `users:view`   | —                                                                                        |
 | `POST`   | `/users`     | `users:create` | `request.audit('create', 'users', id, meta)` — `meta` is the body **without** `password` |
 | `PATCH`  | `/users/:id` | `users:edit`   | `request.audit('edit', 'users', id, body)`                                               |
+| `PUT`    | `/users/:id/password` | `users:password` (admin only) | `request.audit('edit', 'users', id, { passwordChanged: true })` — never the password. 204 |
 | `DELETE` | `/users/:id` | `users:delete` | `request.audit('delete', 'users', id)`                                                   |
 
 **Extra response codes** (beyond the standard 200/201/204/404):
@@ -83,6 +87,7 @@ Errors are `DomainError`s (see `apps/api/CLAUDE.md` → _Errors the client can a
 - `PATCH`: `404 { message: 'User not found', code: 'user_not_found' }` for an unknown id.
 - `POST` / `PATCH`: `403` with `code: 'admin_role_not_assignable'` (the admin role), `'role_not_assignable'` (the role exceeds the caller's) and, on `PATCH`, `'admin_user_locked'` (the target is the admin) or `'user_not_editable'` (the target's role exceeds the caller's) — see _Privilege ceiling_.
 - `DELETE`: `403` with `code: 'admin_user_locked'` or `'user_not_editable'`, same rules. `requirePermission()`'s `permission_denied` shares the status.
+- `PUT /users/:id/password`: `403` `admin_user_locked` (the admin account) or `permission_denied` (anyone but the admin); `404` `user_not_found`; `400` for a password outside 8–128 characters.
 
 **Audit on POST**: password is stripped before logging — `const { password: _, ...meta } = request.body`.
 
@@ -93,8 +98,10 @@ Errors are `DomainError`s (see `apps/api/CLAUDE.md` → _Errors the client can a
 Resource registered in `src/config/permissions.ts`:
 
 ```ts
-{ resource: 'users', label: 'Users', actions: ['view', 'create', 'edit', 'delete'] }
+{ resource: 'users', label: 'Users', actions: ['view', 'create', 'edit', 'delete', 'password'] }
 ```
+
+`password` is admin-only (`ADMIN_ONLY_PERMISSIONS`): the role editor never shows it and no role can be granted it.
 
 ## Tests (`users-routes.test.ts`)
 
@@ -113,5 +120,7 @@ Permission enforcement email pattern: `restricted-users-${Date.now()}@test.com`.
 **`describe('Privilege ceiling')`** — a user manager (`users:view/create/edit`) against the test admin and a peer whose role (`Auditors`) holds `audit:view`: POST with a broader role (403, no user written), with a narrower one (201), unknown role (still 404); PATCH self to a broader role (403, role unchanged, no audit), an admin's email (403), demoting or re-emailing the peer (403), a name edit re-sending the unchanged email and role like the form (200), assigning a narrower role (200). Roles are inserted with explicit names — `createRoleWithPermissions()` names them by `Date.now()`, which collides when one test creates several.
 
 **`describe('Admin account')`** — with `createAdminRole()`, against the test session (every permission, not the admin role): `role.isAdmin` embedded; POST with the admin role (403 `admin_role_not_assignable`, nothing created — also when the admin asks); PATCH promoting a user to it (403, role unchanged); any PATCH of the admin, a name edit included (403 `admin_user_locked`, no audit); DELETE of the admin (403, kept, no audit — also the admin deleting themselves).
+
+**`describe('PUT /users/:id/password')`** — as the admin (`createAdminRole()` + `createSessionWithRole()`) on a user signed up over HTTP: 204, the new password signs in and the old one does not, the user's previous session gets 401, the audit entry is `{ passwordChanged: true }`, the notice is sent (spies `console.log`); a social-only account (credential row deleted) gets a password it signs in with; 404 for an unknown id (no audit); 400 for a short password (the old one still works); 403 `admin_user_locked` on the admin's own account; 403 `permission_denied` for the test session (every grantable permission) and for a role holding a `users:password` row written by hand.
 
 **`describe('Privilege ceiling on DELETE /users/:id')`** — a `users:view/delete` role: deleting the broader test user (403 `user_not_editable`, kept), deleting a peer with the same role (204, audited).

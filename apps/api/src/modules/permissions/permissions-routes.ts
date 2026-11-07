@@ -5,6 +5,7 @@ import {
   directRequirementsOf,
   dropUnmetRequirements,
   enabledResourceDefinitions,
+  findAdminOnlyGrants,
   findDisabledGrants,
   findMissingRequirements,
   findUnknownGrants,
@@ -113,12 +114,14 @@ export async function permissionsRoutes(
       preHandler: requirePermission('permissions', 'edit'),
     },
     async (request) => {
-      // A resource turned off in the config (`RESOURCE_TOGGLES`) is as unknown
-      // as a typo: the role editor neither shows nor sends it.
+      // A resource turned off in the config (`RESOURCE_TOGGLES`) and an
+      // admin-only permission (`ADMIN_ONLY_PERMISSIONS`) are as unknown as a
+      // typo: the role editor neither shows nor sends them.
       const unknown = [
         ...new Set([
           ...findUnknownGrants(request.body.grants),
           ...findDisabledGrants(request.body.grants, config),
+          ...findAdminOnlyGrants(request.body.grants),
         ]),
       ]
       if (unknown.length > 0) {

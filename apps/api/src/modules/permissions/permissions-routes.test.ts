@@ -3,7 +3,7 @@ import { uuidv7 } from 'uuidv7'
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 
 import { ALL_PERMISSIONS } from '@/config/permissions'
-import { auditLogs } from '@/db/schema'
+import { auditLogs, rolePermissions } from '@/db/schema'
 import { user } from '@/db/schema/authentication'
 import {
   cleanupAuditLogs,
@@ -528,6 +528,68 @@ describe('Admin role', () => {
       .from(auditLogs)
       .where(eq(auditLogs.resourceId, adminRole.id))
     expect(entries).toHaveLength(0)
+  })
+})
+
+describe('Admin-only permissions', () => {
+  it('leaves users:password out of the catalog the editor reads', async () => {
+    const res = await app.inject({
+      method: 'GET',
+      url: '/api/permissions/resources',
+      headers: { cookie: authCookie },
+    })
+    const users = res
+      .json()
+      .find((def: { resource: string }) => def.resource === 'users')
+    expect(users.actions).toEqual(['view', 'create', 'edit', 'delete'])
+  })
+
+  it('gives users:password to the admin role only', async () => {
+    const adminRole = await createAdminRole()
+    const adminCookie = await createSessionWithRole(app, adminRole.id)
+    const admin = await app.inject({
+      method: 'GET',
+      url: '/api/me/permissions',
+      headers: { cookie: adminCookie },
+    })
+    expect(admin.json().grants.users).toContain('password')
+    const everyGrantable = await app.inject({
+      method: 'GET',
+      url: '/api/me/permissions',
+      headers: { cookie: authCookie },
+    })
+    expect(everyGrantable.json().grants.users).not.toContain('password')
+  })
+
+  it('refuses to grant users:password, even when the admin asks', async () => {
+    const adminRole = await createAdminRole()
+    const adminCookie = await createSessionWithRole(app, adminRole.id)
+    const role = await createRoleWithPermissions([])
+    const res = await app.inject({
+      method: 'PUT',
+      url: `/api/roles/${role.id}/permissions`,
+      payload: { grants: { users: ['view', 'password'] } },
+      headers: { cookie: adminCookie },
+    })
+    expect(res.statusCode).toBe(400)
+    expect(res.json().code).toBe('unknown_permissions')
+    expect(res.json().message).toContain('users:password')
+    expect(await findAuditLogs('edit', 'permissions', role.id)).toHaveLength(0)
+  })
+
+  it('hides a users:password row written by hand', async () => {
+    const role = await createRoleWithPermissions([
+      { resource: 'users', action: 'view' },
+    ])
+    await testDb
+      .insert(rolePermissions)
+      .values({ roleId: role.id, resource: 'users', action: 'password' })
+    const res = await app.inject({
+      method: 'GET',
+      url: `/api/roles/${role.id}/permissions`,
+      headers: { cookie: authCookie },
+    })
+    expect(res.json().grants).toEqual({ users: ['view'] })
   })
 })
 
