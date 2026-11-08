@@ -1,0 +1,105 @@
+# Production on one machine: the database, the API and Caddy (the SPA, HTTPS
+# and the /api proxy). Every value comes from .env.prod (.env.prod.example):
+#
+#   docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --build
+#
+# README → Deploying with Docker. Not for development: docker-compose.yml.
+
+# Never the development project's name, whose `db` would be replaced. It also
+# names the volumes: never change APP_SLUG after the first deploy.
+name: ${APP_SLUG:?Set APP_SLUG in .env.prod}-prod
+
+# Docker keeps every log line by default, until the disk is full — and the
+# database stops with it. Rotated here: 5 files of 10 MB per service.
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: '10m'
+    max-file: '5'
+
+services:
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    logging: *logging
+    environment:
+      POSTGRES_DB: ${APP_SLUG}
+      POSTGRES_USER: ${APP_SLUG}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env.prod}
+    # No `ports`: only the API reaches it, on the compose network. A published
+    # port would bypass the server's firewall (Docker writes its own rules).
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"']
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  api:
+    build:
+      context: .
+      target: api
+    restart: unless-stopped
+    logging: *logging
+    # Forwards `docker compose stop`'s SIGTERM to node, which as PID 1 would
+    # ignore it.
+    init: true
+    depends_on:
+      db:
+        condition: service_healthy
+    # The API's secrets (RESEND_API_KEY, OAuth credentials, a payment
+    # adapter's) — the names of apps/api/.env.example.
+    env_file: .env.prod
+    environment:
+      NODE_ENV: production
+      AUTH_SECRET: ${AUTH_SECRET:?Set AUTH_SECRET in .env.prod}
+      DATABASE_URL: postgresql://${APP_SLUG}:${POSTGRES_PASSWORD}@db:5432/${APP_SLUG}
+      BASE_URL: https://${DOMAIN:?Set DOMAIN in .env.prod}
+      CLIENT_URL: https://${DOMAIN}
+    volumes:
+      - uploads:/app/apps/api/storage
+    # Healthy once it answers — after the migrations it applies as it starts.
+    # The image has no curl: node's fetch.
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://localhost:3333/api/registration/status').then((r) => process.exit(r.ok ? 0 : 1), () => process.exit(1))"
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 120s
+      start_interval: 2s
+
+  web:
+    build:
+      context: .
+      target: web
+      args:
+        VITE_API_URL: https://${DOMAIN}
+    restart: unless-stopped
+    logging: *logging
+    # On the first start. On an update Caddy is already running: it holds the
+    # requests while the API restarts (Caddyfile → lb_try_duration).
+    depends_on:
+      api:
+        condition: service_healthy
+    environment:
+      DOMAIN: ${DOMAIN}
+    ports:
+      - '80:80'
+      - '443:443'
+      - '443:443/udp'
+    volumes:
+      # Certificates: without them every restart asks Let's Encrypt again,
+      # up to its rate limit.
+      - caddy_data:/data
+      - caddy_config:/config
+
+volumes:
+  postgres_data:
+  uploads:
+  caddy_data:
+  caddy_config:

@@ -86,6 +86,8 @@ pnpm --filter api test:watch
 
 **Local databases** (`docker compose up -d`): `db` → `helix` on port 5434, `db_test` → `helix_test` on port 5436, `db_e2e` → `helix_e2e` on port 5438. API tests need `db_test` running and migrated (`pnpm db:migrate:test`); E2E needs `db_e2e` running — the suite migrates and empties it itself. A database used on another branch keeps that branch's migrations and tables, which `db:migrate` never reports: `pnpm db:check` / `db:check:test` compare it with this branch (see `apps/api/CLAUDE.md` → _Scripts_).
 
+**Production** (one server, Docker): `Dockerfile`, `docker-compose.prod.yml` (never for development), `Caddyfile` and `.env.prod.example` — `README.md` → _Deploying with Docker_. They take every per-deploy value from `.env.prod` and name no product. A change to how the API or the web builds or runs — a new entry in `apps/api/dist`, a file the API reads at run time, a new build-time env var, a new workspace the API depends on — changes them too: `docker compose -f docker-compose.prod.yml --env-file .env.prod build` must still pass.
+
 **Git hooks** (Husky):
 
 - `commit-msg` — commitlint with `@commitlint/config-conventional` (`feat(web): …`, `fix(api): …`).

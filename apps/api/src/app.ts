@@ -29,6 +29,7 @@ import {
 import { createRequireAuth } from './hooks/require-auth'
 import { createRequirePermission } from './hooks/require-permission'
 import { createRequireSubscription } from './hooks/require-subscription'
+import { registerUntrustedProxyWarning } from './hooks/untrusted-proxy-warning'
 import { API_PREFIX } from './lib/api-prefix'
 import { registerDomainErrorHandler } from './lib/domain-errors'
 import { createEmailProvider } from './lib/email'
@@ -92,6 +93,8 @@ export function buildApp(database: Database, options: BuildAppOptions = {}) {
   const auth = createAuth(database, emailProvider, config, app.log)
   const audit = createAuditRecorder(createAuditService(database), app.log)
 
+  // On the whole app: a forgotten `server.trustProxy` shows on any route.
+  registerUntrustedProxyWarning(app)
   app.setValidatorCompiler(validatorCompiler)
   app.setSerializerCompiler(serializerCompiler)
   // Before any route: every plugin inherits it.

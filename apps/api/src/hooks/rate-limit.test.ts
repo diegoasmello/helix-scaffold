@@ -1,5 +1,3 @@
-import { Writable } from 'node:stream'
-
 import { fastify } from 'fastify'
 import { describe, expect, it } from 'vitest'
 
@@ -7,25 +5,13 @@ import { registerDomainErrorHandler } from '@/lib/domain-errors'
 
 import { registerRateLimit } from './rate-limit'
 
-// A bare app with the limit, whose logs the test reads — whatever modules
-// exist.
+// A bare app with the limit — whatever modules exist.
 async function createLimitedApp(
   options: {
-    trustProxy?: boolean | number
     allowList?: Parameters<typeof registerRateLimit>[1]['allowList']
   } = {}
 ) {
-  const logs: { level: number; msg: string }[] = []
-  const stream = new Writable({
-    write(chunk, _encoding, done) {
-      logs.push(JSON.parse(String(chunk)))
-      done()
-    },
-  })
-  const app = fastify({
-    trustProxy: options.trustProxy ?? false,
-    logger: { level: 'warn', stream },
-  })
+  const app = fastify()
   registerDomainErrorHandler(app)
   await app.register(async (scope) => {
     await registerRateLimit(scope, {
@@ -35,9 +21,7 @@ async function createLimitedApp(
     })
     scope.get('/thing', async () => ({ ok: true }))
   })
-  const warnings = () =>
-    logs.filter((log) => log.level === 40 && /X-Forwarded-For/.test(log.msg))
-  return { app, warnings }
+  return { app }
 }
 
 describe('registerRateLimit', () => {
@@ -70,40 +54,5 @@ describe('registerRateLimit', () => {
       expect(res.statusCode).toBe(200)
     }
     await app.close()
-  })
-
-  // Behind a proxy it does not trust, every client has the proxy's IP — and
-  // shares one count.
-  describe('a proxy server.trustProxy does not cover', () => {
-    it('logs a warning, once', async () => {
-      const { app, warnings } = await createLimitedApp()
-      for (let i = 0; i < 2; i++) {
-        await app.inject({
-          method: 'GET',
-          url: '/thing',
-          headers: { 'x-forwarded-for': '203.0.113.7' },
-        })
-      }
-      expect(warnings()).toHaveLength(1)
-      await app.close()
-    })
-
-    it('stays quiet without X-Forwarded-For', async () => {
-      const { app, warnings } = await createLimitedApp()
-      await app.inject({ method: 'GET', url: '/thing' })
-      expect(warnings()).toHaveLength(0)
-      await app.close()
-    })
-
-    it('stays quiet when trustProxy trusts it', async () => {
-      const { app, warnings } = await createLimitedApp({ trustProxy: 1 })
-      await app.inject({
-        method: 'GET',
-        url: '/thing',
-        headers: { 'x-forwarded-for': '203.0.113.7' },
-      })
-      expect(warnings()).toHaveLength(0)
-      await app.close()
-    })
   })
 })

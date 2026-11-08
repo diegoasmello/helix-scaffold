@@ -23,29 +23,12 @@ interface RateLimitSettings {
  *
  * The client IP is `request.ip`: behind a reverse proxy, without
  * `server.trustProxy`, it is the proxy's for everyone, and every client
- * shares one count. A request whose `X-Forwarded-For` was ignored (its IP is
- * still the connection's) — the sign of a proxy `trustProxy` does not cover —
- * logs a warning, once.
+ * shares one count (`registerUntrustedProxyWarning()` logs it).
  */
 export async function registerRateLimit(
   scope: FastifyTypedInstance,
   settings: RateLimitSettings
 ) {
-  // Logged once per scope, not per request.
-  let warnedAboutProxy = false
-  scope.addHook('onRequest', async (request) => {
-    if (
-      !warnedAboutProxy &&
-      request.headers['x-forwarded-for'] &&
-      request.ip === request.socket.remoteAddress
-    ) {
-      warnedAboutProxy = true
-      request.log.warn(
-        'A request came through a proxy (X-Forwarded-For) that server.trustProxy does not trust: every client behind it shares its IP and one rate limit. Set server.trustProxy in app.config.ts.'
-      )
-    }
-  })
-
   await scope.register(fastifyRateLimit, {
     max: settings.max,
     timeWindow: settings.windowSeconds * 1000,

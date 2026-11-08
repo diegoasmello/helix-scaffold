@@ -81,7 +81,7 @@ From the sheet, and nothing else:
    - any `CLAUDE.md` that lists the modules (`users, roles, …, todos`).
 
    Where a pattern's only example was in the module ("`todoRow()` in `src/test/helpers.ts`"), point to `references/todos/` (`wiring.diff` for a shared file). Search again at the end: every remaining line is one you decided to keep.
-2. **`README.md`** — the product's: its name and purpose instead of the scaffold's introduction and _What's included_, the rest (prerequisites, getting started, testing, configuration) kept and checked against the rename (database names) and the sheet.
+2. **`README.md`** — the product's: its name and purpose instead of the scaffold's introduction and _What's included_, the rest (prerequisites, getting started, building for production, deploying with Docker, testing, configuration) kept and checked against the rename (database names) and the sheet.
 3. **Root `CLAUDE.md`** — a `## This product` section right after the title: the purpose, then the sheet's decisions (registration, social sign-in, subscriptions and plans, public site, default language), and that it has no module of its own yet (`/new-module`).
 
 ## Gate 1 — Final
@@ -104,8 +104,8 @@ Then `pnpm knip` once more.
 - The sheet as applied, and any deviation with its reason.
 - Each gate's result, the Gate 0 failures apart.
 - What only the user can do, in this order:
-  1. **Secrets and per-deploy values** in `apps/api/.env` — `.env.example` lists them; production needs its own `AUTH_SECRET`, `BASE_URL`, `CLIENT_URL`, and `RESEND_API_KEY` when email is on.
-  2. **Behind a reverse proxy** (nginx, a load balancer, Cloudflare): `server.trustProxy` in `app.config.ts` — every rate limit counts per client IP (sign-ins, and with a public site `/api/public/*` and the public files), and without it all clients share the proxy's.
+  1. **Secrets and per-deploy values** in `apps/api/.env` — `.env.example` lists them; production needs its own `AUTH_SECRET`, `BASE_URL`, `CLIENT_URL`, and `RESEND_API_KEY` when email is on. Deployed with Docker (`README.md` → _Deploying with Docker_), they all come from `.env.prod` on the server instead (`.env.prod.example`).
+  2. **Behind a reverse proxy** (nginx, a load balancer, Cloudflare, the Caddy of `docker-compose.prod.yml`): `server.trustProxy` in `app.config.ts` (`1` for Caddy alone) — every rate limit counts per client IP (sign-ins, and with a public site `/api/public/*` and the public files), and without it all clients share the proxy's.
   3. **Social sign-in**: each enabled provider's credentials (`.env.example` → _Social providers_) — `pnpm dev` refuses to start without them.
   4. **The first admin**: open the app, `/bootstrap`.
   5. **Subscriptions** (on): the payment processor adapter (`apps/api/src/modules/billing-webhook/CLAUDE.md` → checklist) and the `/upgrade` call to action — root `CLAUDE.md` → _Subscription checklist_.

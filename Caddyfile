@@ -1,0 +1,50 @@
+# The one public entry point (docker-compose.prod.yml → web): HTTPS for
+# $DOMAIN (a Let's Encrypt certificate Caddy gets and renews), every API route
+# under /api, the SPA everywhere else.
+{$DOMAIN} {
+	encode zstd gzip
+
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options nosniff
+		Referrer-Policy strict-origin-when-cross-origin
+		-Server
+	}
+
+	# Endpoints, auth, docs and uploaded files, which the API serves itself:
+	# it checks who may open each one. Before the SPA's fallback, so an unknown
+	# /api path answers the API's 404, never index.html.
+	handle /api/* {
+		reverse_proxy api:3333 {
+			# While the API restarts (an update: migrations, then boot), hold
+			# each request and retry instead of answering 502. Only a connection
+			# that never opened is retried, so no request reaches the API twice.
+			lb_try_duration 30s
+			lb_try_interval 500ms
+		}
+	}
+
+	# Vite's bundles have a hash in their name and never change. No fallback:
+	# a missing one (an old tab after a deploy) answers 404, never index.html
+	# cached for a year — and only a file that exists is cached.
+	handle /assets/* {
+		root * /srv
+		@exists file
+		header @exists Cache-Control "public, max-age=31536000, immutable"
+		file_server
+	}
+
+	# The SPA: index.html for every page, checked on every visit. Never inside
+	# another site's frame (clickjacking: a hidden admin screen under a decoy
+	# button). Not on /api: a site may frame a published PDF of /api/files.
+	handle {
+		root * /srv
+		header {
+			Cache-Control "no-cache"
+			Content-Security-Policy "frame-ancestors 'none'"
+			X-Frame-Options DENY
+		}
+		try_files {path} /index.html
+		file_server
+	}
+}

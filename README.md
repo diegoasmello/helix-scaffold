@@ -144,6 +144,51 @@ pnpm --filter api start          # node dist/server.js
 
 `pnpm start` does not read `apps/api/.env`: give the API its environment (`DATABASE_URL`, `AUTH_SECRET`, …) from the host — including `NODE_ENV=production` (unset means `development`) and, with `email.enabled`, `RESEND_API_KEY`, without which a production API refuses to start rather than print emails, reset links included, to its logs. Behind a reverse proxy, set `server.trustProxy` in `app.config.ts` (`1` for one proxy, or its IPs): otherwise every client shares the proxy's IP, and with it one sign-in rate limit. The API bundle contains only `src/`, so its dependencies must be installed where it runs. `migrate` needs only `DATABASE_URL` and the production dependencies — run it before every `start` of a new version. The product config (`app.config.ts`) is bundled in, so changing it needs a rebuild.
 
+## Deploying with Docker
+
+The simplest production: one Linux server running everything in Docker — PostgreSQL, the API and [Caddy](https://caddyserver.com), which serves the web, gets and renews the HTTPS certificate and sends `/api/*` to the API, all on one domain.
+
+| File | What it is |
+| --- | --- |
+| `Dockerfile` | Two images: `api` (applies pending migrations, then starts) and `web` (Caddy with the web's build) |
+| `docker-compose.prod.yml` | The three services and their volumes: `postgres_data`, `uploads` (the API's `storage/`), Caddy's certificates. Never for development — that is `docker-compose.yml` |
+| `Caddyfile` | The domain, `/api/*` to the API, the SPA everywhere else |
+| `.env.prod.example` | Every value of a deploy — copied to `.env.prod` on the server, never committed |
+
+Nothing in them names the product: whatever changes per deploy comes from `.env.prod`.
+
+**1. In the repository, before the first deploy** (`app.config.ts` is bundled into the image):
+
+- `server.trustProxy: 1` — Caddy is one proxy in front of the API. Left `false`, every client has Caddy's IP, and they all share one sign-in rate limit.
+- With email (`email.enabled: true`, required by open registration): `email.from` on a domain verified in Resend. Without a verified domain, Resend only sends from `onboarding@resend.dev` to its account's own address.
+
+**2. The server** — any Linux with Docker and its compose plugin, built on the server itself (sharp is native to its architecture). Open ports 22, 80 and 443 (TCP and UDP — UDP carries HTTP/3; without it Caddy quietly falls back to HTTP/2) only. A DNS `A` record points the domain to it before the first start, or Caddy cannot get the certificate. No domain yet: `<the server's IP with dashes>.sslip.io` resolves to that IP and gets a real certificate.
+
+**3. Start it**
+
+```bash
+git clone <repository> app && cd app
+cp .env.prod.example .env.prod && chmod 600 .env.prod   # fill it in — each value is explained there
+docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --build
+```
+
+**Then, right away, open `https://<DOMAIN>` and create the admin on `/bootstrap`**: until the first account exists, anyone who reaches the site can.
+
+**Updating** — `git pull`, then the same `up -d --build`: the API applies the new migrations as it starts, and Caddy holds the requests that arrive meanwhile (up to 30 s) instead of answering 502. Never change `APP_SLUG` or `POSTGRES_PASSWORD` after the first deploy — `.env.prod.example` says why and how.
+
+```bash
+P="docker compose -f docker-compose.prod.yml --env-file .env.prod"
+$P logs -f api                                                # the API's logs
+$P exec api node dist/reset-admin-password.js <email>         # the admin forgot the password
+$P exec db sh -c 'psql -U "$POSTGRES_USER" "$POSTGRES_DB"'    # a SQL prompt
+```
+
+**What it leaves to you:**
+
+- **Backups** — the database and the uploads live in volumes on this one server: losing it loses them. Copy them off it (`pg_dump` first, then `storage/`, which the database references).
+- **A second server** — the API runs as a single instance: uploads on local disk (`uploads.storage: 'local'`), rate limits in memory, background jobs on a timer in each process.
+- **Changing `DOMAIN`** — `up -d --build` again (the web's bundle holds the API's URL), and the redirect URIs of the social providers. Rich text stores its images by path, so it follows the new domain.
+
 ## Testing
 
 ```bash
