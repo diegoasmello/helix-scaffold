@@ -59,8 +59,11 @@ export function DataTable<T>(props: Readonly<HelixDataTableProps<T>>) {
 
   const noRecordsText = rest.noRecordsText ?? t('dataTable.noRecords')
   const empty = (rest.records ?? []).length === 0
-  // A custom empty state (e.g. FilteredEmptyState) needs room for its buttons.
-  const minHeight = minHeightProp ?? (empty && rest.emptyState ? 340 : 180)
+  // Only the empty state needs a minimum height — a custom one (e.g.
+  // FilteredEmptyState) more, for its buttons. With records the table fits
+  // its rows, or the border would leave a gap under a short list.
+  const emptyMinHeight = rest.emptyState ? 340 : 180
+  const minHeight = minHeightProp ?? (empty ? emptyMinHeight : undefined)
 
   if (!wide && rest.columns) {
     return (
